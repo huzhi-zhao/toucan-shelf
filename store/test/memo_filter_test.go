@@ -395,6 +395,30 @@ func TestMemoFilterCreatorEquals(t *testing.T) {
 }
 
 // =============================================================================
+// Workspace Field Tests
+// Schema: workspace (string resource name, ==, !=)
+// =============================================================================
+
+func TestMemoFilterWorkspaceEquals(t *testing.T) {
+	t.Parallel()
+	tc := NewMemoFilterTestContext(t)
+	defer tc.Close()
+
+	ws, err := tc.Store.CreateWorkspace(tc.Ctx, &store.Workspace{
+		CreatorID: tc.User.ID,
+		Title:     "Garden",
+	})
+	require.NoError(t, err)
+
+	tc.CreateMemo(NewMemoBuilder("memo-in-ws", tc.User.ID).Content("In workspace").Workspace(ws.ID))
+	tc.CreateMemo(NewMemoBuilder("memo-default-ws", tc.User.ID).Content("Default workspace"))
+
+	memos := tc.ListWithFilter(`workspace == "workspaces/` + ws.UID + `"`)
+	require.Len(t, memos, 1)
+	require.Equal(t, ws.ID, memos[0].WorkspaceID)
+}
+
+// =============================================================================
 // Creator ID Field Tests
 // Schema: creator_id (int, ==, !=)
 // =============================================================================

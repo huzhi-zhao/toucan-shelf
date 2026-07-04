@@ -39,6 +39,26 @@ func isSSESuppressed(ctx context.Context) bool {
 	return ok && v
 }
 
+// isDuplicateKeyError reports whether err is a unique-constraint violation
+// from any of the three supported drivers (SQLite/Postgres/MySQL).
+func isDuplicateKeyError(err error) bool {
+	errMsg := err.Error()
+	return strings.Contains(errMsg, "UNIQUE constraint failed") ||
+		strings.Contains(errMsg, "duplicate key") ||
+		strings.Contains(errMsg, "Duplicate entry")
+}
+
+// duplicateMemoPathError returns the AlreadyExists error to surface when a
+// memo create/update collides with an existing document at the same
+// workspace + folder path + title.
+func duplicateMemoPathError(err error) error {
+	errMsg := err.Error()
+	if strings.Contains(errMsg, "idx_memo_workspace_folder_title") || strings.Contains(errMsg, "folder_path") {
+		return status.Error(codes.AlreadyExists, "a document with this title already exists in this folder")
+	}
+	return status.Errorf(codes.AlreadyExists, "memo already exists")
+}
+
 func (s *APIV1Service) checkMemoReadAccess(ctx context.Context, memo *store.Memo) error {
 	if memo == nil {
 		return status.Errorf(codes.NotFound, "memo not found")
@@ -110,7 +130,7 @@ func (s *APIV1Service) CreateMemo(ctx context.Context, request *v1pb.CreateMemoR
 		create.UpdatedTs = updatedTs
 	}
 
-	contentLengthLimit, err := s.getContentLengthLimit(ctx)
+	contentLengthLimit, err := s.getContentLengthLimit(ctx, create.DocType)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get content length limit")
 	}
@@ -126,11 +146,12 @@ func (s *APIV1Service) CreateMemo(ctx context.Context, request *v1pb.CreateMemoR
 
 	memo, err := s.Store.CreateMemo(ctx, create)
 	if err != nil {
-		// Check for unique constraint violation (AIP-133 compliance)
-		errMsg := err.Error()
-		if strings.Contains(errMsg, "UNIQUE constraint failed") ||
-			strings.Contains(errMsg, "duplicate key") ||
-			strings.Contains(errMsg, "Duplicate entry") {
+		// Check for unique constraint violation (AIP-133 compliance): either the
+		// memo UID itself, or the (workspace, folder_path, title) uniqueness rule.
+		if isDuplicateKeyError(err) {
+			if strings.Contains(err.Error(), "idx_memo_workspace_folder_title") || strings.Contains(err.Error(), "folder_path") {
+				return nil, duplicateMemoPathError(err)
+			}
 			return nil, status.Errorf(codes.AlreadyExists, "memo with ID %q already exists", memoUID)
 		}
 		return nil, err
@@ -508,7 +529,7 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 		if path == "content" {
 			contentUpdated = true
 			previousContent = memo.Content
-			contentLengthLimit, err := s.getContentLengthLimit(ctx)
+			contentLengthLimit, err := s.getContentLengthLimit(ctx, memo.DocType)
 			if err != nil {
 				return nil, status.Errorf(codes.Internal, "failed to get content length limit")
 			}
@@ -580,6 +601,9 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 	}
 
 	if err = s.Store.UpdateMemo(ctx, update); err != nil {
+		if isDuplicateKeyError(err) {
+			return nil, duplicateMemoPathError(err)
+		}
 		return nil, status.Errorf(codes.Internal, "failed to update memo")
 	}
 
@@ -934,7 +958,10 @@ func (s *APIV1Service) ListMemoComments(ctx context.Context, request *v1pb.ListM
 	return response, nil
 }
 
-func (s *APIV1Service) getContentLengthLimit(ctx context.Context) (int, error) {
+func (s *APIV1Service) getContentLengthLimit(ctx context.Context, docType string) (int, error) {
+	if docType == "HTML" {
+		return store.HTMLContentLengthLimit, nil
+	}
 	instanceMemoRelatedSetting, err := s.Store.GetInstanceMemoRelatedSetting(ctx)
 	if err != nil {
 		return 0, status.Errorf(codes.Internal, "failed to get instance memo related setting")

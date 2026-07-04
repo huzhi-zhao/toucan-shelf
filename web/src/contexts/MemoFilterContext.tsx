@@ -10,7 +10,13 @@ export type FilterFactor =
   | "pinned"
   | "property.hasLink"
   | "property.hasTaskList"
-  | "property.hasCode";
+  | "property.hasCode"
+  // Explore-only: which workspace to scope the feed to (single value; "all
+  // projects" is represented by the absence of this factor).
+  | "workspace"
+  // Explore-only: whether to show only archived memos. Not a CEL condition —
+  // read directly via getFiltersByFactor and mapped to ListMemosRequest.state.
+  | "archived";
 
 export interface MemoFilter {
   factor: FilterFactor;

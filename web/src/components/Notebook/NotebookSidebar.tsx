@@ -1,5 +1,8 @@
+import dayjs from "dayjs";
 import { CalendarIcon, FilePlusIcon, FolderPlusIcon, SearchIcon, TagsIcon, UploadIcon } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
+import { calculateMaxCount, MonthCalendar } from "@/components/ActivityCalendar";
+import { MonthNavigator } from "@/components/StatisticsView/MonthNavigator";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -87,6 +90,7 @@ const NotebookSidebar = ({
   const [query, setQuery] = useState("");
   const [dateFilter, setDateFilter] = useState<string | undefined>(undefined);
   const [bottomPanel, setBottomPanel] = useState<"none" | "calendar" | "tags">("none");
+  const [visibleMonth, setVisibleMonth] = useState(dayjs().format("YYYY-MM"));
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const docDates = useMemo(() => {
@@ -94,6 +98,8 @@ const NotebookSidebar = ({
     collectDocDates(tree, acc);
     return acc;
   }, [tree]);
+
+  const docDatesRecord = useMemo(() => Object.fromEntries(docDates), [docDates]);
 
   const visibleTree = useMemo(() => {
     let nodes = filterTree(tree, query);
@@ -180,6 +186,25 @@ const NotebookSidebar = ({
       )}
 
       <div className="shrink-0 border-t border-border pt-2">
+        {bottomPanel === "calendar" && (
+          <div className="mb-2 animate-scale-in">
+            <MonthNavigator
+              visibleMonth={visibleMonth}
+              onMonthChange={setVisibleMonth}
+              activityStats={docDatesRecord}
+              timeBasis="create_time"
+            />
+            <MonthCalendar
+              month={visibleMonth}
+              data={docDatesRecord}
+              maxCount={calculateMaxCount(docDatesRecord)}
+              selectedDate={dateFilter}
+              onClick={(date) => setDateFilter((d) => (d === date ? undefined : date))}
+              size="small"
+            />
+          </div>
+        )}
+        {bottomPanel === "tags" && <div className="text-xs text-muted-foreground px-2 py-2 mb-2">{t("notebook.tags-unavailable")}</div>}
         <div className="flex items-center gap-1">
           <Button
             variant={bottomPanel === "calendar" ? "secondary" : "ghost"}
@@ -200,30 +225,6 @@ const NotebookSidebar = ({
             {t("notebook.tags")}
           </Button>
         </div>
-        {bottomPanel === "calendar" && (
-          <div className="max-h-40 overflow-y-auto mt-1 flex flex-col gap-0.5">
-            {docDates.size === 0 ? (
-              <div className="text-xs text-muted-foreground px-2 py-2">{t("notebook.no-documents")}</div>
-            ) : (
-              [...docDates.entries()]
-                .sort((a, b) => b[0].localeCompare(a[0]))
-                .map(([date, count]) => (
-                  <button
-                    key={date}
-                    className={cn(
-                      "flex items-center justify-between text-xs px-2 py-1 rounded hover:bg-accent/60",
-                      dateFilter === date && "bg-accent text-accent-foreground",
-                    )}
-                    onClick={() => setDateFilter((d) => (d === date ? undefined : date))}
-                  >
-                    <span>{date}</span>
-                    <span className="text-muted-foreground">{count}</span>
-                  </button>
-                ))
-            )}
-          </div>
-        )}
-        {bottomPanel === "tags" && <div className="text-xs text-muted-foreground px-2 py-2 mt-1">{t("notebook.tags-unavailable")}</div>}
       </div>
 
       <div className="shrink-0 border-t border-border pt-2 flex items-center gap-2">

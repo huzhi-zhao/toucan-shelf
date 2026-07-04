@@ -1,4 +1,4 @@
-import { BellIcon, EarthIcon, InfoIcon, LibraryIcon, PaperclipIcon, UserCircleIcon } from "lucide-react";
+import { BellIcon, BookOpenIcon, CalendarDaysIcon, InfoIcon, LibraryBigIcon, PaperclipIcon, UserCircleIcon } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import useCurrentUser from "@/hooks/useCurrentUser";
@@ -32,13 +32,19 @@ const Navigation = (props: Props) => {
     id: "header-memos",
     path: Routes.HOME,
     title: t("common.memos"),
-    icon: <LibraryIcon className="w-6 h-auto shrink-0" />,
+    icon: <BookOpenIcon className="w-6 h-auto shrink-0" />,
+  };
+  const shelfNavLink: NavLinkItem = {
+    id: "header-shelf",
+    path: Routes.SHELF,
+    title: t("bookshelf.title"),
+    icon: <LibraryBigIcon className="w-6 h-auto shrink-0" />,
   };
   const exploreNavLink: NavLinkItem = {
     id: "header-explore",
     path: Routes.EXPLORE,
     title: t("common.explore"),
-    icon: <EarthIcon className="w-6 h-auto shrink-0" />,
+    icon: <CalendarDaysIcon className="w-6 h-auto shrink-0" />,
   };
   const aboutNavLink: NavLinkItem = {
     id: "header-about",
@@ -76,7 +82,7 @@ const Navigation = (props: Props) => {
   };
 
   const primaryNavLinks: NavLinkItem[] = currentUser
-    ? [homeNavLink, exploreNavLink, attachmentsNavLink, inboxNavLink]
+    ? [homeNavLink, shelfNavLink, exploreNavLink, attachmentsNavLink, inboxNavLink]
     : [exploreNavLink, aboutNavLink, signInNavLink];
   const inboxAriaLabel = unreadCount > 0 ? `${t("common.inbox")}, ${unreadCount} unread` : t("common.inbox");
 

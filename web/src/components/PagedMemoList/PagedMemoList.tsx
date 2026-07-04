@@ -161,7 +161,7 @@ const PagedMemoList = (props: Props) => {
 
   const children = (
     <MentionResolutionProvider contents={sortedMemoList.map((memo) => memo.content)}>
-      <div className="flex flex-col justify-start w-full max-w-2xl mx-auto">
+      <div className="flex flex-col justify-start w-[90%] mx-auto">
         {/* During initial load, show the skeleton only after the delay; render nothing before then to avoid a flash. */}
         {isLoading ? (
           showSkeleton ? (

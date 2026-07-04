@@ -1,11 +1,13 @@
 import { isEqual } from "lodash-es";
 import {
+  ArchiveIcon,
   BookmarkIcon,
   CalendarIcon,
   CheckCircleIcon,
   CodeIcon,
   EyeIcon,
   HashIcon,
+  LibraryBigIcon,
   LinkIcon,
   LucideIcon,
   SearchIcon,
@@ -13,6 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FilterFactor, getMemoFilterKey, MemoFilter, useMemoFilterContext } from "@/contexts/MemoFilterContext";
+import { useWorkspaces } from "@/hooks/useWorkspaceQueries";
 import { useTranslate } from "@/utils/i18n";
 
 interface FilterConfig {
@@ -53,17 +56,29 @@ const FILTER_CONFIGS: Record<FilterFactor, FilterConfig> = {
     icon: CodeIcon,
     getLabel: (_, t) => t("memo.filters.has-code"),
   },
+  workspace: {
+    icon: LibraryBigIcon,
+    getLabel: (value) => value,
+  },
+  archived: {
+    icon: ArchiveIcon,
+    getLabel: (_, t) => t("explore.show-archived-only"),
+  },
 };
 
 const MemoFilters = () => {
   const t = useTranslate();
   const { filters, removeFilter } = useMemoFilterContext();
+  const { data: workspaces = [] } = useWorkspaces();
 
   const handleRemoveFilter = (filter: MemoFilter) => {
     removeFilter((f: MemoFilter) => isEqual(f, filter));
   };
 
   const getFilterDisplayText = (filter: MemoFilter): string => {
+    if (filter.factor === "workspace") {
+      return workspaces.find((w) => w.name === filter.value)?.title ?? filter.value;
+    }
     const config = FILTER_CONFIGS[filter.factor];
     if (!config) {
       return filter.value || filter.factor;

@@ -1,4 +1,10 @@
 {
+  "explore": {
+    "all-projects": "All projects",
+    "all-visibilities": "All",
+    "filter-by-visibility": "Visibility",
+    "show-archived-only": "Show archived only"
+  },
   "about": {
     "blogs": "Blogs",
     "description": "A privacy-first, lightweight note-taking service. Easily capture and share your great thoughts.",
@@ -871,6 +877,16 @@
     "toggle-outline": "Toggle outline",
     "unarchive": "Unarchive",
     "select-a-document": "Select a document to get started",
-    "no-headings": "No headings"
+    "no-headings": "No headings",
+    "move-document": "Move document",
+    "move": "Move",
+    "destination-workspace": "Destination workspace",
+    "destination-folder": "Destination folder",
+    "workspace-root": "(workspace root)"
+  },
+  "bookshelf": {
+    "title": "Bookshelf",
+    "new-workspace": "New workspace",
+    "created-at": "Created {{date}}"
   }
 }

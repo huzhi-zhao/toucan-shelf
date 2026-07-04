@@ -19,10 +19,13 @@ export interface MemoEditorProps {
   defaultCreateTime?: Date;
   onConfirm?: (memoName: string) => void;
   onCancel?: () => void;
+  /** Grow the editor to fill its container's height instead of capping at the normal-mode max-height (e.g. a full-page editor like the Notebook document view). */
+  expand?: boolean;
 }
 
 export interface EditorContentProps {
   placeholder?: string;
+  expand?: boolean;
 }
 
 export interface EditorToolbarProps {

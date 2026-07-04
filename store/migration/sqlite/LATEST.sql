@@ -46,7 +46,7 @@ CREATE TABLE memo (
   title TEXT NOT NULL DEFAULT '',
   doc_type TEXT NOT NULL DEFAULT 'MARKDOWN'
 );
-CREATE INDEX idx_memo_workspace_folder ON memo (workspace_id, folder_path);
+CREATE UNIQUE INDEX idx_memo_workspace_folder_title ON memo (workspace_id, folder_path, title);
 
 -- memo_relation
 CREATE TABLE memo_relation (

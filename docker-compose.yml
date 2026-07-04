@@ -1,0 +1,17 @@
+services:
+  memos:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: memos:local
+    container_name: memos
+    restart: unless-stopped
+    volumes:
+      - memos-data:/var/opt/memos
+    ports:
+      - "${MEMOS_PORT:-5230}:5230"
+    environment:
+      - TZ=${TZ:-UTC}
+
+volumes:
+  memos-data:

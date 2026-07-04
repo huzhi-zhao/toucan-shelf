@@ -111,6 +111,21 @@ func NewSchema() Schema {
 				CompareNeq: true,
 			},
 		},
+		"workspace": {
+			Name:   "workspace",
+			Kind:   FieldKindScalar,
+			Type:   FieldTypeString,
+			Column: Column{Table: "memo_workspace", Name: "uid"},
+			Expressions: map[DialectName]string{
+				DialectSQLite:   "('workspaces/' || %s)",
+				DialectMySQL:    "CONCAT('workspaces/', %s)",
+				DialectPostgres: "('workspaces/' || %s)",
+			},
+			AllowedComparisonOps: map[ComparisonOperator]bool{
+				CompareEq:  true,
+				CompareNeq: true,
+			},
+		},
 		"creator_id": {
 			Name:        "creator_id",
 			Kind:        FieldKindScalar,
@@ -232,6 +247,7 @@ func NewSchema() Schema {
 	envOptions := []cel.EnvOption{
 		cel.Variable("content", cel.StringType),
 		cel.Variable("creator", cel.StringType),
+		cel.Variable("workspace", cel.StringType),
 		cel.Variable("creator_id", cel.IntType),
 		cel.Variable("created_ts", cel.TimestampType),
 		cel.Variable("updated_ts", cel.TimestampType),

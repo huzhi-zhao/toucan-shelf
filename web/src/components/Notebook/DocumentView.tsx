@@ -1,14 +1,37 @@
-import { ArchiveIcon, ArchiveRestoreIcon, PanelRightCloseIcon, PanelRightOpenIcon, PencilIcon, TrashIcon } from "lucide-react";
+import copy from "copy-to-clipboard";
+import {
+  ArchiveIcon,
+  ArchiveRestoreIcon,
+  CopyIcon,
+  FileTextIcon,
+  FolderInputIcon,
+  LinkIcon,
+  PanelRightCloseIcon,
+  PanelRightOpenIcon,
+  PencilIcon,
+  TrashIcon,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "react-hot-toast";
 import MemoContent from "@/components/MemoContent";
 import MemoEditor from "@/components/MemoEditor";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
+import { useInstance } from "@/contexts/InstanceContext";
 import { State } from "@/types/proto/api/v1/common_pb";
 import { type Memo, Memo_DocType } from "@/types/proto/api/v1/memo_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import DocumentOutline from "./DocumentOutline";
+import MoveDocumentDialog from "./MoveDocumentDialog";
 
 interface Props {
   memo: Memo;
@@ -17,15 +40,18 @@ interface Props {
   onArchiveToggle: () => void;
   onDelete: () => void;
   onSaveHtml: (content: string) => void;
+  onMove: (workspace: string, folderPath: string) => void | Promise<void>;
 }
 
-const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onSaveHtml }: Props) => {
+const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onSaveHtml, onMove }: Props) => {
   const t = useTranslate();
+  const { profile } = useInstance();
   const isHtml = memo.docType === Memo_DocType.HTML;
   const [mode, setMode] = useState<"preview" | "edit">("preview");
   const [outlineCollapsed, setOutlineCollapsed] = useState(false);
   const [htmlDraft, setHtmlDraft] = useState(memo.content);
   const [titleDraft, setTitleDraft] = useState(memo.title);
+  const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
 
   // Always land on preview first when switching documents (per spec).
@@ -36,6 +62,17 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
   }, [memo.name]);
 
   const isArchived = memo.state === State.ARCHIVED;
+
+  const handleCopyLink = () => {
+    const host = profile.instanceUrl || window.location.origin;
+    copy(`${host}/${memo.name}`);
+    toast.success(t("message.succeed-copy-link"));
+  };
+
+  const handleCopyContent = () => {
+    copy(memo.content);
+    toast.success(t("message.succeed-copy-content"));
+  };
 
   return (
     <div className="w-full h-full flex flex-col min-w-0">
@@ -85,6 +122,26 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <CopyIcon className="w-4 h-4 mr-2" />
+                  {t("common.copy")}
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={handleCopyLink}>
+                    <LinkIcon className="w-4 h-4 mr-2" />
+                    {t("memo.copy-link")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleCopyContent}>
+                    <FileTextIcon className="w-4 h-4 mr-2" />
+                    {t("memo.copy-content")}
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuItem onClick={() => setMoveDialogOpen(true)}>
+                <FolderInputIcon className="w-4 h-4 mr-2" />
+                {t("notebook.move")}
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={onArchiveToggle}>
                 {isArchived ? <ArchiveRestoreIcon className="w-4 h-4 mr-2" /> : <ArchiveIcon className="w-4 h-4 mr-2" />}
                 {isArchived ? t("notebook.unarchive") : t("common.archive")}
@@ -97,6 +154,13 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
           </DropdownMenu>
         </div>
       </div>
+
+      <MoveDocumentDialog
+        open={moveDialogOpen}
+        onOpenChange={setMoveDialogOpen}
+        currentWorkspace={memo.workspace}
+        onConfirm={onMove}
+      />
 
       <div className="flex-1 min-h-0 flex">
         <div className="flex-1 min-w-0 overflow-y-auto" ref={previewRef}>
@@ -120,12 +184,16 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
               <MemoContent content={memo.content} memoName={memo.name} />
             </div>
           ) : (
-            <div className="px-4 py-4">
+            <div className="h-full flex flex-col px-4 py-4">
               <MemoEditor
                 autoFocus
+                expand
                 cacheKey={`notebook-editor-${memo.name}`}
                 memo={memo}
-                onConfirm={onSaved}
+                onConfirm={() => {
+                  setMode("preview");
+                  onSaved();
+                }}
                 onCancel={() => setMode("preview")}
               />
             </div>

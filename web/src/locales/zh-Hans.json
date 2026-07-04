@@ -1,4 +1,10 @@
 {
+  "explore": {
+    "all-projects": "所有项目",
+    "all-visibilities": "全部",
+    "filter-by-visibility": "可见范围",
+    "show-archived-only": "仅显示已归档"
+  },
   "about": {
     "blogs": "博客",
     "description": "Memos 是一个隐私优先、轻量级的笔记解决方案，可以轻松捕捉和分享您的想法。",
@@ -852,6 +858,16 @@
     "toggle-outline": "切换大纲",
     "unarchive": "取消归档",
     "select-a-document": "选择一个文档开始",
-    "no-headings": "暂无标题"
+    "no-headings": "暂无标题",
+    "move-document": "移动文档",
+    "move": "移动",
+    "destination-workspace": "目标知识库",
+    "destination-folder": "目标文件夹",
+    "workspace-root": "（知识库根目录）"
+  },
+  "bookshelf": {
+    "title": "书架",
+    "new-workspace": "新建知识库",
+    "created-at": "创建于 {{date}}"
   }
 }

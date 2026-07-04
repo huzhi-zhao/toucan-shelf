@@ -3,6 +3,7 @@ import useCurrentUser from "@/hooks/useCurrentUser";
 import { cn } from "@/lib/utils";
 import type { StatisticsData } from "@/types/statistics";
 import StatisticsView from "../StatisticsView";
+import { ExploreVisibilityAndArchivedFilters, ExploreWorkspaceSelect } from "./ExploreFilters";
 import ShortcutsSection from "./ShortcutsSection";
 import TagsSection from "./TagsSection";
 
@@ -74,7 +75,13 @@ const MemoExplorer = (props: Props) => {
         className,
       )}
     >
+      {context === "explore" && (
+        <div className="w-full mb-2">
+          <ExploreWorkspaceSelect />
+        </div>
+      )}
       {features.search && <SearchBar />}
+      {context === "explore" && <ExploreVisibilityAndArchivedFilters />}
       <div className="mt-1 px-1 w-full">
         {features.statistics && <StatisticsView statisticsData={statisticsData} />}
         {features.shortcuts && currentUser && <ShortcutsSection />}

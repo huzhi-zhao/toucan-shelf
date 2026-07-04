@@ -132,6 +132,13 @@ func (s *Store) CreateMemo(ctx context.Context, create *Memo) (*Memo, error) {
 	if !base.UIDMatcher.MatchString(create.UID) {
 		return nil, errors.New("invalid uid")
 	}
+	// Documents must have a unique title within their workspace+folder (enforced
+	// by a DB unique index). Callers that don't care about titles (e.g. plain
+	// memos created without the Notebook UI) would otherwise all collide on the
+	// empty string, so default to the UID, which is always unique.
+	if create.Title == "" {
+		create.Title = create.UID
+	}
 	return s.driver.CreateMemo(ctx, create)
 }
 

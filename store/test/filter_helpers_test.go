@@ -66,6 +66,11 @@ func (b *MemoBuilder) Visibility(v store.Visibility) *MemoBuilder {
 	return b
 }
 
+func (b *MemoBuilder) Workspace(workspaceID int32) *MemoBuilder {
+	b.memo.WorkspaceID = workspaceID
+	return b
+}
+
 func (b *MemoBuilder) CreatedTs(ts int64) *MemoBuilder {
 	b.memo.CreatedTs = ts
 	return b

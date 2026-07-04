@@ -24,7 +24,10 @@ const MainLayout = () => {
   // The Notebook page ("/") owns its own secondary sidebar (workspace tree) and
   // full-bleed two-pane layout, so it opts out of the generic MemoExplorer chrome.
   const isNotebook = location.pathname === Routes.HOME;
-  const showMemoExplorer = location.pathname !== Routes.ABOUT && !isNotebook;
+  // The Bookshelf page ("/shelf") is a standalone gallery with no filters, so it
+  // doesn't need the MemoExplorer sidebar either.
+  const isBookshelf = location.pathname === Routes.SHELF;
+  const showMemoExplorer = location.pathname !== Routes.ABOUT && !isNotebook && !isBookshelf;
 
   // Determine context based on current route
   const context: MemoExplorerContext = useMemo(() => {

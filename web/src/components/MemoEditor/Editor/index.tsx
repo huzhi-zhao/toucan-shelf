@@ -17,10 +17,11 @@ interface EditorProps {
   onContentChange: (content: string) => void;
   onPaste: (event: React.ClipboardEvent) => void;
   isFocusMode?: boolean;
+  expand?: boolean;
 }
 
 const Editor = forwardRef(function Editor(props: EditorProps, ref: React.ForwardedRef<EditorController>) {
-  const { className, initialContent, placeholder, onContentChange, onPaste, isFocusMode } = props;
+  const { className, initialContent, placeholder, onContentChange, onPaste, isFocusMode, expand } = props;
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const controllerRef = useRef<EditorController | null>(null);
@@ -75,11 +76,15 @@ const Editor = forwardRef(function Editor(props: EditorProps, ref: React.Forward
     <div
       className={cn(
         "flex flex-col justify-start items-start relative w-full bg-inherit",
-        isFocusMode ? "flex-1" : `h-auto ${EDITOR_HEIGHT.normal}`,
+        isFocusMode || expand ? "flex-1" : `h-auto ${EDITOR_HEIGHT.normal}`,
         className,
       )}
     >
-      <div ref={hostRef} className={cn("w-full text-base overflow-y-auto", isFocusMode ? "flex-1 h-0" : "h-full")} onPaste={onPaste} />
+      <div
+        ref={hostRef}
+        className={cn("w-full text-base overflow-y-auto", isFocusMode || expand ? "flex-1 h-0" : "h-full")}
+        onPaste={onPaste}
+      />
     </div>
   );
 });

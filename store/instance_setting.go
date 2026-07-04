@@ -146,6 +146,11 @@ func (s *Store) GetInstanceGeneralSetting(ctx context.Context) (*storepb.Instanc
 // DefaultContentLengthLimit is the default limit of content length in bytes. 8KB.
 const DefaultContentLengthLimit = 8 * 1024
 
+// HTMLContentLengthLimit is the content length limit applied to HTML documents, in bytes.
+// HTML docs (e.g. pasted/uploaded AI-generated pages) are self-contained and routinely
+// exceed the plain-markdown limit, so they get a much larger cap. 10MB.
+const HTMLContentLengthLimit = 10 * 1024 * 1024
+
 // DefaultReactions is the default reactions for memo related setting.
 var DefaultReactions = []string{"👍", "👎", "❤️", "🎉", "😄", "😕", "😢", "😡"}
 

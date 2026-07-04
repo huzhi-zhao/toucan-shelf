@@ -27,6 +27,7 @@ function lazyWithReload<T extends React.ComponentType>(factory: () => Promise<{ 
 const AdminSignIn = lazyWithReload(() => import("@/pages/AdminSignIn"));
 const About = lazyWithReload(() => import("@/pages/About"));
 const Archived = lazyWithReload(() => import("@/pages/Archived"));
+const Bookshelf = lazyWithReload(() => import("@/pages/Bookshelf"));
 const AuthCallback = lazyWithReload(() => import("@/pages/AuthCallback"));
 const Explore = lazyWithReload(() => import("@/pages/Explore"));
 const Notebook = lazyWithReload(() => import("@/pages/Notebook"));
@@ -92,6 +93,7 @@ export const routeConfig: RouteObject[] = [
                 element: <RequireAuthRoute />,
                 children: [
                   { path: Routes.ARCHIVED, element: <Archived /> },
+                  { path: Routes.SHELF, element: <Bookshelf /> },
                   { path: Routes.SHORTCUTS, element: <Shortcuts /> },
                 ],
               },

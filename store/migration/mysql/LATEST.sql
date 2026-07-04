@@ -44,7 +44,7 @@ CREATE TABLE `memo` (
   `folder_path` VARCHAR(512) NOT NULL DEFAULT '',
   `title` VARCHAR(256) NOT NULL DEFAULT '',
   `doc_type` VARCHAR(32) NOT NULL DEFAULT 'MARKDOWN',
-  INDEX `idx_memo_workspace_folder` (`workspace_id`, `folder_path`(255))
+  UNIQUE INDEX `idx_memo_workspace_folder_title` (`workspace_id`, `folder_path`(255), `title`)
 );
 
 -- memo_relation

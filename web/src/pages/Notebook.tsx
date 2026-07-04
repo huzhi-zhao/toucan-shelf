@@ -2,6 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
+import { useLocation } from "react-router-dom";
 import DocumentView from "@/components/Notebook/DocumentView";
 import NotebookSidebar from "@/components/Notebook/NotebookSidebar";
 import PromptDialog from "@/components/Notebook/PromptDialog";
@@ -52,8 +53,10 @@ const Notebook = () => {
   const t = useTranslate();
   const currentUser = useCurrentUser();
   const queryClient = useQueryClient();
+  const location = useLocation();
   const { data: workspaces = [] } = useWorkspaces();
   const { getLastOpened, setLastOpened } = useLastOpened(currentUser?.name);
+  const requestedWorkspace = (location.state as { workspace?: string } | null)?.workspace;
 
   const [workspaceName, setWorkspaceName] = useState<string | undefined>(undefined);
   const [selectedMemo, setSelectedMemo] = useState<string | undefined>(undefined);
@@ -83,16 +86,22 @@ const Notebook = () => {
   const renameFolder = useRenameWorkspaceFolder();
   const deleteFolder = useDeleteWorkspaceFolder();
 
-  // Restore last-opened workspace once workspaces are available.
+  // Restore last-opened workspace once workspaces are available. A workspace requested via
+  // navigation state (e.g. clicking a book on the Bookshelf) takes priority and is applied
+  // synchronously, so the switch is immediate instead of waiting on a server round-trip.
   useEffect(() => {
     if (restoredWorkspace.current || workspaces.length === 0) return;
     restoredWorkspace.current = true;
+    if (requestedWorkspace && workspaces.some((w) => w.name === requestedWorkspace)) {
+      setWorkspaceName(requestedWorkspace);
+      return;
+    }
     (async () => {
       const lastOpened = await getLastOpened();
       const match = lastOpened && workspaces.find((w) => w.name === lastOpened.workspace);
       setWorkspaceName(match ? match.name : workspaces[0].name);
     })();
-  }, [workspaces, getLastOpened]);
+  }, [workspaces, getLastOpened, requestedWorkspace]);
 
   // Restore last-opened document once the tree for the restored workspace loads.
   useEffect(() => {
@@ -253,6 +262,24 @@ const Notebook = () => {
     [memo, updateMemo, t],
   );
 
+  const handleMove = useCallback(
+    async (workspace: string, folderPath: string) => {
+      if (!memo) return;
+      await updateMemo.mutateAsync({
+        update: { name: memo.name, workspace, folderPath },
+        updateMask: ["workspace", "folderPath"],
+      });
+      invalidateTree();
+      if (workspace !== workspaceName) {
+        queryClient.invalidateQueries({ queryKey: workspaceKeys.tree(workspace, false) });
+        queryClient.invalidateQueries({ queryKey: workspaceKeys.tree(workspace, true) });
+        setSelectedMemo(undefined);
+      }
+      toast.success(t("common.save"));
+    },
+    [memo, updateMemo, invalidateTree, workspaceName, queryClient, t],
+  );
+
   return (
     <div className="w-full h-svh flex flex-row">
       <div className="w-72 shrink-0 h-full border-r border-border">
@@ -283,6 +310,7 @@ const Notebook = () => {
             onArchiveToggle={handleArchiveToggle}
             onDelete={handleDelete}
             onSaveHtml={handleSaveHtml}
+            onMove={handleMove}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
