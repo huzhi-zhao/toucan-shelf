@@ -288,6 +288,7 @@ message Memo {
     DOC_TYPE_UNSPECIFIED = 0;
     MARKDOWN = 1;
     HTML = 2;
+    PDF = 3;
   }
 
   // Computed properties of a memo.

@@ -887,7 +887,8 @@
     "search-documents": "Search documents",
     "new-document": "New document",
     "new-folder": "New folder",
-    "upload-file": "Upload file",
+    "upload-file": "Upload doc",
+    "upload-pdf": "Upload file",
     "no-documents": "No documents",
     "show-archived-only": "Show archived only",
     "tags": "Tags",
@@ -907,6 +908,13 @@
     "destination-workspace": "Destination workspace",
     "destination-folder": "Destination folder",
     "workspace-root": "(workspace root)"
+  },
+  "pdf": {
+    "loading": "Loading…",
+    "load-failed": "Failed to load PDF.",
+    "view-details": "View details",
+    "uploading": "Uploading…",
+    "toggle-orientation": "Toggle scroll/page view"
   },
   "bookshelf": {
     "title": "Bookshelf",

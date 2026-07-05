@@ -16,6 +16,7 @@ import { toast } from "react-hot-toast";
 import MemoContent from "@/components/MemoContent";
 import MemoEditor from "@/components/MemoEditor";
 import { AttachmentListView } from "@/components/MemoMetadata";
+import { PdfDocumentView } from "@/components/PdfViewer/PdfDocumentView";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -31,7 +32,7 @@ import { useInstance } from "@/contexts/InstanceContext";
 import { cn } from "@/lib/utils";
 import { State } from "@/types/proto/api/v1/common_pb";
 import { type Memo, Memo_DocType } from "@/types/proto/api/v1/memo_service_pb";
-import { partitionInlinedAttachments } from "@/utils/attachment";
+import { getAttachmentUrl, partitionInlinedAttachments } from "@/utils/attachment";
 import { useTranslate } from "@/utils/i18n";
 import DocumentOutline from "./DocumentOutline";
 import MoveDocumentDialog from "./MoveDocumentDialog";
@@ -50,6 +51,8 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
   const t = useTranslate();
   const { profile } = useInstance();
   const isHtml = memo.docType === Memo_DocType.HTML;
+  const isPdf = memo.docType === Memo_DocType.PDF;
+  const pdfAttachment = isPdf ? memo.attachments.find((a) => a.type === "application/pdf") : undefined;
   const remainingAttachments = partitionInlinedAttachments(memo.attachments, memo.content).rest;
   const [mode, setMode] = useState<"preview" | "edit">("preview");
   const [outlineCollapsed, setOutlineCollapsed] = useState(false);
@@ -57,6 +60,7 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
   const [titleDraft, setTitleDraft] = useState(memo.title);
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
+  const [pdfToolbarSlot, setPdfToolbarSlot] = useState<HTMLDivElement | null>(null);
 
   // Always land on preview first when switching documents (per spec).
   useEffect(() => {
@@ -90,35 +94,38 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
           }}
         />
         <div className="flex items-center gap-1 shrink-0">
-          <div className="flex items-center rounded-lg border border-border overflow-hidden">
-            <Button
-              variant={mode === "preview" ? "secondary" : "ghost"}
-              size="sm"
-              className="rounded-none h-6 px-2 text-xs"
-              onClick={() => setMode("preview")}
-            >
-              {t("notebook.preview")}
-            </Button>
-            <Button
-              variant={mode === "edit" ? "secondary" : "ghost"}
-              size="sm"
-              className="rounded-none h-6 px-2 text-xs"
-              onClick={() => setMode("edit")}
-            >
-              <PencilIcon className="w-3 h-3 mr-1" />
-              {t("notebook.edit")}
-            </Button>
-          </div>
+          {!isPdf && (
+            <div className="flex items-center rounded-lg border border-border overflow-hidden">
+              <Button
+                variant={mode === "preview" ? "secondary" : "ghost"}
+                size="sm"
+                className="rounded-none h-6 px-2 text-xs"
+                onClick={() => setMode("preview")}
+              >
+                {t("notebook.preview")}
+              </Button>
+              <Button
+                variant={mode === "edit" ? "secondary" : "ghost"}
+                size="sm"
+                className="rounded-none h-6 px-2 text-xs"
+                onClick={() => setMode("edit")}
+              >
+                <PencilIcon className="w-3 h-3 mr-1" />
+                {t("notebook.edit")}
+              </Button>
+            </div>
+          )}
           {isHtml && mode === "edit" && (
             <Button size="sm" onClick={() => onSaveHtml(htmlDraft)}>
               {t("common.save")}
             </Button>
           )}
-          {!isHtml && (
+          {!isHtml && !isPdf && (
             <Button variant="ghost" size="icon" onClick={() => setOutlineCollapsed((v) => !v)} title={t("notebook.toggle-outline")}>
               {outlineCollapsed ? <PanelRightOpenIcon className="w-4 h-4" /> : <PanelRightCloseIcon className="w-4 h-4" />}
             </Button>
           )}
+          {isPdf && <div ref={setPdfToolbarSlot} className="flex items-center" />}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -159,16 +166,14 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
         </div>
       </div>
 
-      <MoveDocumentDialog
-        open={moveDialogOpen}
-        onOpenChange={setMoveDialogOpen}
-        currentWorkspace={memo.workspace}
-        onConfirm={onMove}
-      />
+      <MoveDocumentDialog open={moveDialogOpen} onOpenChange={setMoveDialogOpen} currentWorkspace={memo.workspace} onConfirm={onMove} />
 
       <div className="flex-1 min-h-0 flex">
         <div className={cn("flex-1 min-w-0", mode === "edit" ? "overflow-hidden" : "overflow-y-auto")} ref={previewRef}>
-          {isHtml ? (
+          {isPdf ? (
+            pdfAttachment &&
+            pdfToolbarSlot && <PdfDocumentView url={getAttachmentUrl(pdfAttachment)} toolbarSlot={pdfToolbarSlot} className="px-6 py-4" />
+          ) : isHtml ? (
             mode === "preview" ? (
               <iframe
                 title={memo.title || memo.name}
@@ -208,7 +213,7 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
             </div>
           )}
         </div>
-        {!isHtml && !outlineCollapsed && (
+        {!isHtml && !isPdf && !outlineCollapsed && (
           <div className="w-56 shrink-0 border-l border-border overflow-y-auto px-2 py-3 hidden lg:block">
             <div className="text-xs font-medium text-muted-foreground px-2 pb-2 uppercase tracking-wide">{t("notebook.outline")}</div>
             <DocumentOutline content={memo.content} containerRef={previewRef} />

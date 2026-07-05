@@ -1,17 +1,20 @@
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { memo, useMemo, useState } from "react";
+import { PdfDocCard } from "@/components/PdfViewer/PdfDocCard";
+import { PdfViewer } from "@/components/PdfViewer/PdfViewer";
 import { cn } from "@/lib/utils";
 import { useTranslate } from "@/utils/i18n";
 import { extractMentionUsernames } from "@/utils/remark-plugins/remark-mention";
 import { COMPACT_MODE_CONFIG, getPreviewMaxHeightPx } from "./constants";
-import { useCompactLabel, useCompactMode } from "./hooks";
 import { HtmlPreviewFrame } from "./HtmlPreviewFrame";
+import { useCompactLabel, useCompactMode } from "./hooks";
 import { MemoMarkdownRenderer } from "./MemoMarkdownRenderer";
 import { useResolvedMentionUsernames } from "./MentionResolutionContext";
 import type { MemoContentProps } from "./types";
 
 const MemoContent = (props: MemoContentProps) => {
-  const { className, contentClassName, content, isHtml, onClick, onDoubleClick } = props;
+  const { className, contentClassName, content, isHtml, isPdf, pdfTitle, pdfUrl, pdfAttachment, pdfDetailView, onClick, onDoubleClick } =
+    props;
   const t = useTranslate();
   const [htmlPreviewHeight, setHtmlPreviewHeight] = useState(0);
   const {
@@ -48,7 +51,13 @@ const MemoContent = (props: MemoContentProps) => {
         onMouseUp={onClick}
         onDoubleClick={onDoubleClick}
       >
-        {isHtml ? (
+        {isPdf ? (
+          pdfDetailView && pdfUrl ? (
+            <PdfViewer url={pdfUrl} />
+          ) : (
+            <PdfDocCard title={pdfTitle || ""} memoName={props.memoName || ""} attachment={pdfAttachment} />
+          )
+        ) : isHtml ? (
           <HtmlPreviewFrame content={content} onHeightChange={setHtmlPreviewHeight} />
         ) : (
           <MemoMarkdownRenderer

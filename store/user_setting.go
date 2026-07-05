@@ -459,6 +459,12 @@ func convertUserSettingFromRaw(raw *UserSetting) (*storepb.UserSetting, error) {
 			return nil, err
 		}
 		userSetting.Value = &storepb.UserSetting_Webhooks{Webhooks: webhooksUserSetting}
+	case storepb.UserSetting_LAST_OPENED:
+		lastOpenedUserSetting := &storepb.LastOpenedUserSetting{}
+		if err := protojsonUnmarshaler.Unmarshal([]byte(raw.Value), lastOpenedUserSetting); err != nil {
+			return nil, err
+		}
+		userSetting.Value = &storepb.UserSetting_LastOpened{LastOpened: lastOpenedUserSetting}
 	default:
 		return nil, nil
 	}
@@ -510,6 +516,13 @@ func convertUserSettingToRaw(userSetting *storepb.UserSetting) (*UserSetting, er
 	case storepb.UserSetting_WEBHOOKS:
 		webhooksUserSetting := userSetting.GetWebhooks()
 		value, err := protojson.Marshal(webhooksUserSetting)
+		if err != nil {
+			return nil, err
+		}
+		raw.Value = string(value)
+	case storepb.UserSetting_LAST_OPENED:
+		lastOpenedUserSetting := userSetting.GetLastOpened()
+		value, err := protojson.Marshal(lastOpenedUserSetting)
 		if err != nil {
 			return nil, err
 		}

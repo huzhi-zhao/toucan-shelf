@@ -37,7 +37,7 @@ export function useLastOpened(currentUserName?: string) {
         await userServiceClient.updateUserSetting({
           setting,
           updateMask: create(FieldMaskSchema, {
-            paths: ["last_opened_setting"],
+            paths: ["lastOpenedSetting"],
           }),
         });
       } catch {

@@ -42,12 +42,14 @@ export const useFilteredMemoStats = (options: UseFilteredMemoStatsOptions = {}):
   // home/profile: use backend per-user stats (full tag set, not page-limited)
   const { data: userStats, isLoading: isLoadingUserStats } = useUserStats(userName);
   // explore/archived: fetch backend grouped stats and aggregate them locally.
-  // ListAllUserStats AND's the request filter with the server's auth filter, so
-  // private memos are not included unless explicitly visible to the current user.
-  const exploreVisibilityFilter = currentUser != null ? 'visibility in ["PUBLIC", "PROTECTED"]' : 'visibility in ["PUBLIC"]';
+  // No client-side visibility filter: ListAllUserStats already scopes results to
+  // what the current user may see (own memos + PUBLIC/PROTECTED when logged in,
+  // PUBLIC only for visitors). Passing an extra visibility filter here would be
+  // AND'ed with that rule and wrongly exclude the user's own PRIVATE memos,
+  // which the Explore memo list does show.
   const allUserStatsRequest =
     context === "explore"
-      ? { state: State.NORMAL, filter: exploreVisibilityFilter }
+      ? { state: State.NORMAL }
       : context === "archived"
         ? { state: State.ARCHIVED }
         : {};
