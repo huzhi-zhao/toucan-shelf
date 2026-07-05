@@ -55,6 +55,21 @@ service InstanceService {
   rpc GetInstanceStats(GetInstanceStatsRequest) returns (InstanceStats) {
     option (google.api.http) = {get: "/api/v1/instance/stats"};
   }
+
+  // BackupNow triggers an immediate database backup to the configured S3 storage.
+  // Only available when the instance uses SQLite and S3 storage is configured. Admin only.
+  rpc BackupNow(BackupNowRequest) returns (BackupNowResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/instance/settings/backup:backupNow"
+      body: "*"
+    };
+  }
+}
+
+message BackupNowRequest {}
+
+message BackupNowResponse {
+  google.protobuf.Timestamp backup_time = 1;
 }
 
 // Instance profile message containing basic instance information.
@@ -106,6 +121,7 @@ message InstanceSetting {
     TagsSetting tags_setting = 5;
     NotificationSetting notification_setting = 6;
     AISetting ai_setting = 7;
+    BackupSetting backup_setting = 8;
   }
 
   // Enumeration of instance setting keys.
@@ -123,6 +139,8 @@ message InstanceSetting {
     NOTIFICATION = 5;
     // AI is the key for AI provider settings.
     AI = 6;
+    // BACKUP is the key for database backup settings/status.
+    BACKUP = 7;
   }
 
   // General instance settings configuration.
@@ -252,6 +270,25 @@ message InstanceSetting {
     // transcription is the speech-to-text feature configuration.
     // When unset or transcription.provider_id is empty, transcription is disabled.
     TranscriptionConfig transcription = 2;
+  }
+
+  // BackupSetting configures and reports the status of the weekly/manual SQLite-to-S3 database
+  // backup. This is instance-wide, admin-only. path_template is editable via UpdateInstanceSetting;
+  // the last_backup_* fields are populated by the server after each run and are preserved
+  // automatically when only path_template is updated.
+  message BackupSetting {
+    // path_template is the S3 object key template for backup files, relative to the configured
+    // bucket. Supports the same placeholders as StorageSetting.filepath_template ({timestamp},
+    // {uuid}, {year}, {month}, {day}, {hour}, {minute}, {second}); there is no {filename}
+    // placeholder since backups have no source filename.
+    // e.g. backups/{timestamp}_{uuid}.db.gz
+    string path_template = 4;
+    // last_backup_time is when the most recent backup attempt finished.
+    google.protobuf.Timestamp last_backup_time = 1;
+    // last_backup_success indicates whether the most recent backup attempt succeeded.
+    bool last_backup_success = 2;
+    // last_backup_error holds the error message when last_backup_success is false.
+    string last_backup_error = 3;
   }
 
   // AIProviderConfig represents one callable AI provider connection.

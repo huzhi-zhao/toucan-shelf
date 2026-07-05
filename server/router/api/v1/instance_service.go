@@ -16,6 +16,7 @@ import (
 
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
 	storepb "github.com/usememos/memos/proto/gen/store"
+	"github.com/usememos/memos/server/backup"
 	"github.com/usememos/memos/server/notification"
 	"github.com/usememos/memos/store"
 )
@@ -119,6 +120,8 @@ func (s *APIV1Service) getInstanceSettingByName(ctx context.Context, name string
 		_, err = s.Store.GetInstanceNotificationSetting(ctx)
 	case storepb.InstanceSettingKey_AI:
 		_, err = s.Store.GetInstanceAISetting(ctx)
+	case storepb.InstanceSettingKey_BACKUP:
+		_, err = s.Store.GetInstanceBackupSetting(ctx)
 	default:
 		return nil, status.Errorf(codes.InvalidArgument, "unsupported instance setting key: %v", instanceSettingKey)
 	}
@@ -132,13 +135,24 @@ func (s *APIV1Service) getInstanceSettingByName(ctx context.Context, name string
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get instance setting: %v", err)
 	}
+	// BACKUP has no seeding migration (unlike e.g. STORAGE): it's only written once a backup has
+	// actually run, so "not configured yet" is the common case rather than an error.
+	if instanceSetting == nil && instanceSettingKey == storepb.InstanceSettingKey_BACKUP {
+		instanceSetting = &storepb.InstanceSetting{
+			Key: storepb.InstanceSettingKey_BACKUP,
+			Value: &storepb.InstanceSetting_BackupSetting{
+				BackupSetting: &storepb.InstanceBackupSetting{PathTemplate: store.DefaultInstanceBackupPathTemplate},
+			},
+		}
+	}
 	if instanceSetting == nil {
 		return nil, status.Errorf(codes.NotFound, "instance setting not found")
 	}
 
 	// Storage and notification settings contain credentials; restrict to admins only.
 	if instanceSetting.Key == storepb.InstanceSettingKey_STORAGE ||
-		instanceSetting.Key == storepb.InstanceSettingKey_NOTIFICATION {
+		instanceSetting.Key == storepb.InstanceSettingKey_NOTIFICATION ||
+		instanceSetting.Key == storepb.InstanceSettingKey_BACKUP {
 		user, err := caller.currentUser(ctx, s)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
@@ -212,15 +226,42 @@ func (s *APIV1Service) UpdateInstanceSetting(ctx context.Context, request *v1pb.
 			}
 		}
 	case storepb.InstanceSettingKey_STORAGE:
-		if storage := updateSetting.GetStorageSetting(); storage != nil && storage.S3Config != nil && storage.S3Config.AccessKeySecret == "" {
-			existing, err := s.Store.GetInstanceStorageSetting(ctx)
-			if err == nil && existing != nil && existing.S3Config != nil {
-				storage.S3Config.AccessKeySecret = existing.S3Config.AccessKeySecret
+		if storage := updateSetting.GetStorageSetting(); storage != nil && storage.S3Config != nil {
+			s3Config := storage.S3Config
+			// Trim accidental leading/trailing whitespace (commonly picked up when copy-pasting
+			// credentials from a cloud console), since it would otherwise be signed as part of the
+			// request and produce SignatureDoesNotMatch against the provider.
+			s3Config.AccessKeyId = strings.TrimSpace(s3Config.AccessKeyId)
+			s3Config.AccessKeySecret = strings.TrimSpace(s3Config.AccessKeySecret)
+			s3Config.Endpoint = strings.TrimSpace(s3Config.Endpoint)
+			s3Config.Region = strings.TrimSpace(s3Config.Region)
+			s3Config.Bucket = strings.TrimSpace(s3Config.Bucket)
+
+			if s3Config.AccessKeySecret == "" {
+				existing, err := s.Store.GetInstanceStorageSetting(ctx)
+				if err == nil && existing != nil && existing.S3Config != nil {
+					s3Config.AccessKeySecret = existing.S3Config.AccessKeySecret
+				}
 			}
 		}
 	case storepb.InstanceSettingKey_AI:
 		if err := s.prepareInstanceAISettingForUpdate(ctx, updateSetting.GetAiSetting()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "invalid AI setting: %v", err)
+		}
+	case storepb.InstanceSettingKey_BACKUP:
+		// Only path_template is client-editable; last_backup_* is written exclusively by the
+		// backup runner/RPC, so always carry the existing status forward regardless of what the
+		// client sent (it has no way to know these values, and zero values must not wipe them).
+		if backupSetting := updateSetting.GetBackupSetting(); backupSetting != nil {
+			existing, err := s.Store.GetInstanceBackupSetting(ctx)
+			if err == nil && existing != nil {
+				backupSetting.LastBackupTime = existing.LastBackupTime
+				backupSetting.LastBackupSuccess = existing.LastBackupSuccess
+				backupSetting.LastBackupError = existing.LastBackupError
+			}
+			if strings.TrimSpace(backupSetting.PathTemplate) == "" {
+				return nil, status.Errorf(codes.InvalidArgument, "backup path template is required")
+			}
 		}
 	default:
 		// No credential preservation needed for other setting types.
@@ -232,6 +273,30 @@ func (s *APIV1Service) UpdateInstanceSetting(ctx context.Context, request *v1pb.
 	}
 
 	return convertInstanceSettingFromStore(instanceSetting), nil
+}
+
+// BackupNow triggers an immediate SQLite database backup to the configured S3 storage.
+func (s *APIV1Service) BackupNow(ctx context.Context, _ *v1pb.BackupNowRequest) (*v1pb.BackupNowResponse, error) {
+	user, err := s.fetchCurrentUser(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
+	}
+	if user == nil {
+		return nil, status.Errorf(codes.Unauthenticated, "user not authenticated")
+	}
+	if user.Role != store.RoleAdmin {
+		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+	}
+
+	if err := backup.Run(ctx, s.Profile, s.Store); err != nil {
+		return nil, status.Errorf(codes.Internal, "backup failed: %v", err)
+	}
+
+	backupSetting, err := s.Store.GetInstanceBackupSetting(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get backup status: %v", err)
+	}
+	return &v1pb.BackupNowResponse{BackupTime: backupSetting.GetLastBackupTime()}, nil
 }
 
 func (s *APIV1Service) TestInstanceEmailSetting(ctx context.Context, request *v1pb.TestInstanceEmailSettingRequest) (*emptypb.Empty, error) {
@@ -339,10 +404,44 @@ func convertInstanceSettingFromStore(setting *storepb.InstanceSetting) *v1pb.Ins
 		instanceSetting.Value = &v1pb.InstanceSetting_AiSetting{
 			AiSetting: convertInstanceAISettingFromStore(setting.GetAiSetting()),
 		}
+	case *storepb.InstanceSetting_BackupSetting:
+		instanceSetting.Value = &v1pb.InstanceSetting_BackupSetting_{
+			BackupSetting: convertInstanceBackupSettingFromStore(setting.GetBackupSetting()),
+		}
 	default:
 		// Leave Value unset for unsupported setting variants.
 	}
 	return instanceSetting
+}
+
+func convertInstanceBackupSettingFromStore(setting *storepb.InstanceBackupSetting) *v1pb.InstanceSetting_BackupSetting {
+	if setting == nil {
+		return nil
+	}
+	backupSetting := &v1pb.InstanceSetting_BackupSetting{
+		PathTemplate:      setting.PathTemplate,
+		LastBackupSuccess: setting.LastBackupSuccess,
+		LastBackupError:   setting.LastBackupError,
+	}
+	if setting.LastBackupTime != nil {
+		backupSetting.LastBackupTime = setting.LastBackupTime
+	}
+	return backupSetting
+}
+
+func convertInstanceBackupSettingToStore(setting *v1pb.InstanceSetting_BackupSetting) *storepb.InstanceBackupSetting {
+	if setting == nil {
+		return nil
+	}
+	backupSetting := &storepb.InstanceBackupSetting{
+		PathTemplate:      setting.PathTemplate,
+		LastBackupSuccess: setting.LastBackupSuccess,
+		LastBackupError:   setting.LastBackupError,
+	}
+	if setting.LastBackupTime != nil {
+		backupSetting.LastBackupTime = setting.LastBackupTime
+	}
+	return backupSetting
 }
 
 func convertInstanceSettingToStore(setting *v1pb.InstanceSetting) *storepb.InstanceSetting {
@@ -377,6 +476,10 @@ func convertInstanceSettingToStore(setting *v1pb.InstanceSetting) *storepb.Insta
 	case storepb.InstanceSettingKey_AI:
 		instanceSetting.Value = &storepb.InstanceSetting_AiSetting{
 			AiSetting: convertInstanceAISettingToStore(setting.GetAiSetting()),
+		}
+	case storepb.InstanceSettingKey_BACKUP:
+		instanceSetting.Value = &storepb.InstanceSetting_BackupSetting{
+			BackupSetting: convertInstanceBackupSettingToStore(setting.GetBackupSetting()),
 		}
 	default:
 		// Keep the default GeneralSetting value

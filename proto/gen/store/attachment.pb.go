@@ -178,6 +178,57 @@ func (MotionMediaRole) EnumDescriptor() ([]byte, []int) {
 	return file_store_attachment_proto_rawDescGZIP(), []int{2}
 }
 
+type AttachmentOrigin int32
+
+const (
+	AttachmentOrigin_ATTACHMENT_ORIGIN_UNSPECIFIED AttachmentOrigin = 0
+	// Uploaded via the attachment panel/list, shown as a mounted attachment.
+	AttachmentOrigin_MOUNTED AttachmentOrigin = 1
+	// Pasted/dropped into the editor and referenced inline via `![]()` markdown.
+	AttachmentOrigin_INLINE AttachmentOrigin = 2
+)
+
+// Enum value maps for AttachmentOrigin.
+var (
+	AttachmentOrigin_name = map[int32]string{
+		0: "ATTACHMENT_ORIGIN_UNSPECIFIED",
+		1: "MOUNTED",
+		2: "INLINE",
+	}
+	AttachmentOrigin_value = map[string]int32{
+		"ATTACHMENT_ORIGIN_UNSPECIFIED": 0,
+		"MOUNTED":                       1,
+		"INLINE":                        2,
+	}
+)
+
+func (x AttachmentOrigin) Enum() *AttachmentOrigin {
+	p := new(AttachmentOrigin)
+	*p = x
+	return p
+}
+
+func (x AttachmentOrigin) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AttachmentOrigin) Descriptor() protoreflect.EnumDescriptor {
+	return file_store_attachment_proto_enumTypes[3].Descriptor()
+}
+
+func (AttachmentOrigin) Type() protoreflect.EnumType {
+	return &file_store_attachment_proto_enumTypes[3]
+}
+
+func (x AttachmentOrigin) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AttachmentOrigin.Descriptor instead.
+func (AttachmentOrigin) EnumDescriptor() ([]byte, []int) {
+	return file_store_attachment_proto_rawDescGZIP(), []int{3}
+}
+
 type MotionMedia struct {
 	state                   protoimpl.MessageState `protogen:"open.v1"`
 	Family                  MotionMediaFamily      `protobuf:"varint,1,opt,name=family,proto3,enum=memos.store.MotionMediaFamily" json:"family,omitempty"`
@@ -261,6 +312,7 @@ type AttachmentPayload struct {
 	//	*AttachmentPayload_S3Object_
 	Payload       isAttachmentPayload_Payload `protobuf_oneof:"payload"`
 	MotionMedia   *MotionMedia                `protobuf:"bytes,10,opt,name=motion_media,json=motionMedia,proto3" json:"motion_media,omitempty"`
+	Origin        AttachmentOrigin            `protobuf:"varint,11,opt,name=origin,proto3,enum=memos.store.AttachmentOrigin" json:"origin,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -316,6 +368,13 @@ func (x *AttachmentPayload) GetMotionMedia() *MotionMedia {
 		return x.MotionMedia
 	}
 	return nil
+}
+
+func (x *AttachmentPayload) GetOrigin() AttachmentOrigin {
+	if x != nil {
+		return x.Origin
+	}
+	return AttachmentOrigin_ATTACHMENT_ORIGIN_UNSPECIFIED
 }
 
 type isAttachmentPayload_Payload interface {
@@ -401,11 +460,12 @@ const file_store_attachment_proto_rawDesc = "" +
 	"\x04role\x18\x02 \x01(\x0e2\x1c.memos.store.MotionMediaRoleR\x04role\x12\x19\n" +
 	"\bgroup_id\x18\x03 \x01(\tR\agroupId\x12:\n" +
 	"\x19presentation_timestamp_us\x18\x04 \x01(\x03R\x17presentationTimestampUs\x12,\n" +
-	"\x12has_embedded_video\x18\x05 \x01(\bR\x10hasEmbeddedVideo\"\xc9\x02\n" +
+	"\x12has_embedded_video\x18\x05 \x01(\bR\x10hasEmbeddedVideo\"\x80\x03\n" +
 	"\x11AttachmentPayload\x12F\n" +
 	"\ts3_object\x18\x01 \x01(\v2'.memos.store.AttachmentPayload.S3ObjectH\x00R\bs3Object\x12;\n" +
 	"\fmotion_media\x18\n" +
-	" \x01(\v2\x18.memos.store.MotionMediaR\vmotionMedia\x1a\xa3\x01\n" +
+	" \x01(\v2\x18.memos.store.MotionMediaR\vmotionMedia\x125\n" +
+	"\x06origin\x18\v \x01(\x0e2\x1d.memos.store.AttachmentOriginR\x06origin\x1a\xa3\x01\n" +
 	"\bS3Object\x129\n" +
 	"\ts3_config\x18\x01 \x01(\v2\x1c.memos.store.StorageS3ConfigR\bs3Config\x12\x10\n" +
 	"\x03key\x18\x02 \x01(\tR\x03key\x12J\n" +
@@ -424,7 +484,12 @@ const file_store_attachment_proto_rawDesc = "" +
 	"\x1dMOTION_MEDIA_ROLE_UNSPECIFIED\x10\x00\x12\t\n" +
 	"\x05STILL\x10\x01\x12\t\n" +
 	"\x05VIDEO\x10\x02\x12\r\n" +
-	"\tCONTAINER\x10\x03B\x9a\x01\n" +
+	"\tCONTAINER\x10\x03*N\n" +
+	"\x10AttachmentOrigin\x12!\n" +
+	"\x1dATTACHMENT_ORIGIN_UNSPECIFIED\x10\x00\x12\v\n" +
+	"\aMOUNTED\x10\x01\x12\n" +
+	"\n" +
+	"\x06INLINE\x10\x02B\x9a\x01\n" +
 	"\x0fcom.memos.storeB\x0fAttachmentProtoP\x01Z)github.com/usememos/memos/proto/gen/store\xa2\x02\x03MSX\xaa\x02\vMemos.Store\xca\x02\vMemos\\Store\xe2\x02\x17Memos\\Store\\GPBMetadata\xea\x02\fMemos::Storeb\x06proto3"
 
 var (
@@ -439,30 +504,32 @@ func file_store_attachment_proto_rawDescGZIP() []byte {
 	return file_store_attachment_proto_rawDescData
 }
 
-var file_store_attachment_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_store_attachment_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
 var file_store_attachment_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_store_attachment_proto_goTypes = []any{
 	(AttachmentStorageType)(0),         // 0: memos.store.AttachmentStorageType
 	(MotionMediaFamily)(0),             // 1: memos.store.MotionMediaFamily
 	(MotionMediaRole)(0),               // 2: memos.store.MotionMediaRole
-	(*MotionMedia)(nil),                // 3: memos.store.MotionMedia
-	(*AttachmentPayload)(nil),          // 4: memos.store.AttachmentPayload
-	(*AttachmentPayload_S3Object)(nil), // 5: memos.store.AttachmentPayload.S3Object
-	(*StorageS3Config)(nil),            // 6: memos.store.StorageS3Config
-	(*timestamppb.Timestamp)(nil),      // 7: google.protobuf.Timestamp
+	(AttachmentOrigin)(0),              // 3: memos.store.AttachmentOrigin
+	(*MotionMedia)(nil),                // 4: memos.store.MotionMedia
+	(*AttachmentPayload)(nil),          // 5: memos.store.AttachmentPayload
+	(*AttachmentPayload_S3Object)(nil), // 6: memos.store.AttachmentPayload.S3Object
+	(*StorageS3Config)(nil),            // 7: memos.store.StorageS3Config
+	(*timestamppb.Timestamp)(nil),      // 8: google.protobuf.Timestamp
 }
 var file_store_attachment_proto_depIdxs = []int32{
 	1, // 0: memos.store.MotionMedia.family:type_name -> memos.store.MotionMediaFamily
 	2, // 1: memos.store.MotionMedia.role:type_name -> memos.store.MotionMediaRole
-	5, // 2: memos.store.AttachmentPayload.s3_object:type_name -> memos.store.AttachmentPayload.S3Object
-	3, // 3: memos.store.AttachmentPayload.motion_media:type_name -> memos.store.MotionMedia
-	6, // 4: memos.store.AttachmentPayload.S3Object.s3_config:type_name -> memos.store.StorageS3Config
-	7, // 5: memos.store.AttachmentPayload.S3Object.last_presigned_time:type_name -> google.protobuf.Timestamp
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	6, // 2: memos.store.AttachmentPayload.s3_object:type_name -> memos.store.AttachmentPayload.S3Object
+	4, // 3: memos.store.AttachmentPayload.motion_media:type_name -> memos.store.MotionMedia
+	3, // 4: memos.store.AttachmentPayload.origin:type_name -> memos.store.AttachmentOrigin
+	7, // 5: memos.store.AttachmentPayload.S3Object.s3_config:type_name -> memos.store.StorageS3Config
+	8, // 6: memos.store.AttachmentPayload.S3Object.last_presigned_time:type_name -> google.protobuf.Timestamp
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_store_attachment_proto_init() }
@@ -479,7 +546,7 @@ func file_store_attachment_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_store_attachment_proto_rawDesc), len(file_store_attachment_proto_rawDesc)),
-			NumEnums:      3,
+			NumEnums:      4,
 			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,

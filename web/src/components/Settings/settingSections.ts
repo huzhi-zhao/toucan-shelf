@@ -109,7 +109,7 @@ export const SETTINGS_SECTIONS: SettingSectionDefinition[] = [
     labelKey: "setting.storage.label",
     icon: DatabaseIcon,
     component: StorageSection,
-    preloadSettingKeys: [InstanceSetting_Key.STORAGE],
+    preloadSettingKeys: [InstanceSetting_Key.STORAGE, InstanceSetting_Key.BACKUP],
   },
   {
     key: "notification",

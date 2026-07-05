@@ -476,6 +476,33 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/v1/instance/settings/backup:backupNow:
+        post:
+            tags:
+                - InstanceService
+            description: |-
+                BackupNow triggers an immediate database backup to the configured S3 storage.
+                 Only available when the instance uses SQLite and S3 storage is configured. Admin only.
+            operationId: InstanceService_BackupNow
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/BackupNowRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BackupNowResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/instance/settings/notification:testEmail:
         post:
             tags:
@@ -676,6 +703,13 @@ paths:
                   description: Optional. If true, show deleted memos in the response.
                   schema:
                     type: boolean
+                - name: workspace
+                  in: query
+                  description: |-
+                    Optional. Restrict results to memos in this workspace.
+                     Format: workspaces/{workspace}
+                  schema:
+                    type: string
             responses:
                 "200":
                     description: OK
@@ -2358,6 +2392,257 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/v1/workspaces:
+        get:
+            tags:
+                - WorkspaceService
+            description: ListWorkspaces lists all workspaces owned by the current user.
+            operationId: WorkspaceService_ListWorkspaces
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListWorkspacesResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        post:
+            tags:
+                - WorkspaceService
+            description: CreateWorkspace creates a new workspace (knowledge base) for the current user.
+            operationId: WorkspaceService_CreateWorkspace
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/Workspace'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Workspace'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/workspaces/{workspace}:
+        get:
+            tags:
+                - WorkspaceService
+            description: GetWorkspace returns a workspace by name.
+            operationId: WorkspaceService_GetWorkspace
+            parameters:
+                - name: workspace
+                  in: path
+                  description: The workspace id.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Workspace'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        delete:
+            tags:
+                - WorkspaceService
+            description: DeleteWorkspace deletes a workspace. The workspace must contain no memos.
+            operationId: WorkspaceService_DeleteWorkspace
+            parameters:
+                - name: workspace
+                  in: path
+                  description: The workspace id.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        patch:
+            tags:
+                - WorkspaceService
+            description: UpdateWorkspace updates a workspace.
+            operationId: WorkspaceService_UpdateWorkspace
+            parameters:
+                - name: workspace
+                  in: path
+                  description: The workspace id.
+                  required: true
+                  schema:
+                    type: string
+                - name: updateMask
+                  in: query
+                  description: Required. The list of fields to update.
+                  schema:
+                    type: string
+                    format: field-mask
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/Workspace'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Workspace'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/workspaces/{workspace}/folders:
+        post:
+            tags:
+                - WorkspaceService
+            description: CreateWorkspaceFolder creates a (possibly empty) folder within a workspace.
+            operationId: WorkspaceService_CreateWorkspaceFolder
+            parameters:
+                - name: workspace
+                  in: path
+                  description: The workspace id.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/WorkspaceFolder'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/WorkspaceFolder'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/workspaces/{workspace}/folders:delete:
+        post:
+            tags:
+                - WorkspaceService
+            description: DeleteWorkspaceFolder deletes an empty folder.
+            operationId: WorkspaceService_DeleteWorkspaceFolder
+            parameters:
+                - name: workspace
+                  in: path
+                  description: The workspace id.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/DeleteWorkspaceFolderRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/workspaces/{workspace}/folders:rename:
+        post:
+            tags:
+                - WorkspaceService
+            description: RenameWorkspaceFolder renames a folder and moves all memos/subfolders under it.
+            operationId: WorkspaceService_RenameWorkspaceFolder
+            parameters:
+                - name: workspace
+                  in: path
+                  description: The workspace id.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/RenameWorkspaceFolderRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/workspaces/{workspace}/tree:
+        get:
+            tags:
+                - WorkspaceService
+            description: GetWorkspaceTree returns the folder/document hierarchy for a workspace.
+            operationId: WorkspaceService_GetWorkspaceTree
+            parameters:
+                - name: workspace
+                  in: path
+                  description: The workspace id.
+                  required: true
+                  schema:
+                    type: string
+                - name: archived
+                  in: query
+                  description: |-
+                    Optional. If true, only archived documents are included. If false (default),
+                     only non-archived documents are included.
+                  schema:
+                    type: boolean
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetWorkspaceTreeResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
 components:
     schemas:
         Attachment:
@@ -2403,6 +2688,23 @@ components:
                     allOf:
                         - $ref: '#/components/schemas/MotionMedia'
                     description: Optional. Motion media metadata.
+                origin:
+                    enum:
+                        - ATTACHMENT_ORIGIN_UNSPECIFIED
+                        - MOUNTED
+                        - INLINE
+                    type: string
+                    description: 'Optional. How the attachment was created: mounted vs. inlined into memo content.'
+                    format: enum
+        BackupNowRequest:
+            type: object
+            properties: {}
+        BackupNowResponse:
+            type: object
+            properties:
+                backupTime:
+                    type: string
+                    format: date-time
         BatchDeleteAttachmentsRequest:
             required:
                 - names
@@ -2677,6 +2979,18 @@ components:
                     description: |-
                         The actual token value - only returned on creation.
                          This is the only time the token value will be visible.
+        DeleteWorkspaceFolderRequest:
+            required:
+                - parent
+                - path
+            type: object
+            properties:
+                parent:
+                    type: string
+                    description: 'Required. Format: workspaces/{workspace}'
+                path:
+                    type: string
+                    description: Required. The folder path to delete. Must contain no memos or subfolders.
         FieldMapping:
             type: object
             properties:
@@ -2711,6 +3025,13 @@ components:
                 signingSecret:
                     type: string
                     description: The signing secret, in the Standard Webhooks "whsec_<base64>" form.
+        GetWorkspaceTreeResponse:
+            type: object
+            properties:
+                nodes:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/WorkspaceTreeNode'
         GoogleProtobufAny:
             type: object
             properties:
@@ -2803,6 +3124,8 @@ components:
                     $ref: '#/components/schemas/InstanceSetting_NotificationSetting'
                 aiSetting:
                     $ref: '#/components/schemas/InstanceSetting_AISetting'
+                backupSetting:
+                    $ref: '#/components/schemas/InstanceSetting_BackupSetting'
             description: An instance setting resource.
         InstanceSetting_AIProviderConfig:
             type: object
@@ -2848,6 +3171,32 @@ components:
                         transcription is the speech-to-text feature configuration.
                          When unset or transcription.provider_id is empty, transcription is disabled.
             description: AI provider configuration settings.
+        InstanceSetting_BackupSetting:
+            type: object
+            properties:
+                pathTemplate:
+                    type: string
+                    description: |-
+                        path_template is the S3 object key template for backup files, relative to the configured
+                         bucket. Supports the same placeholders as StorageSetting.filepath_template ({timestamp},
+                         {uuid}, {year}, {month}, {day}, {hour}, {minute}, {second}); there is no {filename}
+                         placeholder since backups have no source filename.
+                         e.g. backups/{timestamp}_{uuid}.db.gz
+                lastBackupTime:
+                    type: string
+                    description: last_backup_time is when the most recent backup attempt finished.
+                    format: date-time
+                lastBackupSuccess:
+                    type: boolean
+                    description: last_backup_success indicates whether the most recent backup attempt succeeded.
+                lastBackupError:
+                    type: string
+                    description: last_backup_error holds the error message when last_backup_success is false.
+            description: |-
+                BackupSetting configures and reports the status of the weekly/manual SQLite-to-S3 database
+                 backup. This is instance-wide, admin-only. path_template is editable via UpdateInstanceSetting;
+                 the last_backup_* fields are populated by the server after each run and are preserved
+                 automatically when only path_template is updated.
         InstanceSetting_GeneralSetting:
             type: object
             properties:
@@ -3226,6 +3575,13 @@ components:
                     type: integer
                     description: The total count of users (may be approximate).
                     format: int32
+        ListWorkspacesResponse:
+            type: object
+            properties:
+                workspaces:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Workspace'
         Location:
             type: object
             properties:
@@ -3337,6 +3693,30 @@ components:
                     allOf:
                         - $ref: '#/components/schemas/Location'
                     description: Optional. The location of the memo.
+                workspace:
+                    type: string
+                    description: |-
+                        The workspace (knowledge base) this memo belongs to.
+                         Format: workspaces/{workspace}
+                         Optional on create: defaults to the caller's default workspace.
+                folderPath:
+                    type: string
+                    description: |-
+                        Optional. The slash-separated folder path (relative to the workspace root)
+                         this memo lives under. Empty string means the workspace root.
+                title:
+                    type: string
+                    description: |-
+                        Optional. The document's display title (its "filename"). If unset on
+                         creation, it is derived from the first H1 heading for Markdown documents.
+                docType:
+                    enum:
+                        - DOC_TYPE_UNSPECIFIED
+                        - MARKDOWN
+                        - HTML
+                    type: string
+                    description: Optional. The document type. Defaults to MARKDOWN.
+                    format: enum
         MemoRelation:
             required:
                 - memo
@@ -3551,6 +3931,22 @@ components:
                     type: string
                     description: When the access token expires.
                     format: date-time
+        RenameWorkspaceFolderRequest:
+            required:
+                - parent
+                - oldPath
+                - newPath
+            type: object
+            properties:
+                parent:
+                    type: string
+                    description: 'Required. Format: workspaces/{workspace}'
+                oldPath:
+                    type: string
+                    description: Required. The current folder path.
+                newPath:
+                    type: string
+                    description: Required. The new folder path.
         SetMemoAttachmentsRequest:
             required:
                 - name
@@ -3926,6 +4322,8 @@ components:
                     $ref: '#/components/schemas/UserSetting_WebhooksSetting'
                 tagsSetting:
                     $ref: '#/components/schemas/UserSetting_TagsSetting'
+                lastOpenedSetting:
+                    $ref: '#/components/schemas/UserSetting_LastOpenedSetting'
             description: User settings message
         UserSetting_GeneralSetting:
             type: object
@@ -3943,6 +4341,16 @@ components:
                          This references a CSS file in the web/public/themes/ directory.
                          If not set, the default theme will be used.
             description: General user settings configuration.
+        UserSetting_LastOpenedSetting:
+            type: object
+            properties:
+                workspace:
+                    type: string
+                    description: 'The workspace resource name last opened. Format: workspaces/{workspace}'
+                memo:
+                    type: string
+                    description: 'The memo resource name last opened. Format: memos/{memo}'
+            description: The last workspace/document the user had open in the Notebook home page.
         UserSetting_TagMetadata:
             type: object
             properties:
@@ -4070,6 +4478,83 @@ components:
                     type: boolean
                     description: Whether a signing secret is configured for this webhook.
             description: UserWebhook represents a webhook owned by a user.
+        Workspace:
+            required:
+                - title
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: |-
+                        The resource name of the workspace.
+                         Format: workspaces/{workspace}
+                title:
+                    type: string
+                    description: Required. The display title of the workspace.
+                creator:
+                    readOnly: true
+                    type: string
+                    description: |-
+                        Output only. The name of the creator.
+                         Format: users/{user}
+                createTime:
+                    readOnly: true
+                    type: string
+                    description: Output only. The creation timestamp.
+                    format: date-time
+                updateTime:
+                    readOnly: true
+                    type: string
+                    description: Output only. The last update timestamp.
+                    format: date-time
+        WorkspaceFolder:
+            required:
+                - path
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: |-
+                        The resource name of the folder.
+                         Format: workspaces/{workspace}/folders/{folder}
+                path:
+                    type: string
+                    description: Required. The slash-separated path of the folder, relative to the workspace root.
+        WorkspaceTreeNode:
+            type: object
+            properties:
+                type:
+                    enum:
+                        - NODE_TYPE_UNSPECIFIED
+                        - FOLDER
+                        - DOCUMENT
+                    type: string
+                    format: enum
+                name:
+                    type: string
+                    description: The display name of this node (folder name, or document title).
+                path:
+                    type: string
+                    description: The full slash-separated path of this node, relative to the workspace root.
+                memo:
+                    type: string
+                    description: 'Set only when type == DOCUMENT. Format: memos/{memo}'
+                archived:
+                    type: boolean
+                    description: Set only when type == DOCUMENT.
+                docType:
+                    type: string
+                    description: Set only when type == DOCUMENT. One of MARKDOWN, HTML.
+                createTime:
+                    type: string
+                    description: Set only when type == DOCUMENT.
+                    format: date-time
+                children:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/WorkspaceTreeNode'
+                    description: Children of this node, populated only for FOLDER nodes.
+            description: A single node (folder or document) in a workspace's hierarchy.
 tags:
     - name: AIService
     - name: AttachmentService
@@ -4079,3 +4564,4 @@ tags:
     - name: MemoService
     - name: ShortcutService
     - name: UserService
+    - name: WorkspaceService

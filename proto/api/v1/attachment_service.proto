@@ -73,6 +73,14 @@ message MotionMedia {
   bool has_embedded_video = 5;
 }
 
+enum AttachmentOrigin {
+  ATTACHMENT_ORIGIN_UNSPECIFIED = 0;
+  // Uploaded via the attachment panel/list, shown as a mounted attachment.
+  MOUNTED = 1;
+  // Pasted/dropped into the editor and referenced inline via `![]()` markdown.
+  INLINE = 2;
+}
+
 message Attachment {
   option (google.api.resource) = {
     type: "memos.api.v1/Attachment"
@@ -109,6 +117,9 @@ message Attachment {
 
   // Optional. Motion media metadata.
   MotionMedia motion_media = 9 [(google.api.field_behavior) = OPTIONAL];
+
+  // Optional. How the attachment was created: mounted vs. inlined into memo content.
+  AttachmentOrigin origin = 10 [(google.api.field_behavior) = OPTIONAL];
 }
 
 message CreateAttachmentRequest {

@@ -279,7 +279,10 @@ func (s *RSSService) generateRSSFromMemoList(ctx context.Context, memoList []*st
 		if attachments, ok := attachmentsByMemoID[memo.ID]; ok && len(attachments) > 0 {
 			attachment := attachments[0]
 			enclosure := feeds.Enclosure{}
-			if attachment.StorageType == storepb.AttachmentStorageType_EXTERNAL || attachment.StorageType == storepb.AttachmentStorageType_S3 {
+			// S3-backed attachments are served through the memos-domain proxy (like LOCAL/DATABASE),
+			// not as a direct link to the object store; only EXTERNAL (user-provided link) attachments
+			// use their raw reference.
+			if attachment.StorageType == storepb.AttachmentStorageType_EXTERNAL {
 				enclosure.Url = attachment.Reference
 			} else {
 				enclosure.Url = fmt.Sprintf("%s/file/attachments/%s/%s", baseURL, attachment.UID, attachment.Filename)

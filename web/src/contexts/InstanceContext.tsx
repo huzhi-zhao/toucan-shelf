@@ -7,6 +7,8 @@ import {
   InstanceSetting,
   InstanceSetting_AISetting,
   InstanceSetting_AISettingSchema,
+  InstanceSetting_BackupSetting,
+  InstanceSetting_BackupSettingSchema,
   InstanceSetting_GeneralSetting,
   InstanceSetting_GeneralSettingSchema,
   InstanceSetting_Key,
@@ -42,6 +44,7 @@ interface InstanceContextValue extends InstanceState {
   storageSetting: InstanceSetting_StorageSetting;
   notificationSetting: InstanceSetting_NotificationSetting;
   aiSetting: InstanceSetting_AISetting;
+  backupSetting: InstanceSetting_BackupSetting;
   initialize: () => Promise<void>;
   fetchSetting: (key: InstanceSetting_Key) => Promise<void>;
   fetchSettings: (keys: InstanceSetting_Key[]) => Promise<void>;
@@ -100,6 +103,14 @@ export function InstanceProvider({ children }: { children: ReactNode }) {
       return setting.value.value;
     }
     return create(InstanceSetting_AISettingSchema, {});
+  }, [state.settings]);
+
+  const backupSetting = useMemo((): InstanceSetting_BackupSetting => {
+    const setting = state.settings.find((s) => s.name === `${instanceSettingNamePrefix}BACKUP`);
+    if (setting?.value.case === "backupSetting") {
+      return setting.value.value;
+    }
+    return create(InstanceSetting_BackupSettingSchema, {});
   }, [state.settings]);
 
   const initialize = useCallback(async () => {
@@ -191,6 +202,7 @@ export function InstanceProvider({ children }: { children: ReactNode }) {
       storageSetting,
       notificationSetting,
       aiSetting,
+      backupSetting,
       initialize,
       fetchSetting,
       fetchSettings,
@@ -203,6 +215,7 @@ export function InstanceProvider({ children }: { children: ReactNode }) {
       storageSetting,
       notificationSetting,
       aiSetting,
+      backupSetting,
       initialize,
       fetchSetting,
       fetchSettings,

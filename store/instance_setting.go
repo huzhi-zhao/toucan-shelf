@@ -43,6 +43,8 @@ func (s *Store) UpsertInstanceSetting(ctx context.Context, upsert *storepb.Insta
 		valueBytes, err = protojson.Marshal(upsert.GetNotificationSetting())
 	} else if upsert.Key == storepb.InstanceSettingKey_AI {
 		valueBytes, err = protojson.Marshal(upsert.GetAiSetting())
+	} else if upsert.Key == storepb.InstanceSettingKey_BACKUP {
+		valueBytes, err = protojson.Marshal(upsert.GetBackupSetting())
 	} else {
 		return nil, errors.Errorf("unsupported instance setting key: %v", upsert.Key)
 	}
@@ -277,6 +279,28 @@ func (s *Store) GetInstanceStorageSetting(ctx context.Context) (*storepb.Instanc
 	return instanceStorageSetting, nil
 }
 
+// DefaultInstanceBackupPathTemplate is the default S3 object key template for database backups.
+const DefaultInstanceBackupPathTemplate = "backups/{timestamp}_{uuid}.db.gz"
+
+// GetInstanceBackupSetting gets the database backup config/status for the instance.
+func (s *Store) GetInstanceBackupSetting(ctx context.Context) (*storepb.InstanceBackupSetting, error) {
+	instanceSetting, err := s.GetInstanceSetting(ctx, &FindInstanceSetting{
+		Name: storepb.InstanceSettingKey_BACKUP.String(),
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get instance backup setting")
+	}
+
+	instanceBackupSetting := &storepb.InstanceBackupSetting{}
+	if instanceSetting != nil {
+		instanceBackupSetting = instanceSetting.GetBackupSetting()
+	}
+	if instanceBackupSetting.PathTemplate == "" {
+		instanceBackupSetting.PathTemplate = DefaultInstanceBackupPathTemplate
+	}
+	return instanceBackupSetting, nil
+}
+
 func convertInstanceSettingFromRaw(instanceSettingRaw *InstanceSetting) (*storepb.InstanceSetting, error) {
 	instanceSetting := &storepb.InstanceSetting{
 		Key: storepb.InstanceSettingKey(storepb.InstanceSettingKey_value[instanceSettingRaw.Name]),
@@ -324,6 +348,12 @@ func convertInstanceSettingFromRaw(instanceSettingRaw *InstanceSetting) (*storep
 			return nil, err
 		}
 		instanceSetting.Value = &storepb.InstanceSetting_AiSetting{AiSetting: aiSetting}
+	case storepb.InstanceSettingKey_BACKUP.String():
+		backupSetting := &storepb.InstanceBackupSetting{}
+		if err := protojsonUnmarshaler.Unmarshal([]byte(instanceSettingRaw.Value), backupSetting); err != nil {
+			return nil, err
+		}
+		instanceSetting.Value = &storepb.InstanceSetting_BackupSetting{BackupSetting: backupSetting}
 	default:
 		// Skip unsupported instance setting key.
 		return nil, nil

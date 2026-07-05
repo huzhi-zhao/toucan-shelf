@@ -215,11 +215,12 @@ func (s *FileServerService) serveMediaStream(c *echo.Context, attachment *store.
 		return nil
 
 	case storepb.AttachmentStorageType_S3:
-		presignURL, err := s.getS3PresignedURL(c.Request().Context(), attachment)
+		reader, err := s.getAttachmentReader(c.Request().Context(), attachment)
 		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, "failed to generate presigned URL").Wrap(err)
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to get attachment reader").Wrap(err)
 		}
-		return c.Redirect(http.StatusTemporaryRedirect, presignURL)
+		defer reader.Close()
+		return c.Stream(http.StatusOK, contentType, reader)
 
 	default:
 		// Database storage fallback.
@@ -390,20 +391,6 @@ func (s *FileServerService) downloadFromS3(ctx context.Context, attachment *stor
 		return nil, errors.Wrap(err, "failed to download from S3")
 	}
 	return blob, nil
-}
-
-// getS3PresignedURL generates a presigned URL for direct S3 access.
-func (s *FileServerService) getS3PresignedURL(ctx context.Context, attachment *store.Attachment) (string, error) {
-	client, s3Object, err := s.createS3Client(attachment)
-	if err != nil {
-		return "", err
-	}
-
-	url, err := client.PresignGetObject(ctx, s3Object.Key)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to presign URL")
-	}
-	return url, nil
 }
 
 // =============================================================================

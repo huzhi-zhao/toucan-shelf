@@ -1,9 +1,14 @@
 import { forwardRef } from "react";
+import { toast } from "react-hot-toast";
+import { AttachmentOrigin } from "@/types/proto/api/v1/attachment_service_pb";
+import { MAX_MEDIA_ATTACHMENT_SIZE_BYTES } from "@/utils/attachment";
+import { useTranslate } from "@/utils/i18n";
 import Editor from "../Editor";
 import { useBlobUrls, useDragAndDrop } from "../hooks";
+import { buildMediaMarkdown, splitMediaFiles } from "../services/mediaInsertService";
+import { uploadService } from "../services/uploadService";
 import { useEditorContext, useEditorSelector } from "../state";
 import type { EditorContentProps } from "../types";
-import type { LocalFile } from "../types/attachment";
 import type { EditorController } from "../types/editorController";
 
 // Imported eagerly (not React.lazy): the editor is the always-present compose
@@ -17,18 +22,47 @@ import type { EditorController } from "../types/editorController";
  * formatting capability for the focus-mode toolbar.
  */
 export const EditorContent = forwardRef<EditorController, EditorContentProps>(({ placeholder, expand }, ref) => {
-  const { actions, dispatch } = useEditorContext();
+  const t = useTranslate();
+  const { actions, dispatch, getState } = useEditorContext();
   const { createBlobUrl } = useBlobUrls();
   const content = useEditorSelector((s) => s.content);
   const isFocusMode = useEditorSelector((s) => s.ui.isFocusMode);
 
+  // Pasted/dropped media files (image/video/audio) are uploaded immediately and
+  // inlined into content as a markdown reference at the cursor, instead of going
+  // through the batch-upload-on-save attachment flow. Non-media files still go
+  // through addLocalFile and get uploaded on save like before.
+  const insertMediaFiles = async (files: File[]) => {
+    const editor = (ref as React.RefObject<EditorController> | null)?.current;
+    for (const file of files) {
+      if (file.size > MAX_MEDIA_ATTACHMENT_SIZE_BYTES) {
+        toast.error(t("editor.media-too-large"));
+        continue;
+      }
+      try {
+        const [attachment] = await uploadService.uploadFiles([
+          { file, previewUrl: createBlobUrl(file), origin: "upload", attachmentOrigin: AttachmentOrigin.INLINE },
+        ]);
+        dispatch(actions.setMetadata({ attachments: [...getState().metadata.attachments, attachment] }));
+        editor?.insertMarkdown(buildMediaMarkdown(attachment));
+      } catch {
+        toast.error(t("editor.media-upload-error"));
+      }
+    }
+  };
+
+  const handleIncomingFiles = (files: File[]) => {
+    const { media, others } = splitMediaFiles(files);
+    others.forEach((file) => {
+      dispatch(actions.addLocalFile({ file, previewUrl: createBlobUrl(file), origin: "upload" }));
+    });
+    if (media.length > 0) {
+      void insertMediaFiles(media);
+    }
+  };
+
   const { dragHandlers } = useDragAndDrop((files: FileList) => {
-    const localFiles: LocalFile[] = Array.from(files).map((file) => ({
-      file,
-      previewUrl: createBlobUrl(file),
-      origin: "upload",
-    }));
-    localFiles.forEach((localFile) => dispatch(actions.addLocalFile(localFile)));
+    handleIncomingFiles(Array.from(files));
   });
 
   const handleContentChange = (content: string) => {
@@ -52,12 +86,7 @@ export const EditorContent = forwardRef<EditorController, EditorContentProps>(({
 
     if (files.length === 0) return;
 
-    const localFiles: LocalFile[] = files.map((file) => ({
-      file,
-      previewUrl: createBlobUrl(file),
-      origin: "upload",
-    }));
-    localFiles.forEach((localFile) => dispatch(actions.addLocalFile(localFile)));
+    handleIncomingFiles(files);
     event.preventDefault();
   };
 

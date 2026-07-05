@@ -52,6 +52,9 @@ const (
 	// InstanceServiceGetInstanceStatsProcedure is the fully-qualified name of the InstanceService's
 	// GetInstanceStats RPC.
 	InstanceServiceGetInstanceStatsProcedure = "/memos.api.v1.InstanceService/GetInstanceStats"
+	// InstanceServiceBackupNowProcedure is the fully-qualified name of the InstanceService's BackupNow
+	// RPC.
+	InstanceServiceBackupNowProcedure = "/memos.api.v1.InstanceService/BackupNow"
 )
 
 // InstanceServiceClient is a client for the memos.api.v1.InstanceService service.
@@ -68,6 +71,9 @@ type InstanceServiceClient interface {
 	TestInstanceEmailSetting(context.Context, *connect.Request[v1.TestInstanceEmailSettingRequest]) (*connect.Response[emptypb.Empty], error)
 	// GetInstanceStats returns resource usage statistics for the instance. Admin only.
 	GetInstanceStats(context.Context, *connect.Request[v1.GetInstanceStatsRequest]) (*connect.Response[v1.InstanceStats], error)
+	// BackupNow triggers an immediate database backup to the configured S3 storage.
+	// Only available when the instance uses SQLite and S3 storage is configured. Admin only.
+	BackupNow(context.Context, *connect.Request[v1.BackupNowRequest]) (*connect.Response[v1.BackupNowResponse], error)
 }
 
 // NewInstanceServiceClient constructs a client for the memos.api.v1.InstanceService service. By
@@ -117,6 +123,12 @@ func NewInstanceServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(instanceServiceMethods.ByName("GetInstanceStats")),
 			connect.WithClientOptions(opts...),
 		),
+		backupNow: connect.NewClient[v1.BackupNowRequest, v1.BackupNowResponse](
+			httpClient,
+			baseURL+InstanceServiceBackupNowProcedure,
+			connect.WithSchema(instanceServiceMethods.ByName("BackupNow")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -128,6 +140,7 @@ type instanceServiceClient struct {
 	updateInstanceSetting    *connect.Client[v1.UpdateInstanceSettingRequest, v1.InstanceSetting]
 	testInstanceEmailSetting *connect.Client[v1.TestInstanceEmailSettingRequest, emptypb.Empty]
 	getInstanceStats         *connect.Client[v1.GetInstanceStatsRequest, v1.InstanceStats]
+	backupNow                *connect.Client[v1.BackupNowRequest, v1.BackupNowResponse]
 }
 
 // GetInstanceProfile calls memos.api.v1.InstanceService.GetInstanceProfile.
@@ -160,6 +173,11 @@ func (c *instanceServiceClient) GetInstanceStats(ctx context.Context, req *conne
 	return c.getInstanceStats.CallUnary(ctx, req)
 }
 
+// BackupNow calls memos.api.v1.InstanceService.BackupNow.
+func (c *instanceServiceClient) BackupNow(ctx context.Context, req *connect.Request[v1.BackupNowRequest]) (*connect.Response[v1.BackupNowResponse], error) {
+	return c.backupNow.CallUnary(ctx, req)
+}
+
 // InstanceServiceHandler is an implementation of the memos.api.v1.InstanceService service.
 type InstanceServiceHandler interface {
 	// Gets the instance profile.
@@ -174,6 +192,9 @@ type InstanceServiceHandler interface {
 	TestInstanceEmailSetting(context.Context, *connect.Request[v1.TestInstanceEmailSettingRequest]) (*connect.Response[emptypb.Empty], error)
 	// GetInstanceStats returns resource usage statistics for the instance. Admin only.
 	GetInstanceStats(context.Context, *connect.Request[v1.GetInstanceStatsRequest]) (*connect.Response[v1.InstanceStats], error)
+	// BackupNow triggers an immediate database backup to the configured S3 storage.
+	// Only available when the instance uses SQLite and S3 storage is configured. Admin only.
+	BackupNow(context.Context, *connect.Request[v1.BackupNowRequest]) (*connect.Response[v1.BackupNowResponse], error)
 }
 
 // NewInstanceServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -219,6 +240,12 @@ func NewInstanceServiceHandler(svc InstanceServiceHandler, opts ...connect.Handl
 		connect.WithSchema(instanceServiceMethods.ByName("GetInstanceStats")),
 		connect.WithHandlerOptions(opts...),
 	)
+	instanceServiceBackupNowHandler := connect.NewUnaryHandler(
+		InstanceServiceBackupNowProcedure,
+		svc.BackupNow,
+		connect.WithSchema(instanceServiceMethods.ByName("BackupNow")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/memos.api.v1.InstanceService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case InstanceServiceGetInstanceProfileProcedure:
@@ -233,6 +260,8 @@ func NewInstanceServiceHandler(svc InstanceServiceHandler, opts ...connect.Handl
 			instanceServiceTestInstanceEmailSettingHandler.ServeHTTP(w, r)
 		case InstanceServiceGetInstanceStatsProcedure:
 			instanceServiceGetInstanceStatsHandler.ServeHTTP(w, r)
+		case InstanceServiceBackupNowProcedure:
+			instanceServiceBackupNowHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -264,4 +293,8 @@ func (UnimplementedInstanceServiceHandler) TestInstanceEmailSetting(context.Cont
 
 func (UnimplementedInstanceServiceHandler) GetInstanceStats(context.Context, *connect.Request[v1.GetInstanceStatsRequest]) (*connect.Response[v1.InstanceStats], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.InstanceService.GetInstanceStats is not implemented"))
+}
+
+func (UnimplementedInstanceServiceHandler) BackupNow(context.Context, *connect.Request[v1.BackupNowRequest]) (*connect.Response[v1.BackupNowResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.InstanceService.BackupNow is not implemented"))
 }

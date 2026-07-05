@@ -148,7 +148,7 @@ const InsertMenu = (props: InsertMenuProps) => {
   }, [onToggleFormattingToolbar]);
 
   const handleMediaUploadClick = useCallback(() => {
-    handleUploadClick("image/*,video/*");
+    handleUploadClick("image/*,video/*,audio/*");
   }, [handleUploadClick]);
 
   const handleFileUploadClick = useCallback(() => {

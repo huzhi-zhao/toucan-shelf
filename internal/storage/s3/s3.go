@@ -3,15 +3,17 @@ package s3
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net/http"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/smithy-go/middleware"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/pkg/errors"
 
 	storepb "github.com/usememos/memos/proto/gen/store"
@@ -26,6 +28,8 @@ func NewClient(ctx context.Context, s3Config *storepb.StorageS3Config) (*Client,
 	loadOptions := []func(*config.LoadOptions) error{
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(s3Config.AccessKeyId, s3Config.AccessKeySecret, "")),
 		config.WithRegion(s3Config.Region),
+		config.WithRequestChecksumCalculation(aws.RequestChecksumCalculationWhenRequired),
+		config.WithResponseChecksumValidation(aws.ResponseChecksumValidationWhenRequired),
 	}
 	if s3Config.InsecureSkipTlsVerify {
 		// Skip TLS certificate verification for endpoints using self-signed certificates.
@@ -44,13 +48,67 @@ func NewClient(ctx context.Context, s3Config *storepb.StorageS3Config) (*Client,
 	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
 		o.BaseEndpoint = aws.String(s3Config.Endpoint)
 		o.UsePathStyle = s3Config.UsePathStyle
-		o.RequestChecksumCalculation = aws.RequestChecksumCalculationWhenRequired
-		o.ResponseChecksumValidation = aws.ResponseChecksumValidationWhenRequired
+		// Some CDNs/reverse proxies in front of S3-compatible endpoints (e.g. Cloudflare) rewrite
+		// the Accept-Encoding header in transit. The SDK signs that header as part of SigV4, so the
+		// provider ends up validating a signature computed over a header value that no longer
+		// matches what it received, producing SignatureDoesNotMatch. Excluding it from signing
+		// (and restoring the original value afterwards, since some providers still expect it on
+		// the wire) avoids the mismatch without disabling the rest of the checksum/signing.
+		ignoreSigningHeaders(o, []string{"Accept-Encoding"})
 	})
 	return &Client{
 		Client: client,
 		Bucket: aws.String(s3Config.Bucket),
 	}, nil
+}
+
+type ignoredHeadersKey struct{}
+
+func ignoreSigningHeaders(o *s3.Options, headers []string) {
+	o.APIOptions = append(o.APIOptions, func(stack *middleware.Stack) error {
+		if err := stack.Finalize.Insert(ignoreHeaders(headers), "Signing", middleware.Before); err != nil {
+			return err
+		}
+		return stack.Finalize.Insert(restoreIgnored(), "Signing", middleware.After)
+	})
+}
+
+func ignoreHeaders(headers []string) middleware.FinalizeMiddleware {
+	return middleware.FinalizeMiddlewareFunc(
+		"IgnoreHeaders",
+		func(ctx context.Context, in middleware.FinalizeInput, next middleware.FinalizeHandler) (middleware.FinalizeOutput, middleware.Metadata, error) {
+			req, ok := in.Request.(*smithyhttp.Request)
+			if !ok {
+				return middleware.FinalizeOutput{}, middleware.Metadata{}, fmt.Errorf("unexpected request type %T", in.Request)
+			}
+			ignored := make(map[string]string, len(headers))
+			for _, h := range headers {
+				ignored[h] = req.Header.Get(h)
+				req.Header.Del(h)
+			}
+			ctx = middleware.WithStackValue(ctx, ignoredHeadersKey{}, ignored)
+			return next.HandleFinalize(ctx, in)
+		},
+	)
+}
+
+func restoreIgnored() middleware.FinalizeMiddleware {
+	return middleware.FinalizeMiddlewareFunc(
+		"RestoreIgnored",
+		func(ctx context.Context, in middleware.FinalizeInput, next middleware.FinalizeHandler) (middleware.FinalizeOutput, middleware.Metadata, error) {
+			req, ok := in.Request.(*smithyhttp.Request)
+			if !ok {
+				return middleware.FinalizeOutput{}, middleware.Metadata{}, fmt.Errorf("unexpected request type %T", in.Request)
+			}
+			ignored, _ := middleware.GetStackValue(ctx, ignoredHeadersKey{}).(map[string]string)
+			for k, v := range ignored {
+				if v != "" {
+					req.Header.Set(k, v)
+				}
+			}
+			return next.HandleFinalize(ctx, in)
+		},
+	)
 }
 
 // UploadObject uploads an object to S3.
@@ -65,23 +123,6 @@ func (c *Client) UploadObject(ctx context.Context, key string, fileType string, 
 		return "", err
 	}
 	return key, nil
-}
-
-// PresignGetObject presigns an object in S3.
-func (c *Client) PresignGetObject(ctx context.Context, key string) (string, error) {
-	presignClient := s3.NewPresignClient(c.Client)
-	presignResult, err := presignClient.PresignGetObject(ctx, &s3.GetObjectInput{
-		Bucket: aws.String(*c.Bucket),
-		Key:    aws.String(key),
-	}, func(opts *s3.PresignOptions) {
-		// Set the expiration time of the presigned URL to 5 days.
-		// Reference: https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html
-		opts.Expires = time.Duration(5 * 24 * time.Hour)
-	})
-	if err != nil {
-		return "", errors.Wrap(err, "failed to presign get object")
-	}
-	return presignResult.URL, nil
 }
 
 // GetObject retrieves an object from S3.

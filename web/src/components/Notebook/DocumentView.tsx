@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import MemoContent from "@/components/MemoContent";
 import MemoEditor from "@/components/MemoEditor";
+import { AttachmentListView } from "@/components/MemoMetadata";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -30,6 +31,7 @@ import { useInstance } from "@/contexts/InstanceContext";
 import { cn } from "@/lib/utils";
 import { State } from "@/types/proto/api/v1/common_pb";
 import { type Memo, Memo_DocType } from "@/types/proto/api/v1/memo_service_pb";
+import { partitionInlinedAttachments } from "@/utils/attachment";
 import { useTranslate } from "@/utils/i18n";
 import DocumentOutline from "./DocumentOutline";
 import MoveDocumentDialog from "./MoveDocumentDialog";
@@ -48,6 +50,7 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
   const t = useTranslate();
   const { profile } = useInstance();
   const isHtml = memo.docType === Memo_DocType.HTML;
+  const remainingAttachments = partitionInlinedAttachments(memo.attachments, memo.content).rest;
   const [mode, setMode] = useState<"preview" | "edit">("preview");
   const [outlineCollapsed, setOutlineCollapsed] = useState(false);
   const [htmlDraft, setHtmlDraft] = useState(memo.content);
@@ -183,6 +186,11 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
           ) : mode === "preview" ? (
             <div className="px-6 py-4">
               <MemoContent content={memo.content} memoName={memo.name} />
+              {remainingAttachments.length > 0 && (
+                <div className="mt-6 border-t border-border pt-4">
+                  <AttachmentListView attachments={remainingAttachments} />
+                </div>
+              )}
             </div>
           ) : (
             <div className="h-full flex flex-col px-4 py-4">

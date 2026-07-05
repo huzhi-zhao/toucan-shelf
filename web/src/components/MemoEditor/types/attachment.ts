@@ -1,5 +1,5 @@
 import type { Attachment, MotionMedia } from "@/types/proto/api/v1/attachment_service_pb";
-import { MotionMediaFamily, MotionMediaRole } from "@/types/proto/api/v1/attachment_service_pb";
+import { AttachmentOrigin, MotionMediaFamily, MotionMediaRole } from "@/types/proto/api/v1/attachment_service_pb";
 import { getAttachmentThumbnailUrl, getAttachmentType, getAttachmentUrl } from "@/utils/attachment";
 import { buildAttachmentVisualItems } from "@/utils/media-item";
 
@@ -27,6 +27,12 @@ export interface LocalFile {
     readonly durationSeconds: number;
   };
   readonly motionMedia?: MotionMedia;
+  /**
+   * Whether this upload becomes a mounted attachment or a media reference inlined into the memo
+   * content via `![]()` (see mediaInsertService.buildMediaMarkdown). Defaults to MOUNTED — only
+   * EditorContent's insertMediaFiles path sets INLINE.
+   */
+  readonly attachmentOrigin?: AttachmentOrigin;
 }
 
 const AUDIO_RECORDING_FILENAME_RE = /^(?:voice-(?:recording|note)|audio-recording)-(\d{8})-(\d{4,6})/i;

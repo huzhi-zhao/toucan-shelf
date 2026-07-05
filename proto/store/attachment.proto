@@ -38,12 +38,21 @@ message MotionMedia {
   bool has_embedded_video = 5;
 }
 
+enum AttachmentOrigin {
+  ATTACHMENT_ORIGIN_UNSPECIFIED = 0;
+  // Uploaded via the attachment panel/list, shown as a mounted attachment.
+  MOUNTED = 1;
+  // Pasted/dropped into the editor and referenced inline via `![]()` markdown.
+  INLINE = 2;
+}
+
 message AttachmentPayload {
   oneof payload {
     S3Object s3_object = 1;
   }
 
   MotionMedia motion_media = 10;
+  AttachmentOrigin origin = 11;
 
   message S3Object {
     StorageS3Config s3_config = 1;

@@ -47,6 +47,18 @@ iframe 嵌入反而是被支持的,但仅限硬编码的可信来源白名单(Yo
 当预览MD，展示图片时
 `浏览器 → Memos生成的永久图片URL → Memos Server用持有的签名访问MinIO → 获取图片资源`
 
+其他相关需求：
+- 在settings - storage 页面这样改：
+    - 在Attachment storage区域上方添加 一块新区域：Storage Configuration 把当前Attachment storage下方的内容称动上去 这块只负责配置存储源的签名和配置信息，信息一旦配置就会持久化（考虑加入删除按钮 用户有权决定从服务器移除这些授权信息）
+    - Attachment storage区域此时是空白，只添加一个下拉选，用于实际决定到底用户到底用哪个系统作为文件存储，一旦选中，生效，下次再修改需要弹窗提醒后果（数据分散在不同地方，文档迁移难度大），用户确认后，才再给修改。
+    - Attachment storage 下方添加一个新的区域 用于同步db（当项目数据使用sqlite而不是postgre时），将数据备份到S3
+      - 这是同步计划 [s3-storage-proxy-plan.md](s3-storage-proxy-plan.md)
+      - 指定bucket路径，然后把数据库备份文件打包推到S3，S3 bucket里仅保留最近3个月有效期，更早期的版本可以清理（这应当是S3的底层支持 我们只管对bucket设置开启版本，控制版本有效期）
+      - 支持手动备份，点击立即备份
+      - 支持自动备份，服务端每周自动备份一次
+      - 注意：仅备份sqlite数据库 不包括mysql pgsql作为数据源， 不包括附件的备份
+      - 仅支持备份到S3 compatible
+
 #### 项目现状
 memos 不会把图片转成 http://memos域名/imageuri 这种形式对外提供，而是直接把 MinIO 生成的预签名 URL 交给浏览器，浏览器会直接连到 MinIO 的地址（比如 http://minio-host:9000/bucket/key?X-Amz-Signature=...），完全绕开 memos 域名。
 
@@ -82,7 +94,7 @@ server/runner/s3presign/runner.go 有个后台任务每 12 小时检查一次，
   - 在/explore的Main Content doc列表有pdf doc时，由于pdf doc的本质是一个超链接引用 因此在这个doc列表下 不用渲染pdf文档名，只需要除了正常显示卡片标题外，内容给出一此pdf文档的文件信息或其他信息+跳转doc详情按钮（也就是copy -> copy link指向的url）
   - 在doc详情页 也就是copy - copy link指向的页面，同样需要支持pdf文档的渲染
 
-### PDF预览插件
+#### PDF预览插件
 
 更一致的跨浏览器体验(移动端 Safari 内嵌 PDF 有时体验差、无法控制页数/缩放),可以引入 pdf.js(pdfjs-dist)自己渲染成 canvas,这样能做分页、缩放、暗色模式适配,但会多一个约 1-2MB 的依赖和更多代码(worker 配置、canvas 渲染逻辑)。
 

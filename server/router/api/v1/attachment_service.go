@@ -47,7 +47,16 @@ const (
 	defaultJPEGQuality        = 95
 	maxBatchDeleteAttachments = 100
 	maxImagePixels            = 50_000_000
+
+	// maxMediaAttachmentSizeBytes caps image/video/audio uploads at 10 MiB,
+	// independent of (and tighter than) the instance-wide UploadSizeLimitMb.
+	maxMediaAttachmentSizeBytes = 10 * MebiByte
 )
+
+// isMediaMimeType reports whether t is an image/video/audio MIME type.
+func isMediaMimeType(t string) bool {
+	return strings.HasPrefix(t, "image/") || strings.HasPrefix(t, "video/") || strings.HasPrefix(t, "audio/")
+}
 
 var SupportedThumbnailMimeTypes = []string{
 	"image/png",
@@ -125,6 +134,11 @@ func (s *APIV1Service) CreateAttachment(ctx context.Context, request *v1pb.Creat
 		create.Payload.MotionMedia = inputMotionMedia
 	}
 
+	if origin := convertAttachmentOriginToStore(request.Attachment.Origin); origin != storepb.AttachmentOrigin_ATTACHMENT_ORIGIN_UNSPECIFIED {
+		create.Payload = ensureAttachmentPayload(create.Payload)
+		create.Payload.Origin = origin
+	}
+
 	instanceStorageSetting, err := s.Store.GetInstanceStorageSetting(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get instance storage setting: %v", err)
@@ -136,6 +150,9 @@ func (s *APIV1Service) CreateAttachment(ctx context.Context, request *v1pb.Creat
 	}
 	if size > uploadSizeLimit {
 		return nil, status.Errorf(codes.InvalidArgument, "file size exceeds the limit")
+	}
+	if isMediaMimeType(request.Attachment.Type) && size > maxMediaAttachmentSizeBytes {
+		return nil, status.Errorf(codes.InvalidArgument, "media file size exceeds the 10MB limit")
 	}
 	create.Size = int64(size)
 	create.Blob = request.Attachment.Content
@@ -422,12 +439,17 @@ func convertAttachmentFromStore(attachment *store.Attachment) *v1pb.Attachment {
 		Type:        attachment.Type,
 		Size:        attachment.Size,
 		MotionMedia: convertMotionMediaFromStore(getAttachmentMotionMedia(attachment)),
+		Origin:      convertAttachmentOriginFromStore(attachment.Payload.GetOrigin()),
 	}
 	if attachment.MemoUID != nil && *attachment.MemoUID != "" {
 		memoName := fmt.Sprintf("%s%s", MemoNamePrefix, *attachment.MemoUID)
 		attachmentMessage.Memo = &memoName
 	}
-	if attachment.StorageType == storepb.AttachmentStorageType_EXTERNAL || attachment.StorageType == storepb.AttachmentStorageType_S3 {
+	// S3-backed attachments are intentionally NOT exposed as an external link: they are always
+	// served through the memos-domain proxy (`/file/...`, see GetAttachmentBlob) so that MinIO/S3
+	// endpoints that are only reachable from the server (not the browser) still work, and so
+	// access stays governed by memos' own auth instead of a long-lived presigned URL.
+	if attachment.StorageType == storepb.AttachmentStorageType_EXTERNAL {
 		attachmentMessage.ExternalLink = attachment.Reference
 	}
 
@@ -499,20 +521,19 @@ func SaveAttachmentBlob(ctx context.Context, profile *profile.Profile, stores *s
 		if err != nil {
 			return errors.Wrap(err, "Failed to upload via s3 client")
 		}
-		presignURL, err := s3Client.PresignGetObject(ctx, key)
-		if err != nil {
-			return errors.Wrap(err, "Failed to presign via s3 client")
-		}
 
-		create.Reference = presignURL
+		// Reference stores the S3 object key, not a presigned URL: attachments are always served
+		// through the server-side proxy (GetAttachmentBlob), which reads the key from the payload
+		// below and signs/fetches the object itself. This keeps S3/MinIO endpoints (which may only
+		// be reachable from the server, not the browser) out of any URL handed to the client.
+		create.Reference = key
 		create.Blob = nil
 		create.StorageType = storepb.AttachmentStorageType_S3
 		payload := ensureAttachmentPayload(create.Payload)
 		payload.Payload = &storepb.AttachmentPayload_S3Object_{
 			S3Object: &storepb.AttachmentPayload_S3Object{
-				S3Config:          s3Config,
-				Key:               key,
-				LastPresignedTime: timestamppb.New(time.Now()),
+				S3Config: s3Config,
+				Key:      key,
 			},
 		}
 		create.Payload = payload

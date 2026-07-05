@@ -227,7 +227,9 @@
       "trigger": "Record audio",
       "unsupported": "Audio recording unsupported",
       "unsupported-description": "This browser cannot record audio from the memo composer."
-    }
+    },
+    "media-too-large": "Media files must be 10MB or smaller.",
+    "media-upload-error": "Failed to upload media file."
   },
   "inbox": {
     "failed-to-load": "Failed to load inbox item",
@@ -671,6 +673,23 @@
       "user-endpoint": "User endpoint"
     },
     "storage": {
+      "active-backend": "Active storage backend",
+      "backup-title": "Database backup",
+      "backup-path-template": "Backup path template",
+      "backup-path-template-description": "S3 object key template for backup files, relative to the configured bucket. Supports {timestamp}, {uuid}, {year}, {month}, {day}, {hour}, {minute}, {second}.",
+      "backup-description": "Back up the SQLite database (memos, users, settings) to the configured S3 storage. Attachments are not included. Only available for SQLite instances with S3 storage configured; the server also runs this automatically once a week.",
+      "backup-last-run": "Last backup",
+      "backup-last-run-value": "{{time}} ({{status}})",
+      "backup-never-run": "No backup has run yet.",
+      "backup-status-success": "success",
+      "backup-status-failed": "failed",
+      "backup-now": "Back up now",
+      "backup-success": "Backup completed.",
+      "delete-blocked-active": "This storage source is currently active. Switch to another backend before removing its configuration.",
+      "delete-config-warning-title": "Delete S3 configuration?",
+      "delete-config-warning-description": "This removes the saved S3 credentials from the server. You can reconfigure S3 later, but any attachments still stored there will need it re-added to remain accessible.",
+      "switch-warning-title": "Switch active storage backend?",
+      "switch-warning-description": "Existing attachments stay in their current location; only new uploads use the new backend. Your data will be spread across multiple storage locations, which makes future migration harder.",
       "accesskey": "Access key",
       "accesskey-description": "Access key ID for the bucket or S3-compatible service.",
       "accesskey-placeholder": "Access key / Access ID",

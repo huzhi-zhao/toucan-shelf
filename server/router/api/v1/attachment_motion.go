@@ -55,6 +55,14 @@ func ensureAttachmentPayload(payload *storepb.AttachmentPayload) *storepb.Attach
 	return &storepb.AttachmentPayload{}
 }
 
+func convertAttachmentOriginToStore(origin v1pb.AttachmentOrigin) storepb.AttachmentOrigin {
+	return storepb.AttachmentOrigin(origin)
+}
+
+func convertAttachmentOriginFromStore(origin storepb.AttachmentOrigin) v1pb.AttachmentOrigin {
+	return v1pb.AttachmentOrigin(origin)
+}
+
 func isMultiMemberMotionGroup(attachments []*store.Attachment) bool {
 	if len(attachments) < 2 {
 		return false
