@@ -6,6 +6,7 @@ import { useLocation } from "react-router-dom";
 import DocumentView from "@/components/Notebook/DocumentView";
 import NotebookSidebar from "@/components/Notebook/NotebookSidebar";
 import PromptDialog from "@/components/Notebook/PromptDialog";
+import { useCreateAttachment } from "@/hooks/useAttachmentQueries";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import { useLastOpened } from "@/hooks/useLastOpened";
 import { useCreateMemo, useDeleteMemo, useMemo as useMemoDetail, useUpdateMemo } from "@/hooks/useMemoQueries";
@@ -19,6 +20,7 @@ import {
   workspaceKeys,
 } from "@/hooks/useWorkspaceQueries";
 import { handleError } from "@/lib/error";
+import { AttachmentOrigin, AttachmentSchema } from "@/types/proto/api/v1/attachment_service_pb";
 import { State } from "@/types/proto/api/v1/common_pb";
 import { Memo_DocType, MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
 import type { WorkspaceTreeNode } from "@/types/proto/api/v1/workspace_service_pb";
@@ -47,7 +49,7 @@ function detectDocType(fileName: string): Memo_DocType {
 }
 
 function stripExtension(fileName: string): string {
-  return fileName.replace(/\.(md|markdown|html|htm)$/i, "");
+  return fileName.replace(/\.(md|markdown|html|htm|pdf)$/i, "");
 }
 
 const Notebook = () => {
@@ -84,6 +86,7 @@ const Notebook = () => {
   const createMemo = useCreateMemo();
   const updateMemo = useUpdateMemo();
   const deleteMemo = useDeleteMemo();
+  const createAttachment = useCreateAttachment();
   const createFolder = useCreateWorkspaceFolder();
   const renameFolder = useRenameWorkspaceFolder();
   const deleteFolder = useDeleteWorkspaceFolder();
@@ -175,6 +178,39 @@ const Notebook = () => {
       await handleCreateDocument(folderPath, stripExtension(file.name), docType, content);
     },
     [handleCreateDocument],
+  );
+
+  const handleUploadPdf = useCallback(
+    async (folderPath: string, file: File) => {
+      if (!workspaceName) return;
+      try {
+        const buffer = new Uint8Array(await file.arrayBuffer());
+        const attachment = await createAttachment.mutateAsync(
+          create(AttachmentSchema, {
+            filename: file.name,
+            size: BigInt(file.size),
+            type: file.type || "application/pdf",
+            content: buffer,
+            origin: AttachmentOrigin.MOUNTED,
+          }),
+        );
+        const created = await createMemo.mutateAsync(
+          create(MemoSchema, {
+            workspace: workspaceName,
+            folderPath,
+            title: stripExtension(file.name),
+            docType: Memo_DocType.PDF,
+            content: "",
+            attachments: [create(AttachmentSchema, { name: attachment.name })],
+          }),
+        );
+        invalidateTree();
+        setSelectedMemo(created.name);
+      } catch (error) {
+        handleError(error, toast.error, { context: t("notebook.upload-pdf") });
+      }
+    },
+    [workspaceName, createAttachment, createMemo, invalidateTree, t],
   );
 
   const handleNewFolder = useCallback(
@@ -298,6 +334,7 @@ const Notebook = () => {
             onNewDocument={(folderPath) => setNewDocDialog({ folderPath })}
             onNewFolder={(folderPath) => setNewFolderDialog({ folderPath })}
             onUpload={handleUpload}
+            onUploadPdf={handleUploadPdf}
             onRenameFolder={(path) => setRenameFolderDialog({ path })}
             onDeleteFolder={handleDeleteFolder}
           />

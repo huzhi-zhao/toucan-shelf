@@ -3714,6 +3714,7 @@ components:
                         - DOC_TYPE_UNSPECIFIED
                         - MARKDOWN
                         - HTML
+                        - PDF
                     type: string
                     description: Optional. The document type. Defaults to MARKDOWN.
                     format: enum

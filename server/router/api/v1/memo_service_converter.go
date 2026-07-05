@@ -363,16 +363,22 @@ func convertDocTypeFromStore(docType string) v1pb.Memo_DocType {
 	switch docType {
 	case "HTML":
 		return v1pb.Memo_HTML
+	case "PDF":
+		return v1pb.Memo_PDF
 	default:
 		return v1pb.Memo_MARKDOWN
 	}
 }
 
 func convertDocTypeToStore(docType v1pb.Memo_DocType) string {
-	if docType == v1pb.Memo_HTML {
+	switch docType {
+	case v1pb.Memo_HTML:
 		return "HTML"
+	case v1pb.Memo_PDF:
+		return "PDF"
+	default:
+		return "MARKDOWN"
 	}
-	return "MARKDOWN"
 }
 
 func convertVisibilityFromStore(visibility store.Visibility) v1pb.Visibility {

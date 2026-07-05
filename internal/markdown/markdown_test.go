@@ -343,7 +343,7 @@ func TestExtractAllTitle(t *testing.T) {
 func TestExtractAllMentions(t *testing.T) {
 	svc := NewService(WithTagExtension(), WithMentionExtension())
 
-	data, err := svc.ExtractAll([]byte("Hi @Alice and @bob. Email support@example.com should stay plain. #tag"))
+	data, err := svc.ExtractAll([]byte("Hi @Alice and @bob. Email support@example.com should stay plain.\n\n#tag"))
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"alice", "bob"}, data.Mentions)
 	assert.ElementsMatch(t, []string{"tag"}, data.Tags)
@@ -355,7 +355,7 @@ func TestExtractAllSkipsTagsInsideLinks(t *testing.T) {
 	data, err := svc.ExtractAll([]byte(
 		"[release #notes](https://example.com/releases#release-notes)\n\n" +
 			"![preview #image](https://example.com/image#preview)\n\n" +
-			"Outside #memo-tag",
+			"#memo-tag",
 	))
 	require.NoError(t, err)
 
@@ -377,118 +377,118 @@ func TestExtractTags(t *testing.T) {
 			expected: []string{},
 		},
 		{
-			name:     "single tag",
+			name:     "inline tag in body is plain content",
 			content:  "Text with #tag",
+			withExt:  true,
+			expected: []string{},
+		},
+		{
+			name:     "trailing tag line single tag",
+			content:  "Body text\n\n#tag",
 			withExt:  true,
 			expected: []string{"tag"},
 		},
 		{
-			name:     "multiple tags",
-			content:  "Text with #tag1 and #tag2",
+			name:     "trailing tag line multiple tags",
+			content:  "Body text\n\n#tag1 #tag2",
 			withExt:  true,
 			expected: []string{"tag1", "tag2"},
 		},
 		{
-			name:     "duplicate tags",
-			content:  "#work is important. #Work #WORK",
+			name:     "duplicate tags preserve case",
+			content:  "Body\n\n#work #Work #WORK #work",
 			withExt:  true,
 			expected: []string{"work", "Work", "WORK"},
 		},
 		{
 			name:     "tags with hyphens and underscores",
-			content:  "Tags: #work-notes #2024_plans",
+			content:  "Body\n\n#work-notes #2024_plans",
 			withExt:  true,
 			expected: []string{"work-notes", "2024_plans"},
 		},
 		{
-			name:     "tags at end of sentence",
-			content:  "This is important #urgent.",
+			name:     "trailing line mixed with text is not a tag line",
+			content:  "Body\n\nThis is important #urgent.",
 			withExt:  true,
-			expected: []string{"urgent"},
+			expected: []string{},
 		},
 		{
 			name:     "headings not tags",
-			content:  "## Heading\n\n# Title\n\nText with #realtag",
+			content:  "## Heading\n\n# Title\n\n#realtag",
 			withExt:  true,
 			expected: []string{"realtag"},
 		},
 		{
-			name:     "numeric tag",
+			name:     "issue reference in body is not a tag",
 			content:  "Issue #123",
 			withExt:  true,
-			expected: []string{"123"},
+			expected: []string{},
 		},
 		{
-			name:     "tag in list",
+			name:     "tags in list items are not tags",
 			content:  "- Item 1 #todo\n- Item 2 #done",
 			withExt:  true,
-			expected: []string{"todo", "done"},
+			expected: []string{},
 		},
 		{
 			name:     "autolink URL fragment not tag",
-			content:  "https://github.com/dmtrKovalenko/fff#pi-agent-extension\n\nProject #memo-tag",
+			content:  "https://github.com/dmtrKovalenko/fff#pi-agent-extension\n\n#memo-tag",
 			withExt:  true,
 			expected: []string{"memo-tag"},
 		},
 		{
-			name:     "markdown link text and fragment not tags",
-			content:  "[release #notes](https://example.com/releases#release-notes) Outside #memo-tag",
+			name:     "markdown link fragment not tag",
+			content:  "[release #notes](https://example.com/releases#release-notes)\n\n#memo-tag",
 			withExt:  true,
 			expected: []string{"memo-tag"},
 		},
 		{
-			name:     "reference link text and fragment not tags",
-			content:  "[reference #anchor][docs]\n\n[docs]: https://example.com/docs#reference-anchor\n\nOutside #memo-tag",
+			name:     "trailing link paragraph is not a tag line",
+			content:  "Body\n\n[release #notes](https://example.com/releases#release-notes)",
 			withExt:  true,
-			expected: []string{"memo-tag"},
+			expected: []string{},
 		},
 		{
 			name:     "image alt text and fragment not tags",
-			content:  "![preview #image](https://example.com/image#preview)\n\nOutside #memo-tag",
+			content:  "![preview #image](https://example.com/image#preview)\n\n#memo-tag",
 			withExt:  true,
 			expected: []string{"memo-tag"},
 		},
 		{
 			name:     "no extension enabled",
-			content:  "Text with #tag",
+			content:  "Text\n\n#tag",
 			withExt:  false,
 			expected: []string{},
 		},
 		{
 			name:     "Chinese tag",
-			content:  "Text with #测试",
-			withExt:  true,
-			expected: []string{"测试"},
-		},
-		{
-			name:     "Chinese tag followed by punctuation",
-			content:  "Text #测试。 More text",
+			content:  "Body\n\n#测试",
 			withExt:  true,
 			expected: []string{"测试"},
 		},
 		{
 			name:     "mixed Chinese and ASCII tag",
-			content:  "#测试test123 content",
+			content:  "Body\n\n#测试test123",
 			withExt:  true,
 			expected: []string{"测试test123"},
 		},
 		{
-			name:     "Japanese tag",
-			content:  "#日本語 content",
+			name:     "Japanese and Korean tags",
+			content:  "Body\n\n#日本語 #한국어",
 			withExt:  true,
-			expected: []string{"日本語"},
-		},
-		{
-			name:     "Korean tag",
-			content:  "#한국어 content",
-			withExt:  true,
-			expected: []string{"한국어"},
+			expected: []string{"日本語", "한국어"},
 		},
 		{
 			name:     "hierarchical tag with Chinese",
 			content:  "#work/测试/项目",
 			withExt:  true,
 			expected: []string{"work/测试/项目"},
+		},
+		{
+			name:     "tag-only document counts as tag line",
+			content:  "#solo",
+			withExt:  true,
+			expected: []string{"solo"},
 		},
 	}
 
@@ -512,13 +512,13 @@ func TestRenameTagSkipsTagsInsideLinks(t *testing.T) {
 	svc := NewService(WithTagExtension())
 
 	result, err := svc.RenameTag(
-		[]byte("[release #notes](https://example.com/releases#release-notes)\n\nOutside #notes"),
+		[]byte("[release #notes](https://example.com/releases#release-notes)\n\n#notes"),
 		"notes",
 		"done",
 	)
 	require.NoError(t, err)
 
-	assert.Equal(t, "[release #notes](https://example.com/releases#release-notes)\n\nOutside #done", result)
+	assert.Equal(t, "[release #notes](https://example.com/releases#release-notes)\n\n#done", result)
 }
 
 func TestUniquePreserveCase(t *testing.T) {

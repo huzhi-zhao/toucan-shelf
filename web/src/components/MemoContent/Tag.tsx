@@ -8,7 +8,7 @@ import { tagStyles } from "@/lib/markdownStyles";
 import { findTagMetadata } from "@/lib/tag";
 import { cn } from "@/lib/utils";
 import { Routes } from "@/router";
-import { useMemoViewContext } from "../MemoView/MemoViewContext";
+import { useMemoViewContextOptional } from "../MemoView/MemoViewContext";
 
 interface TagProps extends React.HTMLAttributes<HTMLSpanElement> {
   node?: Element; // AST node from react-markdown
@@ -17,7 +17,7 @@ interface TagProps extends React.HTMLAttributes<HTMLSpanElement> {
 }
 
 export const Tag: React.FC<TagProps> = ({ "data-tag": dataTag, children, className, style, node: _node, ...props }) => {
-  const { parentPage } = useMemoViewContext();
+  const parentPage = useMemoViewContextOptional()?.parentPage;
   const location = useLocation();
   const navigateTo = useNavigateTo();
   const { getFiltersByFactor, removeFilter, addFilter } = useMemoFilterContext();

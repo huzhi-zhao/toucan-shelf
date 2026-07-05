@@ -119,24 +119,48 @@ func (s *service) parse(content []byte) (gast.Node, error) {
 	return doc, nil
 }
 
-func isTagNodeInLinkOrImage(n gast.Node) bool {
-	for parent := n.Parent(); parent != nil; parent = parent.Parent() {
-		switch parent.Kind() {
-		case gast.KindLink, gast.KindImage:
-			return true
+// trailingTagParagraph returns the document's last block iff it is a paragraph
+// made up solely of #tags separated by whitespace (e.g. "#work #2024/plans").
+// Only such a trailing tag line defines the memo's tags: a "#something" in the
+// middle of the text is treated as plain content, not a tag. Returns nil when
+// the document has no qualifying trailing tag line.
+func trailingTagParagraph(root gast.Node, source []byte) gast.Node {
+	last := root.LastChild()
+	if last == nil || last.Kind() != gast.KindParagraph {
+		return nil
+	}
+	hasTag := false
+	for child := last.FirstChild(); child != nil; child = child.NextSibling() {
+		switch node := child.(type) {
+		case *mast.TagNode:
+			hasTag = true
+		case *gast.Text:
+			if len(strings.TrimSpace(string(node.Segment.Value(source)))) > 0 {
+				return nil
+			}
 		default:
-			// Keep walking ancestors.
+			return nil
 		}
 	}
-	return false
+	if !hasTag {
+		return nil
+	}
+	return last
 }
 
-func asMemoTagNode(n gast.Node) (*mast.TagNode, bool) {
-	tagNode, ok := n.(*mast.TagNode)
-	if !ok || isTagNodeInLinkOrImage(n) {
-		return nil, false
+// collectTrailingTags extracts the tags of the trailing tag line, if any.
+func collectTrailingTags(root gast.Node, source []byte) []string {
+	tags := []string{}
+	paragraph := trailingTagParagraph(root, source)
+	if paragraph == nil {
+		return tags
 	}
-	return tagNode, true
+	for child := paragraph.FirstChild(); child != nil; child = child.NextSibling() {
+		if tagNode, ok := child.(*mast.TagNode); ok {
+			tags = append(tags, string(tagNode.Tag))
+		}
+	}
+	return tags
 }
 
 // ExtractTags returns all #tags found in content.
@@ -146,27 +170,8 @@ func (s *service) ExtractTags(content []byte) ([]string, error) {
 		return nil, err
 	}
 
-	var tags []string
-
-	// Walk the AST to find tag nodes
-	err = gast.Walk(root, func(n gast.Node, entering bool) (gast.WalkStatus, error) {
-		if !entering {
-			return gast.WalkContinue, nil
-		}
-
-		if tagNode, ok := asMemoTagNode(n); ok {
-			tags = append(tags, string(tagNode.Tag))
-		}
-
-		return gast.WalkContinue, nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	// Deduplicate tags while preserving original case
-	return uniquePreserveCase(tags), nil
+	// Only the trailing tag line counts; inline #hashes are plain content.
+	return uniquePreserveCase(collectTrailingTags(root, content)), nil
 }
 
 // extractHeadingText extracts plain text content from a heading node.
@@ -373,9 +378,6 @@ func (s *service) ExtractAll(content []byte) (*ExtractedData, error) {
 			return gast.WalkContinue, nil
 		}
 
-		if tagNode, ok := asMemoTagNode(n); ok {
-			data.Tags = append(data.Tags, string(tagNode.Tag))
-		}
 		if mentionNode, ok := n.(*mast.MentionNode); ok {
 			data.Mentions = append(data.Mentions, strings.ToLower(string(mentionNode.Username)))
 		}
@@ -414,8 +416,8 @@ func (s *service) ExtractAll(content []byte) (*ExtractedData, error) {
 		return nil, err
 	}
 
-	// Deduplicate tags while preserving original case
-	data.Tags = uniquePreserveCase(data.Tags)
+	// Only the trailing tag line counts; inline #hashes are plain content.
+	data.Tags = uniquePreserveCase(collectTrailingTags(root, content))
 	data.Mentions = uniquePreserveCase(data.Mentions)
 
 	return data, nil
@@ -428,23 +430,14 @@ func (s *service) RenameTag(content []byte, oldTag, newTag string) (string, erro
 		return "", err
 	}
 
-	// Walk the AST to find and rename tag nodes
-	err = gast.Walk(root, func(n gast.Node, entering bool) (gast.WalkStatus, error) {
-		if !entering {
-			return gast.WalkContinue, nil
-		}
-
-		if tagNode, ok := asMemoTagNode(n); ok {
-			if string(tagNode.Tag) == oldTag {
+	// Only rename occurrences in the trailing tag line; a "#name" elsewhere in
+	// the text is plain content and must stay untouched.
+	if paragraph := trailingTagParagraph(root, content); paragraph != nil {
+		for child := paragraph.FirstChild(); child != nil; child = child.NextSibling() {
+			if tagNode, ok := child.(*mast.TagNode); ok && string(tagNode.Tag) == oldTag {
 				tagNode.Tag = []byte(newTag)
 			}
 		}
-
-		return gast.WalkContinue, nil
-	})
-
-	if err != nil {
-		return "", err
 	}
 
 	// Render back to markdown using the already-parsed AST

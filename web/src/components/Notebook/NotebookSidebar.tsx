@@ -26,6 +26,7 @@ interface Props {
   onNewDocument: (folderPath: string) => void;
   onNewFolder: (folderPath: string) => void;
   onUpload: (folderPath: string, file: File) => void;
+  onUploadPdf: (folderPath: string, file: File) => void;
   onRenameFolder: (path: string) => void;
   onDeleteFolder: (path: string) => void;
 }
@@ -83,6 +84,7 @@ const NotebookSidebar = ({
   onNewDocument,
   onNewFolder,
   onUpload,
+  onUploadPdf,
   onRenameFolder,
   onDeleteFolder,
 }: Props) => {
@@ -92,6 +94,7 @@ const NotebookSidebar = ({
   const [bottomPanel, setBottomPanel] = useState<"none" | "calendar" | "tags">("none");
   const [visibleMonth, setVisibleMonth] = useState(dayjs().format("YYYY-MM"));
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
 
   const docDates = useMemo(() => {
     const acc = new Map<string, number>();
@@ -140,6 +143,10 @@ const NotebookSidebar = ({
               <UploadIcon className="w-4 h-4 mr-2" />
               {t("notebook.upload-file")}
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => pdfInputRef.current?.click()}>
+              <UploadIcon className="w-4 h-4 mr-2" />
+              {t("notebook.upload-pdf")}
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         <input
@@ -150,6 +157,17 @@ const NotebookSidebar = ({
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) onUpload("", file);
+            e.target.value = "";
+          }}
+        />
+        <input
+          ref={pdfInputRef}
+          type="file"
+          accept=".pdf"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) onUploadPdf("", file);
             e.target.value = "";
           }}
         />
@@ -170,6 +188,8 @@ const NotebookSidebar = ({
               onDeleteFolder={onDeleteFolder}
               onNewDocumentIn={onNewDocument}
               onNewFolderIn={onNewFolder}
+              onUploadIn={onUpload}
+              onUploadPdfIn={onUploadPdf}
             />
           ))
         )}

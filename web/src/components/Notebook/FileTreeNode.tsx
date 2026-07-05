@@ -1,5 +1,14 @@
-import { ChevronRightIcon, CodeIcon, FileTextIcon, FolderIcon, FolderOpenIcon, MoreHorizontalIcon } from "lucide-react";
-import { useState } from "react";
+import {
+  ChevronRightIcon,
+  CodeIcon,
+  FileIcon,
+  FileTextIcon,
+  FolderIcon,
+  FolderOpenIcon,
+  MoreHorizontalIcon,
+  UploadIcon,
+} from "lucide-react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
@@ -16,6 +25,8 @@ interface Props {
   onDeleteFolder: (path: string) => void;
   onNewDocumentIn: (path: string) => void;
   onNewFolderIn: (path: string) => void;
+  onUploadIn: (path: string, file: File) => void;
+  onUploadPdfIn: (path: string, file: File) => void;
 }
 
 const FileTreeNode = ({
@@ -27,9 +38,13 @@ const FileTreeNode = ({
   onDeleteFolder,
   onNewDocumentIn,
   onNewFolderIn,
+  onUploadIn,
+  onUploadPdfIn,
 }: Props) => {
   const t = useTranslate();
   const [expanded, setExpanded] = useState(depth === 0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
   const isFolder = node.type === WorkspaceTreeNode_NodeType.FOLDER;
   const isSelected = !isFolder && node.memo === selectedMemo;
 
@@ -56,6 +71,8 @@ const FileTreeNode = ({
           )
         ) : node.docType === "HTML" ? (
           <CodeIcon className="w-4 h-4 shrink-0 text-muted-foreground" />
+        ) : node.docType === "PDF" ? (
+          <FileIcon className="w-4 h-4 shrink-0 text-muted-foreground" />
         ) : (
           <FileTextIcon className="w-4 h-4 shrink-0 text-muted-foreground" />
         )}
@@ -75,6 +92,14 @@ const FileTreeNode = ({
             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
               <DropdownMenuItem onClick={() => onNewDocumentIn(node.path)}>{t("notebook.new-document")}</DropdownMenuItem>
               <DropdownMenuItem onClick={() => onNewFolderIn(node.path)}>{t("notebook.new-folder")}</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                <UploadIcon className="w-4 h-4 mr-2" />
+                {t("notebook.upload-file")}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => pdfInputRef.current?.click()}>
+                <UploadIcon className="w-4 h-4 mr-2" />
+                {t("notebook.upload-pdf")}
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onRenameFolder(node.path)}>{t("common.rename")}</DropdownMenuItem>
               <DropdownMenuItem variant="destructive" onClick={() => onDeleteFolder(node.path)}>
                 {t("common.delete")}
@@ -83,6 +108,32 @@ const FileTreeNode = ({
           </DropdownMenu>
         )}
       </div>
+      {isFolder && (
+        <>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".md,.markdown,.html,.htm"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) onUploadIn(node.path, file);
+              e.target.value = "";
+            }}
+          />
+          <input
+            ref={pdfInputRef}
+            type="file"
+            accept=".pdf"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) onUploadPdfIn(node.path, file);
+              e.target.value = "";
+            }}
+          />
+        </>
+      )}
       {isFolder && expanded && node.children.length > 0 && (
         <div className="w-full">
           {node.children.map((child) => (
@@ -96,6 +147,8 @@ const FileTreeNode = ({
               onDeleteFolder={onDeleteFolder}
               onNewDocumentIn={onNewDocumentIn}
               onNewFolderIn={onNewFolderIn}
+              onUploadIn={onUploadIn}
+              onUploadPdfIn={onUploadPdfIn}
             />
           ))}
         </div>

@@ -33,6 +33,10 @@ export const useMemoViewContext = (): MemoViewContextValue => {
   return context;
 };
 
+export const useMemoViewContextOptional = (): MemoViewContextValue | null => {
+  return useContext(MemoViewContext);
+};
+
 export const computeCommentAmount = (memo: Memo): number =>
   memo.relations.filter((r) => r.type === MemoRelation_Type.COMMENT && r.relatedMemo?.name === memo.name).length;
 

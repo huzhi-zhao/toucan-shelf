@@ -19,8 +19,8 @@ payload = json.dumps({
 
 result = subprocess.run([
     "curl", "-s", "-X", "POST",
-    "http://localhost:3001/api/v1/memos",
-    "-H", "Authorization: Bearer memos_pat_4TJMwewM9lPHoxpouwdMsmxk2lxEhPB7",
+    "https://memos.huzhi.dev/api/v1/memos",
+    "-H", "Authorization: Bearer memos_pat_6KghOpYarOCXUmCvm2L8DoCZQg1HnekK",
     "-H", "Content-Type: application/json",
     "-d", payload,
 ], capture_output=True, text=True)

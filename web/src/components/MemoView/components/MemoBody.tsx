@@ -1,11 +1,12 @@
 import { AttachmentListView, LocationDisplayView, RelationListView } from "@/components/MemoMetadata";
 import { cn } from "@/lib/utils";
 import { Memo_DocType, MemoRelation_Type } from "@/types/proto/api/v1/memo_service_pb";
+import { getAttachmentUrl } from "@/utils/attachment";
 import { useTranslate } from "@/utils/i18n";
 import MemoContent from "../../MemoContent";
 import { MemoReactionListView } from "../../MemoReactionListView";
 import { useMemoHandlers } from "../hooks";
-import { useMemoViewContext } from "../MemoViewContext";
+import { useMemoViewContext, useMemoViewDerived } from "../MemoViewContext";
 import type { MemoBodyProps } from "../types";
 
 const BlurOverlay: React.FC<{ onClick?: () => void }> = ({ onClick }) => {
@@ -21,10 +22,13 @@ const BlurOverlay: React.FC<{ onClick?: () => void }> = ({ onClick }) => {
 
 const MemoBody: React.FC<MemoBodyProps> = ({ compact, autoFold }) => {
   const { memo, parentPage, showBlurredContent, blurred, readonly, openEditor, openPreview, toggleBlurVisibility } = useMemoViewContext();
+  const { isInMemoDetailPage } = useMemoViewDerived();
 
   const { handleMemoContentClick, handleMemoContentDoubleClick } = useMemoHandlers({ readonly, openEditor, openPreview });
 
   const referencedMemos = memo.relations.filter((relation) => relation.type === MemoRelation_Type.REFERENCE);
+  const isPdf = memo.docType === Memo_DocType.PDF;
+  const pdfAttachment = isPdf ? memo.attachments.find((a) => a.type === "application/pdf") : undefined;
 
   return (
     <>
@@ -39,13 +43,18 @@ const MemoBody: React.FC<MemoBodyProps> = ({ compact, autoFold }) => {
           memoName={memo.name}
           content={memo.content}
           isHtml={memo.docType === Memo_DocType.HTML}
+          isPdf={isPdf}
+          pdfTitle={memo.title}
+          pdfUrl={pdfAttachment ? getAttachmentUrl(pdfAttachment) : undefined}
+          pdfAttachment={pdfAttachment}
+          pdfDetailView={isInMemoDetailPage}
           onClick={handleMemoContentClick}
           onDoubleClick={handleMemoContentDoubleClick}
           compact={memo.pinned ? false : compact} // Always show full content when pinned
           autoFold={autoFold}
           alwaysExpanded={memo.pinned}
         />
-        <AttachmentListView attachments={memo.attachments} onImagePreview={openPreview} />
+        {!isPdf && <AttachmentListView attachments={memo.attachments} onImagePreview={openPreview} />}
         <RelationListView relations={referencedMemos} currentMemoName={memo.name} parentPage={parentPage} />
         {memo.location && <LocationDisplayView location={memo.location} />}
         <MemoReactionListView memo={memo} reactions={memo.reactions} />

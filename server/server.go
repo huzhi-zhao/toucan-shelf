@@ -15,9 +15,11 @@ import (
 	"github.com/labstack/echo/v5/middleware"
 	"github.com/pkg/errors"
 
+	"github.com/usememos/memos/internal/markdown"
 	"github.com/usememos/memos/internal/profile"
 	storepb "github.com/usememos/memos/proto/gen/store"
 	backuprunner "github.com/usememos/memos/server/runner/backup"
+	memopayloadrunner "github.com/usememos/memos/server/runner/memopayload"
 
 	apiv1 "github.com/usememos/memos/server/router/api/v1"
 	"github.com/usememos/memos/server/router/fileserver"
@@ -34,9 +36,10 @@ type Server struct {
 	Profile *profile.Profile
 	Store   *store.Store
 
-	echoServer *echo.Echo
-	httpServer *http.Server
-	sseHub     *apiv1.SSEHub
+	echoServer      *echo.Echo
+	httpServer      *http.Server
+	sseHub          *apiv1.SSEHub
+	markdownService markdown.Service
 
 	backgroundRunnerCancels []context.CancelFunc
 	backgroundRunnerWG      sync.WaitGroup
@@ -76,6 +79,7 @@ func NewServer(ctx context.Context, profile *profile.Profile, store *store.Store
 
 	apiV1Service := apiv1.NewAPIV1Service(s.Secret, profile, store)
 	s.sseHub = apiV1Service.SSEHub
+	s.markdownService = apiV1Service.MarkdownService
 
 	// Register HTTP file server routes BEFORE gRPC-Gateway to ensure proper range request handling for Safari.
 	// This uses native HTTP serving (http.ServeContent) instead of gRPC for video/audio files.
@@ -163,6 +167,18 @@ func (s *Server) startBackgroundRunners(ctx context.Context) {
 		defer s.backgroundRunnerWG.Done()
 		backupRunner.Run(backupContext)
 		slog.Info("backup runner stopped")
+	}()
+
+	// Rebuild memo payloads (tags, properties) once at startup so payloads
+	// stay in sync when the extraction rules change between versions.
+	memoPayloadContext, memoPayloadCancel := context.WithCancel(ctx)
+	s.backgroundRunnerCancels = append(s.backgroundRunnerCancels, memoPayloadCancel)
+	memoPayloadRunner := memopayloadrunner.NewRunner(s.Store, s.markdownService)
+	s.backgroundRunnerWG.Add(1)
+	go func() {
+		defer s.backgroundRunnerWG.Done()
+		memoPayloadRunner.RunOnce(memoPayloadContext)
+		slog.Info("memo payload rebuild finished")
 	}()
 
 	slog.Info("background runners started")

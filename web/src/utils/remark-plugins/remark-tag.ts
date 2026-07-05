@@ -184,9 +184,40 @@ function transformTagTextNodes(parent: ParentNode, insideLink: boolean, source: 
 
 type VFileLike = { value?: string | Uint8Array };
 
+/**
+ * A paragraph qualifies as the trailing tag line when every child is a plain
+ * text node whose segments are only tags and whitespace, with at least one tag.
+ * Mirrors the backend rule (internal/markdown trailingTagParagraph): tags only
+ * exist on a tag-only line at the very end of the memo; "#foo" anywhere else is
+ * plain content.
+ */
+function isTagOnlyParagraph(paragraph: ParentNode, source: string): boolean {
+  let hasTag = false;
+  for (const child of paragraph.children) {
+    if (child.type !== "text") {
+      return false;
+    }
+    const textNode = child as Text;
+    const segments = segmentsForTextNode(textNode.value, textNode.position, source);
+    for (const segment of segments) {
+      if (segment.type === "tag") {
+        hasTag = true;
+      } else if (segment.value.trim() !== "") {
+        return false;
+      }
+    }
+  }
+  return hasTag;
+}
+
 export const remarkTag = () => {
   return (tree: Root, file: VFileLike) => {
     const source = typeof file?.value === "string" ? file.value : "";
-    transformTagTextNodes(tree as ParentNode, false, source);
+    const root = tree as ParentNode;
+    const last = root.children[root.children.length - 1];
+    if (!last || last.type !== "paragraph" || !isParentNode(last) || !isTagOnlyParagraph(last, source)) {
+      return;
+    }
+    transformTagTextNodes(last, false, source);
   };
 };
