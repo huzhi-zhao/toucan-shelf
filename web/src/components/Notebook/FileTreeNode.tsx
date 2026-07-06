@@ -1,5 +1,5 @@
 import { ChevronRightIcon, CodeIcon, FileIcon, FileTextIcon, FolderIcon, FolderOpenIcon, MoreHorizontalIcon } from "lucide-react";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,13 @@ interface Props {
   onUploadPdfIn: (path: string, file: File) => void;
 }
 
+const containsSelectedMemo = (node: WorkspaceTreeNode, selectedMemo: string): boolean => {
+  if (node.type !== WorkspaceTreeNode_NodeType.FOLDER) {
+    return node.memo === selectedMemo;
+  }
+  return node.children.some((child) => containsSelectedMemo(child, selectedMemo));
+};
+
 const FileTreeNode = ({
   node,
   depth,
@@ -35,10 +42,15 @@ const FileTreeNode = ({
   onUploadPdfIn,
 }: Props) => {
   const t = useTranslate();
-  const [expanded, setExpanded] = useState(depth === 0);
+  const isFolder = node.type === WorkspaceTreeNode_NodeType.FOLDER;
+  const containsSelected = useMemo(
+    () => isFolder && !!selectedMemo && containsSelectedMemo(node, selectedMemo),
+    [isFolder, node, selectedMemo],
+  );
+  const [manualExpanded, setManualExpanded] = useState<boolean | null>(null);
+  const expanded = manualExpanded ?? ((depth === 0 && !selectedMemo) || containsSelected);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
-  const isFolder = node.type === WorkspaceTreeNode_NodeType.FOLDER;
   const isSelected = !isFolder && node.memo === selectedMemo;
 
   return (
@@ -49,7 +61,7 @@ const FileTreeNode = ({
           isSelected && "bg-accent text-accent-foreground",
         )}
         style={{ paddingLeft: `${depth * 14 + 4}px` }}
-        onClick={() => (isFolder ? setExpanded((v) => !v) : onSelectDocument(node.memo))}
+        onClick={() => (isFolder ? setManualExpanded(!expanded) : onSelectDocument(node.memo))}
       >
         {isFolder ? (
           <ChevronRightIcon className={cn("w-3.5 h-3.5 shrink-0 transition-transform text-muted-foreground", expanded && "rotate-90")} />
