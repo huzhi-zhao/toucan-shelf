@@ -30,6 +30,15 @@ export function createController(view: EditorView, formatting: FormattingControl
       view.dispatch({ changes: { from, to, insert }, selection: { anchor: caret }, scrollIntoView: true });
       view.focus();
     },
+    replaceText: (search, replacement) => {
+      if (!search) return;
+      const doc = view.state.doc.toString();
+      const index = doc.indexOf(search);
+      if (index === -1) return;
+      const from = index;
+      const to = index + search.length;
+      view.dispatch({ changes: { from, to, insert: replacement }, selection: { anchor: from + replacement.length } });
+    },
     scrollToCursor: () => view.dispatch({ effects: EditorView.scrollIntoView(view.state.selection.main.head) }),
     selectAll: () => view.dispatch({ selection: EditorSelection.range(0, view.state.doc.length) }),
     formatting,

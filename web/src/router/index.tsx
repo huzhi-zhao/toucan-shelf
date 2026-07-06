@@ -4,24 +4,13 @@ import App from "@/App";
 import { ChunkLoadErrorFallback } from "@/components/ErrorBoundary";
 import MainLayout from "@/layouts/MainLayout";
 import RootLayout from "@/layouts/RootLayout";
+import { withChunkReload } from "@/utils/dynamicImport";
 import { LandingRoute, RequireAuthRoute, RequireGuestRoute } from "./guards";
 import { ROUTES } from "./routes";
 
 // Wrap lazy imports to auto-reload on chunk load failure (e.g., after redeployment).
 function lazyWithReload<T extends React.ComponentType>(factory: () => Promise<{ default: T }>) {
-  return lazy(() =>
-    factory().catch((error) => {
-      const isChunkError =
-        error?.message?.includes("Failed to fetch dynamically imported module") ||
-        error?.message?.includes("Importing a module script failed");
-      const reloadKey = "chunk-reload";
-      if (isChunkError && !sessionStorage.getItem(reloadKey)) {
-        sessionStorage.setItem(reloadKey, "1");
-        window.location.reload();
-      }
-      throw error;
-    }),
-  );
+  return lazy(() => withChunkReload(factory));
 }
 
 const AdminSignIn = lazyWithReload(() => import("@/pages/AdminSignIn"));

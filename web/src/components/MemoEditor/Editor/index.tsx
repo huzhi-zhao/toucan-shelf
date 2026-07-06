@@ -1,4 +1,4 @@
-import { EditorState } from "@codemirror/state";
+import { Compartment, EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef } from "react";
 import { useTagCounts } from "@/hooks/useUserQueries";
@@ -18,16 +18,19 @@ interface EditorProps {
   onPaste: (event: React.ClipboardEvent) => void;
   isFocusMode?: boolean;
   expand?: boolean;
+  /** Locks the editor (no typing/caret movement) while a pasted/dropped media file uploads. */
+  readOnly?: boolean;
 }
 
 const Editor = forwardRef(function Editor(props: EditorProps, ref: React.ForwardedRef<EditorController>) {
-  const { className, initialContent, placeholder, onContentChange, onPaste, isFocusMode, expand } = props;
+  const { className, initialContent, placeholder, onContentChange, onPaste, isFocusMode, expand, readOnly } = props;
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const controllerRef = useRef<EditorController | null>(null);
   const onChangeRef = useRef(onContentChange);
   onChangeRef.current = onContentChange;
   const listenersRef = useRef(new Set<() => void>());
+  const editableCompartmentRef = useRef(new Compartment());
   const { data: tagData } = useTagCounts();
   const tags = useMemo(() => Object.keys(tagData ?? {}), [tagData]);
   const tagsRef = useRef(tags);
@@ -41,12 +44,15 @@ const Editor = forwardRef(function Editor(props: EditorProps, ref: React.Forward
     const view = new EditorView({
       state: EditorState.create({
         doc: initialContent,
-        extensions: buildEditorExtensions({
-          placeholder,
-          onChange: (md) => onChangeRef.current(md),
-          onUpdate: () => listenersRef.current.forEach((l) => l()),
-          getTags: () => tagsRef.current,
-        }),
+        extensions: [
+          ...buildEditorExtensions({
+            placeholder,
+            onChange: (md) => onChangeRef.current(md),
+            onUpdate: () => listenersRef.current.forEach((l) => l()),
+            getTags: () => tagsRef.current,
+          }),
+          editableCompartmentRef.current.of(EditorView.editable.of(!readOnly)),
+        ],
       }),
       parent: hostRef.current,
     });
@@ -68,6 +74,12 @@ const Editor = forwardRef(function Editor(props: EditorProps, ref: React.Forward
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: initialContent } });
   }, [initialContent]);
 
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({ effects: editableCompartmentRef.current.reconfigure(EditorView.editable.of(!readOnly)) });
+  }, [readOnly]);
+
   // The controller is created in the mount layout effect above, which runs
   // before this (also layout-phase) handle, so controllerRef.current is set.
   useImperativeHandle(ref, () => controllerRef.current as EditorController, []);
@@ -86,6 +98,7 @@ const Editor = forwardRef(function Editor(props: EditorProps, ref: React.Forward
           "w-full text-base overflow-y-auto",
           isFocusMode || expand ? "flex-1 h-0" : "h-full",
           expand && !isFocusMode && "pb-16",
+          readOnly && "cursor-wait opacity-70",
         )}
         onPaste={onPaste}
       />

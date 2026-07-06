@@ -1,3 +1,4 @@
+import { LoaderCircleIcon } from "lucide-react";
 import { forwardRef } from "react";
 import { toast } from "react-hot-toast";
 import { AttachmentOrigin } from "@/types/proto/api/v1/attachment_service_pb";
@@ -27,11 +28,17 @@ export const EditorContent = forwardRef<EditorController, EditorContentProps>(({
   const { createBlobUrl } = useBlobUrls();
   const content = useEditorSelector((s) => s.content);
   const isFocusMode = useEditorSelector((s) => s.ui.isFocusMode);
+  const isUploadingMedia = useEditorSelector((s) => s.ui.isLoading.uploading);
 
   // Pasted/dropped media files (image/video/audio) are uploaded immediately and
   // inlined into content as a markdown reference at the cursor, instead of going
   // through the batch-upload-on-save attachment flow. Non-media files still go
   // through addLocalFile and get uploaded on save like before.
+  //
+  // While a file is uploading, the editor is locked (readOnly, via ui.isLoading.uploading)
+  // and a placeholder is inserted at the cursor, then swapped for the real markdown
+  // reference once the upload resolves — this also prevents a second paste/drop from
+  // racing the first and interleaving their insertions.
   const insertMediaFiles = async (files: File[]) => {
     const editor = (ref as React.RefObject<EditorController> | null)?.current;
     for (const file of files) {
@@ -39,14 +46,20 @@ export const EditorContent = forwardRef<EditorController, EditorContentProps>(({
         toast.error(t("editor.media-too-large"));
         continue;
       }
+      const placeholder = `![${t("editor.media-uploading")}]()`;
+      dispatch(actions.setLoading("uploading", true));
+      editor?.insertMarkdown(placeholder);
       try {
         const [attachment] = await uploadService.uploadFiles([
           { file, previewUrl: createBlobUrl(file), origin: "upload", attachmentOrigin: AttachmentOrigin.INLINE },
         ]);
         dispatch(actions.setMetadata({ attachments: [...getState().metadata.attachments, attachment] }));
-        editor?.insertMarkdown(buildMediaMarkdown(attachment));
+        editor?.replaceText(placeholder, buildMediaMarkdown(attachment));
       } catch {
         toast.error(t("editor.media-upload-error"));
+        editor?.replaceText(placeholder, "");
+      } finally {
+        dispatch(actions.setLoading("uploading", false));
       }
     }
   };
@@ -57,6 +70,10 @@ export const EditorContent = forwardRef<EditorController, EditorContentProps>(({
       dispatch(actions.addLocalFile({ file, previewUrl: createBlobUrl(file), origin: "upload" }));
     });
     if (media.length > 0) {
+      if (getState().ui.isLoading.uploading) {
+        toast.error(t("editor.media-upload-in-progress"));
+        return;
+      }
       void insertMediaFiles(media);
     }
   };
@@ -91,7 +108,7 @@ export const EditorContent = forwardRef<EditorController, EditorContentProps>(({
   };
 
   return (
-    <div className="w-full flex flex-col flex-1 min-h-0" {...dragHandlers}>
+    <div className="w-full flex flex-col flex-1 min-h-0 relative" {...dragHandlers}>
       <Editor
         ref={ref}
         className="memo-editor-content"
@@ -101,7 +118,14 @@ export const EditorContent = forwardRef<EditorController, EditorContentProps>(({
         expand={expand}
         onContentChange={handleContentChange}
         onPaste={handlePaste}
+        readOnly={isUploadingMedia}
       />
+      {isUploadingMedia && (
+        <div className="absolute top-2 right-2 flex items-center gap-1.5 rounded-full bg-background/90 px-2 py-1 text-xs text-muted-foreground shadow-sm">
+          <LoaderCircleIcon className="size-3.5 animate-spin" />
+          {t("editor.media-uploading")}
+        </div>
+      )}
     </div>
   );
 });

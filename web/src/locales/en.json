@@ -233,7 +233,9 @@
       "unsupported-description": "This browser cannot record audio from the memo composer."
     },
     "media-too-large": "Media files must be 10MB or smaller.",
-    "media-upload-error": "Failed to upload media file."
+    "media-upload-error": "Failed to upload media file.",
+    "media-uploading": "Uploading…",
+    "media-upload-in-progress": "Please wait for the current upload to finish."
   },
   "inbox": {
     "failed-to-load": "Failed to load inbox item",

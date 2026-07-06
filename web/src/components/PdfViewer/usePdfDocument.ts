@@ -1,10 +1,11 @@
 import type * as PdfJs from "pdfjs-dist";
 import { useEffect, useRef, useState } from "react";
+import { withChunkReload } from "@/utils/dynamicImport";
 
 // pdf.js is dynamically imported (and its worker resolved via a Vite-friendly `import.meta.url`
 // URL) so the ~1-2MB library is only ever loaded when a PDF document is actually rendered.
 async function loadPdfJs() {
-  const pdfjs = await import("pdfjs-dist");
+  const pdfjs = await withChunkReload(() => import("pdfjs-dist"));
   pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
   return pdfjs;
 }

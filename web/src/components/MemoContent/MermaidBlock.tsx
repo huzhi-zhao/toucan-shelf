@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import { withChunkReload } from "@/utils/dynamicImport";
 import { getThemeWithFallback, resolveTheme, setupSystemThemeListener } from "@/utils/theme";
 import { extractCodeContent } from "./utils";
 
@@ -49,7 +50,7 @@ export const MermaidBlock = ({ children, className }: MermaidBlockProps) => {
 
     const renderDiagram = async () => {
       try {
-        const { default: mermaid } = await import("mermaid");
+        const { default: mermaid } = await withChunkReload(() => import("mermaid"));
         if (cancelled) return;
 
         mermaid.initialize({

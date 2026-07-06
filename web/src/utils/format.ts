@@ -28,6 +28,18 @@ export function getFileTypeLabel(mimeType: string): string {
     "text/css": "CSS",
     "text/javascript": "JS",
     "application/javascript": "JS",
+    "application/msword": "DOC",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
+    "application/vnd.ms-excel": "XLS",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "XLSX",
+    "application/vnd.ms-powerpoint": "PPT",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "PPTX",
+    "application/x-rar-compressed": "RAR",
+    "application/vnd.rar": "RAR",
+    "application/x-7z-compressed": "7Z",
+    "application/gzip": "GZIP",
+    "application/x-gzip": "GZIP",
+    "application/x-tar": "TAR",
   };
 
   if (specialCases[normalizedMimeType]) {

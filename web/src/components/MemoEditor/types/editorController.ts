@@ -16,6 +16,8 @@ export interface EditorController {
   setMarkdown(markdown: string): void;
   /** Insert markdown at the cursor as its own block. */
   insertMarkdown(markdown: string): void;
+  /** Replace the first occurrence of `search` in the document with `replacement`, if present. */
+  replaceText(search: string, replacement: string): void;
   scrollToCursor(): void;
   /** Select the entire document (used by tests and select-all flows). */
   selectAll(): void;
