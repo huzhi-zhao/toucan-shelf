@@ -145,8 +145,8 @@ func (s *Store) GetInstanceGeneralSetting(ctx context.Context) (*storepb.Instanc
 	return instanceGeneralSetting, nil
 }
 
-// DefaultContentLengthLimit is the default limit of content length in bytes. 8KB.
-const DefaultContentLengthLimit = 8 * 1024
+// DefaultContentLengthLimit is the default limit of content length in bytes. 24KB.
+const DefaultContentLengthLimit = 24 * 1024
 
 // HTMLContentLengthLimit is the content length limit applied to HTML documents, in bytes.
 // HTML docs (e.g. pasted/uploaded AI-generated pages) are self-contained and routinely
