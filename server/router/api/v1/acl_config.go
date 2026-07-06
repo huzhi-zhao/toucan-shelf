@@ -73,6 +73,12 @@ var AuthBootstrapMethods = map[string]struct{}{
 
 	// Memo sharing - share-token access stays public even on a private instance.
 	"/memos.api.v1.MemoService/GetMemoByShare": {},
+
+	// Public memo links - a PUBLIC memo stays reachable by direct URL even on a
+	// private instance; the service layer still rejects non-public memos.
+	"/memos.api.v1.MemoService/GetMemo":             {},
+	"/memos.api.v1.MemoService/ListMemoComments":    {},
+	"/memos.api.v1.AttachmentService/GetAttachment": {},
 }
 
 // createUserProcedure is the CreateUser endpoint. On a private instance it is

@@ -29,6 +29,7 @@ interface Props {
   onUpload: (folderPath: string, file: File) => void;
   onUploadPdf: (folderPath: string, file: File) => void;
   onRenameFolder: (path: string) => void;
+  onMoveFolder: (path: string) => void;
   onDeleteFolder: (path: string) => void;
 }
 
@@ -87,6 +88,7 @@ const NotebookSidebar = ({
   onUpload,
   onUploadPdf,
   onRenameFolder,
+  onMoveFolder,
   onDeleteFolder,
 }: Props) => {
   const t = useTranslate();
@@ -190,6 +192,7 @@ const NotebookSidebar = ({
               selectedMemo={selectedMemo}
               onSelectDocument={onSelectDocument}
               onRenameFolder={onRenameFolder}
+              onMoveFolder={onMoveFolder}
               onDeleteFolder={onDeleteFolder}
               onNewDocumentIn={onNewDocument}
               onNewFolderIn={onNewFolder}

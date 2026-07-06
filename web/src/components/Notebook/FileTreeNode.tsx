@@ -1,13 +1,4 @@
-import {
-  ChevronRightIcon,
-  CodeIcon,
-  FileIcon,
-  FileTextIcon,
-  FolderIcon,
-  FolderOpenIcon,
-  MoreHorizontalIcon,
-  UploadIcon,
-} from "lucide-react";
+import { ChevronRightIcon, CodeIcon, FileIcon, FileTextIcon, FolderIcon, FolderOpenIcon, MoreHorizontalIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -22,6 +13,7 @@ interface Props {
   selectedMemo?: string;
   onSelectDocument: (memoName: string) => void;
   onRenameFolder: (path: string) => void;
+  onMoveFolder: (path: string) => void;
   onDeleteFolder: (path: string) => void;
   onNewDocumentIn: (path: string) => void;
   onNewFolderIn: (path: string) => void;
@@ -35,6 +27,7 @@ const FileTreeNode = ({
   selectedMemo,
   onSelectDocument,
   onRenameFolder,
+  onMoveFolder,
   onDeleteFolder,
   onNewDocumentIn,
   onNewFolderIn,
@@ -92,14 +85,9 @@ const FileTreeNode = ({
             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
               <DropdownMenuItem onClick={() => onNewDocumentIn(node.path)}>{t("notebook.new-document")}</DropdownMenuItem>
               <DropdownMenuItem onClick={() => onNewFolderIn(node.path)}>{t("notebook.new-folder")}</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                <UploadIcon className="w-4 h-4 mr-2" />
-                {t("notebook.upload-file")}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => pdfInputRef.current?.click()}>
-                <UploadIcon className="w-4 h-4 mr-2" />
-                {t("notebook.upload-pdf")}
-              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>{t("notebook.upload-file")}</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => pdfInputRef.current?.click()}>{t("notebook.upload-pdf")}</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onMoveFolder(node.path)}>{t("notebook.move")}</DropdownMenuItem>
               <DropdownMenuItem onClick={() => onRenameFolder(node.path)}>{t("common.rename")}</DropdownMenuItem>
               <DropdownMenuItem variant="destructive" onClick={() => onDeleteFolder(node.path)}>
                 {t("common.delete")}
@@ -144,6 +132,7 @@ const FileTreeNode = ({
               selectedMemo={selectedMemo}
               onSelectDocument={onSelectDocument}
               onRenameFolder={onRenameFolder}
+              onMoveFolder={onMoveFolder}
               onDeleteFolder={onDeleteFolder}
               onNewDocumentIn={onNewDocumentIn}
               onNewFolderIn={onNewFolderIn}

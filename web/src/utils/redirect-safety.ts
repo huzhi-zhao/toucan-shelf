@@ -78,13 +78,15 @@ export function isPublicRoute(path: string): boolean {
  * to the sign-in page for the given path.
  *
  * A private instance (no configured instance URL) hides everything from anonymous
- * visitors except share-link pages, which stay accessible so public shares keep
- * working. Authenticated visitors and open instances are never gated.
+ * visitors except share-link pages and individual memo detail pages, which stay
+ * accessible so public shares and public memo links keep working — the server
+ * still enforces per-memo visibility, so a non-public memo 404s/403s rather than
+ * leaking. Authenticated visitors and open instances are never gated.
  */
 export function shouldGatePrivateInstance(params: { isPrivateInstance: boolean; isAuthenticated: boolean; pathname: string }): boolean {
   const { isPrivateInstance, isAuthenticated, pathname } = params;
   if (!isPrivateInstance || isAuthenticated) {
     return false;
   }
-  return !pathname.startsWith(`${ROUTES.SHARED_MEMO}/`);
+  return !(pathname.startsWith(`${ROUTES.SHARED_MEMO}/`) || pathname.startsWith("/memos/"));
 }

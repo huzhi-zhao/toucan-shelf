@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useLocation } from "react-router-dom";
 import DocumentView from "@/components/Notebook/DocumentView";
+import MoveFolderDialog from "@/components/Notebook/MoveFolderDialog";
 import NotebookSidebar from "@/components/Notebook/NotebookSidebar";
 import PromptDialog from "@/components/Notebook/PromptDialog";
 import { useCreateAttachment } from "@/hooks/useAttachmentQueries";
@@ -75,6 +76,9 @@ const Notebook = () => {
     folderPath: string;
   } | null>(null);
   const [renameFolderDialog, setRenameFolderDialog] = useState<{
+    path: string;
+  } | null>(null);
+  const [moveFolderDialog, setMoveFolderDialog] = useState<{
     path: string;
   } | null>(null);
 
@@ -245,6 +249,25 @@ const Notebook = () => {
     [workspaceName, renameFolder, invalidateTree, t],
   );
 
+  const handleMoveFolder = useCallback(
+    async (oldPath: string, destinationFolderPath: string) => {
+      if (!workspaceName) return;
+      const name = oldPath.split("/").pop() ?? oldPath;
+      const newPath = destinationFolderPath ? `${destinationFolderPath}/${name}` : name;
+      try {
+        await renameFolder.mutateAsync({
+          parent: workspaceName,
+          oldPath,
+          newPath,
+        });
+        invalidateTree();
+      } catch (error) {
+        handleError(error, toast.error, { context: t("notebook.move") });
+      }
+    },
+    [workspaceName, renameFolder, invalidateTree, t],
+  );
+
   const handleDeleteFolder = useCallback(
     async (path: string) => {
       if (!workspaceName) return;
@@ -336,6 +359,7 @@ const Notebook = () => {
             onUpload={handleUpload}
             onUploadPdf={handleUploadPdf}
             onRenameFolder={(path) => setRenameFolderDialog({ path })}
+            onMoveFolder={(path) => setMoveFolderDialog({ path })}
             onDeleteFolder={handleDeleteFolder}
           />
         </div>
@@ -381,6 +405,15 @@ const Notebook = () => {
         defaultValue={renameFolderDialog?.path.split("/").pop()}
         onConfirm={(name) => handleRenameFolder(renameFolderDialog?.path ?? "", name)}
       />
+      {workspaceName && (
+        <MoveFolderDialog
+          open={!!moveFolderDialog}
+          onOpenChange={(open) => !open && setMoveFolderDialog(null)}
+          workspaceName={workspaceName}
+          path={moveFolderDialog?.path ?? ""}
+          onConfirm={(destinationFolderPath) => handleMoveFolder(moveFolderDialog?.path ?? "", destinationFolderPath)}
+        />
+      )}
     </div>
   );
 };
