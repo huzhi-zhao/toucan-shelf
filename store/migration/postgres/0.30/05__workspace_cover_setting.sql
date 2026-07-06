@@ -1,0 +1,2 @@
+ALTER TABLE workspace ADD COLUMN cover_color TEXT NOT NULL DEFAULT '';
+ALTER TABLE workspace ADD COLUMN cover_image TEXT NOT NULL DEFAULT '';

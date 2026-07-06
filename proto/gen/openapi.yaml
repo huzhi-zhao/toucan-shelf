@@ -4518,6 +4518,12 @@ components:
                     description: |-
                         The order used to sort the workspace's document tree.
                          One of "asc", "desc". Defaults to "desc".
+                coverColor:
+                    type: string
+                    description: The cover color of the workspace, as a CSS color value (e.g. "#3b82f6").
+                coverImage:
+                    type: string
+                    description: 'The cover image of the workspace. Format: attachments/{attachment}'
         WorkspaceFolder:
             required:
                 - path

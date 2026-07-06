@@ -65,7 +65,7 @@ func (d *DB) ListWorkspaces(ctx context.Context, find *store.FindWorkspace) ([]*
 			id, uid, creator_id, title,
 			UNIX_TIMESTAMP(created_ts) AS created_ts,
 			UNIX_TIMESTAMP(updated_ts) AS updated_ts,
-			sort_field, sort_order
+			sort_field, sort_order, cover_color, cover_image
 		FROM `+"`workspace`"+`
 		WHERE `+strings.Join(where, " AND ")+` ORDER BY created_ts ASC`,
 		args...,
@@ -78,7 +78,7 @@ func (d *DB) ListWorkspaces(ctx context.Context, find *store.FindWorkspace) ([]*
 	var list []*store.Workspace
 	for rows.Next() {
 		w := &store.Workspace{}
-		if err := rows.Scan(&w.ID, &w.UID, &w.CreatorID, &w.Title, &w.CreatedTs, &w.UpdatedTs, &w.SortField, &w.SortOrder); err != nil {
+		if err := rows.Scan(&w.ID, &w.UID, &w.CreatorID, &w.Title, &w.CreatedTs, &w.UpdatedTs, &w.SortField, &w.SortOrder, &w.CoverColor, &w.CoverImage); err != nil {
 			return nil, err
 		}
 		list = append(list, w)
@@ -99,6 +99,12 @@ func (d *DB) UpdateWorkspace(ctx context.Context, update *store.UpdateWorkspace)
 	}
 	if v := update.SortOrder; v != nil {
 		set, args = append(set, "`sort_order` = ?"), append(args, *v)
+	}
+	if v := update.CoverColor; v != nil {
+		set, args = append(set, "`cover_color` = ?"), append(args, *v)
+	}
+	if v := update.CoverImage; v != nil {
+		set, args = append(set, "`cover_image` = ?"), append(args, *v)
 	}
 	set = append(set, "`updated_ts` = NOW()")
 	args = append(args, update.ID)

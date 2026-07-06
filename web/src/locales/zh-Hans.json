@@ -874,7 +874,11 @@
     "sort-asc": "升序",
     "sort-create-time": "创建时间",
     "sort-update-time": "更新时间",
-    "sort-alphabetical": "按字母顺序"
+    "sort-alphabetical": "按字母顺序",
+    "change-cover": "修改封面",
+    "set-cover-color": "设置封面颜色",
+    "set-cover-image": "设置封面图片",
+    "cover-image-url-placeholder": "图片链接"
   },
   "bookshelf": {
     "title": "书架",

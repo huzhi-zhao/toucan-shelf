@@ -65,7 +65,9 @@ CREATE TABLE workspace (
   created_ts BIGINT NOT NULL DEFAULT (strftime('%s', 'now')),
   updated_ts BIGINT NOT NULL DEFAULT (strftime('%s', 'now')),
   sort_field TEXT NOT NULL DEFAULT 'createTime',
-  sort_order TEXT NOT NULL DEFAULT 'desc'
+  sort_order TEXT NOT NULL DEFAULT 'desc',
+  cover_color TEXT NOT NULL DEFAULT '',
+  cover_image TEXT NOT NULL DEFAULT ''
 );
 
 -- workspace_folder

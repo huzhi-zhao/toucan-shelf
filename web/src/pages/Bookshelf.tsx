@@ -46,19 +46,37 @@ const Bookshelf = () => {
             >
               {/* Spine */}
               <div
-                className={`relative flex-1 flex flex-col justify-between bg-gradient-to-b ${SPINE_COLORS[index % SPINE_COLORS.length]} rounded-t-[3px] rounded-b-[2px] border border-black/25 shadow-[inset_2px_0_0_rgba(255,255,255,0.12),inset_-2px_0_0_rgba(0,0,0,0.25)]`}
+                className="relative flex-1 flex flex-col justify-between rounded-t-[3px] rounded-b-[2px] border border-black/25 shadow-[inset_2px_0_0_rgba(255,255,255,0.12),inset_-2px_0_0_rgba(0,0,0,0.25)]"
+                style={
+                  workspace.coverColor
+                    ? { backgroundColor: workspace.coverColor }
+                    : undefined
+                }
               >
+                <div
+                  className={`absolute inset-0 rounded-t-[3px] rounded-b-[2px] bg-gradient-to-b ${SPINE_COLORS[index % SPINE_COLORS.length]} ${
+                    workspace.coverColor ? "hidden" : ""
+                  }`}
+                />
                 {/* Spine ribbing (raised bands like a hardcover binding) */}
-                <div className="absolute inset-x-1.5 top-3 h-[3px] rounded-full bg-black/20 shadow-[0_1px_0_rgba(255,255,255,0.15)]" />
-                <div className="absolute inset-x-1.5 bottom-3 h-[3px] rounded-full bg-black/20 shadow-[0_1px_0_rgba(255,255,255,0.15)]" />
+                <div className="absolute inset-x-1.5 top-3.5 h-[3px] rounded-full bg-black/20 shadow-[0_1px_0_rgba(255,255,255,0.15)]" />
                 {/* Gold foil title bar */}
-                <div className="flex-1 flex items-center justify-center px-1.5 py-6 min-h-0">
-                  <span className="text-amber-50/95 text-xs sm:text-sm font-semibold tracking-wide line-clamp-1 max-h-full drop-shadow-[0_1px_1px_rgba(0,0,0,0.4)]">
+                <div className="relative px-1.5 pt-4.5 pb-1 text-center shrink-0">
+                  <span className="text-amber-50/95 text-xs sm:text-sm font-semibold tracking-wide line-clamp-1 drop-shadow-[0_1px_1px_rgba(0,0,0,0.4)]">
                     {workspace.title}
                   </span>
                 </div>
-                <div className="px-1 pb-2.5 text-center">
-                  <span className="text-[10px] text-white/60">
+                {/* Cover image */}
+                <div className="relative flex-1 flex items-center justify-center px-2 min-h-0">
+                  <div className="w-[65%] aspect-square translate-x-[6%] rounded-[2px] overflow-hidden">
+                    {workspace.coverImage && (
+                      <img src={workspace.coverImage} alt="" className="w-full h-full object-cover" />
+                    )}
+                  </div>
+                </div>
+                <div className="relative px-1  pb-0.5 text-center shrink-0">
+                  <div className="absolute inset-x-1.5 top-1.5 h-[3px] rounded-full bg-black/20 shadow-[0_1px_0_rgba(255,255,255,0.15)]" />
+                  <span className="text-[8px]  text-white/60">
                     {workspace.createTime ? new Date(Number(workspace.createTime.seconds) * 1000).toLocaleDateString() : ""}
                   </span>
                 </div>

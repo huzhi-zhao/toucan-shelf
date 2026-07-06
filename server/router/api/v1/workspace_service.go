@@ -114,6 +114,10 @@ func (s *APIV1Service) UpdateWorkspace(ctx context.Context, request *v1pb.Update
 				return nil, status.Errorf(codes.InvalidArgument, "invalid sort_order: %s", request.Workspace.SortOrder)
 			}
 			update.SortOrder = &request.Workspace.SortOrder
+		} else if field == "cover_color" {
+			update.CoverColor = &request.Workspace.CoverColor
+		} else if field == "cover_image" {
+			update.CoverImage = &request.Workspace.CoverImage
 		}
 	}
 
@@ -350,6 +354,8 @@ func convertWorkspaceFromStore(workspace *store.Workspace, creatorUsername strin
 		UpdateTime: timestamppb.New(time.Unix(workspace.UpdatedTs, 0)),
 		SortField:  workspace.SortField,
 		SortOrder:  workspace.SortOrder,
+		CoverColor: workspace.CoverColor,
+		CoverImage: workspace.CoverImage,
 	}
 }
 

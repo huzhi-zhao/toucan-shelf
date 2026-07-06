@@ -918,7 +918,11 @@
     "sort-asc": "Ascending",
     "sort-create-time": "Create time",
     "sort-update-time": "Update time",
-    "sort-alphabetical": "Alphabetical"
+    "sort-alphabetical": "Alphabetical",
+    "change-cover": "Change cover",
+    "set-cover-color": "Set cover color",
+    "set-cover-image": "Set cover image",
+    "cover-image-url-placeholder": "Image URL"
   },
   "pdf": {
     "loading": "Loading…",

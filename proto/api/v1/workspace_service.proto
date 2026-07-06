@@ -103,6 +103,12 @@ message Workspace {
   // The order used to sort the workspace's document tree.
   // One of "asc", "desc". Defaults to "desc".
   string sort_order = 7;
+
+  // The cover color of the workspace, as a CSS color value (e.g. "#3b82f6").
+  string cover_color = 8;
+
+  // The cover image of the workspace. Format: attachments/{attachment}
+  string cover_image = 9;
 }
 
 message WorkspaceFolder {

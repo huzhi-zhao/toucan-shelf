@@ -64,7 +64,9 @@ CREATE TABLE `workspace` (
   `created_ts` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_ts` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `sort_field` VARCHAR(64) NOT NULL DEFAULT 'createTime',
-  `sort_order` VARCHAR(16) NOT NULL DEFAULT 'desc'
+  `sort_order` VARCHAR(16) NOT NULL DEFAULT 'desc',
+  `cover_color` VARCHAR(32) NOT NULL DEFAULT '',
+  `cover_image` VARCHAR(255) NOT NULL DEFAULT ''
 );
 
 -- workspace_folder

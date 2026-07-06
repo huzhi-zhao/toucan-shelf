@@ -64,7 +64,9 @@ CREATE TABLE workspace (
   created_ts BIGINT NOT NULL DEFAULT EXTRACT(EPOCH FROM NOW()),
   updated_ts BIGINT NOT NULL DEFAULT EXTRACT(EPOCH FROM NOW()),
   sort_field TEXT NOT NULL DEFAULT 'createTime',
-  sort_order TEXT NOT NULL DEFAULT 'desc'
+  sort_order TEXT NOT NULL DEFAULT 'desc',
+  cover_color TEXT NOT NULL DEFAULT '',
+  cover_image TEXT NOT NULL DEFAULT ''
 );
 
 -- workspace_folder

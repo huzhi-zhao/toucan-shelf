@@ -21,6 +21,7 @@ import type { Workspace } from "@/types/proto/api/v1/workspace_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import { normalizeSortField, normalizeSortOrder } from "./notebookSort";
 import PromptDialog from "./PromptDialog";
+import { WorkspaceCoverColorDialog, WorkspaceCoverImageDialog } from "./WorkspaceCoverDialogs";
 
 interface Props {
   workspaces: Workspace[];
@@ -36,6 +37,8 @@ const WorkspaceSelector = ({ workspaces, value, onChange, onCreated }: Props) =>
   const deleteWorkspace = useDeleteWorkspace();
   const [createOpen, setCreateOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
+  const [coverColorOpen, setCoverColorOpen] = useState(false);
+  const [coverImageOpen, setCoverImageOpen] = useState(false);
 
   const current = workspaces.find((w) => w.name === value);
   const sortField = normalizeSortField(current?.sortField);
@@ -83,6 +86,13 @@ const WorkspaceSelector = ({ workspaces, value, onChange, onCreated }: Props) =>
           {current && (
             <>
               <DropdownMenuSeparator />
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>{t("notebook.change-cover")}</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={() => setCoverColorOpen(true)}>{t("notebook.set-cover-color")}</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setCoverImageOpen(true)}>{t("notebook.set-cover-image")}</DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>{t("notebook.sort-by")}</DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
@@ -154,6 +164,8 @@ const WorkspaceSelector = ({ workspaces, value, onChange, onCreated }: Props) =>
           }}
         />
       )}
+      {current && <WorkspaceCoverColorDialog workspace={current} open={coverColorOpen} onOpenChange={setCoverColorOpen} />}
+      {current && <WorkspaceCoverImageDialog workspace={current} open={coverImageOpen} onOpenChange={setCoverImageOpen} />}
     </div>
   );
 };
