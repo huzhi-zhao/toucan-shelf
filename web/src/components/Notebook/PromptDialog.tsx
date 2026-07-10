@@ -28,6 +28,7 @@ const PromptDialog = ({ open, onOpenChange, title, placeholder, defaultValue, co
   }, [open, defaultValue]);
 
   const handleConfirm = async () => {
+    if (submitting) return;
     const trimmed = value.trim();
     if (!trimmed) return;
     try {

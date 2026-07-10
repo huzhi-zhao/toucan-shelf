@@ -205,6 +205,7 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
           ) : (
             <div className="h-full flex flex-col px-4 py-4">
               <MemoEditor
+                key={memo.name}
                 autoFocus
                 expand
                 cacheKey={`notebook-editor-${memo.name}`}

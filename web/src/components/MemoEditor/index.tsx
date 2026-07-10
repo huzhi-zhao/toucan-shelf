@@ -229,6 +229,14 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
     }
   };
 
+  // Cancel is the user's deliberate "discard this draft" action (e.g. switching
+  // to preview) — clear the cached localStorage draft so re-entering this page
+  // loads clean content matching the saved document, not stale edits.
+  function handleCancel() {
+    discardDraft();
+    onCancel?.();
+  }
+
   useKeyboard(editorRef, handleSave);
 
   async function handleSave() {
@@ -249,7 +257,7 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
 
       if (!result.hasChanges) {
         toast.error(t("editor.no-changes-detected"));
-        onCancel?.();
+        handleCancel();
         return;
       }
 
@@ -366,7 +374,7 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
           <EditorMetadata memoName={memoName} />
           <EditorToolbar
             onSave={handleSave}
-            onCancel={onCancel}
+            onCancel={handleCancel}
             memoName={memoName}
             onAudioRecorderClick={handleAudioRecorderClick}
             isFormattingToolbarVisible={isFormattingToolbarVisible}
