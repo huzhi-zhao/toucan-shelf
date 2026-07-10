@@ -3,7 +3,6 @@ import { EditorView } from "@codemirror/view";
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef } from "react";
 import { useTagCounts } from "@/hooks/useUserQueries";
 import { cn } from "@/lib/utils";
-import { EDITOR_HEIGHT } from "../constants";
 import type { EditorController } from "../types/editorController";
 import { createController } from "./controller";
 import "./editor.css";
@@ -88,20 +87,25 @@ const Editor = forwardRef(function Editor(props: EditorProps, ref: React.Forward
     <div
       className={cn(
         "flex flex-col justify-start items-start relative w-full bg-inherit",
-        isFocusMode || expand ? "flex-1 min-h-0" : `h-auto ${EDITOR_HEIGHT.normal}`,
+        isFocusMode || expand ? "flex-1 min-h-0" : "h-auto",
         className,
       )}
+      // The caret-layout fix (a9ac008a) moves scrolling into .cm-scroller and
+      // relies on this attribute to let .cm-editor fill a tall host. Our expand
+      // mode is tall like focus mode, so it opts in too.
+      data-focus-mode={isFocusMode || expand || undefined}
     >
       <div
         ref={hostRef}
         className={cn(
-          "w-full text-base overflow-y-auto",
+          "w-full text-base",
           isFocusMode || expand ? "flex-1 h-0" : "h-full",
           expand && !isFocusMode && "pb-16",
           readOnly && "cursor-wait opacity-70",
         )}
         onPaste={onPaste}
       />
+
     </div>
   );
 });
