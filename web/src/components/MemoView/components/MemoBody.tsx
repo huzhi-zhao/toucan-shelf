@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import { GalleryDocCard } from "@/components/GalleryView/GalleryDocCard";
+import GalleryViewRenderer from "@/components/GalleryView/GalleryViewRenderer";
 import { AttachmentListView, LocationDisplayView, RelationListView } from "@/components/MemoMetadata";
 import { cn } from "@/lib/utils";
 import { Memo_DocType, MemoRelation_Type } from "@/types/proto/api/v1/memo_service_pb";
@@ -29,6 +31,7 @@ const MemoBody: React.FC<MemoBodyProps> = ({ compact, autoFold }) => {
 
   const referencedMemos = memo.relations.filter((relation) => relation.type === MemoRelation_Type.REFERENCE);
   const isPdf = memo.docType === Memo_DocType.PDF;
+  const isView = memo.docType === Memo_DocType.VIEW;
   const pdfAttachment = isPdf ? memo.attachments.find((a) => a.type === "application/pdf") : undefined;
   const nonInlinedAttachments = useMemo(
     () => partitionInlinedAttachments(memo.attachments, memo.content).rest,
@@ -43,23 +46,31 @@ const MemoBody: React.FC<MemoBodyProps> = ({ compact, autoFold }) => {
           blurred && !showBlurredContent && "blur-lg transition-all duration-200",
         )}
       >
-        <MemoContent
-          key={memo.name}
-          memoName={memo.name}
-          content={memo.content}
-          isHtml={memo.docType === Memo_DocType.HTML}
-          isPdf={isPdf}
-          pdfTitle={memo.title}
-          pdfUrl={pdfAttachment ? getAttachmentUrl(pdfAttachment) : undefined}
-          pdfAttachment={pdfAttachment}
-          pdfDetailView={isInMemoDetailPage}
-          onClick={handleMemoContentClick}
-          onDoubleClick={handleMemoContentDoubleClick}
-          compact={memo.pinned ? false : compact} // Always show full content when pinned
-          autoFold={autoFold}
-          alwaysExpanded={memo.pinned}
-        />
-        {!isPdf && <AttachmentListView attachments={nonInlinedAttachments} onImagePreview={openPreview} />}
+        {isView ? (
+          isInMemoDetailPage ? (
+            <GalleryViewRenderer memo={memo} />
+          ) : (
+            <GalleryDocCard title={memo.title} memoName={memo.name} content={memo.content} />
+          )
+        ) : (
+          <MemoContent
+            key={memo.name}
+            memoName={memo.name}
+            content={memo.content}
+            isHtml={memo.docType === Memo_DocType.HTML}
+            isPdf={isPdf}
+            pdfTitle={memo.title}
+            pdfUrl={pdfAttachment ? getAttachmentUrl(pdfAttachment) : undefined}
+            pdfAttachment={pdfAttachment}
+            pdfDetailView={isInMemoDetailPage}
+            onClick={handleMemoContentClick}
+            onDoubleClick={handleMemoContentDoubleClick}
+            compact={memo.pinned ? false : compact} // Always show full content when pinned
+            autoFold={autoFold}
+            alwaysExpanded={memo.pinned}
+          />
+        )}
+        {!isPdf && !isView && <AttachmentListView attachments={nonInlinedAttachments} onImagePreview={openPreview} />}
         <RelationListView relations={referencedMemos} currentMemoName={memo.name} parentPage={parentPage} />
         {memo.location && <LocationDisplayView location={memo.location} />}
         <MemoReactionListView memo={memo} reactions={memo.reactions} />

@@ -63,6 +63,8 @@ const Explore = () => {
     includeShortcuts: false,
     includePinned: false,
     visibilities,
+    // VIEW docs are structural organization nodes, not browsable notes.
+    excludeNonFeedDocTypes: true,
   });
 
   const archived = hasFilter({ factor: "archived", value: "true" });

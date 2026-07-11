@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
+import GalleryViewForm from "@/components/GalleryView/GalleryViewForm";
+import GalleryViewRenderer from "@/components/GalleryView/GalleryViewRenderer";
 import MemoContent from "@/components/MemoContent";
 import MemoEditor from "@/components/MemoEditor";
 import { AttachmentListView } from "@/components/MemoMetadata";
@@ -47,14 +49,16 @@ interface Props {
   onDelete: () => void;
   onSaveHtml: (content: string) => void;
   onMove: (workspace: string, folderPath: string) => void | Promise<void>;
+  onOpenDocument?: (memoName: string) => void;
 }
 
-const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onSaveHtml, onMove }: Props) => {
+const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onSaveHtml, onMove, onOpenDocument }: Props) => {
   const t = useTranslate();
   const { profile } = useInstance();
   const isDesktop = useMediaQuery("lg");
   const isHtml = memo.docType === Memo_DocType.HTML;
   const isPdf = memo.docType === Memo_DocType.PDF;
+  const isView = memo.docType === Memo_DocType.VIEW;
   const pdfAttachment = isPdf ? memo.attachments.find((a) => a.type === "application/pdf") : undefined;
   const remainingAttachments = partitionInlinedAttachments(memo.attachments, memo.content).rest;
   const [mode, setMode] = useState<"preview" | "edit">("preview");
@@ -67,9 +71,10 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
   const previewRef = useRef<HTMLDivElement>(null);
   const [pdfToolbarSlot, setPdfToolbarSlot] = useState<HTMLDivElement | null>(null);
 
-  // Always land on preview first when switching documents (per spec).
+  // Always land on preview first when switching documents (per spec), except
+  // a freshly created view doc, which has no config yet and opens its form.
   useEffect(() => {
-    setMode("preview");
+    setMode(isView && !memo.content.trim() ? "edit" : "preview");
     setHtmlDraft(memo.content);
     setTitleDraft(memo.title);
   }, [memo.name]);
@@ -125,7 +130,7 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
               {t("common.save")}
             </Button>
           )}
-          {!isHtml && !isPdf && (
+          {!isHtml && !isPdf && !isView && (
             <Button variant="ghost" size="icon" onClick={() => setOutlineCollapsed((v) => !v)} title={t("notebook.toggle-outline")}>
               {outlineCollapsed ? <PanelRightOpenIcon className="w-4 h-4" /> : <PanelRightCloseIcon className="w-4 h-4" />}
             </Button>
@@ -202,6 +207,22 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
                 onChange={(e) => setHtmlDraft(e.target.value)}
               />
             )
+          ) : isView ? (
+            mode === "preview" ? (
+              <GalleryViewRenderer memo={memo} onOpenDoc={onOpenDocument} className="px-6 py-4" />
+            ) : (
+              <div className="px-6 py-4">
+                <GalleryViewForm
+                  key={memo.name}
+                  content={memo.content}
+                  onSave={(content) => {
+                    onSaveHtml(content);
+                    setMode("preview");
+                  }}
+                  onCancel={() => setMode("preview")}
+                />
+              </div>
+            )
           ) : mode === "preview" ? (
             <div className="px-6 py-4">
               <MemoContent content={memo.content} memoName={memo.name} />
@@ -228,7 +249,7 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
             </div>
           )}
         </div>
-        {!isHtml && !isPdf && !outlineCollapsed && isDesktop && (
+        {!isHtml && !isPdf && !isView && !outlineCollapsed && isDesktop && (
           <div className="w-56 shrink-0 min-h-0 border-l border-border flex flex-col px-2 py-3">
             <div className="text-xs font-medium text-muted-foreground px-2 pb-2 uppercase tracking-wide">{t("notebook.outline")}</div>
             <DocumentOutline content={memo.content} containerRef={previewRef} hasAttachments={remainingAttachments.length > 0} />
@@ -236,7 +257,7 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
         )}
       </div>
 
-      {!isHtml && !isPdf && !isDesktop && (
+      {!isHtml && !isPdf && !isView && !isDesktop && (
         <Sheet open={!outlineCollapsed} onOpenChange={(open) => setOutlineCollapsed(!open)}>
           <SheetContent side="right" className="w-[85%] max-w-full overflow-y-auto px-2 py-3 bg-background">
             <SheetHeader>

@@ -88,6 +88,10 @@ const (
 	Memo_MARKDOWN             Memo_DocType = 1
 	Memo_HTML                 Memo_DocType = 2
 	Memo_PDF                  Memo_DocType = 3
+	// A structured "view" document (e.g. gallery). Its content holds only a
+	// JSON configuration (view type + scope + display rules), rendered
+	// client-side against live data.
+	Memo_VIEW Memo_DocType = 4
 )
 
 // Enum value maps for Memo_DocType.
@@ -97,12 +101,14 @@ var (
 		1: "MARKDOWN",
 		2: "HTML",
 		3: "PDF",
+		4: "VIEW",
 	}
 	Memo_DocType_value = map[string]int32{
 		"DOC_TYPE_UNSPECIFIED": 0,
 		"MARKDOWN":             1,
 		"HTML":                 2,
 		"PDF":                  3,
+		"VIEW":                 4,
 	}
 )
 
@@ -747,6 +753,7 @@ type ListMemosRequest struct {
 	//	content (string), creator (string, e.g. "users/1"),
 	//	created_ts / updated_ts (timestamp), pinned (bool),
 	//	visibility (string: PRIVATE | PROTECTED | PUBLIC),
+	//	doc_type (string: MARKDOWN | HTML | PDF | VIEW),
 	//	tags (list<string>; match with `"work" in tags`, not `tag == "work"`),
 	//	has_task_list / has_link / has_code / has_incomplete_tasks (bool).
 	//
@@ -2552,7 +2559,7 @@ const file_api_v1_memo_service_proto_rawDesc = "" +
 	"\rreaction_type\x18\x04 \x01(\tB\x03\xe0A\x02R\freactionType\x12@\n" +
 	"\vcreate_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
 	"createTime:X\xeaAU\n" +
-	"\x15memos.api.v1/Reaction\x12!memos/{memo}/reactions/{reaction}\x1a\x04name*\treactions2\breaction\"\x85\v\n" +
+	"\x15memos.api.v1/Reaction\x12!memos/{memo}/reactions/{reaction}\x1a\x04name*\treactions2\breaction\"\x8f\v\n" +
 	"\x04Memo\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12.\n" +
 	"\x05state\x18\x02 \x01(\x0e2\x13.memos.api.v1.StateB\x03\xe0A\x02R\x05state\x123\n" +
@@ -2588,12 +2595,13 @@ const file_api_v1_memo_service_proto_rawDesc = "" +
 	"\rhas_task_list\x18\x02 \x01(\bR\vhasTaskList\x12\x19\n" +
 	"\bhas_code\x18\x03 \x01(\bR\ahasCode\x120\n" +
 	"\x14has_incomplete_tasks\x18\x04 \x01(\bR\x12hasIncompleteTasks\x12\x14\n" +
-	"\x05title\x18\x05 \x01(\tR\x05title\"D\n" +
+	"\x05title\x18\x05 \x01(\tR\x05title\"N\n" +
 	"\aDocType\x12\x18\n" +
 	"\x14DOC_TYPE_UNSPECIFIED\x10\x00\x12\f\n" +
 	"\bMARKDOWN\x10\x01\x12\b\n" +
 	"\x04HTML\x10\x02\x12\a\n" +
-	"\x03PDF\x10\x03:7\xeaA4\n" +
+	"\x03PDF\x10\x03\x12\b\n" +
+	"\x04VIEW\x10\x04:7\xeaA4\n" +
 	"\x11memos.api.v1/Memo\x12\fmemos/{memo}\x1a\x04name*\x05memos2\x04memoB\t\n" +
 	"\a_parentB\v\n" +
 	"\t_locationB\x11\n" +

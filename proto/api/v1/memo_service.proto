@@ -293,6 +293,10 @@ message Memo {
     MARKDOWN = 1;
     HTML = 2;
     PDF = 3;
+    // A structured "view" document (e.g. gallery). Its content holds only a
+    // JSON configuration (view type + scope + display rules), rendered
+    // client-side against live data.
+    VIEW = 4;
   }
 
   // Computed properties of a memo.
@@ -373,6 +377,7 @@ message ListMemosRequest {
   //   content (string), creator (string, e.g. "users/1"),
   //   created_ts / updated_ts (timestamp), pinned (bool),
   //   visibility (string: PRIVATE | PROTECTED | PUBLIC),
+  //   doc_type (string: MARKDOWN | HTML | PDF | VIEW),
   //   tags (list<string>; match with `"work" in tags`, not `tag == "work"`),
   //   has_task_list / has_link / has_code / has_incomplete_tasks (bool).
   // Note: the time fields here are created_ts / updated_ts, which differ from

@@ -185,6 +185,17 @@ func NewSchema() Schema {
 				CompareNeq: true,
 			},
 		},
+		"doc_type": {
+			Name:        "doc_type",
+			Kind:        FieldKindScalar,
+			Type:        FieldTypeString,
+			Column:      Column{Table: "memo", Name: "doc_type"},
+			Expressions: map[DialectName]string{},
+			AllowedComparisonOps: map[ComparisonOperator]bool{
+				CompareEq:  true,
+				CompareNeq: true,
+			},
+		},
 		"tags": {
 			Name:     "tags",
 			Kind:     FieldKindJSONList,
@@ -255,6 +266,7 @@ func NewSchema() Schema {
 		cel.Variable("tag", cel.StringType),
 		cel.Variable("tags", cel.ListType(cel.StringType)),
 		cel.Variable("visibility", cel.StringType),
+		cel.Variable("doc_type", cel.StringType),
 		cel.Variable("has_task_list", cel.BoolType),
 		cel.Variable("has_link", cel.BoolType),
 		cel.Variable("has_code", cel.BoolType),

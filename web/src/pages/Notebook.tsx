@@ -75,6 +75,9 @@ const Notebook = () => {
   const [newDocDialog, setNewDocDialog] = useState<{
     folderPath: string;
   } | null>(null);
+  const [newViewDialog, setNewViewDialog] = useState<{
+    folderPath: string;
+  } | null>(null);
   const [newFolderDialog, setNewFolderDialog] = useState<{
     folderPath: string;
   } | null>(null);
@@ -386,6 +389,7 @@ const Notebook = () => {
             archived={archived}
             onArchivedChange={setArchived}
             onNewDocument={(folderPath) => setNewDocDialog({ folderPath })}
+            onNewView={(folderPath) => setNewViewDialog({ folderPath })}
             onNewFolder={(folderPath) => setNewFolderDialog({ folderPath })}
             onUpload={handleUpload}
             onUploadPdf={handleUploadPdf}
@@ -407,6 +411,7 @@ const Notebook = () => {
             onDelete={handleDelete}
             onSaveHtml={handleSaveHtml}
             onMove={handleMove}
+            onOpenDocument={handleSelectDocument}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
@@ -421,6 +426,13 @@ const Notebook = () => {
         title={t("notebook.new-document")}
         placeholder={t("notebook.document-title-placeholder")}
         onConfirm={(title) => handleCreateDocument(newDocDialog?.folderPath ?? "", title)}
+      />
+      <PromptDialog
+        open={!!newViewDialog}
+        onOpenChange={(open) => !open && setNewViewDialog(null)}
+        title={t("notebook.new-view")}
+        placeholder={t("notebook.document-title-placeholder")}
+        onConfirm={(title) => handleCreateDocument(newViewDialog?.folderPath ?? "", title, Memo_DocType.VIEW, "")}
       />
       <PromptDialog
         open={!!newFolderDialog}

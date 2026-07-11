@@ -24,15 +24,23 @@ const getShortcutId = (name: string): string => {
 
 const escapeFilterValue = (value: string): string => JSON.stringify(value);
 
+// Doc types that are structural/organizational rather than browsable content,
+// and therefore excluded from content feeds (e.g. Explore). This is THE single
+// place deciding which doc types are feed-worthy — do not duplicate this
+// judgment elsewhere.
+export const FEED_EXCLUDED_DOC_TYPES = ["VIEW"];
+
 export interface UseMemoFiltersOptions {
   creatorName?: string;
   includeShortcuts?: boolean;
   includePinned?: boolean;
   visibilities?: Visibility[];
+  /** Exclude non-content doc types (FEED_EXCLUDED_DOC_TYPES) from the result. Set by feed pages like Explore. */
+  excludeNonFeedDocTypes?: boolean;
 }
 
 export const useMemoFilters = (options: UseMemoFiltersOptions = {}): string | undefined => {
-  const { creatorName, includeShortcuts = false, includePinned = false, visibilities } = options;
+  const { creatorName, includeShortcuts = false, includePinned = false, visibilities, excludeNonFeedDocTypes = false } = options;
 
   const { shortcuts } = useAuth();
   const { filters, shortcut: currentShortcut } = useMemoFilterContext();
@@ -102,6 +110,12 @@ export const useMemoFilters = (options: UseMemoFiltersOptions = {}): string | un
       conditions.push(`visibility in [${visibilityValues}]`);
     }
 
+    if (excludeNonFeedDocTypes) {
+      for (const docType of FEED_EXCLUDED_DOC_TYPES) {
+        conditions.push(`doc_type != ${escapeFilterValue(docType)}`);
+      }
+    }
+
     return conditions.length > 0 ? conditions.join(" && ") : undefined;
-  }, [creatorName, includeShortcuts, includePinned, visibilities, selectedShortcut, filters]);
+  }, [creatorName, includeShortcuts, includePinned, visibilities, selectedShortcut, filters, excludeNonFeedDocTypes]);
 };
