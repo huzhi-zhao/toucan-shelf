@@ -1,3 +1,4 @@
+import { BugIcon, CheckIcon, CircleCheckIcon, CircleHelpIcon, type LucideIcon, PencilIcon, TriangleAlertIcon, XIcon, ZapIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
@@ -81,15 +82,19 @@ export const mentionStyles = {
 } as const;
 
 /**
- * GitHub-style alert callout styling for the read-only memo view
- * (MemoContent/markdown/Alert.tsx), keyed by alert type. Each entry pairs a
- * default icon with border/background/text colors; `[!TYPE(icon)]` in the
- * source overrides the icon only, colors stay tied to the type.
+ * "Simple tier" alert callout styling for the read-only memo view
+ * (MemoContent/markdown/Alert.tsx) — a colored row with an icon, used for
+ * families that don't have a bespoke card design. Keyed by canonical family
+ * (see alertFamilies.ts), not by every alias. `[!TYPE(icon)]` in the source
+ * overrides the icon only, colors stay tied to the family.
  */
-export const alertStyles: Record<string, { icon: string; classes: string }> = {
-  note: { icon: "ℹ️", classes: "border-primary/40 bg-primary/10 text-foreground" },
-  tip: { icon: "💡", classes: "border-emerald-500/40 bg-emerald-500/10 text-foreground" },
-  important: { icon: "❗", classes: "border-violet-500/40 bg-violet-500/10 text-foreground" },
-  warning: { icon: "⚠️", classes: "border-amber-500/40 bg-amber-500/10 text-foreground" },
-  caution: { icon: "🚫", classes: "border-red-500/40 bg-red-500/10 text-foreground" },
+export const alertStyles: Record<string, { icon: LucideIcon; classes: string }> = {
+  todo: { icon: CircleCheckIcon, classes: "border-primary/40 bg-primary/10 text-foreground" },
+  aside: { icon: PencilIcon, classes: "border-primary/40 bg-primary/10 text-foreground" },
+  success: { icon: CheckIcon, classes: "border-emerald-500/40 bg-emerald-500/10 text-foreground" },
+  question: { icon: CircleHelpIcon, classes: "border-amber-500/40 bg-amber-500/10 text-foreground" },
+  caution: { icon: TriangleAlertIcon, classes: "border-amber-500/40 bg-amber-500/10 text-foreground" },
+  danger: { icon: ZapIcon, classes: "border-red-500/40 bg-red-500/10 text-foreground" },
+  failure: { icon: XIcon, classes: "border-red-500/40 bg-red-500/10 text-foreground" },
+  bug: { icon: BugIcon, classes: "border-red-500/40 bg-red-500/10 text-foreground" },
 } as const;

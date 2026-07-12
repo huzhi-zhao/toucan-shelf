@@ -8,15 +8,67 @@
 
 > [!INFO] info
 
-> [!TIP]  tip
+> [!TODO] todo
 
-> [!ERROR] error
+> [!ASIDE] aside
+
+> [!IMPORTANT] important
+
+> [!CHECK] check
+
+> [!DONE] done
+
+> [!SUCCESS] success
+
+> [!TIP] tip
+
+> [!HINT] hint
+
+> [!IMPORTANT] important
 
 > [!WARNING] this is warning
 
+> [!CAUTION] this is caution
+
+> [!ATTENTION] attention
+
+> [!ERROR] error
+
+> [!FAILURE] failure
+
+> [!FAIL] fail
+
+> [!MISSING] missing
+
+> [!DANGER] danger
+
+> [!BUG] bug
+
+> [!EXAMPLE] example
+
+> [!QUOTE] quote
+
+> [!CITE] cite
+
+> [!ABSTRACT] abstract
+
+> [!SUMMARY] summary
+
+> [!TLDR] tldr
+
+> [!QUESTION] question
+
+> [!HELP] help
+
+> [!FAQ] faq
+
+#### 下面是自定义 
+
 > [!IMPORTANT(📜)] this is a piece of important information , with a customed icon.
 
-> [!CAUTION] this is caution
+> [!NOTE(🎯)] this is a note with a customized target icon.
+
+> [!TIP(💡)] this is a tip with a customized light bulb icon.
 
 ```
 ## 4.2 Keyboard Shortcuts

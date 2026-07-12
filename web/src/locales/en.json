@@ -194,6 +194,20 @@
       "link-prompt": "Enter a URL",
       "more": "More formatting"
     },
+    "callout": {
+      "trigger": "Callout",
+      "note": "Note",
+      "info": "Info",
+      "todo": "Todo",
+      "tip": "Tip",
+      "important": "Important",
+      "success": "Success",
+      "question": "Question",
+      "warning": "Warning",
+      "danger": "Danger",
+      "example": "Example",
+      "quote": "Quote"
+    },
     "insert-menu": {
       "add-location": "Add location",
       "link-memo": "Link memo",

@@ -130,7 +130,7 @@ const GalleryBlockView = ({ block, memo, openDoc }: BlockProps) => {
           {t("gallery.empty")}
         </div>
       ) : (
-        <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(200px,1fr))]">
+        <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
           {docs.map((doc) => {
             const props = propertyMap(doc.content);
             const cover = coverUrl(doc, props, block);
@@ -143,7 +143,7 @@ const GalleryBlockView = ({ block, memo, openDoc }: BlockProps) => {
                 className="flex flex-col rounded-lg border border-border overflow-hidden text-left bg-card hover:shadow-md hover:border-accent transition-all"
                 onClick={() => openDoc(doc.name)}
               >
-                <div className="w-full aspect-[16/10] bg-muted flex items-center justify-center overflow-hidden">
+                <div className="w-full aspect-[2/1] bg-muted flex items-center justify-center overflow-hidden">
                   {cover ? (
                     <img src={cover} alt="" loading="lazy" className="w-full h-full object-cover" />
                   ) : (

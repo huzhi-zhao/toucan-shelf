@@ -1,8 +1,29 @@
-import { Heading1Icon, Heading2Icon, Heading3Icon, type LucideIcon, Minimize2Icon, MoreHorizontalIcon, TypeIcon } from "lucide-react";
+import {
+  AlertCircleIcon,
+  CheckIcon,
+  CircleCheckIcon,
+  CircleHelpIcon,
+  FlameIcon,
+  Heading1Icon,
+  Heading2Icon,
+  Heading3Icon,
+  InfoIcon,
+  ListIcon,
+  type LucideIcon,
+  MessageSquareQuoteIcon,
+  Minimize2Icon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  QuoteIcon,
+  TriangleAlertIcon,
+  TypeIcon,
+  ZapIcon,
+} from "lucide-react";
 import { type ComponentPropsWithoutRef, forwardRef, type MouseEventHandler, type RefObject, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import type { Translations } from "@/utils/i18n";
 import { useTranslate } from "@/utils/i18n";
 import {
   EDITOR_COMMANDS,
@@ -21,6 +42,29 @@ interface FormattingToolbarProps {
   /** Extra classes for the host to frame the toolbar row. */
   className?: string;
 }
+
+// Representative callout types offered by the toolbar dropdown — one per
+// visual family (alertFamilies.ts), not all 28 Obsidian aliases, so the menu
+// stays short. Picking one inserts `> [!TYPE] ` as its own block at the cursor.
+interface CalloutMenuItem {
+  type: string;
+  labelKey: Translations;
+  icon: LucideIcon;
+}
+
+const CALLOUT_MENU_ITEMS: CalloutMenuItem[] = [
+  { type: "note", labelKey: "editor.callout.note", icon: PencilIcon },
+  { type: "info", labelKey: "editor.callout.info", icon: InfoIcon },
+  { type: "todo", labelKey: "editor.callout.todo", icon: CircleCheckIcon },
+  { type: "tip", labelKey: "editor.callout.tip", icon: FlameIcon },
+  { type: "important", labelKey: "editor.callout.important", icon: AlertCircleIcon },
+  { type: "success", labelKey: "editor.callout.success", icon: CheckIcon },
+  { type: "question", labelKey: "editor.callout.question", icon: CircleHelpIcon },
+  { type: "warning", labelKey: "editor.callout.warning", icon: TriangleAlertIcon },
+  { type: "danger", labelKey: "editor.callout.danger", icon: ZapIcon },
+  { type: "example", labelKey: "editor.callout.example", icon: ListIcon },
+  { type: "quote", labelKey: "editor.callout.quote", icon: QuoteIcon },
+];
 
 const MARK_COMMANDS = EDITOR_COMMANDS.filter((command) => command.group === "mark");
 const BLOCK_COMMANDS = EDITOR_COMMANDS.filter((command) => command.group === "block");
@@ -134,6 +178,22 @@ export function FormattingToolbar({ controllerRef, onExit, className }: Formatti
       ) : (
         blockButtons.map((button) => <SegmentButton key={button.label} {...button} onMouseDown={preventFocusSteal} />)
       )}
+
+      <Divider />
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <SegmentButton Icon={MessageSquareQuoteIcon} label={t("editor.callout.trigger")} onMouseDown={preventFocusSteal} />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" onCloseAutoFocus={returnFocusToEditor}>
+          {CALLOUT_MENU_ITEMS.map((item) => (
+            <DropdownMenuItem key={item.type} onClick={() => controllerRef.current?.insertMarkdown(`> [!${item.type.toUpperCase()}] `)}>
+              <item.icon className="w-4 h-4" />
+              {t(item.labelKey)}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {onExit && (
         <>

@@ -54,7 +54,8 @@ interface PropertiesPanelProps {
  * Editing happens only in the raw markdown editor — this panel never mutates.
  */
 export const PropertiesPanel = ({ properties }: PropertiesPanelProps) => {
-  if (properties.length === 0) {
+  const isHidden = properties.some((property) => property.key === "hidden" && property.type === "checkbox" && property.value === true);
+  if (properties.length === 0 || isHidden) {
     return null;
   }
 

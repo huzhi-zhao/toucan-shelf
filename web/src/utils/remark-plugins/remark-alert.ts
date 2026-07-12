@@ -1,21 +1,24 @@
 import type { Blockquote, Paragraph, Root, Text } from "mdast";
 import { visit } from "unist-util-visit";
 
-export const ALERT_TYPES = ["note", "tip", "important", "warning", "caution"] as const;
-export type AlertType = (typeof ALERT_TYPES)[number];
-
+// Any `[!WORD]` marker is accepted here — recognition of *which* callout type
+// it maps to (and the fallback for unrecognized ones) happens downstream in
+// resolveAlertFamily(). This plugin's only job is to detect the marker syntax
+// and extract the raw type string.
+//
 // Matches a leading `[!TYPE]` or `[!TYPE(icon)]` marker at the start of the
 // blockquote, e.g. `> [!WARNING]`, `> [!IMPORTANT(✍🏻)] inline body text`, or
 // `> [!NOTE]` on its own line followed by more lines. Only the marker itself is
 // consumed; whatever follows on the same line (if any) becomes the alert body.
-const ALERT_MARKER_RE = new RegExp(`^\\[!(${ALERT_TYPES.join("|")})(?:\\(([^)]+)\\))?\\][ \\t]*`, "i");
+const ALERT_MARKER_RE = /^\[!([A-Za-z][\w-]*)(?:\(([^)]+)\))?\][ \t]*/;
 
 /**
- * Detects GitHub-style alert blockquotes (`> [!NOTE]`, `> [!WARNING(⚠️)]`, ...)
- * and tags the mdast `blockquote` node with `data.hProperties` so it survives
- * mdast-to-hast unchanged as `data-alert`/`data-alert-icon` attributes on the
- * rendered `<blockquote>` element. A blockquote without a recognized marker is
- * left untouched and renders as a normal blockquote.
+ * Detects Obsidian/GitHub-style alert blockquotes (`> [!NOTE]`, `> [!WARNING(⚠️)]`,
+ * `> [!TODO]`, ...) and tags the mdast `blockquote` node with `data.hProperties`
+ * so it survives mdast-to-hast unchanged as `data-alert`/`data-alert-icon`
+ * attributes on the rendered `<blockquote>` element. Any `[!WORD]` marker is
+ * accepted; a blockquote whose first line doesn't match the marker syntax at
+ * all is left untouched and renders as a normal blockquote.
  */
 export const remarkAlert = () => {
   return (tree: Root) => {

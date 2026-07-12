@@ -141,6 +141,20 @@
     "no-changes-detected": "未检测到更改",
     "save": "保存",
     "saving": "保存中...",
+    "callout": {
+      "trigger": "标注",
+      "note": "note",
+      "info": "info",
+      "todo": "todo",
+      "tip": "tip",
+      "important": "important",
+      "success": "success",
+      "question": "question",
+      "warning": "warning",
+      "danger": "danger",
+      "example": "example",
+      "quote": "quote"
+    },
     "insert-menu": {
       "add-location": "添加位置",
       "link-memo": "链接备忘录",

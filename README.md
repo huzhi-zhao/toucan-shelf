@@ -19,6 +19,9 @@ hierarchy** combined with **Notion's views**, without either one's weight.
 - **Memos' strength (kept intact):** a single Go binary, a lightweight one
   record = one document model, and full REST + gRPC APIs. No heavyweight
   per-page database.
+- **MemoBase's own edge (vs. Obsidian):** read and edit online from any
+  browser, with a visual Bookshelf to manage many knowledge bases — lightweight
+  and instantly reachable, no desktop app to install or sync.
 
 ![knowledgebase](docs/images/Yuque-like-knowledgebase.png)
 
