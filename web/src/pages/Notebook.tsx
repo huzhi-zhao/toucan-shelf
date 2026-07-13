@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { DocumentLinkProvider, resolveWorkspacePath } from "@/components/MemoContent/DocumentLinkContext";
 import DocumentView from "@/components/Notebook/DocumentView";
 import MoveFolderDialog from "@/components/Notebook/MoveFolderDialog";
 import NotebookSidebar from "@/components/Notebook/NotebookSidebar";
@@ -408,18 +409,25 @@ const Notebook = () => {
       )}
       <div className="flex-1 min-w-0 h-full">
         {memo ? (
-          <DocumentView
-            memo={memo}
-            onSaved={() => {
-              invalidateTree();
+          <DocumentLinkProvider
+            value={{
+              resolve: (href) => resolveWorkspacePath(tree, href, memo.folderPath),
+              navigate: (memoName) => handleSelectDocument(memoName),
             }}
-            onRenamed={handleRename}
-            onArchiveToggle={handleArchiveToggle}
-            onDelete={handleDelete}
-            onSaveHtml={handleSaveHtml}
-            onMove={handleMove}
-            onOpenDocument={handleSelectDocument}
-          />
+          >
+            <DocumentView
+              memo={memo}
+              onSaved={() => {
+                invalidateTree();
+              }}
+              onRenamed={handleRename}
+              onArchiveToggle={handleArchiveToggle}
+              onDelete={handleDelete}
+              onSaveHtml={handleSaveHtml}
+              onMove={handleMove}
+              onOpenDocument={handleSelectDocument}
+            />
+          </DocumentLinkProvider>
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
             {tree.length === 0 ? t("notebook.no-documents") : t("notebook.select-a-document")}

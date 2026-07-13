@@ -1,8 +1,9 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 import { ArrowUpLeftFromCircleIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Link, Navigate, useLocation, useParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import MemoCommentSection from "@/components/MemoCommentSection";
+import { DocumentLinkProvider, resolveWorkspacePath } from "@/components/MemoContent/DocumentLinkContext";
 import { MentionResolutionProvider } from "@/components/MemoContent/MentionResolutionContext";
 import { MemoDetailSidebar, MemoDetailSidebarDrawer } from "@/components/MemoDetailSidebar";
 import MemoView from "@/components/MemoView";
@@ -13,6 +14,7 @@ import useMemoDetailError from "@/hooks/useMemoDetailError";
 import { useInfiniteMemoComments, useMemo } from "@/hooks/useMemoQueries";
 import { useSharedMemo, withShareAttachmentLinks } from "@/hooks/useMemoShareQueries";
 import usePageTitle from "@/hooks/usePageTitle";
+import { useWorkspaceTree } from "@/hooks/useWorkspaceQueries";
 import { cn } from "@/lib/utils";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 
@@ -21,6 +23,7 @@ const MemoDetail = () => {
   const [shareImageDialogOpen, setShareImageDialogOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const params = useParams();
+  const navigate = useNavigate();
   const location = useLocation();
   const { state: locationState, hash } = location;
 
@@ -38,6 +41,9 @@ const MemoDetail = () => {
   const { data: memoFromShare, error: shareError, isLoading: shareLoading } = useSharedMemo(shareToken ?? "", { enabled: isShareMode });
 
   const memo = isShareMode ? memoFromShare : memoFromDirect;
+  // Workspace tree for resolving relative in-document links to their standard `/memos/{uid}` URLs.
+  // Not fetched in share mode (no workspace context), so relative links there stay external.
+  const { data: workspaceTree = [] } = useWorkspaceTree(isShareMode ? undefined : memo?.workspace, false);
   const error = isShareMode ? shareError : directError;
   const isLoading = isShareMode ? shareLoading : directLoading;
   const memoName = memo?.name ?? memoNameFromParams;
@@ -113,19 +119,26 @@ const MemoDetail = () => {
                 </Link>
               </div>
             )}
-            <MemoView
-              key={`${displayMemo.name}-${displayMemo.updateTime}`}
-              memo={displayMemo}
-              compact={false}
-              parentPage={locationState?.from}
-              shareImageDialogOpen={shareImageDialogOpen}
-              showCreator
-              showVisibility
-              showPinned
-              onShareImageDialogOpenChange={setShareImageDialogOpen}
-              sidebarCollapsed={sidebarCollapsed}
-              onToggleSidebar={() => setSidebarCollapsed((v) => !v)}
-            />
+            <DocumentLinkProvider
+              value={{
+                resolve: (href) => resolveWorkspacePath(workspaceTree, href, displayMemo.folderPath),
+                navigate: (memoName) => navigate(`/${memoName}`),
+              }}
+            >
+              <MemoView
+                key={`${displayMemo.name}-${displayMemo.updateTime}`}
+                memo={displayMemo}
+                compact={false}
+                parentPage={locationState?.from}
+                shareImageDialogOpen={shareImageDialogOpen}
+                showCreator
+                showVisibility
+                showPinned
+                onShareImageDialogOpenChange={setShareImageDialogOpen}
+                sidebarCollapsed={sidebarCollapsed}
+                onToggleSidebar={() => setSidebarCollapsed((v) => !v)}
+              />
+            </DocumentLinkProvider>
             <MemoCommentSection
               memo={displayMemo}
               comments={comments}
