@@ -78,7 +78,13 @@ export const routeConfig: RouteObject[] = [
             children: [
               {
                 element: <LandingRoute />,
-                children: [{ index: true, element: <Notebook /> }],
+                children: [
+                  { index: true, element: <Notebook /> },
+                  // Path-based workspace/document URLs, e.g. `/IT/memos%2FabcId`. Workspace is
+                  // matched case-insensitively against the workspace title in Notebook.tsx.
+                  { path: ":workspaceTitle", element: <Notebook /> },
+                  { path: ":workspaceTitle/:docId", element: <Notebook /> },
+                ],
               },
               { path: Routes.ABOUT, element: <About /> },
               { path: Routes.EXPLORE, element: <Explore /> },

@@ -2,7 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import DocumentView from "@/components/Notebook/DocumentView";
 import MoveFolderDialog from "@/components/Notebook/MoveFolderDialog";
 import NotebookSidebar from "@/components/Notebook/NotebookSidebar";
@@ -59,12 +59,15 @@ const Notebook = () => {
   const currentUser = useCurrentUser();
   const queryClient = useQueryClient();
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { workspaceTitle, docId } = useParams<{ workspaceTitle?: string; docId?: string }>();
   const { data: workspaces = [] } = useWorkspaces();
   const sidebarCollapsed = useNotebookSidebarCollapsed();
   const { getLastOpened, setLastOpened } = useLastOpened(currentUser?.name);
-  const requestedWorkspace = (location.state as { workspace?: string } | null)?.workspace ?? searchParams.get("ws") ?? undefined;
-  const requestedMemo = searchParams.get("docId") ?? undefined;
+  const requestedWorkspace =
+    (location.state as { workspace?: string } | null)?.workspace ??
+    workspaces.find((w) => w.title.toLowerCase() === workspaceTitle?.toLowerCase())?.name;
+  const requestedMemo = docId ?? undefined;
 
   const [workspaceName, setWorkspaceName] = useState<string | undefined>(undefined);
   const [selectedMemo, setSelectedMemo] = useState<string | undefined>(undefined);
@@ -149,27 +152,31 @@ const Notebook = () => {
       setWorkspaceName(name);
       setSelectedMemo(undefined);
       restoredMemo.current = false; // auto-select the workspace's last-opened doc once its tree loads
-      setSearchParams({ ws: name }, { replace: true });
+      const title = workspaces.find((w) => w.name === name)?.title ?? name;
+      navigate(`/${encodeURIComponent(title)}`, { replace: true });
     },
-    [setSearchParams],
+    [workspaces, navigate],
   );
 
   const handleSelectDocument = useCallback(
     (memoName: string) => {
       setSelectedMemo(memoName);
       if (workspaceName) {
-        setSearchParams({ ws: workspaceName, docId: memoName }, { replace: true });
+        const title = workspaces.find((w) => w.name === workspaceName)?.title ?? workspaceName;
+        navigate(`/${encodeURIComponent(title)}/${encodeURIComponent(memoName)}`, { replace: true });
       }
     },
-    [workspaceName, setSearchParams],
+    [workspaceName, workspaces, navigate],
   );
 
   const handleOpenInNewTab = useCallback(() => {
     if (!workspaceName) return;
-    const params = new URLSearchParams({ ws: workspaceName });
-    if (selectedMemo) params.set("docId", selectedMemo);
-    window.open(`${window.location.origin}/?${params.toString()}`, "_blank", "noopener,noreferrer");
-  }, [workspaceName, selectedMemo]);
+    const title = workspaces.find((w) => w.name === workspaceName)?.title ?? workspaceName;
+    const path = selectedMemo
+      ? `/${encodeURIComponent(title)}/${encodeURIComponent(selectedMemo)}`
+      : `/${encodeURIComponent(title)}`;
+    window.open(`${window.location.origin}${path}`, "_blank", "noopener,noreferrer");
+  }, [workspaceName, selectedMemo, workspaces]);
 
   const invalidateTree = useCallback(() => {
     if (workspaceName) {
