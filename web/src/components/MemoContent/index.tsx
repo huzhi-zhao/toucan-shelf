@@ -13,7 +13,7 @@ import { useResolvedMentionUsernames } from "./MentionResolutionContext";
 import type { MemoContentProps } from "./types";
 
 const MemoContent = (props: MemoContentProps) => {
-  const { className, contentClassName, content, isHtml, isPdf, pdfTitle, pdfUrl, pdfAttachment, pdfDetailView, onClick, onDoubleClick } =
+  const { className, contentClassName, content, isHtml, isPdf, pdfTitle, pdfUrl, pdfAttachment, pdfDetailView, actions, onClick, onDoubleClick } =
     props;
   const t = useTranslate();
   const [htmlPreviewHeight, setHtmlPreviewHeight] = useState(0);
@@ -77,16 +77,21 @@ const MemoContent = (props: MemoContentProps) => {
           />
         )}
       </div>
-      {showCompactMode !== undefined && (
-        <div className="relative w-full mt-2">
-          <button
-            type="button"
-            className="group inline-flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            onClick={toggleCompactMode}
-          >
-            <span>{compactLabel}</span>
-            {showCompactMode === "ALL" ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
-          </button>
+      {(showCompactMode !== undefined || actions) && (
+        <div className="relative w-full mt-2 flex items-center justify-between">
+          {showCompactMode !== undefined ? (
+            <button
+              type="button"
+              className="group inline-flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              onClick={toggleCompactMode}
+            >
+              <span>{compactLabel}</span>
+              {showCompactMode === "ALL" ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+            </button>
+          ) : (
+            <span />
+          )}
+          {actions}
         </div>
       )}
     </div>

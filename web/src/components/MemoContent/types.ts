@@ -22,6 +22,8 @@ export interface MemoContentProps {
   autoFold?: boolean;
   /** Never fold, even if the rendered content exceeds the fold trigger height (e.g. pinned memos). */
   alwaysExpanded?: boolean;
+  /** Extra controls (e.g. an edit button) rendered on the same row as the show-more/less toggle, right-aligned. Shown even when the toggle itself isn't (short content). */
+  actions?: React.ReactNode;
   className?: string;
   contentClassName?: string;
   onClick?: (e: React.MouseEvent) => void;

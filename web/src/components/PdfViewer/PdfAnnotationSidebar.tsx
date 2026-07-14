@@ -1,4 +1,4 @@
-import { ChevronDownIcon, ChevronUpIcon, PencilIcon, XIcon } from "lucide-react";
+import { PencilIcon, XIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import MemoContent from "@/components/MemoContent";
 import MemoEditor from "@/components/MemoEditor";
@@ -17,18 +17,12 @@ interface Props {
   className?: string;
 }
 
-// Above this length a note is treated as "long" and starts collapsed behind a
-// clamp + expand toggle, rather than relying on line-clamp alone (which can still
-// leave a wall of text taller than the card looks like it wants to be).
-const LONG_NOTE_THRESHOLD = 160;
-
 // Docked comment list, modeled after Adobe Acrobat's comments panel (title bar toggle,
 // grouped by page, click-to-jump) but kept more compact: no per-comment reply affordance,
 // smaller card padding, no avatar row — this app's PDF notes are jump targets, not a thread.
 export const PdfAnnotationSidebar = ({ annotations, selectedMemoName, onSelect, onClose, onEdited, className }: Props) => {
   const t = useTranslate();
   const selectedRef = useRef<HTMLDivElement>(null);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [editingMemoName, setEditingMemoName] = useState<string>();
 
   const pages = new Map<number, PdfAnnotationEntry[]>();
@@ -73,8 +67,6 @@ export const PdfAnnotationSidebar = ({ annotations, selectedMemoName, onSelect, 
               {entries.map((entry) => {
                 const isSelected = entry.memo.name === selectedMemoName;
                 const text = entry.memo.content || entry.memo.snippet;
-                const isLong = text.length > LONG_NOTE_THRESHOLD;
-                const isExpanded = expanded[entry.memo.name] ?? false;
                 const isEditing = editingMemoName === entry.memo.name;
 
                 if (isEditing) {
@@ -112,34 +104,26 @@ export const PdfAnnotationSidebar = ({ annotations, selectedMemoName, onSelect, 
                       if (e.key === "Enter" || e.key === " ") onSelect?.(entry.memo.name, entry.page);
                     }}
                   >
-                    <div className={cn("break-words [&_*]:!text-xs", !isExpanded && "line-clamp-4")}>
-                      <MemoContent content={text} memoName={entry.memo.name} compact alwaysExpanded contentClassName="!p-0" />
-                    </div>
-                    <div className="flex items-center justify-end gap-2 mt-0.5">
-                      <button
-                        type="button"
-                        className="inline-flex items-center gap-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingMemoName(entry.memo.name);
-                        }}
-                      >
-                        <PencilIcon className="w-3 h-3" />
-                        {t("common.edit")}
-                      </button>
-                      {isLong && (
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setExpanded((prev) => ({ ...prev, [entry.memo.name]: !isExpanded }));
-                          }}
-                        >
-                          {isExpanded ? t("pdf.note-collapse") : t("pdf.note-expand")}
-                          {isExpanded ? <ChevronUpIcon className="w-3 h-3" /> : <ChevronDownIcon className="w-3 h-3" />}
-                        </button>
-                      )}
+                    <div className="break-words [&_*]:!text-xs">
+                      <MemoContent
+                        content={text}
+                        memoName={entry.memo.name}
+                        compact
+                        contentClassName="!p-0"
+                        actions={
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingMemoName(entry.memo.name);
+                            }}
+                          >
+                            <PencilIcon className="w-3 h-3" />
+                            {t("common.edit")}
+                          </button>
+                        }
+                      />
                     </div>
                   </div>
                 );
