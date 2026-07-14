@@ -10,6 +10,8 @@ interface AlertProps extends React.BlockquoteHTMLAttributes<HTMLQuoteElement>, R
   /** Raw alias from the `[!TYPE]` marker (e.g. "hint", "done"), lowercased by remark-alert. */
   alertType: string;
   alertIcon?: string;
+  /** Custom title typed after the `[!TYPE]` marker on the same line, if any (see remark-alert). */
+  alertTitle?: string;
 }
 
 /**
@@ -23,11 +25,11 @@ interface AlertProps extends React.BlockquoteHTMLAttributes<HTMLQuoteElement>, R
  * special tier, just without a bespoke layout. A family's default icon may be
  * a lucide component or a literal emoji (e.g. "example"'s 🌰).
  */
-export const Alert = ({ children, className, alertType, alertIcon, node: _node, ...props }: AlertProps) => {
+export const Alert = ({ children, className, alertType, alertIcon, alertTitle, node: _node, ...props }: AlertProps) => {
   const family = resolveAlertFamily(alertType);
 
   if (SPECIAL_CARD_FAMILIES.has(family)) {
-    return renderSpecialCallout({ family, rawType: alertType, customIcon: alertIcon, className, children });
+    return renderSpecialCallout({ family, rawType: alertType, customIcon: alertIcon, title: alertTitle, className, children });
   }
 
   const style = alertStyles[family];
@@ -40,7 +42,7 @@ export const Alert = ({ children, className, alertType, alertIcon, node: _node, 
         <span aria-hidden className="shrink-0 leading-none">
           {alertIcon || iconGlyph || (Icon && <Icon className="w-4 h-4" />)}
         </span>
-        {alertDisplayLabel(alertType)}
+        {alertTitle || alertDisplayLabel(alertType)}
       </div>
       <div className="min-w-0 mt-1">
         <NestedMarkdownRenderContext>{children}</NestedMarkdownRenderContext>

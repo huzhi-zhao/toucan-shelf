@@ -100,3 +100,8 @@ export function getAlertIcon(node: HastElement): string | undefined {
   const dataAlertIcon = node.properties?.dataAlertIcon;
   return typeof dataAlertIcon === "string" && dataAlertIcon !== "" ? dataAlertIcon : undefined;
 }
+
+export function getAlertTitle(node: HastElement): string | undefined {
+  const dataAlertTitle = node.properties?.dataAlertTitle;
+  return typeof dataAlertTitle === "string" && dataAlertTitle !== "" ? dataAlertTitle : undefined;
+}

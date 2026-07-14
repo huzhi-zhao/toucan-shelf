@@ -8,6 +8,8 @@ interface SpecialCalloutProps {
   rawType: string;
   /** Override from `[!TYPE(icon)]`; falls back to the family's default emoji. */
   customIcon?: string;
+  /** Custom title typed after the `[!TYPE]` marker; falls back to `alertDisplayLabel(rawType)` where used. */
+  title?: string;
   className?: string;
   children: React.ReactNode;
 }
@@ -15,11 +17,11 @@ interface SpecialCalloutProps {
 const CARD_BASE = "relative my-3 rounded-2xl border bg-card shadow-sm not-italic";
 
 /** note: a rounded card with a filled pill "tag" floating over the top-left border. */
-function NoteCard({ rawType, className, children }: SpecialCalloutProps) {
+function NoteCard({ rawType, title, className, children }: SpecialCalloutProps) {
   return (
     <blockquote className={cn(CARD_BASE, "border-l-4 border-l-primary border-border px-5 pt-6 pb-4", className)}>
-      <span className="absolute -top-3 left-4 rounded-full bg-primary px-3 py-1 text-[11px] font-bold tracking-wide text-primary-foreground">
-        {alertDisplayLabel(rawType).toUpperCase()}
+      <span className="absolute -top-3 left-4 rounded-full bg-primary px-3 py-1 text-sm font-bold tracking-wide text-primary-foreground">
+        {(title || alertDisplayLabel(rawType)).toUpperCase()}
       </span>
       <div className="min-w-0 leading-7">
         <NestedMarkdownRenderContext>{children}</NestedMarkdownRenderContext>
@@ -43,7 +45,7 @@ function QuoteBox({ className, children }: SpecialCalloutProps) {
 }
 
 /** important: a "macOS window" card — traffic-light dots header, title, body. */
-function WindowChromeCard({ rawType, className, children }: SpecialCalloutProps) {
+function WindowChromeCard({ rawType, title, className, children }: SpecialCalloutProps) {
   return (
     <blockquote className={cn(CARD_BASE, "overflow-hidden border-border p-0", className)}>
       <div className="flex items-center gap-3.5 border-b border-border bg-muted/60 px-4 py-3">
@@ -52,7 +54,7 @@ function WindowChromeCard({ rawType, className, children }: SpecialCalloutProps)
           <span className="h-3 w-3 rounded-full bg-[#FEBC2E]" />
           <span className="h-3 w-3 rounded-full bg-[#28C840]" />
         </div>
-        <span className="text-sm font-semibold text-muted-foreground">{alertDisplayLabel(rawType)}</span>
+        <span className="text-sm font-semibold text-muted-foreground">{title || alertDisplayLabel(rawType)}</span>
       </div>
       <div className="min-w-0 px-5 py-4 leading-7">
         <NestedMarkdownRenderContext>{children}</NestedMarkdownRenderContext>
@@ -62,11 +64,11 @@ function WindowChromeCard({ rawType, className, children }: SpecialCalloutProps)
 }
 
 /** summary / abstract / tldr: a card with a rounded "ribbon" badge in the top-right corner. */
-function RibbonCard({ rawType, className, children }: SpecialCalloutProps) {
+function RibbonCard({ rawType, title, className, children }: SpecialCalloutProps) {
   return (
     <blockquote className={cn(CARD_BASE, "border-border px-5 pt-5 pb-4", className)}>
       <span className="absolute top-4 right-4 rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-bold tracking-wide text-indigo-600 dark:text-indigo-300">
-        {alertDisplayLabel(rawType)}
+        {title || alertDisplayLabel(rawType)}
       </span>
       <div className="min-w-0 pr-16 leading-7">
         <NestedMarkdownRenderContext>{children}</NestedMarkdownRenderContext>
@@ -82,8 +84,11 @@ const MODERN_PILL_CONFIG: Record<string, { emoji: string; border: string; label:
   attention: { emoji: "❗", border: "border-l-amber-500", label: "border-amber-500 text-amber-600 dark:text-amber-400" },
 };
 
-function ModernCalloutPill({ family, rawType, customIcon, className, children }: SpecialCalloutProps) {
+function ModernCalloutPill({ family, rawType, customIcon, title, className, children }: SpecialCalloutProps) {
   const config = MODERN_PILL_CONFIG[family] ?? MODERN_PILL_CONFIG.tip;
+  // tip/todo keep their fixed label regardless of any custom title typed after the marker;
+  // attention is the only family in this shared component allowed to show a custom title.
+  const label = family === "attention" ? title || alertDisplayLabel(rawType) : alertDisplayLabel(rawType);
   return (
     <blockquote className={cn(CARD_BASE, "border-l-4 border-border px-5 pt-6 pb-4", config.border, className)}>
       <span
@@ -93,7 +98,7 @@ function ModernCalloutPill({ family, rawType, customIcon, className, children }:
         )}
       >
         <span aria-hidden>{customIcon || config.emoji}</span>
-        {alertDisplayLabel(rawType)}
+        {label}
       </span>
       <div className="min-w-0 leading-7">
         <NestedMarkdownRenderContext>{children}</NestedMarkdownRenderContext>

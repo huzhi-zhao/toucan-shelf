@@ -98,9 +98,13 @@ Open `http://localhost:5230` and start writing.
 
 ### Development
 
-```bash
-go run ./cmd/memos --port 8081   # backend
-pnpm dev                         # web (in ./web)
+```shell
+# backend
+go run ./cmd/memos --port 8081  
+```
+```shell
+# web (in ./web)
+cd web && pnpm dev                      
 ```
 
 ## Relationship to upstream Memos
