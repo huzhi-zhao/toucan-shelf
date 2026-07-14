@@ -19,6 +19,14 @@ export interface EditorController {
   /** Replace the first occurrence of `search` in the document with `replacement`, if present. */
   replaceText(search: string, replacement: string): void;
   scrollToCursor(): void;
+  /** Move the cursor to the start of a 1-indexed line and scroll it into view (e.g. outline navigation). */
+  scrollToLine(line: number): void;
+  /** Current pixel scroll offset of the editor's scrollable content (e.g. for a scroll-position cache). */
+  getScrollTop(): number;
+  /** Set the editor's scroll offset directly, without moving the cursor (e.g. restoring a cached position). */
+  setScrollTop(top: number): void;
+  /** Registers a listener fired on every scroll of the editor's content. Returns an unsubscribe. */
+  onScroll(listener: (top: number) => void): () => void;
   /** Select the entire document (used by tests and select-all flows). */
   selectAll(): void;
   /**

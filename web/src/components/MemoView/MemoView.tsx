@@ -1,5 +1,6 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
+import type { EditorController } from "@/components/MemoEditor/types/editorController";
 import { useAuth } from "@/contexts/AuthContext";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import { useUser } from "@/hooks/useUserQueries";
@@ -16,7 +17,7 @@ import { useImagePreview } from "./hooks";
 import { computeCommentAmount, MemoViewContext } from "./MemoViewContext";
 import type { MemoViewProps } from "./types";
 
-const MemoView: React.FC<MemoViewProps> = (props: MemoViewProps) => {
+const MemoViewImpl = (props: MemoViewProps, forwardedRef: React.ForwardedRef<EditorController>) => {
   const {
     memo: memoData,
     className,
@@ -28,10 +29,14 @@ const MemoView: React.FC<MemoViewProps> = (props: MemoViewProps) => {
     showPinned,
     sidebarCollapsed,
     onToggleSidebar,
+    onEditingChange,
+    onDraftContentChange,
   } = props;
   const cardRef = useRef<HTMLDivElement>(null);
   const [showEditor, setShowEditor] = useState(false);
   const [cardWidth, setCardWidth] = useState(0);
+  const editorControllerRef = useRef<EditorController>(null);
+  useImperativeHandle(forwardedRef, () => editorControllerRef.current as EditorController, []);
 
   const currentUser = useCurrentUser();
   const { userTagsSetting } = useAuth();
@@ -49,6 +54,12 @@ const MemoView: React.FC<MemoViewProps> = (props: MemoViewProps) => {
 
   const openEditor = useCallback(() => setShowEditor(true), []);
   const closeEditor = useCallback(() => setShowEditor(false), []);
+
+  useEffect(() => {
+    onEditingChange?.(showEditor);
+    if (!showEditor) onDraftContentChange?.(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showEditor]);
 
   const location = useLocation();
   const isInMemoDetailPage = location.pathname.startsWith(`/${memoData.name}`) || location.pathname.startsWith("/memos/shares/");
@@ -115,11 +126,13 @@ const MemoView: React.FC<MemoViewProps> = (props: MemoViewProps) => {
   if (showEditor) {
     return (
       <MemoEditor
+        ref={editorControllerRef}
         autoFocus
         className="mb-2"
         cacheKey={`inline-memo-editor-${memoData.name}`}
         memo={memoData}
         parentMemoName={memoData.parent || undefined}
+        onContentChange={onDraftContentChange}
         onConfirm={closeEditor}
         onCancel={closeEditor}
       />
@@ -170,4 +183,7 @@ const MemoView: React.FC<MemoViewProps> = (props: MemoViewProps) => {
   );
 };
 
-export default memo(MemoView);
+const MemoView = memo(forwardRef(MemoViewImpl));
+MemoView.displayName = "MemoView";
+
+export default MemoView;

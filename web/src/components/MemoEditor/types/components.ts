@@ -23,6 +23,8 @@ export interface MemoEditorProps {
   onCancel?: () => void;
   /** Grow the editor to fill its container's height instead of capping at the normal-mode max-height (e.g. a full-page editor like the Notebook document view). */
   expand?: boolean;
+  /** Fired with the current markdown on every content change (e.g. to keep an outline sidebar live while editing). */
+  onContentChange?: (content: string) => void;
 }
 
 export interface EditorContentProps {

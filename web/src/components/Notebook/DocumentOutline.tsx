@@ -1,8 +1,8 @@
 import { PaperclipIcon } from "lucide-react";
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { useTranslate } from "@/utils/i18n";
 import { parseFrontmatter } from "@/utils/frontmatter";
+import { useTranslate } from "@/utils/i18n";
 import { extractHeadings } from "@/utils/markdown-manipulation";
 
 // DOM id of the attachment list section rendered within the document's
@@ -14,19 +14,41 @@ interface Props {
   content: string;
   containerRef: React.RefObject<HTMLElement | null>;
   hasAttachments?: boolean;
+  /** Whether the document is currently open in its inline editor (no rendered DOM anchors to scroll to). */
+  isEditing?: boolean;
+  /** Scrolls the editor to a given 1-indexed line of its full (frontmatter-included) content. Required when `isEditing`. */
+  onScrollToLine?: (line: number) => void;
 }
 
-const DocumentOutline = ({ content, containerRef, hasAttachments }: Props) => {
+const DocumentOutline = ({ content, containerRef, hasAttachments, isEditing, onScrollToLine }: Props) => {
   const t = useTranslate();
   // Uses the same mdast-based extraction as rehype-heading-id so the slug
   // computed here always matches the id assigned to the rendered heading,
   // even when the heading text contains inline markdown (links, emphasis, etc.).
-  const items = useMemo(() => extractHeadings(parseFrontmatter(content).body), [content]);
+  // Headings' `line` is relative to the body (frontmatter stripped) — track how many
+  // lines the frontmatter block occupies so edit-mode navigation (which addresses the
+  // full document, frontmatter included) lines up with the editor's CodeMirror content.
+  const { body, frontmatterLineCount } = useMemo(() => {
+    const parsedBody = parseFrontmatter(content).body;
+    if (parsedBody === content) return { body: parsedBody, frontmatterLineCount: 0 };
+    const totalLines = content.replace(/\r\n/g, "\n").split("\n").length;
+    const bodyLines = parsedBody.split("\n").length;
+    return { body: parsedBody, frontmatterLineCount: totalLines - bodyLines };
+  }, [content]);
+  const items = useMemo(() => extractHeadings(body), [body]);
 
   const scrollToId = (id: string) => {
     const container = containerRef.current;
     const target = container?.querySelector(`#${CSS.escape(id)}`);
     target?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleSelect = (item: (typeof items)[number]) => {
+    if (isEditing && onScrollToLine) {
+      onScrollToLine(item.line + frontmatterLineCount);
+      return;
+    }
+    scrollToId(item.slug);
   };
 
   return (
@@ -40,7 +62,7 @@ const DocumentOutline = ({ content, containerRef, hasAttachments }: Props) => {
               key={`${item.slug}-${idx}`}
               className={cn("text-left truncate rounded px-2 py-1 hover:bg-accent/60 text-muted-foreground hover:text-foreground")}
               style={{ paddingLeft: `${(item.level - 1) * 12 + 8}px` }}
-              onClick={() => scrollToId(item.slug)}
+              onClick={() => handleSelect(item)}
             >
               {item.text}
             </button>

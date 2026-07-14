@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { Memo, Memo_PropertySchema } from "@/types/proto/api/v1/memo_service_pb";
 import { parseFrontmatter } from "@/utils/frontmatter";
 import { type Translations, useTranslate } from "@/utils/i18n";
-import { extractHeadings } from "@/utils/markdown-manipulation";
+import { extractHeadings, type HeadingItem } from "@/utils/markdown-manipulation";
 import { isSuperUser } from "@/utils/user";
 import MemoOutline from "./MemoOutline";
 import MemoSharePanel from "./MemoSharePanel";
@@ -28,6 +28,12 @@ interface Props {
   memo: Memo;
   className?: string;
   onShareImageOpen?: () => void;
+  /** Live editor draft content, while editing — outline is regenerated from this instead of `memo.content`. */
+  liveContent?: string;
+  /** Whether the memo is currently open in its inline editor (no rendered DOM anchors to scroll to). */
+  isEditing?: boolean;
+  /** Scrolls the editor to a given 1-indexed line of its full (frontmatter-included) content. Required when `isEditing`. */
+  onScrollToLine?: (line: number) => void;
 }
 
 interface PropertyBadge {
@@ -61,14 +67,40 @@ const buildMemoMarkdownFileName = (memo: Memo) => {
   return `${base}.md`;
 };
 
-const MemoDetailSidebar = ({ memo, className, onShareImageOpen }: Props) => {
+const MemoDetailSidebar = ({ memo, className, onShareImageOpen, liveContent, isEditing, onScrollToLine }: Props) => {
   const t = useTranslate();
   const currentUser = useCurrentUser();
   const [sharePanelOpen, setSharePanelOpen] = useState(false);
   const property = create(Memo_PropertySchema, memo.property || {});
   const canManageShares = !memo.parent && (memo.creator === currentUser?.name || isSuperUser(currentUser));
   const hasUpdated = !isEqual(memo.createTime, memo.updateTime);
-  const headings = useMemo(() => extractHeadings(parseFrontmatter(memo.content).body), [memo.content]);
+  const content = liveContent ?? memo.content;
+  // Headings' `line` is relative to the body (frontmatter stripped) — add back the
+  // number of lines the frontmatter block occupies in the full document so it lines
+  // up with the editor's CodeMirror content, which includes frontmatter verbatim.
+  const { body, frontmatterLineCount } = useMemo(() => {
+    const parsedBody = parseFrontmatter(content).body;
+    if (parsedBody === content) return { body: parsedBody, frontmatterLineCount: 0 };
+    const totalLines = content.replace(/\r\n/g, "\n").split("\n").length;
+    const bodyLines = parsedBody.split("\n").length;
+    return { body: parsedBody, frontmatterLineCount: totalLines - bodyLines };
+  }, [content]);
+  const headings = useMemo(() => extractHeadings(body), [body]);
+
+  const handleHeadingSelect = useCallback(
+    (heading: HeadingItem) => {
+      if (isEditing && onScrollToLine) {
+        onScrollToLine(heading.line + frontmatterLineCount);
+        return;
+      }
+      const el = document.getElementById(heading.slug);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        window.history.replaceState(null, "", `#${heading.slug}`);
+      }
+    },
+    [isEditing, onScrollToLine, frontmatterLineCount],
+  );
 
   const handleDownloadMarkdown = useCallback(() => {
     const blob = new Blob([memo.content], { type: "text/markdown;charset=utf-8" });
@@ -92,7 +124,7 @@ const MemoDetailSidebar = ({ memo, className, onShareImageOpen }: Props) => {
     <aside className={cn("relative w-full h-auto max-h-screen overflow-auto flex flex-col gap-5", className)}>
       {headings.length > 0 && (
         <SidebarSection label={t("memo.outline")}>
-          <MemoOutline headings={headings} />
+          <MemoOutline headings={headings} onSelect={handleHeadingSelect} />
         </SidebarSection>
       )}
 

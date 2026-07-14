@@ -7,9 +7,10 @@ import { attachmentNamePrefix } from "@/helpers/resource-names";
 import { useAttachment } from "@/hooks/useAttachmentQueries";
 import { useMemo as useMemoQuery } from "@/hooks/useMemoQueries";
 import { cn } from "@/lib/utils";
-import { getAttachmentUrl } from "@/utils/attachment";
 import { Visibility } from "@/types/proto/api/v1/memo_service_pb";
+import { getAttachmentUrl } from "@/utils/attachment";
 import { useTranslate } from "@/utils/i18n";
+import { getDocScrollPosition, restoreScrollTopWhenReady, saveDocScrollPosition } from "@/utils/scrollPositionCache";
 
 // Header hides once the user has scrolled down past this many px from their last
 // direction change, and reappears as soon as they scroll back up.
@@ -35,12 +36,14 @@ const AttachmentPreview = () => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastScrollTopRef = useRef(0);
   const hideAnchorRef = useRef(0);
+  const saveScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const name = params.uid ? `${attachmentNamePrefix}${params.uid}` : "";
   const { data: attachment, isLoading, error } = useAttachment(name, { enabled: !!name });
 
   const isHtml = attachment ? isHtmlAttachment(attachment) : false;
   const isPdf = attachment ? isPdfAttachment(attachment) : false;
+  const cachedPosition = attachment ? getDocScrollPosition(attachment.name) : undefined;
 
   const isParentMemoQueryEnabled = !!attachment?.memo && isHtml;
   const { data: parentMemo, isPending: isParentMemoPending } = useMemoQuery(attachment?.memo ?? "", {
@@ -101,7 +104,23 @@ const AttachmentPreview = () => {
       setHeaderHidden(true);
     }
     lastScrollTopRef.current = scrollTop;
-  }, []);
+
+    if (isPdf && attachment) {
+      clearTimeout(saveScrollTimeoutRef.current);
+      saveScrollTimeoutRef.current = setTimeout(() => saveDocScrollPosition(attachment.name, { scrollTop }), 300);
+    }
+  }, [isPdf, attachment]);
+
+  // Restore the last scroll position (continuous-scroll PDF mode) once the page's
+  // reserved layout has settled. Paginated mode is restored separately via
+  // `initialPageNumber` below, since that container doesn't scroll.
+  useEffect(() => {
+    if (!isPdf || !attachment || cachedPosition?.scrollTop == null) return;
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    return restoreScrollTopWhenReady(el, cachedPosition.scrollTop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPdf, attachment?.name]);
 
   const scrollToTop = useCallback(() => {
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
@@ -143,6 +162,8 @@ const AttachmentPreview = () => {
             parentMemoName={attachment.memo}
             attachmentName={attachment.name}
             filename={attachment.filename}
+            initialPageNumber={cachedPosition?.page}
+            onPageNumberChange={(page) => saveDocScrollPosition(attachment.name, { page })}
           />
         )}
         {isHtml &&

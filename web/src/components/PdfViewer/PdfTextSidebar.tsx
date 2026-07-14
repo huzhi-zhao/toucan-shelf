@@ -1,5 +1,4 @@
 import { XIcon } from "lucide-react";
-import { useEffect, useRef } from "react";
 import { MemoMarkdownRenderer } from "@/components/MemoContent/MemoMarkdownRenderer";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -14,9 +13,6 @@ interface Props {
   error: boolean;
   /** Called when a page heading is clicked, to scroll the PDF to that page. */
   onSelect?: (page: number) => void;
-  /** Page currently visible in the PDF, so this panel can scroll its matching block into
-   *  view. Only meaningful while this panel is mounted/visible — see PdfDocumentView. */
-  activePage?: number | null;
   onClose?: () => void;
   className?: string;
 }
@@ -25,17 +21,8 @@ interface Props {
 // annotation sidebar's chrome (title bar, close button) and lives in the same slot — the two
 // are mutually exclusive. Each page block carries a clickable "Page N" heading that scrolls the
 // PDF to the matching page, giving rough text-to-page alignment (see usePdfExtractedText).
-export const PdfTextSidebar = ({ blocks, formatting, error, onSelect, activePage, onClose, className }: Props) => {
+export const PdfTextSidebar = ({ blocks, formatting, error, onSelect, onClose, className }: Props) => {
   const t = useTranslate();
-  const blockRefs = useRef(new Map<number, HTMLDivElement>());
-
-  // Follows the PDF's current page: when it changes, scroll the matching block into view.
-  // One-directional (PDF -> text panel) — clicking a "Page N" heading goes through onSelect
-  // instead, so there's no feedback loop between the two.
-  useEffect(() => {
-    if (activePage == null) return;
-    blockRefs.current.get(activePage)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [activePage]);
 
   return (
     <div className={cn("w-full h-full min-h-0 flex flex-col border-l border-t border-border bg-background", className)}>
@@ -55,15 +42,7 @@ export const PdfTextSidebar = ({ blocks, formatting, error, onSelect, activePage
         ) : (
           <div className="flex flex-col gap-4">
             {blocks.map((block, i) => (
-              <div
-                key={block.page ?? i}
-                ref={(el) => {
-                  if (block.page === null) return;
-                  if (el) blockRefs.current.set(block.page, el);
-                  else blockRefs.current.delete(block.page);
-                }}
-                className="min-w-0"
-              >
+              <div key={block.page ?? i} className="min-w-0">
                 {block.page !== null && (
                   <button
                     type="button"

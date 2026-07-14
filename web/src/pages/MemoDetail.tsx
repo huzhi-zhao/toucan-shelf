@@ -6,6 +6,7 @@ import MemoCommentSection from "@/components/MemoCommentSection";
 import { DocumentLinkProvider, resolveWorkspacePath } from "@/components/MemoContent/DocumentLinkContext";
 import { MentionResolutionProvider } from "@/components/MemoContent/MentionResolutionContext";
 import { MemoDetailSidebar, MemoDetailSidebarDrawer } from "@/components/MemoDetailSidebar";
+import type { EditorController } from "@/components/MemoEditor/types/editorController";
 import MemoView from "@/components/MemoView";
 import MobileHeader from "@/components/MobileHeader";
 import { memoNamePrefix } from "@/helpers/resource-names";
@@ -22,6 +23,9 @@ const MemoDetail = () => {
   const md = useMediaQuery("md");
   const [shareImageDialogOpen, setShareImageDialogOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isEditingMemo, setIsEditingMemo] = useState(false);
+  const [draftContent, setDraftContent] = useState<string | null>(null);
+  const memoEditorRef = useRef<EditorController>(null);
   const params = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -126,6 +130,7 @@ const MemoDetail = () => {
               }}
             >
               <MemoView
+                ref={memoEditorRef}
                 key={`${displayMemo.name}-${displayMemo.updateTime}`}
                 memo={displayMemo}
                 compact={false}
@@ -137,6 +142,8 @@ const MemoDetail = () => {
                 onShareImageDialogOpenChange={setShareImageDialogOpen}
                 sidebarCollapsed={sidebarCollapsed}
                 onToggleSidebar={() => setSidebarCollapsed((v) => !v)}
+                onEditingChange={setIsEditingMemo}
+                onDraftContentChange={setDraftContent}
               />
             </DocumentLinkProvider>
             <MemoCommentSection
@@ -150,7 +157,14 @@ const MemoDetail = () => {
           </div>
           {md && !sidebarCollapsed && (
             <div className="sticky top-0 left-0 shrink-0 -mt-6 w-56 h-full">
-              <MemoDetailSidebar className="py-6" memo={displayMemo} onShareImageOpen={() => setShareImageDialogOpen(true)} />
+              <MemoDetailSidebar
+                className="py-6"
+                memo={displayMemo}
+                onShareImageOpen={() => setShareImageDialogOpen(true)}
+                liveContent={isEditingMemo ? (draftContent ?? undefined) : undefined}
+                isEditing={isEditingMemo}
+                onScrollToLine={(line) => memoEditorRef.current?.scrollToLine(line)}
+              />
             </div>
           )}
         </div>

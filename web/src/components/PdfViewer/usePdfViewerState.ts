@@ -10,9 +10,9 @@ const SCALE_STEP = 0.25;
 // 1.5 page-widths; below that, a second page would be mostly clipped, so fall back to 1.
 const TWO_PAGE_WIDTH_FACTOR = 1.5;
 
-export function usePdfViewerState(url: string) {
+export function usePdfViewerState(url: string, initialPageNumber?: number) {
   const { docRef, numPages, loading, error } = usePdfDocument(url);
-  const [pageNumber, setPageNumber] = useState(1);
+  const [pageNumber, setPageNumber] = useState(initialPageNumber ?? 1);
   const [scale, setScale] = useState(1);
   const [orientation, setOrientation] = useState<PdfOrientation>("horizontal");
   const [basePageWidth, setBasePageWidth] = useState(0); // page width in CSS px at scale=1
@@ -22,11 +22,21 @@ export function usePdfViewerState(url: string) {
   // Tracks whether the user has manually picked an orientation, so the auto-detection below
   // (landscape pages -> scroll mode, portrait pages -> paginated mode) doesn't override their choice.
   const orientationTouchedRef = useRef(false);
+  // Read once at url-change time (not a dependency): the caller passes a fresh cached
+  // value alongside a new url, but we don't want later prop churn to reset the page.
+  const initialPageNumberRef = useRef(initialPageNumber);
+  initialPageNumberRef.current = initialPageNumber;
 
   useEffect(() => {
-    setPageNumber(1);
+    setPageNumber(initialPageNumberRef.current ?? 1);
     orientationTouchedRef.current = false;
   }, [url]);
+
+  // Clamp once the real page count is known, in case a cached page number is stale
+  // (e.g. the file was replaced with a shorter one).
+  useEffect(() => {
+    if (numPages > 0) setPageNumber((p) => (p > numPages ? 1 : p));
+  }, [numPages]);
 
   useEffect(() => {
     if (loading || numPages === 0 || !docRef.current) return;

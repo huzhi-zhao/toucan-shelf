@@ -109,6 +109,8 @@ export interface HeadingItem {
   text: string;
   level: 1 | 2 | 3 | 4;
   slug: string;
+  /** 1-indexed line number within the markdown passed to extractHeadings (i.e. relative to the body, frontmatter excluded). */
+  line: number;
 }
 
 /**
@@ -147,7 +149,7 @@ export function extractHeadings(markdown: string): HeadingItem[] {
     slugCounts.set(slug, count + 1);
     if (count > 0) slug = `${slug}-${count}`;
 
-    headings.push({ text, level: node.depth as 1 | 2 | 3 | 4, slug });
+    headings.push({ text, level: node.depth as 1 | 2 | 3 | 4, slug, line: node.position?.start.line ?? 1 });
   });
 
   return headings;

@@ -40,6 +40,21 @@ export function createController(view: EditorView, formatting: FormattingControl
       view.dispatch({ changes: { from, to, insert: replacement }, selection: { anchor: from + replacement.length } });
     },
     scrollToCursor: () => view.dispatch({ effects: EditorView.scrollIntoView(view.state.selection.main.head) }),
+    scrollToLine: (line) => {
+      const clamped = Math.min(Math.max(line, 1), view.state.doc.lines);
+      const pos = view.state.doc.line(clamped).from;
+      view.dispatch({ selection: { anchor: pos }, effects: EditorView.scrollIntoView(pos, { y: "start" }) });
+      view.focus();
+    },
+    getScrollTop: () => view.scrollDOM.scrollTop,
+    setScrollTop: (top) => {
+      view.scrollDOM.scrollTop = top;
+    },
+    onScroll: (listener) => {
+      const handler = () => listener(view.scrollDOM.scrollTop);
+      view.scrollDOM.addEventListener("scroll", handler, { passive: true });
+      return () => view.scrollDOM.removeEventListener("scroll", handler);
+    },
     selectAll: () => view.dispatch({ selection: EditorSelection.range(0, view.state.doc.length) }),
     formatting,
   };

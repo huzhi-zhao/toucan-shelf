@@ -22,6 +22,7 @@ import GalleryViewRenderer from "@/components/GalleryView/GalleryViewRenderer";
 import CreateVersionDialog from "@/components/MemoActionMenu/CreateVersionDialog";
 import MemoContent from "@/components/MemoContent";
 import MemoEditor from "@/components/MemoEditor";
+import type { EditorController } from "@/components/MemoEditor/types/editorController";
 import { AttachmentListView } from "@/components/MemoMetadata";
 import { MemoViewContext, type MemoViewContextValue } from "@/components/MemoView/MemoViewContext";
 import { PdfDocumentView } from "@/components/PdfViewer/PdfDocumentView";
@@ -47,6 +48,7 @@ import { getAttachmentUrl, partitionInlinedAttachments } from "@/utils/attachmen
 import { parseFrontmatter } from "@/utils/frontmatter";
 import { useTranslate } from "@/utils/i18n";
 import { attachmentUIDsOf, hashMemoState } from "@/utils/memoState";
+import { getDocScrollPosition, restoreScrollTopWhenReady, saveDocScrollPosition } from "@/utils/scrollPositionCache";
 import DocumentOutline, { ATTACHMENTS_ANCHOR_ID } from "./DocumentOutline";
 import MoveDocumentDialog from "./MoveDocumentDialog";
 
@@ -102,6 +104,19 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
   const [versionsMenuOpen, setVersionsMenuOpen] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const [pdfToolbarSlot, setPdfToolbarSlot] = useState<HTMLDivElement | null>(null);
+  const saveScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // Live editor draft, kept in sync while `mode === "edit"` so the outline reflects
+  // headings as they're typed instead of only the last-saved `memo.content`.
+  const [editDraftContent, setEditDraftContent] = useState<string | null>(null);
+  const editorRef = useRef<EditorController>(null);
+  // PDF pages cache is keyed by the attachment (so the same file resumes at the same
+  // spot even if moved between memos); markdown scroll position is keyed by the memo
+  // itself. Markdown additionally splits the key by mode, since editing (CodeMirror)
+  // and preview (rendered markdown) scroll independently and shouldn't clobber each
+  // other's last position. HTML/gallery docs aren't cached.
+  const scrollCacheKey = isPdf ? pdfAttachment?.name : !isHtml && !isView ? `${memo.name}:${mode}` : undefined;
+  const cachedPosition = scrollCacheKey ? getDocScrollPosition(scrollCacheKey) : undefined;
+  const outlineContent = mode === "edit" && editDraftContent != null ? editDraftContent : memo.content;
 
   const { mutateAsync: createMemoHistory } = useCreateMemoHistory();
   const { mutateAsync: restoreMemoHistory } = useRestoreMemoHistory();
@@ -143,12 +158,11 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
     setMode(isView && !memo.content.trim() ? "edit" : "preview");
     setHtmlDraft(memo.content);
     setTitleDraft(memo.title);
+    setEditDraftContent(null);
     // `displayOutline: false` in frontmatter collapses the outline by default
     // when opening this document; otherwise fall back to the viewport check.
     const displayOutline = parseFrontmatter(memo.content).properties.find((p) => p.key === "displayOutline")?.value;
-    setOutlineCollapsed(
-      displayOutline === false || (typeof window !== "undefined" && !window.matchMedia("(min-width: 1024px)").matches),
-    );
+    setOutlineCollapsed(displayOutline === false || (typeof window !== "undefined" && !window.matchMedia("(min-width: 1024px)").matches));
   }, [memo.name]);
 
   const isArchived = memo.state === State.ARCHIVED;
@@ -163,6 +177,54 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
     copy(memo.content);
     toast.success(t("message.succeed-copy-content"));
   };
+
+  useEffect(() => {
+    if (mode !== "edit") setEditDraftContent(null);
+  }, [mode]);
+
+  // Cache the editor's own scroll position (separate from the preview container's,
+  // since edit mode swaps in CodeMirror instead of the rendered preview) while editing,
+  // and restore it once the editor mounts for this document. Unlike PDF pages,
+  // CodeMirror knows its full scroll height synchronously (no lazy-growing canvases),
+  // so a single rAF after mount is enough for the restore to stick.
+  useEffect(() => {
+    if (mode !== "edit" || !scrollCacheKey) return;
+    const editor = editorRef.current;
+    if (!editor) return;
+    let raf = 0;
+    if (cachedPosition?.scrollTop != null) {
+      const target = cachedPosition.scrollTop;
+      raf = requestAnimationFrame(() => editor.setScrollTop(target));
+    }
+    const unsubscribe = editor.onScroll((top) => {
+      clearTimeout(saveScrollTimeoutRef.current);
+      saveScrollTimeoutRef.current = setTimeout(() => saveDocScrollPosition(scrollCacheKey, { scrollTop: top }), 300);
+    });
+    return () => {
+      cancelAnimationFrame(raf);
+      unsubscribe();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, scrollCacheKey]);
+
+  const handlePreviewScroll = () => {
+    if (mode !== "preview" || !scrollCacheKey) return;
+    const el = previewRef.current;
+    if (!el) return;
+    const scrollTop = el.scrollTop;
+    clearTimeout(saveScrollTimeoutRef.current);
+    saveScrollTimeoutRef.current = setTimeout(() => saveDocScrollPosition(scrollCacheKey, { scrollTop }), 300);
+  };
+
+  // Restore the cached scroll position (markdown preview, or continuous-scroll PDF mode)
+  // once the switch to this document/mode has settled and content has laid out.
+  useEffect(() => {
+    if (mode !== "preview" || !scrollCacheKey || cachedPosition?.scrollTop == null) return;
+    const el = previewRef.current;
+    if (!el) return;
+    return restoreScrollTopWhenReady(el, cachedPosition.scrollTop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, scrollCacheKey]);
 
   return (
     <div className="w-full h-full flex flex-col min-w-0">
@@ -295,7 +357,11 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
       <CreateVersionDialog open={createVersionDialogOpen} onOpenChange={setCreateVersionDialogOpen} onConfirm={handleCreateVersion} />
 
       <div className="flex-1 min-h-0 flex">
-        <div className={cn("flex-1 min-w-0", mode === "edit" ? "overflow-hidden" : "overflow-y-auto")} ref={previewRef}>
+        <div
+          className={cn("flex-1 min-w-0", mode === "edit" ? "overflow-hidden" : "overflow-y-auto")}
+          ref={previewRef}
+          onScroll={handlePreviewScroll}
+        >
           {isPdf ? (
             pdfAttachment &&
             pdfToolbarSlot && (
@@ -306,6 +372,8 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
                 parentMemoName={memo.name}
                 attachmentName={pdfAttachment.name}
                 filename={pdfAttachment.filename}
+                initialPageNumber={cachedPosition?.page}
+                onPageNumberChange={(page) => pdfAttachment && saveDocScrollPosition(pdfAttachment.name, { page })}
               />
             )
           ) : isHtml ? (
@@ -353,11 +421,13 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
           ) : (
             <div className="h-full flex flex-col px-4 py-4">
               <MemoEditor
+                ref={editorRef}
                 key={memo.name}
                 autoFocus
                 expand
                 cacheKey={`notebook-editor-${memo.name}`}
                 memo={memo}
+                onContentChange={setEditDraftContent}
                 onConfirm={() => {
                   setMode("preview");
                   onSaved();
@@ -370,7 +440,13 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
         {!isHtml && !isPdf && !isView && !outlineCollapsed && isDesktop && (
           <div className="w-56 shrink-0 min-h-0 border-l border-border flex flex-col px-2 py-3">
             <div className="text-xs font-medium text-muted-foreground px-2 pb-2 uppercase tracking-wide">{t("notebook.outline")}</div>
-            <DocumentOutline content={memo.content} containerRef={previewRef} hasAttachments={remainingAttachments.length > 0} />
+            <DocumentOutline
+              content={outlineContent}
+              containerRef={previewRef}
+              hasAttachments={remainingAttachments.length > 0}
+              isEditing={mode === "edit"}
+              onScrollToLine={(line) => editorRef.current?.scrollToLine(line)}
+            />
           </div>
         )}
       </div>
@@ -381,7 +457,13 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
             <SheetHeader>
               <SheetTitle>{t("notebook.outline")}</SheetTitle>
             </SheetHeader>
-            <DocumentOutline content={memo.content} containerRef={previewRef} hasAttachments={remainingAttachments.length > 0} />
+            <DocumentOutline
+              content={outlineContent}
+              containerRef={previewRef}
+              hasAttachments={remainingAttachments.length > 0}
+              isEditing={mode === "edit"}
+              onScrollToLine={(line) => editorRef.current?.scrollToLine(line)}
+            />
           </SheetContent>
         </Sheet>
       )}

@@ -3,6 +3,8 @@ import type { HeadingItem } from "@/utils/markdown-manipulation";
 
 interface MemoOutlineProps {
   headings: HeadingItem[];
+  /** Overrides the default DOM-anchor scroll (e.g. to scroll the editor instead, while editing). */
+  onSelect?: (heading: HeadingItem) => void;
 }
 
 const levelIndent: Record<number, string> = {
@@ -13,13 +15,17 @@ const levelIndent: Record<number, string> = {
 };
 
 /** Outline navigation for memo headings (h1–h4). */
-const MemoOutline = ({ headings }: MemoOutlineProps) => {
-  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, slug: string) => {
+const MemoOutline = ({ headings, onSelect }: MemoOutlineProps) => {
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, heading: HeadingItem) => {
     e.preventDefault();
-    const el = document.getElementById(slug);
+    if (onSelect) {
+      onSelect(heading);
+      return;
+    }
+    const el = document.getElementById(heading.slug);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
-      window.history.replaceState(null, "", `#${slug}`);
+      window.history.replaceState(null, "", `#${heading.slug}`);
     }
   };
 
@@ -29,7 +35,7 @@ const MemoOutline = ({ headings }: MemoOutlineProps) => {
         <a
           key={`${heading.slug}-${index}`}
           href={`#${heading.slug}`}
-          onClick={(e) => handleClick(e, heading.slug)}
+          onClick={(e) => handleClick(e, heading)}
           className={cn(
             "group relative block py-[5px] pr-1 text-[13px] leading-snug truncate",
             "text-muted-foreground/60 hover:text-foreground/90",
