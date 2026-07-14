@@ -50,6 +50,10 @@ export const PdfDocumentView = ({ url, toolbarSlot, className, parentMemoName, a
   const { byPage, all, refetch } = usePdfAnnotations(parentMemoName, attachmentName);
   const pageRefs = useRef(new Map<number, HTMLDivElement>());
   const defaultOpenedRef = useRef(false);
+  // Topmost page currently visible in continuous-scroll (vertical) mode, tracked only while
+  // the text panel is open so the sidebar can follow along; unused in paginated (horizontal)
+  // mode, where state.pageNumber is already an exact "current page."
+  const [visiblePage, setVisiblePage] = useState<number | null>(null);
   // Docked-panel width in px. null keeps the CSS default (30% of the row); a drag on the
   // left-edge handle switches to an explicit px width, clamped to a sane range.
   const [sidebarWidth, setSidebarWidth] = useState<number | null>(null);
@@ -89,6 +93,35 @@ export const PdfDocumentView = ({ url, toolbarSlot, className, parentMemoName, a
     if (el) pageRefs.current.set(page, el);
     else pageRefs.current.delete(page);
   }, []);
+
+  // Tracks which PDF page is topmost-visible while the text panel is open, so it can scroll
+  // to the matching block. Only runs in continuous-scroll mode and only while the panel is
+  // visible (opening it later re-runs this effect since pageRefs are already populated by
+  // then — page wrappers mount as soon as the doc loads, not lazily).
+  useEffect(() => {
+    if (activePanel !== "text" || state.orientation !== "vertical") return;
+    const root = state.containerRef.current;
+    if (!root || pageRefs.current.size === 0) return;
+    const pageByEl = new Map<Element, number>();
+    pageRefs.current.forEach((el, page) => pageByEl.set(el, page));
+    const observer = new IntersectionObserver(
+      (entries) => {
+        let best: { page: number; ratio: number } | null = null;
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const page = pageByEl.get(entry.target);
+          if (page === undefined) continue;
+          if (!best || entry.intersectionRatio > best.ratio) best = { page, ratio: entry.intersectionRatio };
+        }
+        if (best) setVisiblePage(best.page);
+      },
+      { root, threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] },
+    );
+    pageRefs.current.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [activePanel, state.orientation, state.numPages, state.containerRef]);
+
+  const currentTextPage = state.orientation === "horizontal" ? state.pageNumber : visiblePage;
 
   // Open the comments panel by default when the PDF already has notes, so they're
   // visible on arrival instead of requiring the reader to discover the toggle button.
@@ -135,6 +168,7 @@ export const PdfDocumentView = ({ url, toolbarSlot, className, parentMemoName, a
         blocks={textResult.blocks}
         formatting={textResult.formatting}
         error={textResult.error}
+        activePage={currentTextPage}
         onClose={forDesktop ? () => setActivePanel(null) : undefined}
         onSelect={(page) => {
           if (!forDesktop) setActivePanel(null);
