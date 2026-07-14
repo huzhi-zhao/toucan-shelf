@@ -113,7 +113,7 @@ export const PdfAnnotationSidebar = ({ annotations, selectedMemoName, onSelect, 
                     }}
                   >
                     <div className={cn("break-words [&_*]:!text-xs", !isExpanded && "line-clamp-4")}>
-                      <MemoContent content={text} memoName={entry.memo.name} compact contentClassName="!p-0" />
+                      <MemoContent content={text} memoName={entry.memo.name} compact alwaysExpanded contentClassName="!p-0" />
                     </div>
                     <div className="flex items-center justify-end gap-2 mt-0.5">
                       <button
