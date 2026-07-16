@@ -36,3 +36,6 @@ web/coverage/
 /memos_prod.db-wal
 /.thumbnail_cache/
 /assets/**.jpg
+
+# memogit CLI build artifact
+/memogit

@@ -191,6 +191,6 @@ Other Memos entry points (Archived, Settings, etc.) remain in place.
 `doc_type`; `ListMemos` accepts `workspace`, folder-path prefix, and `doc_type`
 filters.
 
-> These are stable, generated gRPC + REST endpoints — the same surface a future
-> `memogit` client would wrap into `clone` / `pull` / `push` commands so AI
-> agents can collaborate on a knowledge base from a local folder.
+> These are stable, generated gRPC + REST endpoints — the same surface the
+> [`memogit` CLI](./05-memogit-cli.md) wraps into `clone` / `pull` / `push`
+> commands so AI agents can collaborate on a knowledge base from a local folder.
