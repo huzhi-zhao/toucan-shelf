@@ -277,7 +277,10 @@
     },
     "checkbox": "Checkbox",
     "code-block": "Code block",
-    "content-syntax": "Content syntax"
+    "content-syntax": "Content syntax",
+    "grid-block": {
+      "empty": "Empty grid code block"
+    }
   },
   "memo": {
     "archived-at": "Archived at",

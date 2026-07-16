@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { getThemeWithFallback, resolveTheme } from "@/utils/theme";
 import { CalendarBlock } from "./CalendarBlock";
+import { GridBlock } from "./GridBlock";
 import { MermaidBlock } from "./MermaidBlock";
 import type { ReactMarkdownProps } from "./markdown/types";
 import { extractCodeContent, extractLanguage } from "./utils";
@@ -42,6 +43,17 @@ export const CodeBlock = ({ children, className, node: _node, ...props }: CodeBl
         <CalendarBlock className={cn(className)} {...props}>
           {children}
         </CalendarBlock>
+      </pre>
+    );
+  }
+
+  // If it's a grid block, render with GridBlock component
+  if (language === "grid") {
+    return (
+      <pre className="relative">
+        <GridBlock className={cn(className)} {...props}>
+          {children}
+        </GridBlock>
       </pre>
     );
   }
