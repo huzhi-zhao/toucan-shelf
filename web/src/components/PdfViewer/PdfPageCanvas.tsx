@@ -245,6 +245,9 @@ export const PdfPageCanvas = ({
       {(annotations?.length || pendingSelection) && (
         <PdfAnnotationLayer annotations={annotations ?? []} selectedMemoName={selectedAnnotationMemoName} onSelect={onAnnotationSelect} />
       )}
+      <div className="absolute bottom-1 right-1.5 rounded bg-black/40 px-1 text-[10px] leading-tight text-white/90 tabular-nums pointer-events-none select-none">
+        {pageNumber}
+      </div>
       {pendingSelection && (
         <Button
           size="sm"
