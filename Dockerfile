@@ -3,7 +3,7 @@ WORKDIR /frontend-build
 
 RUN corepack enable && corepack prepare pnpm@11.0.1 --activate
 
-COPY web/package.json web/pnpm-lock.yaml ./
+COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY web/ ./
