@@ -75,3 +75,14 @@
 .x-spreadsheet-host .x-spreadsheet-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: #8b8f99;
 }
+
+/* The cell editor is a textarea floating over the grid canvas. x-spreadsheet
+   gives it no background of its own, relying on the browser's default opaque
+   textarea fill to cover the cell underneath — but Tailwind's preflight resets
+   every form control to `background-color: transparent`, so the canvas-drawn
+   cell (the formula's computed value) showed through behind the formula text
+   being typed. Restore an opaque fill on the editor. */
+.x-spreadsheet-host .x-spreadsheet-editor-area,
+.x-spreadsheet-host .x-spreadsheet-editor-area textarea {
+  background-color: #ffffff;
+}

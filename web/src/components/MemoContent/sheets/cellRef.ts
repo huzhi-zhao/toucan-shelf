@@ -10,6 +10,15 @@ export function columnLabel(colIndex: number): string {
   return label;
 }
 
+// Inverse of columnLabel: "A" → 0, "AA" → 26.
+export function columnIndex(label: string): number {
+  let n = 0;
+  for (const ch of label.toUpperCase()) {
+    n = n * 26 + (ch.charCodeAt(0) - 64);
+  }
+  return n - 1;
+}
+
 export function cellRef(rowIndex: number, colIndex: number): string {
   return `${columnLabel(colIndex)}${rowIndex + 1}`;
 }

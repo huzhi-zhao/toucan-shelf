@@ -2,7 +2,7 @@
 // formula that calls anything else makes its renderer throw
 // "Cannot read properties of undefined (reading 'render')" and takes down the
 // whole grid, so we validate before inserting.
-export const SUPPORTED_FUNCTIONS = new Set(["SUM", "AVERAGE", "MAX", "MIN", "PRODUCT", "DIVIDE", "SUBTRACT", "CONCAT", "IF", "AND", "OR"]);
+export const SUPPORTED_FUNCTIONS = new Set(["SUM", "AVERAGE", "MAX", "MIN", "PRODUCT", "DIVIDE", "SUBTRACT", "CONCAT", "IF", "AND", "OR", "SUMIF", "COUNTIF", "AVERAGEIF"]);
 
 // Returns the first function name used in `formula` that x-spreadsheet does not
 // support, or null if the formula only uses supported functions. A function

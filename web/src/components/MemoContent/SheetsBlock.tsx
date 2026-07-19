@@ -12,6 +12,7 @@ import { unsupportedFunction } from "./sheets/formula";
 import { ensureFormulaFallbacks } from "./sheets/formulaPatch";
 import { formulaService } from "./sheets/formulaService";
 import { parseSheetsBlock } from "./sheets/parseSheetsBlock";
+import { observeResizes } from "./sheets/resizePatch";
 import { serializeSheets, writeSheetsBlock } from "./sheets/serializeSheetsBlock";
 import { serializeSheetCsv } from "./sheets/sheetCsv";
 import {
@@ -485,13 +486,17 @@ const SheetsBlockInner = ({ children, blockId }: SheetsBlockProps) => {
     const onContextMenu = () => resetMenu?.();
     host.addEventListener("contextmenu", onContextMenu, { capture: true });
 
-    instance.change(() => {
+    const scheduleCommit = () => {
       if (!interactiveRef.current || !memoRef.current) return;
       // Ignore the change events loadData emits for its own writes.
       if (loadingRef.current) return;
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => commitRef.current(), WRITE_DEBOUNCE_MS);
-    });
+    };
+    instance.change(scheduleCommit);
+    // Column/row resizes bypass the `change` event entirely, so they need their
+    // own hook to reach the same commit path (see resizePatch.ts).
+    observeResizes(instance, scheduleCommit);
 
     instanceRef.current = instance;
     refreshCommentsRef.current();
