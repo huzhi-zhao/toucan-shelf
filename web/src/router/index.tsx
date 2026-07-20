@@ -22,6 +22,7 @@ const Explore = lazyWithReload(() => import("@/pages/Explore"));
 const Notebook = lazyWithReload(() => import("@/pages/Notebook"));
 const Inboxes = lazyWithReload(() => import("@/pages/Inboxes"));
 const MemoDetail = lazyWithReload(() => import("@/pages/MemoDetail"));
+const MemoReader = lazyWithReload(() => import("@/pages/MemoReader"));
 const AttachmentPreview = lazyWithReload(() => import("@/pages/AttachmentPreview"));
 const AttachmentTextPreview = lazyWithReload(() => import("@/pages/AttachmentTextPreview"));
 const NotFound = lazyWithReload(() => import("@/pages/NotFound"));
@@ -70,6 +71,9 @@ export const routeConfig: RouteObject[] = [
       // Bare page (no sidebar/app chrome) opened in its own tab to preview an attachment.
       { path: "attachments/:uid/preview", element: <AttachmentPreview /> },
       { path: "attachments/:uid/text", element: <AttachmentTextPreview /> },
+      // Bare reader for a memo — content only, sized for reading and for the
+      // browser's own print-to-PDF. Kept out of RootLayout so no app chrome renders.
+      { path: "memos/:uid/reader", element: <MemoReader /> },
       {
         element: <RootLayout />,
         children: [

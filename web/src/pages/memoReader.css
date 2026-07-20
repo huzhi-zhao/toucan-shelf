@@ -1,0 +1,70 @@
+/* Print rules for the bare reader page (`/memos/{uid}/reader`).
+ *
+ * The reader exists so the browser's own "Save as PDF" produces a clean document:
+ * it renders the memo body through the regular markdown pipeline with no app
+ * chrome, so what the browser paginates is the same DOM the detail page shows.
+ * Everything here is scoped to `.memo-reader-page` — this file is bundled
+ * globally, and printing any other page must stay unaffected. */
+
+@media print {
+  @page {
+    size: A4;
+    margin: 18mm 16mm;
+  }
+
+  /* Themes are applied at runtime by injecting a `:root { … }` <style> into
+     <head> (see utils/theme.ts), so a plain `:root` override loses the cascade
+     to a dark theme by document order. `html[data-theme]` outranks `:root` on
+     specificity instead, which holds whatever theme is loaded; `:has()` keeps
+     the override off every page but this one. */
+  html[data-theme]:has(.memo-reader-page) {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.2 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.2 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.2 0 0);
+    --muted: oklch(0.96 0 0);
+    --muted-foreground: oklch(0.44 0 0);
+    --secondary: oklch(0.96 0 0);
+    --secondary-foreground: oklch(0.3 0 0);
+    --accent: oklch(0.96 0 0);
+    --accent-foreground: oklch(0.2 0 0);
+    --border: oklch(0.84 0 0);
+    --input: oklch(0.84 0 0);
+  }
+
+  .memo-reader-page {
+    max-width: none;
+    padding: 0;
+    font-size: 11pt;
+  }
+
+  /* Browsers drop background colors by default, which would flatten code
+     blocks, callouts and table zebra striping into unreadable plain text. */
+  .memo-reader-page,
+  .memo-reader-page * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Pagination: never strand a heading at the foot of a page, and never let a
+     code block, quote, table row or image be sliced across the page break. */
+  .memo-reader-page :is(h1, h2, h3, h4, h5, h6) {
+    break-after: avoid;
+  }
+
+  .memo-reader-page :is(pre, blockquote, table, figure, img, li) {
+    break-inside: avoid;
+  }
+
+  /* Repeat the header row when a table spans several pages. */
+  .memo-reader-page thead {
+    display: table-header-group;
+  }
+
+  .memo-reader-page img {
+    max-width: 100%;
+    height: auto;
+  }
+}

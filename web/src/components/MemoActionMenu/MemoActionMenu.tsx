@@ -7,6 +7,7 @@ import {
   CheckCheckIcon,
   CopyIcon,
   Edit3Icon,
+  ExpandIcon,
   FileTextIcon,
   FolderInputIcon,
   HistoryIcon,
@@ -69,6 +70,7 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
     handleToggleMemoStatusClick,
     handleCopyLink,
     handleCopyContent,
+    handleOpenReader,
     handleCheckAllTaskListItemsClick,
     handleUncheckAllTaskListItemsClick,
     handleDeleteMemoClick,
@@ -109,6 +111,12 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
             </DropdownMenuItem>
           </>
         )}
+
+        {/* Bare reader in a new tab — also the entry point for printing to PDF. */}
+        <DropdownMenuItem onClick={handleOpenReader}>
+          <ExpandIcon className="w-4 h-auto" />
+          {t("memo.fullscreen-view")}
+        </DropdownMenuItem>
 
         {/* Copy submenu (non-archived) */}
         {!isArchived && (

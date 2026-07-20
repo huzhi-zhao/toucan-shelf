@@ -130,6 +130,12 @@ export const useMemoActionHandlers = ({
     }
   }, [memo.name, t, profile.instanceUrl, isInMemoDetailPage, navigateTo]);
 
+  // Opens the bare reader in a new tab, leaving the current one where it is —
+  // the reader is a terminal surface (read it, or print it to PDF and close it).
+  const handleOpenReader = useCallback(() => {
+    window.open(`/${memo.name}/reader`, "_blank", "noopener");
+  }, [memo.name]);
+
   const handleCopyContent = useCallback(() => {
     copy(memo.content);
     toast.success(t("message.succeed-copy-content"));
@@ -228,6 +234,7 @@ export const useMemoActionHandlers = ({
     handleToggleMemoStatusClick,
     handleCopyLink,
     handleCopyContent,
+    handleOpenReader,
     handleCheckAllTaskListItemsClick,
     handleUncheckAllTaskListItemsClick,
     handleDeleteMemoClick,

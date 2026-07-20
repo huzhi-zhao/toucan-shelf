@@ -145,8 +145,19 @@ func (s *Store) GetInstanceGeneralSetting(ctx context.Context) (*storepb.Instanc
 	return instanceGeneralSetting, nil
 }
 
-// DefaultContentLengthLimit is the default limit of content length in bytes. 24KB.
-const DefaultContentLengthLimit = 24 * 1024
+// DefaultContentLengthLimit is the default limit of content length in bytes. 1MB.
+//
+// Upstream's 24KB suited a quick-notes app; this instance is used as a knowledge
+// base, where a single document can be a full report. The limit counts bytes, so
+// 24KB allowed only ~8k CJK characters (3 bytes each) — reached halfway through
+// an ordinary long-form document.
+//
+// 1MB is ~350k CJK characters. Nothing in the stack objects at that size: the
+// transport cap is 256MB (maxAPIRequestBytes), SQLite and Postgres TEXT hold up
+// to 1GB, MySQL's content columns are LONGTEXT as of 0.30/08, and markdown is
+// only parsed per save. The practical ceiling is client-side rendering of a
+// single document, which stays comfortable well past any realistic prose length.
+const DefaultContentLengthLimit = 1024 * 1024
 
 // HTMLContentLengthLimit is the content length limit applied to HTML documents, in bytes.
 // HTML docs (e.g. pasted/uploaded AI-generated pages) are self-contained and routinely
