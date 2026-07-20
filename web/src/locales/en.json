@@ -351,7 +351,7 @@
     "copy-link": "Copy Link",
     "fullscreen-view": "Fullscreen View",
     "print": "Print",
-    "print-hint": "Choose \"Save as PDF\" in the print dialog to export this document.",
+    "print-hint": "In the print dialog, choose \"Save as PDF\", and uncheck \"Headers and footers\" to keep the URL and date off the page.",
     "create-as-version": "Save as Version",
     "version-history": "Version History",
     "view-versions": "View Versions",

@@ -272,7 +272,7 @@
     "copy-link": "复制链接",
     "fullscreen-view": "全屏浏览",
     "print": "打印",
-    "print-hint": "在打印对话框中选择「另存为 PDF」即可导出本文档。",
+    "print-hint": "在打印对话框中选择「另存为 PDF」；取消勾选「页眉和页脚」可去掉页面上的网址和日期。",
     "create-as-version": "创建为版本",
     "version-history": "版本历史",
     "view-versions": "查看版本",

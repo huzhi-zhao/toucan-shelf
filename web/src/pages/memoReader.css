@@ -32,12 +32,31 @@
     --accent-foreground: oklch(0.2 0 0);
     --border: oklch(0.84 0 0);
     --input: oklch(0.84 0 0);
+
+    /* CJK text prints blank otherwise: the theme stacks lead with the generic
+       `ui-sans-serif` / `ui-monospace` families, and Chrome's print path resolves
+       those differently than the screen — it advances the glyphs but paints
+       nothing for characters the resolved face lacks, so Chinese vanishes while
+       Latin on the same line survives. Naming real CJK faces ahead of the
+       generics gives the fallback chain something it can actually resolve.
+       Overriding the variables (rather than `font-family` on the container) also
+       covers `font-mono` descendants like code blocks and tables. */
+    --font-sans:
+      -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB",
+      "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+    --font-mono:
+      SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC",
+      monospace;
   }
 
   .memo-reader-page {
     max-width: none;
     padding: 0;
     font-size: 11pt;
+    /* Re-assert the stack on the container too: Tailwind's preflight sets the
+       base family on <html>, which the variable override above only reaches if
+       it was emitted as a `var()` reference rather than a build-time literal. */
+    font-family: var(--font-sans);
   }
 
   /* Browsers drop background colors by default, which would flatten code
