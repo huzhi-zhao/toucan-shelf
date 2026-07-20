@@ -1,4 +1,4 @@
-import type { Blockquote, Paragraph, PhrasingContent, Root, RootContent, Text } from "mdast";
+import type { Blockquote, Paragraph, Parent, PhrasingContent, Root, RootContent, Text } from "mdast";
 import { SKIP, visit } from "unist-util-visit";
 import { CHAT_FAMILIES, resolveAlertFamily } from "@/components/MemoContent/markdown/alertFamilies";
 
@@ -19,10 +19,13 @@ const ALERT_MARKER_RE = /^\[!([A-Za-z][\w:-]*)(?:\(([^)]+)\))?\][ \t]*/;
 
 // Inside a chat blockquote every *line* may open a new bubble, so a whole
 // conversation can live in one `>` block without blank lines between turns:
-// `[!CHAT:S]` / `[!CHAT:R]`, or the shorthand `[S]` / `[R]`, each with an
-// optional `(timestamp)`. Lines that don't start with a marker are continuation
-// lines of the bubble above them.
-const CHAT_LINE_RE = /^\[!?(?:chat:)?([sr])\](?:\(([^)]+)\))?[ \t]*/i;
+// `[!CHAT:S]` / `[!CHAT:R]`, or the shorthand `[S]` / `[R]`. The sender/time
+// caption goes *inside* the brackets — `[!CHAT:R(Lindsay, 08:52)]` — same slot
+// every other callout uses for its icon, and the only form accepted: a `(…)`
+// after the closing bracket is markdown link syntax, which remark turns into a
+// link node before this plugin ever sees the line. Lines without a marker are
+// continuation lines of the bubble above them.
+const CHAT_LINE_RE = /^\[!?(?:chat:)?([sr])(?:\(([^)]+)\))?\][ \t]*/i;
 
 /** One logical line of a blockquote: paragraph breaks, hard breaks and "\n" inside a text node all end a line. */
 type ChatLine = PhrasingContent[];
@@ -94,6 +97,17 @@ function collectChatBubbles(lines: ChatLine[], firstSide: "s" | "r", firstTime?:
   return bubbles.filter((bubble) => bubble.lines.length > 0);
 }
 
+/** Replaces the transcript blockquote with one blockquote per bubble, and tells `visit` to resume past them. */
+function expandChatBubbles(node: Blockquote, parent: Parent, index: number, side: "s" | "r", caption?: string) {
+  const bubbles = collectChatBubbles(splitChatLines(node), side, caption);
+  if (bubbles.length === 0) {
+    return;
+  }
+  const nodes = toChatNodes(bubbles);
+  parent.children.splice(index, 1, ...nodes);
+  return [SKIP, index + nodes.length] as [typeof SKIP, number];
+}
+
 /** One blockquote per bubble, tagged `data-alert="chat:s" | "chat:r"` for ChatBubble (SpecialCallouts.tsx). */
 function toChatNodes(bubbles: ChatBubble[]): RootContent[] {
   return bubbles.map((bubble) => {
@@ -157,13 +171,7 @@ export const remarkAlert = () => {
         } else {
           paragraph.children.shift();
         }
-        const bubbles = collectChatBubbles(splitChatLines(node), family === "chat-send" ? "s" : "r", icon);
-        if (bubbles.length === 0) {
-          return;
-        }
-        const nodes = toChatNodes(bubbles);
-        parent.children.splice(index, 1, ...nodes);
-        return [SKIP, index + nodes.length];
+        return expandChatBubbles(node, parent, index, family === "chat-send" ? "s" : "r", icon);
       }
 
       const keepInBody = KEEP_BODY_ONLY_FAMILIES.has(family);

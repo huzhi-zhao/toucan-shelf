@@ -95,7 +95,7 @@ const CALLOUT_MENU_GROUPS: CalloutMenuItem[][] = [
       type: "chat",
       labelKey: "editor.callout.chat",
       icon: MessagesSquareIcon,
-      snippet: ["> [!CHAT:R] Hi! How's it going?", "> [!CHAT:S] All good — shipping it today."].join("\n"),
+      snippet: ["> [!CHAT:R(Lindsay, 08:52)] Hi! How's it going?", "> [!CHAT:S] All good — shipping it today."].join("\n"),
     },
   ],
 ];
