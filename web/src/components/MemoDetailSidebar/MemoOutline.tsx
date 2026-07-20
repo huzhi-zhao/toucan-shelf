@@ -5,7 +5,6 @@ interface MemoOutlineProps {
   headings: HeadingItem[];
   /** Overrides the default DOM-anchor scroll (e.g. to scroll the editor instead, while editing). */
   onSelect?: (heading: HeadingItem) => void;
-  className?: string;
 }
 
 const levelIndent: Record<number, string> = {
@@ -16,7 +15,7 @@ const levelIndent: Record<number, string> = {
 };
 
 /** Outline navigation for memo headings (h1–h4). */
-const MemoOutline = ({ headings, onSelect, className }: MemoOutlineProps) => {
+const MemoOutline = ({ headings, onSelect }: MemoOutlineProps) => {
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, heading: HeadingItem) => {
     e.preventDefault();
     if (onSelect) {
@@ -31,17 +30,14 @@ const MemoOutline = ({ headings, onSelect, className }: MemoOutlineProps) => {
   };
 
   return (
-    <nav className={cn("relative flex flex-col", className)}>
+    <nav className="relative flex flex-col">
       {headings.map((heading, index) => (
         <a
           key={`${heading.slug}-${index}`}
           href={`#${heading.slug}`}
           onClick={(e) => handleClick(e, heading)}
           className={cn(
-            // `shrink-0`: as flex children these rows would otherwise be squeezed
-            // below their line height once the outline outgrows the sidebar,
-            // instead of overflowing into the scroll container.
-            "group relative block shrink-0 py-[5px] pr-1 text-[13px] leading-snug truncate",
+            "group relative block py-[5px] pr-1 text-[13px] leading-snug truncate",
             "text-muted-foreground/60 hover:text-foreground/90",
             "transition-colors duration-200 ease-out",
             levelIndent[heading.level],

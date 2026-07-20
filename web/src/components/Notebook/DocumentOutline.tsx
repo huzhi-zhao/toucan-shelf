@@ -52,7 +52,10 @@ const DocumentOutline = ({ content, containerRef, hasAttachments, isEditing, onS
   };
 
   return (
-    <div className="w-full h-full flex flex-col">
+    // `flex-1 min-h-0` rather than `h-full`: the desktop sidebar stacks a label above
+    // this component, so 100% height would overflow the column by the label's height
+    // and clip the last row / the attachments button off the bottom.
+    <div className="w-full flex-1 min-h-0 flex flex-col">
       <nav className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-0.5 text-sm">
         {items.length === 0 ? (
           <div className="text-sm text-muted-foreground px-2 py-4">{t("notebook.no-headings")}</div>
@@ -60,7 +63,10 @@ const DocumentOutline = ({ content, containerRef, hasAttachments, isEditing, onS
           items.map((item, idx) => (
             <button
               key={`${item.slug}-${idx}`}
-              className={cn("text-left truncate rounded px-2 py-1 hover:bg-accent/60 text-muted-foreground hover:text-foreground")}
+              // `shrink-0` is load-bearing: `truncate` (overflow:hidden) zeroes each row's
+              // automatic min-height as a flex item, so without it a long outline squeezes
+              // every row below its line height instead of overflowing into the scrollbar.
+              className={cn("shrink-0 text-left truncate rounded px-2 py-1 hover:bg-accent/60 text-muted-foreground hover:text-foreground")}
               style={{ paddingLeft: `${(item.level - 1) * 12 + 8}px` }}
               onClick={() => handleSelect(item)}
             >

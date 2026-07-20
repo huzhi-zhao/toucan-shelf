@@ -4,6 +4,7 @@ import {
   ArchiveIcon,
   ArchiveRestoreIcon,
   CopyIcon,
+  ExpandIcon,
   FileTextIcon,
   FolderInputIcon,
   HistoryIcon,
@@ -211,6 +212,10 @@ const DocumentView = ({
     toast.success(t("message.succeed-copy-link"));
   };
 
+  const handleOpenReader = () => {
+    window.open(`/${memo.name}/reader`, "_blank", "noopener");
+  };
+
   const handleCopyContent = () => {
     copy(memo.content);
     toast.success(t("message.succeed-copy-content"));
@@ -382,6 +387,12 @@ const DocumentView = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {/* Bare reader in a new tab — also the entry point for printing to PDF.
+                  Mirrors the same item in MemoActionMenu, which this toolbar predates. */}
+              <DropdownMenuItem onClick={handleOpenReader}>
+                <ExpandIcon className="w-4 h-4 mr-2" />
+                {t("memo.fullscreen-view")}
+              </DropdownMenuItem>
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
                   <CopyIcon className="w-4 h-4 mr-2" />

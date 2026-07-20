@@ -42,21 +42,9 @@ interface PropertyBadge {
   labelKey: Translations;
 }
 
-const SidebarSection = ({
-  label,
-  count,
-  className,
-  children,
-}: {
-  label: string;
-  count?: number;
-  className?: string;
-  children: React.ReactNode;
-}) => (
-  // `shrink-0` keeps every section at its natural height inside the flex column,
-  // so a long outline scrolls rather than compressing its neighbours.
-  <div className={cn("w-full space-y-2 shrink-0", className)}>
-    <div className="flex items-center gap-1.5 shrink-0">
+const SidebarSection = ({ label, count, children }: { label: string; count?: number; children: React.ReactNode }) => (
+  <div className="w-full space-y-2">
+    <div className="flex items-center gap-1.5">
       <p className="text-xs font-medium text-muted-foreground/50 uppercase tracking-wider">{label}</p>
       {count != null && <span className="text-xs text-muted-foreground/30">({count})</span>}
     </div>
@@ -132,11 +120,8 @@ const MemoDetailSidebar = ({ memo, className, onShareImageOpen, liveContent, isE
   return (
     <aside className={cn("relative w-full h-auto max-h-screen overflow-auto flex flex-col gap-5", className)}>
       {headings.length > 0 && (
-        // The outline is the one section allowed to take the leftover height and
-        // scroll internally — a heading-heavy document must not push Sharing and
-        // the metadata below it out of view.
-        <SidebarSection label={t("memo.outline")} className="flex min-h-0 flex-1 flex-col">
-          <MemoOutline className="min-h-0 flex-1 overflow-y-auto" headings={headings} onSelect={handleHeadingSelect} />
+        <SidebarSection label={t("memo.outline")}>
+          <MemoOutline headings={headings} onSelect={handleHeadingSelect} />
         </SidebarSection>
       )}
 
