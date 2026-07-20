@@ -24,17 +24,12 @@ func scopedFilter(username, extra string) string {
 	return fmt.Sprintf("(%s) && (%s)", base, extra)
 }
 
-// ContentRoot returns the directory under the checkout root where document
-// files live: a subfolder named after the workspace, so the repo root holds
-// only metadata (.memogit, .git, .gitignore) and each knowledge base's notes
-// sit under their own named folder. Falls back to WorkDir if the title is
-// empty or sanitizes to nothing. All sync-state paths are relative to this.
-func ContentRoot(root string, cfg *Config) string {
-	dir := sanitizeSegment(cfg.WorkspaceTitle)
-	if dir == "" {
-		dir = WorkDir
-	}
-	return filepath.Join(root, dir)
+// ContentRoot returns the directory under the checkout root where one
+// workspace's document files live, so the repo root holds only metadata
+// (.memogit, .git, .gitignore) and each knowledge base's notes sit under their
+// own named folder. All sync-state paths are relative to this.
+func ContentRoot(root string, ws *WorkspaceConfig) string {
+	return filepath.Join(root, ws.Dir)
 }
 
 // writeFile writes raw content to <root>/<relPath>, creating parent dirs and

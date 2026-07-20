@@ -116,10 +116,10 @@ func TestStateSaveLoadAndPathIndex(t *testing.T) {
 		UpdateTime:  st.LastSync,
 		ContentHash: "sha256:aa",
 	}
-	if err := st.Save(root); err != nil {
+	if err := st.Save(root, "garden"); err != nil {
 		t.Fatal(err)
 	}
-	got, err := LoadState(root)
+	got, err := LoadState(root, "garden")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,6 +133,88 @@ func TestStateSaveLoadAndPathIndex(t *testing.T) {
 	idx := got.PathIndex()
 	if idx["garden/todo.md"] != "u1" {
 		t.Errorf("path index mismatch: %v", idx)
+	}
+}
+
+func TestMigrateLegacyLayout(t *testing.T) {
+	root := t.TempDir()
+	meta := filepath.Join(root, MetaDir)
+	if err := os.MkdirAll(meta, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	legacy := "server: https://example.com\ntoken: memos_pat_x\n" +
+		"workspace: workspaces/abc\nworkspace_title: MPNP\n"
+	if err := os.WriteFile(filepath.Join(meta, ConfigFile), []byte(legacy), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(meta, StateFile), []byte(`{"server":"https://example.com","memos":{}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadConfig(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := Migrate(root, cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(cfg.Workspaces) != 1 {
+		t.Fatalf("want 1 migrated workspace, got %d", len(cfg.Workspaces))
+	}
+	ws := cfg.Workspaces[0]
+	if ws.Workspace != "workspaces/abc" || ws.Title != "MPNP" || ws.Dir != "MPNP" {
+		t.Errorf("migrated workspace mismatch: %+v", ws)
+	}
+	// The baseline moved to the per-workspace path, and the legacy file is gone.
+	if _, err := os.Stat(statePath(root, "MPNP")); err != nil {
+		t.Errorf("state not migrated: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(meta, StateFile)); !os.IsNotExist(err) {
+		t.Errorf("legacy state file should be gone, got %v", err)
+	}
+	// Re-loading sees the new layout and migration is a no-op.
+	reloaded, err := LoadConfig(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reloaded.LegacyWorkspace != "" {
+		t.Errorf("legacy field persisted: %q", reloaded.LegacyWorkspace)
+	}
+	if len(reloaded.Workspaces) != 1 || reloaded.Workspaces[0].Dir != "MPNP" {
+		t.Errorf("reloaded workspaces mismatch: %+v", reloaded.Workspaces)
+	}
+}
+
+func TestConfigSelectAndAdd(t *testing.T) {
+	cfg := &Config{Workspaces: []*WorkspaceConfig{
+		{Workspace: "workspaces/a", Title: "MPNP", Dir: "MPNP"},
+		{Workspace: "workspaces/b", Title: "Wuxia", Dir: "Wuxia"},
+	}}
+
+	// No title selects every knowledge base.
+	all, err := cfg.Select("")
+	if err != nil || len(all) != 2 {
+		t.Fatalf("select all: %v %d", err, len(all))
+	}
+	// A title selects exactly one, case-insensitively.
+	one, err := cfg.Select("wuxia")
+	if err != nil || len(one) != 1 || one[0].Workspace != "workspaces/b" {
+		t.Fatalf("select by title: %v %+v", err, one)
+	}
+	// An unknown title is an error, never a silent fallback to another KB.
+	if _, err := cfg.Select("Nope"); err == nil {
+		t.Error("want error selecting an uncloned workspace")
+	}
+	// Cloning the same workspace or directory twice is refused.
+	if err := cfg.Add(&WorkspaceConfig{Workspace: "workspaces/a", Title: "MPNP", Dir: "MPNP"}); err == nil {
+		t.Error("want error re-adding an existing workspace")
+	}
+	if err := cfg.Add(&WorkspaceConfig{Workspace: "workspaces/c", Title: "Other", Dir: "MPNP"}); err == nil {
+		t.Error("want error adding a workspace with a taken directory")
+	}
+	if err := cfg.Add(&WorkspaceConfig{Workspace: "workspaces/c", Title: "Other", Dir: "Other"}); err != nil {
+		t.Errorf("adding a fresh workspace: %v", err)
 	}
 }
 

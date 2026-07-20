@@ -73,14 +73,20 @@ func (s *State) PathIndex() map[string]string {
 	return idx
 }
 
-// LoadState reads .memogit/sync-state.json under root. Returns an error if the
-// repo has not been cloned yet.
-func LoadState(root string) (*State, error) {
-	path := filepath.Join(root, MetaDir, StateFile)
+// statePath returns the sync baseline file for one checked-out workspace:
+// .memogit/state/<dir>.json.
+func statePath(root, dir string) string {
+	return filepath.Join(root, MetaDir, StateDir, dir+".json")
+}
+
+// LoadState reads the sync baseline for the workspace checked out into dir.
+// Returns an error if that workspace has not been cloned yet.
+func LoadState(root, dir string) (*State, error) {
+	path := statePath(root, dir)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("no sync state found — run `memogit clone` first")
+			return nil, fmt.Errorf("no sync state for %s/ — run `memogit clone` first", dir)
 		}
 		return nil, fmt.Errorf("read state: %w", err)
 	}
@@ -94,17 +100,16 @@ func LoadState(root string) (*State, error) {
 	return st, nil
 }
 
-// Save writes the state to .memogit/sync-state.json under root.
-func (s *State) Save(root string) error {
-	dir := filepath.Join(root, MetaDir)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("create %s: %w", dir, err)
+// Save writes the state to .memogit/state/<dir>.json under root.
+func (s *State) Save(root, dir string) error {
+	path := statePath(root, dir)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("create %s: %w", filepath.Dir(path), err)
 	}
 	data, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal state: %w", err)
 	}
-	path := filepath.Join(dir, StateFile)
 	if err := os.WriteFile(path, data, 0o644); err != nil {
 		return fmt.Errorf("write state %s: %w", path, err)
 	}

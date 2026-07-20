@@ -31,12 +31,12 @@ type StatusResult struct {
 // the server, in two layers: (1) local vs server pending changes, and (2) the
 // local git working tree. It is read-only — it hits the server to compare but
 // never writes files, sync-state, or memos.
-func Status(ctx context.Context, root string, cfg *Config, out io.Writer) (*StatusResult, error) {
-	state, err := LoadState(root)
+func Status(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, out io.Writer) (*StatusResult, error) {
+	state, err := LoadState(root, ws.Dir)
 	if err != nil {
 		return nil, err
 	}
-	if cfg.Workspace == "" {
+	if ws.Workspace == "" {
 		return nil, fmt.Errorf("config missing workspace; re-run `memogit clone` (older config?)")
 	}
 	client := NewClient(cfg)
@@ -44,14 +44,14 @@ func Status(ctx context.Context, root string, cfg *Config, out io.Writer) (*Stat
 	if err != nil {
 		return nil, err
 	}
-	contentRoot := ContentRoot(root, cfg)
+	contentRoot := ContentRoot(root, ws)
 	pathIndex := state.PathIndex()
 
 	res := &StatusResult{GitDirty: GitStatusPorcelain(root)}
 
 	// Full current server listing (scoped to own memos in the workspace):
 	// used for both remote-new/updated and remote-deleted detection.
-	current, err := client.ListAllMemos(ctx, cfg.Workspace, scopedFilter(username, cfg.Filter))
+	current, err := client.ListAllMemos(ctx, ws.Workspace, scopedFilter(username, ws.Filter))
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func Status(ctx context.Context, root string, cfg *Config, out io.Writer) (*Stat
 		}
 	}
 
-	printStatus(out, cfg, res)
+	printStatus(out, ws, res)
 	return res, nil
 }
 
@@ -148,8 +148,8 @@ func contains(ss []string, s string) bool {
 	return false
 }
 
-func printStatus(out io.Writer, cfg *Config, res *StatusResult) {
-	fmt.Fprintf(out, "memogit status (workspace %q)\n\n", cfg.WorkspaceTitle)
+func printStatus(out io.Writer, ws *WorkspaceConfig, res *StatusResult) {
+	fmt.Fprintf(out, "memogit status (workspace %q)\n\n", ws.Title)
 
 	type line struct {
 		marker string

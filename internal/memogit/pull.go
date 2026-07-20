@@ -24,17 +24,20 @@ type PullResult struct {
 // Pull incrementally fetches memos changed on the server since the last sync,
 // updates local files where only the server changed, and commits. Files where
 // both server and local changed are reported as conflicts and left untouched.
-func Pull(ctx context.Context, root string, cfg *Config, out io.Writer) (*PullResult, error) {
-	state, err := LoadState(root)
+func Pull(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, out io.Writer) (*PullResult, error) {
+	state, err := LoadState(root, ws.Dir)
 	if err != nil {
 		return nil, err
 	}
-	if cfg.Workspace == "" {
+	if ws.Workspace == "" {
 		return nil, fmt.Errorf("config missing workspace; re-run `memogit clone` (older config?)")
 	}
 	client := NewClient(cfg)
 	username, err := client.CurrentUsername(ctx)
 	if err != nil {
+		return nil, err
+	}
+	if err := syncWorkspaceTitle(ctx, client, root, cfg, ws, out); err != nil {
 		return nil, err
 	}
 
@@ -43,15 +46,15 @@ func Pull(ctx context.Context, root string, cfg *Config, out io.Writer) (*PullRe
 	sinceUnix := state.LastSync.Unix() - 1
 	// updated_ts is a timestamp field in the CEL schema, so compare against
 	// timestamp(<epoch>) rather than a bare int.
-	filter := fmt.Sprintf("(%s) && updated_ts > timestamp(%d)", scopedFilter(username, cfg.Filter), sinceUnix)
-	fmt.Fprintf(out, "Pulling changes since %s (workspace %q) ...\n", state.LastSync.Format(time.RFC3339), cfg.WorkspaceTitle)
+	filter := fmt.Sprintf("(%s) && updated_ts > timestamp(%d)", scopedFilter(username, ws.Filter), sinceUnix)
+	fmt.Fprintf(out, "Pulling changes since %s (workspace %q) ...\n", state.LastSync.Format(time.RFC3339), ws.Title)
 
-	memos, err := client.ListAllMemos(ctx, cfg.Workspace, filter)
+	memos, err := client.ListAllMemos(ctx, ws.Workspace, filter)
 	if err != nil {
 		return nil, err
 	}
 
-	contentRoot := ContentRoot(root, cfg)
+	contentRoot := ContentRoot(root, ws)
 	res := &PullResult{}
 	for _, m := range memos {
 		uid := uidFromName(m.GetName())
@@ -138,15 +141,15 @@ func Pull(ctx context.Context, root string, cfg *Config, out io.Writer) (*PullRe
 	// never returns deleted or archived memos, so tracked memos that no longer
 	// appear in a full current listing are removed locally (unless the local
 	// file has unpushed edits, in which case it is kept and reported).
-	if err := reconcileServerDeletions(ctx, client, cfg, username, contentRoot, state, res, out); err != nil {
+	if err := reconcileServerDeletions(ctx, client, ws, username, contentRoot, state, res, out); err != nil {
 		return nil, err
 	}
 
 	state.LastSync = time.Now().UTC()
-	if err := state.Save(root); err != nil {
+	if err := state.Save(root, ws.Dir); err != nil {
 		return nil, err
 	}
-	if err := GitCommitAll(root, commitMessage(res)); err != nil {
+	if err := GitCommitAll(root, commitMessage(ws, res)); err != nil {
 		return nil, err
 	}
 
@@ -161,13 +164,40 @@ func Pull(ctx context.Context, root string, cfg *Config, out io.Writer) (*PullRe
 	return res, nil
 }
 
+// syncWorkspaceTitle follows a server-side rename. The workspace is tracked by
+// its resource name, which never changes, so a renamed knowledge base stays
+// bound to the same local files: only the recorded title is refreshed (used to
+// select it on the command line). The checkout directory is deliberately left
+// alone — renaming it would move every tracked file and lose git blame — so
+// after a rename the folder keeps its original name.
+//
+// A workspace that no longer exists is reported rather than treated as "every
+// memo was deleted", which would otherwise wipe the local files.
+func syncWorkspaceTitle(ctx context.Context, client *Client, root string, cfg *Config, ws *WorkspaceConfig, out io.Writer) error {
+	remote, err := client.WorkspaceByName(ctx, ws.Workspace)
+	if err != nil {
+		return err
+	}
+	if remote == nil {
+		return fmt.Errorf("workspace %q (%s) no longer exists on the server; "+
+			"local files in %s/ were left untouched", ws.Title, ws.Workspace, ws.Dir)
+	}
+	if remote.GetTitle() == ws.Title {
+		return nil
+	}
+	fmt.Fprintf(out, "  workspace renamed on the server: %q → %q (folder %s/ unchanged)\n",
+		ws.Title, remote.GetTitle(), ws.Dir)
+	ws.Title = remote.GetTitle()
+	return cfg.Save(root)
+}
+
 // reconcileServerDeletions removes local files for memos that were deleted or
 // archived on the server since the last sync. It does a full current listing
 // (scoped to the user's own memos in the workspace) and drops any tracked uid
 // no longer present — except when the local file has unpushed edits, which it
 // keeps and records in res.Orphaned for the user to resolve on push.
-func reconcileServerDeletions(ctx context.Context, client *Client, cfg *Config, username, contentRoot string, state *State, res *PullResult, out io.Writer) error {
-	current, err := client.ListAllMemos(ctx, cfg.Workspace, scopedFilter(username, cfg.Filter))
+func reconcileServerDeletions(ctx context.Context, client *Client, ws *WorkspaceConfig, username, contentRoot string, state *State, res *PullResult, out io.Writer) error {
+	current, err := client.ListAllMemos(ctx, ws.Workspace, scopedFilter(username, ws.Filter))
 	if err != nil {
 		return err
 	}
@@ -203,6 +233,6 @@ func reconcileServerDeletions(ctx context.Context, client *Client, cfg *Config, 
 	return nil
 }
 
-func commitMessage(res *PullResult) string {
-	return fmt.Sprintf("memogit pull: %d added, %d updated", res.Added, res.Updated)
+func commitMessage(ws *WorkspaceConfig, res *PullResult) string {
+	return fmt.Sprintf("memogit pull %s: %d added, %d updated", ws.Title, res.Added, res.Updated)
 }

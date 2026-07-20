@@ -30,16 +30,16 @@ type PushResult struct {
 //
 // dryRun prints the plan without calling the API, mutating sync-state, or
 // committing. Attachments are one-way (download only) and never pushed.
-func Push(ctx context.Context, root string, cfg *Config, dryRun bool, out io.Writer) (*PushResult, error) {
-	state, err := LoadState(root)
+func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dryRun bool, out io.Writer) (*PushResult, error) {
+	state, err := LoadState(root, ws.Dir)
 	if err != nil {
 		return nil, err
 	}
-	if cfg.Workspace == "" {
+	if ws.Workspace == "" {
 		return nil, fmt.Errorf("config missing workspace; re-run `memogit clone` (older config?)")
 	}
 	client := NewClient(cfg)
-	contentRoot := ContentRoot(root, cfg)
+	contentRoot := ContentRoot(root, ws)
 	pathIndex := state.PathIndex()
 
 	present, err := listDocFiles(contentRoot)
@@ -48,6 +48,7 @@ func Push(ctx context.Context, root string, cfg *Config, dryRun bool, out io.Wri
 	}
 
 	res := &PushResult{}
+	fmt.Fprintf(out, "Pushing workspace %q ...\n", ws.Title)
 	if dryRun {
 		fmt.Fprintln(out, "Dry run — no changes will be sent.")
 	}
@@ -74,7 +75,7 @@ func Push(ctx context.Context, root string, cfg *Config, dryRun bool, out io.Wri
 				res.Created++
 				continue
 			}
-			created, err := client.CreateMemo(ctx, cfg.Workspace, folderPath, title, docType, content)
+			created, err := client.CreateMemo(ctx, ws.Workspace, folderPath, title, docType, content)
 			if err != nil {
 				return nil, err
 			}
@@ -209,10 +210,10 @@ func Push(ctx context.Context, root string, cfg *Config, dryRun bool, out io.Wri
 	}
 
 	state.LastSync = time.Now().UTC()
-	if err := state.Save(root); err != nil {
+	if err := state.Save(root, ws.Dir); err != nil {
 		return nil, err
 	}
-	if err := GitCommitAll(root, fmt.Sprintf("memogit push: %d created, %d updated, %d archived", res.Created, res.Updated, res.Archived)); err != nil {
+	if err := GitCommitAll(root, fmt.Sprintf("memogit push %s: %d created, %d updated, %d archived", ws.Title, res.Created, res.Updated, res.Archived)); err != nil {
 		return nil, err
 	}
 

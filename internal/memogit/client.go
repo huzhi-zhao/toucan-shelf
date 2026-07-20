@@ -89,18 +89,44 @@ func (c *Client) CurrentUsername(ctx context.Context) (string, error) {
 // workspace filter (unlike CreateMemo, which accepts a title), so this pages
 // through ListWorkspaces client-side and matches by exact title.
 func (c *Client) ResolveWorkspace(ctx context.Context, title string) (*v1pb.Workspace, error) {
-	resp, err := c.workspace.ListWorkspaces(ctx, connect.NewRequest(&v1pb.ListWorkspacesRequest{}))
+	list, err := c.ListWorkspaces(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("list workspaces: %w", err)
+		return nil, err
 	}
 	var names []string
-	for _, w := range resp.Msg.GetWorkspaces() {
+	for _, w := range list {
 		names = append(names, w.GetTitle())
-		if w.GetTitle() == title {
+		if strings.EqualFold(w.GetTitle(), title) {
 			return w, nil
 		}
 	}
 	return nil, fmt.Errorf("no workspace titled %q (have: %v)", title, names)
+}
+
+// ListWorkspaces returns every workspace the current user can see, in server
+// order (the first is the default).
+func (c *Client) ListWorkspaces(ctx context.Context) ([]*v1pb.Workspace, error) {
+	resp, err := c.workspace.ListWorkspaces(ctx, connect.NewRequest(&v1pb.ListWorkspacesRequest{}))
+	if err != nil {
+		return nil, fmt.Errorf("list workspaces: %w", err)
+	}
+	return resp.Msg.GetWorkspaces(), nil
+}
+
+// WorkspaceByName looks a workspace up by its resource name ("workspaces/{uid}"),
+// which is stable across server-side renames. Returns nil (no error) when the
+// workspace no longer exists.
+func (c *Client) WorkspaceByName(ctx context.Context, name string) (*v1pb.Workspace, error) {
+	list, err := c.ListWorkspaces(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, w := range list {
+		if w.GetName() == name {
+			return w, nil
+		}
+	}
+	return nil, nil
 }
 
 // DefaultWorkspace returns the current user's first workspace, matching the

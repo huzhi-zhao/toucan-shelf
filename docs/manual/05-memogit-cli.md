@@ -52,7 +52,7 @@ is unique on its own — no ID is baked into the filename.
 contains exactly its content — including any Obsidian-style `---` frontmatter you
 wrote yourself (the properties that feed Gallery Views). All bookkeeping
 (document ID, doc type, visibility, sync hashes, relations) lives separately in
-`.memogit/sync-state.json`, keyed by document ID. This keeps the files clean and
+`.memogit/state/<workspace>.json`, keyed by document ID. This keeps files clean and
 avoids a confusing second frontmatter block.
 
 ---
@@ -62,26 +62,32 @@ avoids a confusing second frontmatter block.
 ```
 my-kb/                        ← the checkout root (metadata only)
 ├── .memogit/
-│   ├── config.yaml           ← server URL, token, bound workspace (chmod 600)
-│   └── sync-state.json       ← per-document sync baseline (ID ↔ path, hashes…)
+│   ├── config.yaml           ← server URL, token, cloned workspaces (chmod 600)
+│   └── state/                ← one sync baseline per knowledge base
+│       ├── Default.json      ← (ID ↔ path, hashes…)
+│       └── Life.json
 ├── .git/                     ← a real local git repo (snapshots only, no remote)
 ├── .gitignore                ← excludes .memogit/config.yaml (it holds a token)
-└── Default/                  ← document tree, in a subfolder named after the workspace
-    ├── garden/notes/todo.md
-    ├── papers/attention.pdf.md
-    ├── dashboards/all.view.json
-    └── _attachments/          ← downloaded attachment bytes, by attachment uid
-        └── <uid>/attention.pdf
+├── Default/                  ← one document tree per workspace, named after it
+│   ├── garden/notes/todo.md
+│   ├── papers/attention.pdf.md
+│   ├── dashboards/all.view.json
+│   └── _attachments/         ← downloaded attachment bytes, by attachment uid
+│       └── <uid>/attention.pdf
+└── Life/
+    └── journal/2026.md
 ```
 
-Documents live under a subfolder named after the workspace (`Default/` above),
-so the checkout root holds only metadata and each knowledge base's notes sit
-under their own named folder. Paths recorded in `sync-state.json` are relative
-to that content subfolder. (If the workspace title has no filesystem-safe
-characters, the subfolder falls back to `work/`.)
+One checkout root holds the server credentials once and tracks **any number of
+that account's knowledge bases**, each in its own subfolder named after the
+workspace, with its own sync baseline under `.memogit/state/`. The root itself
+holds only metadata, and a single git repo covers every knowledge base, so one
+commit history spans them all. Paths recorded in a state file are relative to
+that workspace's content subfolder. (If a workspace title has no filesystem-safe
+characters, its subfolder falls back to `work/`.)
 
 `.memogit/config.yaml` is git-ignored because it contains your Personal Access
-Token; the rest of the tree (including `sync-state.json`) is tracked so your
+Token; the rest of the tree (including `.memogit/state/`) is tracked so your
 baseline is captured in git history.
 
 ---
@@ -130,6 +136,23 @@ This writes `.memogit/config.yaml` (mode 600). Environment variables
 
 ## 5.5 Check out a knowledge base (`clone`)
 
+Knowledge bases are always addressed **by title** — you never need to know or
+type a workspace id. To see what your account has and what is already checked
+out here:
+
+```bash
+memogit workspaces      # alias: memogit ws
+```
+
+```
+Knowledge bases for "james" on https://memos.example.com:
+
+  ✓ MPNP                     → MPNP/
+    Wuxia                    (not cloned — `memogit clone Wuxia`)
+
+1 checked out here, 1 available to clone.
+```
+
 ```bash
 # If your account has exactly one workspace, the name is optional:
 memogit clone
@@ -143,26 +166,42 @@ memogit clone Life --filter '"work" in tags'
 
 `clone`:
 
-1. Resolves the workspace (by title) and records it in `config.yaml` so later
-   `pull` reuses it.
+1. Resolves the workspace (by title) and appends it to the `workspaces` list in
+   `config.yaml` so later `pull`/`push` reuse it.
 2. Fetches **your own** documents in that workspace (see §5.8).
 3. Writes each to `<workspace>/<folder_path>/<title>.<ext>` and downloads their
    attachments (§5.6a).
-4. Runs `git init` and commits a **baseline snapshot**.
+4. Runs `git init` (once per root) and commits a **baseline snapshot**.
 
 If the account has several workspaces and you don't name one, `clone` stops and
 lists the candidates rather than guessing.
 
-`clone` refuses to run if the directory has already been cloned — use `pull` to
-update it.
+Run `clone` again in the same root to add another knowledge base alongside the
+first — each lands in its own subfolder and existing ones are untouched:
+
+```bash
+cd my-kb
+memogit clone Life      # adds Life/ next to Default/
+```
+
+`clone` refuses only if *that* workspace is already checked out here (or its
+target directory is taken) — use `pull` to update it.
 
 ---
 
 ## 5.6 Sync down changes (`pull`)
 
 ```bash
+# Every knowledge base in this checkout:
 memogit pull
+
+# Just one, by workspace title:
+memogit pull Life
 ```
+
+With no argument `pull` syncs every cloned knowledge base in turn. Naming a
+workspace that isn't cloned here is an error, so a typo never silently syncs a
+different one.
 
 `pull` fetches everything changed on the server since the last sync
 (incrementally, by update time), reconciles it against your local files, and
@@ -202,12 +241,13 @@ skipped when an unchanged copy already exists locally.
 ## 5.7 Sync local edits back (`push`)
 
 ```bash
-memogit push            # send local changes to the server
+memogit push            # send local changes from every knowledge base
+memogit push Life       # just one, by workspace title
 memogit push --dry-run  # print the plan without sending anything
 ```
 
 `push` walks your local document tree, compares each file against the last-sync
-baseline in `sync-state.json`, and reconciles with the server:
+baseline in `.memogit/state/<dir>.json`, and reconciles with the server:
 
 | Situation | What `push` does |
 |-----------|------------------|
@@ -260,7 +300,8 @@ fill up with other people's shared notes that you can't sync back anyway.
 ## 5.9 See what's out of sync (`status`)
 
 ```bash
-memogit status
+memogit status          # every knowledge base in this checkout
+memogit status Life     # just one, by workspace title
 ```
 
 `status` is read-only: it queries the server and compares against your local
@@ -286,16 +327,45 @@ distinct. `status` never writes anything.
 ```yaml
 server: http://localhost:5230
 token: memos_pat_xxxxxxxx
-workspace: workspaces/8650daea...     # set by clone
-workspace_title: Default              # display only
-filter: ""                            # optional CEL clause
+workspaces:                             # appended to by each clone
+  - workspace: workspaces/8650daea...
+    workspace_title: Default            # selects this KB on the command line
+    dir: Default                        # checkout subfolder, fixed at clone time
+    filter: ""                          # optional CEL clause, per workspace
+  - workspace: workspaces/91f2c0bb...
+    workspace_title: Life
+    dir: Life
 ```
 
-**`.memogit/sync-state.json`** — the single source of truth for document
-metadata: for each document ID, its local path, doc type, visibility, pin state,
-relations (read-only export), downloaded attachments, and the server
-`update_time` + content hash at last sync. `pull`/`push` compare against these
-hashes to decide who changed.
+`workspace` (the resource id) is recorded by `clone` — you never type it. It is
+the **stable anchor**: titles can be changed on the server, ids cannot. Tracking
+by id means a renamed knowledge base stays bound to the same local files, and
+`pull` simply refreshes the recorded `workspace_title`:
+
+```
+  workspace renamed on the server: "MPNP" → "Immigration" (folder MPNP/ unchanged)
+```
+
+The checkout folder keeps its original name on purpose — renaming it would move
+every tracked file and break git history. `dir` is likewise fixed at clone time.
+
+Were the binding by title instead, a server-side rename would break the
+checkout, and — worse — creating a *new* knowledge base with the old title would
+silently redirect the sync to it. If a tracked workspace is deleted on the
+server, `pull` says so and leaves your local files alone rather than treating it
+as "every document was deleted".
+
+**`.memogit/state/<dir>.json`** — one per knowledge base, the single source of
+truth for document metadata: for each document ID, its local path, doc type,
+visibility, pin state, relations (read-only export), downloaded attachments, and
+the server `update_time` + content hash at last sync. `pull`/`push` compare
+against these hashes to decide who changed.
+
+> **Upgrading from a single-workspace checkout:** the first command you run
+> migrates it automatically — the old top-level `workspace:` keys fold into the
+> `workspaces` list and `.memogit/sync-state.json` moves to
+> `.memogit/state/<dir>.json`. Your document folder is already in the right
+> place and is not touched.
 
 ---
 
