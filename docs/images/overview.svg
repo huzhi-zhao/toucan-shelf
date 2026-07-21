@@ -14,7 +14,7 @@
   <rect x="1" y="1" width="1238" height="838" rx="23" fill="none" stroke="#243049" stroke-width="1.5"/>
 
   <!-- header -->
-  <text x="48" y="66" fill="#f1f5f9" font-size="42" font-weight="800" letter-spacing="0.5">MemoBase</text>
+  <text x="48" y="66" fill="#f1f5f9" font-size="42" font-weight="800" letter-spacing="0.5">ToucanShelf</text>
   <circle cx="270" cy="54" r="5" fill="#38bdf8"/><circle cx="286" cy="54" r="5" fill="#a855f7"/><circle cx="302" cy="54" r="5" fill="#22c55e"/>
   <text x="48" y="98" fill="#93a4bd" font-size="18">Yuque-style hierarchy  ×  Notion-style views  —  built on the Memos core</text>
 

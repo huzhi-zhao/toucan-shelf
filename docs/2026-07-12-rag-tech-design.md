@@ -39,7 +39,7 @@
 - **二级边界：单个标题段落过长时再按字数/token 数二次切分**，避免超出 embedding 模型的输入上限。
 - **metadata 挂载**：每个 chunk 记录来源 memo 的 `workspace_id`、`folder_path`、`title`，让查询时可以
   先按"课程"（workspace 或 folder_path 前缀）粗筛，再做语义检索，兼顾准确率与检索范围可控性——
-  这是通用 RAG 客户端（如 Cherry Studio 直接吃导出文件）不具备的优势，因为它们拿不到 MemoBase 的
+  这是通用 RAG 客户端（如 Cherry Studio 直接吃导出文件）不具备的优势，因为它们拿不到 ToucanShelf 的
   结构化归属信息。
 - **HTML / PDF 文档**：HTML 用现成的正文提取（去标签取文本）；PDF 复用已有的
   `web/src/components/PdfViewer/extractPdfText.ts` 文本提取逻辑（后端侧需要一个 Go 等价实现，或者

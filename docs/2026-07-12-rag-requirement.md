@@ -5,12 +5,12 @@
 
 ## 背景
 
-MemoBase 目前的真实使用场景之一：托管一份两年积累的 AI 课程知识库——20 余门课程，每门课 6-12 个
+ToucanShelf 目前的真实使用场景之一：托管一份两年积累的 AI 课程知识库——20 余门课程，每门课 6-12 个
 module，包含讲件、笔记及其他资料，合计几百篇文档。这个体量已经超出"翻文件夹能一眼找到"的量级，
-产生了"直接对话检索资料"的诉求：用户在搜索入口提问，MemoBase 用内置检索找到相关资料片段，交给
+产生了"直接对话检索资料"的诉求：用户在搜索入口提问，ToucanShelf 用内置检索找到相关资料片段，交给
 LLM 生成回答（即 RAG：Retrieval-Augmented Generation）。
 
-同一时间点，MemoBase 刚完成 AI Model Provider 配置（`InstanceSetting.AISetting`，见
+同一时间点，ToucanShelf 刚完成 AI Model Provider 配置（`InstanceSetting.AISetting`，见
 `proto/api/v1/instance_service.proto` 的 `AIProviderConfig` / `AIModelConfig`），已经有了可复用的
 "实例级 LLM 连接"基建，这也是本次讨论 RAG 是否顺手可做的直接动机。
 
@@ -32,20 +32,20 @@ LLM 生成回答（即 RAG：Retrieval-Augmented Generation）。
 
 - 路径是：用 `memogit`（规划中）把知识库检出到本地文件夹 → 喂给 Cherry Studio 等现成 RAG 客户端做
   检索问答。这条路径**可达性更弱**（多一次导出/同步动作，数据新鲜度依赖检出频率），但**开发成本为
-  零**——如果只是"我自己能用起来"，这条路径已经够用，不构成"必须给 MemoBase 内置 RAG"的理由。
-- 内置的价值增量在于：MemoBase 直接提供"搜索 + 聊天"入口，数据永远最新（无需导出同步），且能利用
-  MemoBase 已有的结构化元数据（workspace / folder_path）做范围过滤——这是通用 RAG 客户端不具备的、
+  零**——如果只是"我自己能用起来"，这条路径已经够用，不构成"必须给 ToucanShelf 内置 RAG"的理由。
+- 内置的价值增量在于：ToucanShelf 直接提供"搜索 + 聊天"入口，数据永远最新（无需导出同步），且能利用
+  ToucanShelf 已有的结构化元数据（workspace / folder_path）做范围过滤——这是通用 RAG 客户端不具备的、
   只有"数据源自己做检索"才有的优势。
 
 ### 3）值不值得开发？
 
 分两层结论：
 
-- **作为面向他人的产品功能：价值有限。** MemoBase 明确不以推广、涨 star、吸引 fork 为目标，
+- **作为面向他人的产品功能：价值有限。** ToucanShelf 明确不以推广、涨 star、吸引 fork 为目标，
   "会有更多人需要"这个前提目前不成立，不构成开发的驱动力。
 - **作为一次真实的 RAG 实践：值得，且是本次开发的唯一目的。** 用户认可这是难得的"真实数据 + 真实
   使用动机 + 边界明确"的练手机会，比公开数据集练习更有参考价值，因此明确愿意投入去做，但**目的是
-  积累 RAG 实操经验，不是为了打磨 MemoBase 这个产品**。这意味着实现应该以"验证核心检索质量"为
+  积累 RAG 实操经验，不是为了打磨 ToucanShelf 这个产品**。这意味着实现应该以"验证核心检索质量"为
   重点，不必做多租户隔离、权限体系等面向陌生用户的防御性设计。
 
 ### 4）触发条件（何时启动排期）

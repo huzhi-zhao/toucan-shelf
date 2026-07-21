@@ -1,7 +1,7 @@
 {
-  "name": "Memos",
-  "short_name": "Memos",
-  "description": "An open-source, self-hosted note-taking tool. Capture thoughts instantly. Own them completely.",
+  "name": "ToucanShelf",
+  "short_name": "ToucanShelf",
+  "description": "A hierarchical, view-powered knowledge base. Organize everything you know. Own it completely.",
   "icons": [
     { "src": "/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png" }

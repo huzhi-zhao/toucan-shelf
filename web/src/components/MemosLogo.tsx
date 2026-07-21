@@ -11,7 +11,7 @@ interface Props {
 function MemosLogo(props: Props) {
   const { collapsed, mini } = props;
   const { generalSetting: instanceGeneralSetting } = useInstance();
-  const title = instanceGeneralSetting.customProfile?.title || "Memos";
+  const title = instanceGeneralSetting.customProfile?.title || "ToucanShelf";
   const avatarUrl = instanceGeneralSetting.customProfile?.logoUrl || "/full-logo.webp";
 
   return (

@@ -1,14 +1,14 @@
-# MemoBase
+# ToucanShelf
 
 > A hierarchical, view-powered knowledge base built on top of
 > [**Memos**](https://github.com/usememos/memos).
 
 ![overview](docs/images/overview.svg)
-<img align="right" height="96px" src="https://raw.githubusercontent.com/usememos/.github/refs/heads/main/assets/logo-rounded.png" alt="Memos" />
+<img align="right" height="96px" src="web/public/logo.svg" alt="ToucanShelf" />
 
 This project is a fork of the excellent open-source
 [usememos/memos](https://github.com/usememos/memos). Memos gives you a fast,
-Markdown-native, self-hosted place to capture notes. **MemoBase keeps all of
+Markdown-native, self-hosted place to capture notes. **ToucanShelf keeps all of
 that** and grows it into a structured knowledge base — think **Yuque's folder
 hierarchy** combined with **Notion's views**, without either one's weight.
 
@@ -19,7 +19,7 @@ hierarchy** combined with **Notion's views**, without either one's weight.
 - **Memos' strength (kept intact):** a single Go binary, a lightweight one
   record = one document model, and full REST + gRPC APIs. No heavyweight
   per-page database.
-- **MemoBase's own edge (vs. Obsidian):** read and edit online from any
+- **ToucanShelf's own edge (vs. Obsidian):** read and edit online from any
   browser, with a visual Bookshelf to manage many knowledge bases — lightweight
   and instantly reachable, no desktop app to install or sync.
 
@@ -41,7 +41,7 @@ archive filters. → [Manual](./docs/manual/01-knowledge-base.md)
 
 ### 📄 Render-only document types: HTML & PDF
 
-Beyond Markdown, MemoBase treats **HTML** and **PDF** as first-class documents.
+Beyond Markdown, ToucanShelf treats **HTML** and **PDF** as first-class documents.
 HTML renders in a sandboxed iframe (perfect for the self-contained HTML that AI
 assistants love to produce). PDFs get a real **pdf.js viewer** with paging,
 zoom, **annotations**, and **text extraction** — and render consistently in the
@@ -109,7 +109,7 @@ cd web && pnpm dev
 
 ## Relationship to upstream Memos
 
-MemoBase is a **respectful fork**, not a replacement. All credit for the
+ToucanShelf is a **respectful fork**, not a replacement. All credit for the
 foundation — the capture UX, the Go backend, the storage layer, the API design —
 belongs to the [Memos team and contributors](https://github.com/usememos/memos).
 This fork tracks upstream and layers a knowledge-base product on top.
