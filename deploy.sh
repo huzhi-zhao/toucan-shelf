@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# One-click deploy script for memos.
+# One-click deploy script for ToucanShelf.
 # Clones (or updates) the GitHub repo and builds/runs it with docker compose.
 #
 # Usage:
@@ -53,8 +53,8 @@ fi
 
 cd "$TARGET_DIR"
 
-echo "==> Building image and starting container"
+echo "=======> Building image and starting container"
 $COMPOSE up -d --build
 
-echo "==> Deployment complete. memos is starting on port ${MEMOS_PORT:-5230}."
-echo "    View logs with: $COMPOSE logs -f memos"
+echo "=======> Deployment complete. ToucanShelf is starting on port ${MEMOS_PORT:-5230}."
+echo "    View logs with: $COMPOSE logs -f toucan-shelf"

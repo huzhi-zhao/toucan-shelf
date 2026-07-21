@@ -1,10 +1,10 @@
 services:
-  memos:
+  toucan-shelf:
     build:
       context: .
       dockerfile: Dockerfile
-    image: memos:local
-    container_name: memos
+    image: toucan-shelf:local
+    container_name: toucan-shelf
     restart: unless-stopped
     volumes:
       - memos-data:/var/opt/memos
