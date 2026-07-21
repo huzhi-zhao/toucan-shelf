@@ -1,4 +1,15 @@
-import { FileIcon, FileTextIcon, LayoutGridIcon, PaperclipIcon, PlusIcon, Trash2Icon, XIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  FileIcon,
+  FileTextIcon,
+  GripVerticalIcon,
+  LayoutGridIcon,
+  type LucideIcon,
+  PaperclipIcon,
+  PlusIcon,
+  Trash2Icon,
+  XIcon,
+} from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -7,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 import { formatFileSize, getFileTypeLabel } from "@/utils/format";
 import { useTranslate } from "@/utils/i18n";
@@ -67,6 +79,7 @@ interface GroupDraft {
 // options never loses typed input; converted to a GalleryBlock on save.
 interface GalleryDraft {
   type: "gallery";
+  collapsed?: boolean;
   scopeMatch: GalleryMatch;
   groups: GroupDraft[];
   sort: GallerySort;
@@ -80,6 +93,7 @@ interface GalleryDraft {
 interface MarkdownDraft {
   type: "markdown";
   content: string;
+  collapsed?: boolean;
 }
 
 type BlockDraft = GalleryDraft | MarkdownDraft;
@@ -107,12 +121,30 @@ function fromCardFieldState(state: CardFieldState): GalleryCardField {
   return state.kind;
 }
 
-const DEFAULT_RULE_DRAFT: RuleDraft = { kind: "folder", folderPath: "", includeSubfolders: true, tag: "", propKey: "", propValue: "" };
+const DEFAULT_RULE_DRAFT: RuleDraft = {
+  kind: "folder",
+  folderPath: "",
+  includeSubfolders: true,
+  tag: "",
+  propKey: "",
+  propValue: "",
+};
 
 function toRuleDraft(rule: GalleryRule): RuleDraft {
   if (rule.kind === "tag") return { ...DEFAULT_RULE_DRAFT, kind: "tag", tag: rule.tag };
-  if (rule.kind === "property") return { ...DEFAULT_RULE_DRAFT, kind: "property", propKey: rule.key, propValue: rule.value };
-  return { ...DEFAULT_RULE_DRAFT, kind: "folder", folderPath: rule.path ?? "", includeSubfolders: rule.includeSubfolders ?? true };
+  if (rule.kind === "property")
+    return {
+      ...DEFAULT_RULE_DRAFT,
+      kind: "property",
+      propKey: rule.key,
+      propValue: rule.value,
+    };
+  return {
+    ...DEFAULT_RULE_DRAFT,
+    kind: "folder",
+    folderPath: rule.path ?? "",
+    includeSubfolders: rule.includeSubfolders ?? true,
+  };
 }
 
 // Converts a rule draft back to a GalleryRule, or undefined when the rule is
@@ -126,7 +158,11 @@ function fromRuleDraft(draft: RuleDraft): GalleryRule | undefined {
     const key = draft.propKey.trim();
     return key ? { kind: "property", key, value: draft.propValue } : undefined;
   }
-  return { kind: "folder", path: draft.folderPath.trim() || undefined, includeSubfolders: draft.includeSubfolders };
+  return {
+    kind: "folder",
+    path: draft.folderPath.trim() || undefined,
+    includeSubfolders: draft.includeSubfolders,
+  };
 }
 
 function toGroupDraft(group: GalleryGroup): GroupDraft {
@@ -151,7 +187,10 @@ function toDraft(block: ViewBlock): BlockDraft {
 // groups left with no rules are dropped entirely.
 function effectiveGroups(draft: GalleryDraft): GalleryGroup[] {
   return draft.groups
-    .map((g) => ({ match: g.match, rules: g.rules.map(fromRuleDraft).filter((r): r is GalleryRule => r !== undefined) }))
+    .map((g) => ({
+      match: g.match,
+      rules: g.rules.map(fromRuleDraft).filter((r): r is GalleryRule => r !== undefined),
+    }))
     .filter((g) => g.rules.length > 0);
 }
 
@@ -159,7 +198,11 @@ function effectiveGroups(draft: GalleryDraft): GalleryGroup[] {
 function effectiveBadges(draft: GalleryDraft): GalleryBadgeRule[] {
   return draft.badges
     .filter((b) => b.propertyKey.trim() !== "")
-    .map((b) => ({ ...b, title: b.title.slice(0, 5), propertyKey: b.propertyKey.trim() }))
+    .map((b) => ({
+      ...b,
+      title: b.title.slice(0, 5),
+      propertyKey: b.propertyKey.trim(),
+    }))
     .slice(0, MAX_GALLERY_BADGES);
 }
 
@@ -170,7 +213,10 @@ function fromDraft(draft: BlockDraft): ViewBlock {
     scope: { match: draft.scopeMatch, groups: effectiveGroups(draft) },
     sort: draft.sort,
     cover: draft.cover,
-    cardFields: { primary: fromCardFieldState(draft.primary), secondary: fromCardFieldState(draft.secondary) },
+    cardFields: {
+      primary: fromCardFieldState(draft.primary),
+      secondary: fromCardFieldState(draft.secondary),
+    },
     badges: effectiveBadges(draft),
   };
 }
@@ -186,29 +232,49 @@ const GalleryBlockForm = ({
   index,
   onChange,
   onRemove,
+  onToggleCollapse,
+  dragHandlers,
 }: {
   draft: GalleryDraft;
   index: number;
   onChange: (patch: Partial<GalleryDraft>) => void;
   onRemove: () => void;
+  onToggleCollapse: () => void;
+  dragHandlers: React.HTMLAttributes<HTMLDivElement> & { draggable: boolean };
 }) => {
   const t = useTranslate();
 
   const updateGroup = (gi: number, patch: Partial<GroupDraft>) => {
-    onChange({ groups: draft.groups.map((g, i) => (i === gi ? { ...g, ...patch } : g)) });
+    onChange({
+      groups: draft.groups.map((g, i) => (i === gi ? { ...g, ...patch } : g)),
+    });
   };
   const updateRule = (gi: number, ri: number, patch: Partial<RuleDraft>) => {
     onChange({
-      groups: draft.groups.map((g, i) => (i === gi ? { ...g, rules: g.rules.map((r, j) => (j === ri ? { ...r, ...patch } : r)) } : g)),
+      groups: draft.groups.map((g, i) =>
+        i === gi
+          ? {
+              ...g,
+              rules: g.rules.map((r, j) => (j === ri ? { ...r, ...patch } : r)),
+            }
+          : g,
+      ),
     });
   };
   const removeRule = (gi: number, ri: number) => {
-    onChange({ groups: draft.groups.map((g, i) => (i === gi ? { ...g, rules: g.rules.filter((_, j) => j !== ri) } : g)) });
+    onChange({
+      groups: draft.groups.map((g, i) => (i === gi ? { ...g, rules: g.rules.filter((_, j) => j !== ri) } : g)),
+    });
   };
   const addRule = (gi: number) => {
-    onChange({ groups: draft.groups.map((g, i) => (i === gi ? { ...g, rules: [...g.rules, { ...DEFAULT_RULE_DRAFT }] } : g)) });
+    onChange({
+      groups: draft.groups.map((g, i) => (i === gi ? { ...g, rules: [...g.rules, { ...DEFAULT_RULE_DRAFT }] } : g)),
+    });
   };
-  const addGroup = () => onChange({ groups: [...draft.groups, { match: "all", rules: [{ ...DEFAULT_RULE_DRAFT }] }] });
+  const addGroup = () =>
+    onChange({
+      groups: [...draft.groups, { match: "all", rules: [{ ...DEFAULT_RULE_DRAFT }] }],
+    });
   const removeGroup = (gi: number) => onChange({ groups: draft.groups.filter((_, i) => i !== gi) });
 
   // Split the serialized sort/cover values into their editable "kind" + property key.
@@ -216,12 +282,18 @@ const GalleryBlockForm = ({
   const sortKind = sortMatch ? "property" : draft.sort;
   const sortDir = sortMatch?.[1] ?? "desc";
   const sortKey = sortMatch?.[2] ?? "";
-  const setSort = (kind: string) => onChange({ sort: kind === "property" ? `prop_${sortDir}:${sortKey}` : (kind as GallerySort) });
+  const setSort = (kind: string) =>
+    onChange({
+      sort: kind === "property" ? `prop_${sortDir}:${sortKey}` : (kind as GallerySort),
+    });
 
   const coverIsProp = draft.cover.startsWith("prop:");
   const coverKind = coverIsProp ? "property" : draft.cover;
   const coverKey = coverIsProp ? draft.cover.slice(5) : "";
-  const setCover = (kind: string) => onChange({ cover: kind === "property" ? `prop:${coverKey}` : (kind as GalleryCoverRule) });
+  const setCover = (kind: string) =>
+    onChange({
+      cover: kind === "property" ? `prop:${coverKey}` : (kind as GalleryCoverRule),
+    });
 
   const renderCardFieldRow = (label: string, state: CardFieldState, key: "primary" | "secondary", allowNone: boolean) => (
     <div className="flex flex-col gap-1.5">
@@ -252,7 +324,9 @@ const GalleryBlockForm = ({
   );
 
   const updateBadge = (bi: number, patch: Partial<GalleryBadgeRule>) => {
-    onChange({ badges: draft.badges.map((b, i) => (i === bi ? { ...b, ...patch } : b)) });
+    onChange({
+      badges: draft.badges.map((b, i) => (i === bi ? { ...b, ...patch } : b)),
+    });
   };
   const addBadge = () => onChange({ badges: [...draft.badges, { ...DEFAULT_BADGE_DRAFT }] });
   const removeBadge = (bi: number) => onChange({ badges: draft.badges.filter((_, i) => i !== bi) });
@@ -374,17 +448,29 @@ const GalleryBlockForm = ({
     </div>
   );
 
+  if (draft.collapsed) {
+    return (
+      <BlockHeader
+        icon={LayoutGridIcon}
+        title={t("gallery.block-title", { index: index + 1 })}
+        collapsed
+        onToggleCollapse={onToggleCollapse}
+        onRemove={onRemove}
+        dragHandlers={dragHandlers}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <LayoutGridIcon className="w-4 h-4 text-primary" />
-          {t("gallery.block-title", { index: index + 1 })}
-        </div>
-        <Button variant="ghost" size="icon" onClick={onRemove} title={t("gallery.remove-block")}>
-          <Trash2Icon className="w-4 h-4" />
-        </Button>
-      </div>
+      <BlockHeader
+        icon={LayoutGridIcon}
+        title={t("gallery.block-title", { index: index + 1 })}
+        collapsed={false}
+        onToggleCollapse={onToggleCollapse}
+        onRemove={onRemove}
+        dragHandlers={dragHandlers}
+      />
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
@@ -513,6 +599,48 @@ const GalleryBlockForm = ({
   );
 };
 
+/**
+ * Header shared by every block form: a drag handle for reordering, the block's
+ * label, a collapse toggle and delete. Collapsing exists to make long views
+ * navigable — a collapsed block is just its header, so a document's structure
+ * (and the drop targets for reordering) fit on one screen.
+ */
+const BlockHeader = ({
+  icon: Icon,
+  title,
+  collapsed,
+  onToggleCollapse,
+  onRemove,
+  dragHandlers,
+}: {
+  icon: LucideIcon;
+  title: string;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
+  onRemove: () => void;
+  dragHandlers: React.HTMLAttributes<HTMLDivElement> & { draggable: boolean };
+}) => {
+  const t = useTranslate();
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-lg -mx-1 px-1 py-0.5" {...dragHandlers}>
+      <button
+        type="button"
+        onClick={onToggleCollapse}
+        className="flex min-w-0 flex-1 items-center gap-2 text-sm font-medium text-left"
+        title={t(collapsed ? "gallery.expand-block" : "gallery.collapse-block")}
+      >
+        <GripVerticalIcon className="w-4 h-4 shrink-0 text-muted-foreground cursor-grab active:cursor-grabbing" />
+        <Icon className="w-4 h-4 shrink-0 text-primary" />
+        <span className="truncate">{title}</span>
+        <ChevronDownIcon className={cn("w-4 h-4 shrink-0 text-muted-foreground transition-transform", collapsed && "-rotate-90")} />
+      </button>
+      <Button variant="ghost" size="icon" className="shrink-0" onClick={onRemove} title={t("gallery.remove-block")}>
+        <Trash2Icon className="w-4 h-4" />
+      </Button>
+    </div>
+  );
+};
+
 // One editable markdown block: a plain markdown source box. Anything the
 // document renderer supports (including grid/calendar/kanban/sheets fences)
 // works here, so the view needs no block type of its own for them.
@@ -521,31 +649,36 @@ const MarkdownBlockForm = ({
   index,
   onChange,
   onRemove,
+  onToggleCollapse,
+  dragHandlers,
 }: {
   draft: MarkdownDraft;
   index: number;
   onChange: (patch: Partial<MarkdownDraft>) => void;
   onRemove: () => void;
+  onToggleCollapse: () => void;
+  dragHandlers: React.HTMLAttributes<HTMLDivElement> & { draggable: boolean };
 }) => {
   const t = useTranslate();
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <FileTextIcon className="w-4 h-4 text-primary" />
-          {t("gallery.markdown-block-title", { index: index + 1 })}
-        </div>
-        <Button variant="ghost" size="icon" onClick={onRemove} title={t("gallery.remove-block")}>
-          <Trash2Icon className="w-4 h-4" />
-        </Button>
-      </div>
-      <Textarea
-        rows={6}
-        className="font-mono text-sm"
-        placeholder={t("gallery.markdown-placeholder")}
-        value={draft.content}
-        onChange={(e) => onChange({ content: e.target.value })}
+      <BlockHeader
+        icon={FileTextIcon}
+        title={t("gallery.markdown-block-title", { index: index + 1 })}
+        collapsed={Boolean(draft.collapsed)}
+        onToggleCollapse={onToggleCollapse}
+        onRemove={onRemove}
+        dragHandlers={dragHandlers}
       />
+      {!draft.collapsed && (
+        <Textarea
+          rows={6}
+          className="font-mono text-sm"
+          placeholder={t("gallery.markdown-placeholder")}
+          value={draft.content}
+          onChange={(e) => onChange({ content: e.target.value })}
+        />
+      )}
     </div>
   );
 };
@@ -560,6 +693,7 @@ const GalleryViewForm = ({ content, attachments = [], onSave, onCancel, onAddAtt
   // Uploads are handled by the parent immediately on selection (independent of Save,
   // which only persists the gallery config); this input drives the "attachments" section.
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const blockRefs = useRef<(HTMLDivElement | null)[]>([]);
   const attachmentsEnabled = Boolean(onAddAttachments);
 
   const updateBlock = (index: number, patch: Partial<GalleryDraft> | Partial<MarkdownDraft>) => {
@@ -568,6 +702,63 @@ const GalleryViewForm = ({ content, attachments = [], onSave, onCancel, onAddAtt
 
   const addGalleryBlock = () => setBlocks((prev) => [...prev, toDraft(DEFAULT_GALLERY_BLOCK)]);
   const addMarkdownBlock = () => setBlocks((prev) => [...prev, { type: "markdown" as const, content: "" }]);
+  const removeBlock = (index: number) => setBlocks((prev) => prev.filter((_, i) => i !== index));
+  const toggleCollapse = (index: number) => updateBlock(index, { collapsed: !blocks[index].collapsed });
+  const collapseAll = (collapsed: boolean) => setBlocks((prev) => prev.map((b) => ({ ...b, collapsed })));
+
+  // Reordering: native HTML5 drag/drop off each block header (same approach as
+  // the kanban board). `dragIndex` also drives the drop indicator.
+  const [dragIndex, setDragIndex] = useState<number | undefined>(undefined);
+  const [dropIndex, setDropIndex] = useState<number | undefined>(undefined);
+
+  const moveBlock = (from: number, to: number) => {
+    if (from === to) return;
+    setBlocks((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  };
+
+  const dragHandlers = (index: number) => ({
+    draggable: true,
+    onDragStart: (event: React.DragEvent<HTMLDivElement>) => {
+      setDragIndex(index);
+      event.dataTransfer.effectAllowed = "move";
+      // Firefox needs some payload for a drag to start at all.
+      event.dataTransfer.setData("text/plain", String(index));
+    },
+    onDragEnd: () => {
+      setDragIndex(undefined);
+      setDropIndex(undefined);
+    },
+    onDragOver: (event: React.DragEvent<HTMLDivElement>) => {
+      if (dragIndex === undefined) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      setDropIndex(index);
+    },
+    onDrop: (event: React.DragEvent<HTMLDivElement>) => {
+      if (dragIndex === undefined) return;
+      event.preventDefault();
+      moveBlock(dragIndex, index);
+      setDragIndex(undefined);
+      setDropIndex(undefined);
+    },
+  });
+
+  // Outline entry label for a block, mirroring its form header.
+  const blockLabel = (draft: BlockDraft, index: number) =>
+    draft.type === "markdown" ? t("gallery.markdown-block-title", { index: index + 1 }) : t("gallery.block-title", { index: index + 1 });
+
+  const scrollToBlock = (index: number) => {
+    updateBlock(index, { collapsed: false });
+    blockRefs.current[index]?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
 
   const handleAddAttachmentsClick = () => fileInputRef.current?.click();
 
@@ -580,7 +771,13 @@ const GalleryViewForm = ({ content, attachments = [], onSave, onCancel, onAddAtt
   const handleSave = () => {
     // Blank markdown blocks are dropped rather than persisted as empty strings.
     const saved = blocks.map(fromDraft).filter((b) => b.type !== "markdown" || b.content.trim() !== "");
-    onSave(serializeGalleryViewConfig({ viewType: "gallery", blocks: saved, frontmatter: frontmatter.trim() || undefined }));
+    onSave(
+      serializeGalleryViewConfig({
+        viewType: "gallery",
+        blocks: saved,
+        frontmatter: frontmatter.trim() || undefined,
+      }),
+    );
   };
 
   const saveDisabled = blocks.length === 0 || blocks.some(blockInvalid);
@@ -588,89 +785,141 @@ const GalleryViewForm = ({ content, attachments = [], onSave, onCancel, onAddAtt
   return (
     <div className="h-full flex flex-col">
       <div className="flex-1 overflow-y-auto px-6 py-4">
-        <div className="w-full max-w-lg mx-auto flex flex-col gap-6">
-          <div className="flex flex-col gap-1.5">
-            <Label>{t("gallery.properties-label")}</Label>
-            <Textarea
-              rows={4}
-              className="font-mono text-sm"
-              placeholder={t("gallery.properties-placeholder")}
-              value={frontmatter}
-              onChange={(e) => setFrontmatter(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">{t("gallery.properties-hint")}</p>
-          </div>
-          {blocks.length === 0 ? (
-            <div className="text-sm text-muted-foreground text-center py-10">{t("gallery.empty-editor")}</div>
-          ) : (
-            blocks.map((draft, index) => (
-              <div key={index} className="flex flex-col gap-6">
-                {index > 0 && <hr className="border-border" />}
-                {draft.type === "markdown" ? (
-                  <MarkdownBlockForm
-                    draft={draft}
-                    index={index}
-                    onChange={(patch) => updateBlock(index, patch)}
-                    onRemove={() => setBlocks((prev) => prev.filter((_, i) => i !== index))}
-                  />
+        <div className="w-full max-w-5xl mx-auto flex items-start justify-center gap-8">
+          <div className="w-full max-w-lg flex flex-col gap-6">
+            <div className="flex flex-col gap-1.5">
+              <Label>{t("gallery.properties-label")}</Label>
+              <Textarea
+                rows={4}
+                className="font-mono text-sm"
+                placeholder={t("gallery.properties-placeholder")}
+                value={frontmatter}
+                onChange={(e) => setFrontmatter(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">{t("gallery.properties-hint")}</p>
+            </div>
+            {blocks.length === 0 ? (
+              <div className="text-sm text-muted-foreground text-center py-10">{t("gallery.empty-editor")}</div>
+            ) : (
+              blocks.map((draft, index) => (
+                <div
+                  key={index}
+                  ref={(el) => {
+                    blockRefs.current[index] = el;
+                  }}
+                  className={cn(
+                    "flex flex-col gap-6 scroll-mt-4",
+                    dragIndex === index && "opacity-50",
+                    dropIndex === index && dragIndex !== index && "rounded-lg ring-2 ring-primary/40",
+                  )}
+                >
+                  {index > 0 && <hr className="border-border" />}
+                  {draft.type === "markdown" ? (
+                    <MarkdownBlockForm
+                      draft={draft}
+                      index={index}
+                      onChange={(patch) => updateBlock(index, patch)}
+                      onRemove={() => removeBlock(index)}
+                      onToggleCollapse={() => toggleCollapse(index)}
+                      dragHandlers={dragHandlers(index)}
+                    />
+                  ) : (
+                    <GalleryBlockForm
+                      draft={draft}
+                      index={index}
+                      onChange={(patch) => updateBlock(index, patch)}
+                      onRemove={() => removeBlock(index)}
+                      onToggleCollapse={() => toggleCollapse(index)}
+                      dragHandlers={dragHandlers(index)}
+                    />
+                  )}
+                </div>
+              ))
+            )}
+
+            {attachmentsEnabled && (attachments.length > 0 || blocks.length > 0) && (
+              <div className="flex flex-col gap-3">
+                <hr className="border-border" />
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <PaperclipIcon className="w-4 h-4 text-primary" />
+                  {t("gallery.attachments-title")}
+                </div>
+                {attachments.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">{t("gallery.attachments-empty")}</p>
                 ) : (
-                  <GalleryBlockForm
-                    draft={draft}
-                    index={index}
-                    onChange={(patch) => updateBlock(index, patch)}
-                    onRemove={() => setBlocks((prev) => prev.filter((_, i) => i !== index))}
-                  />
+                  <div className="flex flex-col gap-2">
+                    {attachments.map((attachment) => (
+                      <div
+                        key={attachment.name}
+                        className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-background/65 px-3 py-2"
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/50 text-muted-foreground">
+                            <FileIcon className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-medium leading-tight" title={attachment.filename}>
+                              {attachment.filename}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {getFileTypeLabel(attachment.type)}
+                              {attachment.size ? ` · ${formatFileSize(Number(attachment.size))}` : ""}
+                            </div>
+                          </div>
+                        </div>
+                        {onRemoveAttachment && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="shrink-0"
+                            onClick={() => onRemoveAttachment(attachment.name)}
+                            title={t("common.delete")}
+                          >
+                            <XIcon className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
-            ))
-          )}
+            )}
+          </div>
 
-          {attachmentsEnabled && (attachments.length > 0 || blocks.length > 0) && (
-            <div className="flex flex-col gap-3">
-              <hr className="border-border" />
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <PaperclipIcon className="w-4 h-4 text-primary" />
-                {t("gallery.attachments-title")}
+          {/* Outline: the document's block structure at a glance, and the fastest
+              way to jump around a long view. Hidden on narrow screens, where the
+              collapse toggles serve the same purpose. */}
+          {blocks.length > 1 && (
+            <aside className="hidden lg:flex w-56 shrink-0 sticky top-0 flex-col gap-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-muted-foreground">{t("gallery.outline-title")}</span>
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => collapseAll(!blocks.every((b) => b.collapsed))}
+                >
+                  {t(blocks.every((b) => b.collapsed) ? "gallery.expand-all" : "gallery.collapse-all")}
+                </button>
               </div>
-              {attachments.length === 0 ? (
-                <p className="text-xs text-muted-foreground">{t("gallery.attachments-empty")}</p>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  {attachments.map((attachment) => (
-                    <div
-                      key={attachment.name}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-background/65 px-3 py-2"
+              <ol className="flex flex-col gap-0.5">
+                {blocks.map((draft, index) => (
+                  <li key={index}>
+                    <button
+                      type="button"
+                      onClick={() => scrollToBlock(index)}
+                      className="w-full flex items-center gap-2 rounded px-2 py-1 text-left text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
                     >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/50 text-muted-foreground">
-                          <FileIcon className="h-4 w-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-medium leading-tight" title={attachment.filename}>
-                            {attachment.filename}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {getFileTypeLabel(attachment.type)}
-                            {attachment.size ? ` · ${formatFileSize(Number(attachment.size))}` : ""}
-                          </div>
-                        </div>
-                      </div>
-                      {onRemoveAttachment && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="shrink-0"
-                          onClick={() => onRemoveAttachment(attachment.name)}
-                          title={t("common.delete")}
-                        >
-                          <XIcon className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                        </Button>
+                      {draft.type === "markdown" ? (
+                        <FileTextIcon className="w-3.5 h-3.5 shrink-0" />
+                      ) : (
+                        <LayoutGridIcon className="w-3.5 h-3.5 shrink-0" />
                       )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                      <span className="truncate">{blockLabel(draft, index)}</span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </aside>
           )}
         </div>
       </div>

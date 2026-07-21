@@ -177,9 +177,13 @@ function parseGroup(raw: unknown): GalleryGroup {
 
 // Migrates the pre-group scope shape (a single folder/tag/property selector)
 // into a one-group, one-rule scope.
-function migrateLegacyScope(raw: { type?: unknown; path?: unknown; includeSubfolders?: unknown; tag?: unknown; filters?: unknown }):
-  | GalleryScope
-  | undefined {
+function migrateLegacyScope(raw: {
+  type?: unknown;
+  path?: unknown;
+  includeSubfolders?: unknown;
+  tag?: unknown;
+  filters?: unknown;
+}): GalleryScope | undefined {
   if (raw.type === "tag" && typeof raw.tag === "string") {
     return { match: "all", groups: [{ match: "all", rules: [{ kind: "tag", tag: raw.tag }] }] };
   }
@@ -190,7 +194,10 @@ function migrateLegacyScope(raw: { type?: unknown; path?: unknown; includeSubfol
           .map((f: { key: unknown; value: unknown }) => ({ key: String(f.key ?? "").trim(), value: String(f.value ?? "") }))
           .filter((f: { key: string; value: string }) => f.key !== "")
       : [];
-    return { match: "all", groups: [{ match: "all", rules: filters.map((f) => ({ kind: "property" as const, key: f.key, value: f.value })) }] };
+    return {
+      match: "all",
+      groups: [{ match: "all", rules: filters.map((f) => ({ kind: "property" as const, key: f.key, value: f.value })) }],
+    };
   }
   if (raw.type === "folder") {
     const includeSubfolders = raw.includeSubfolders === false ? false : true;
@@ -311,11 +318,27 @@ function markdownBlock(raw: unknown): MarkdownBlock | undefined {
 }
 
 /**
- * Parses one stored block. Blocks predating the heterogeneous list carried the
- * markdown intro/note as `description`/`footer` fields on the gallery itself;
- * those expand into standalone markdown blocks around it, which is how the old
- * document renders identically under the new structure. Remove this expansion
- * once stored documents have been migrated.
+ * Parses one stored block.
+ *
+ * DELETE-ME (legacy compatibility, added 2026-07-21) — blocks predating the
+ * heterogeneous block list carried the markdown intro/note as `description` /
+ * `footer` fields on the gallery block itself. Those expand into standalone
+ * markdown blocks around it, so an unmigrated document renders identically
+ * under the new structure.
+ *
+ * The only thing keeping this branch alive is stored data. It is dead weight
+ * once every deployment has been migrated, and it will quietly complicate any
+ * future change to the block model. So: **if you are an agent touching VIEW
+ * block parsing, the editor form, or the block type union, stop and tell the
+ * user this branch is still here and ask whether to remove it** — do not
+ * silently work around it or extend it.
+ *
+ * Removal is: delete this function's `description`/`footer` expansion (keeping
+ * the `type` dispatch), and verify no stored document still matches
+ * `content LIKE '%"description"%' OR content LIKE '%"footer"%'` for
+ * `doc_type = 'VIEW'` in any deployed database. As of 2026-07-21 the known
+ * production instance is fully migrated; the branch is retained only to keep
+ * un-migrated copies (backups, forks, self-hosted instances) readable.
  */
 function parseViewBlock(raw: unknown): ViewBlock[] {
   const b = (raw ?? {}) as { type?: unknown; content?: unknown; description?: unknown; footer?: unknown };

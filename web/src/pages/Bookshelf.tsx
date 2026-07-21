@@ -37,7 +37,10 @@ const Bookshelf = () => {
 
   return (
     <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6">
-      <h1 className="text-2xl font-medium mb-6">{t("bookshelf.title")}</h1>
+      <h1 className="text-3xl font-medium mb-6 flex items-center gap-3">
+        <img src="/logo.svg" alt="" className="w-12 h-12" />
+        <span>{t("bookshelf.title")}</span>
+      </h1>
       <div className="rounded-lg bg-gradient-to-b from-amber-950/5 to-amber-950/10 dark:from-black/20 dark:to-black/30 p-5 sm:p-8 pb-0">
         <div className="grid items-start gap-x-2 gap-y-6 sm:gap-x-3 sm:gap-y-8 [--col-min:5.2rem] grid-cols-[repeat(auto-fit,minmax(var(--col-min),1fr))] sm:grid-cols-[repeat(auto-fill,7.2rem)]">
           {workspaces.map((workspace, index) => (

@@ -1044,6 +1044,11 @@
     "copy-md-reference-success": "已复制 md 依赖语句",
     "download": "下载",
     "insert": "插入",
+    "outline-title": "目录",
+    "collapse-all": "全部折叠",
+    "expand-all": "全部展开",
+    "collapse-block": "折叠",
+    "expand-block": "展开",
     "block-title": "相册 {{index}}",
     "markdown-block-title": "Markdown {{index}}",
     "remove-block": "删除该相册",
@@ -1097,7 +1102,7 @@
     "empty": "该范围内暂无文档。"
   },
   "bookshelf": {
-    "title": "书架",
+    "title": "ToucanShelf",
     "new-workspace": "新建知识库",
     "created-at": "创建于 {{date}}"
   },

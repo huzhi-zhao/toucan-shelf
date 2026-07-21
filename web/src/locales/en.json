@@ -1107,6 +1107,11 @@
     "copy-md-reference-success": "Markdown reference copied",
     "download": "Download",
     "insert": "Insert",
+    "outline-title": "Outline",
+    "collapse-all": "Collapse all",
+    "expand-all": "Expand all",
+    "collapse-block": "Collapse",
+    "expand-block": "Expand",
     "block-title": "Gallery {{index}}",
     "markdown-block-title": "Markdown {{index}}",
     "remove-block": "Remove this gallery",
@@ -1175,7 +1180,7 @@
     "plain-text-view": "Plain text"
   },
   "bookshelf": {
-    "title": "Bookshelf",
+    "title": "ToucanShelf",
     "new-workspace": "New workspace",
     "created-at": "Created {{date}}"
   },

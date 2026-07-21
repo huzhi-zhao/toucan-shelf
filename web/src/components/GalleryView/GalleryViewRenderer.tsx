@@ -2,7 +2,7 @@ import { LayoutGridIcon } from "lucide-react";
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import MemoContent from "@/components/MemoContent";
-import { type BlockSourceValue, BlockSourceProvider } from "@/components/MemoContent/BlockSourceContext";
+import { BlockSourceProvider, type BlockSourceValue } from "@/components/MemoContent/BlockSourceContext";
 import { PropertiesPanel } from "@/components/MemoContent/PropertiesPanel";
 import { useMemos, useUpdateMemo } from "@/hooks/useMemoQueries";
 import { cn } from "@/lib/utils";
@@ -12,7 +12,14 @@ import { getAttachmentThumbnailUrl, isImage } from "@/utils/attachment";
 import { type MemoProperty, parseFrontmatter } from "@/utils/frontmatter";
 import { useTranslate } from "@/utils/i18n";
 import { fieldValue, matchesScope, propertyMap, propertyValueToString } from "./fields";
-import { type GalleryBadgeRule, type GalleryBlock, type MarkdownBlock, matchGalleryBadge, parseGalleryViewConfig, serializeGalleryViewConfig } from "./types";
+import {
+  type GalleryBadgeRule,
+  type GalleryBlock,
+  type MarkdownBlock,
+  matchGalleryBadge,
+  parseGalleryViewConfig,
+  serializeGalleryViewConfig,
+} from "./types";
 
 interface Props {
   memo: Memo;
@@ -193,7 +200,6 @@ interface BlockProps {
   readonly: boolean;
   openDoc: (memoName: string) => void;
 }
-
 
 // Renders one gallery block: a card wall built by querying the block's scope
 // live — nothing is generated or cached.
