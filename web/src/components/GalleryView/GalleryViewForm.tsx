@@ -1,4 +1,4 @@
-import { FileIcon, LayoutGridIcon, PaperclipIcon, PlusIcon, Trash2Icon, XIcon } from "lucide-react";
+import { FileIcon, FileTextIcon, LayoutGridIcon, PaperclipIcon, PlusIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -15,7 +15,6 @@ import {
   DEFAULT_GALLERY_BLOCK,
   type GalleryBadgeKind,
   type GalleryBadgeRule,
-  type GalleryBlock,
   type GalleryCardField,
   type GalleryCoverRule,
   type GalleryGroup,
@@ -25,6 +24,7 @@ import {
   MAX_GALLERY_BADGES,
   parseGalleryViewConfig,
   serializeGalleryViewConfig,
+  type ViewBlock,
 } from "./types";
 
 interface Props {
@@ -65,9 +65,8 @@ interface GroupDraft {
 // Editable draft of a single gallery block. Keeps UI-only shape (scope split
 // into groups of rules, card fields split into kind + propKey) so toggling
 // options never loses typed input; converted to a GalleryBlock on save.
-interface BlockDraft {
-  description: string;
-  footer: string;
+interface GalleryDraft {
+  type: "gallery";
   scopeMatch: GalleryMatch;
   groups: GroupDraft[];
   sort: GallerySort;
@@ -76,6 +75,14 @@ interface BlockDraft {
   secondary: CardFieldState;
   badges: GalleryBadgeRule[];
 }
+
+/** Editable draft of a free markdown block. */
+interface MarkdownDraft {
+  type: "markdown";
+  content: string;
+}
+
+type BlockDraft = GalleryDraft | MarkdownDraft;
 
 const DEFAULT_BADGE_DRAFT: GalleryBadgeRule = {
   kind: "tag",
@@ -126,10 +133,10 @@ function toGroupDraft(group: GalleryGroup): GroupDraft {
   return { match: group.match, rules: group.rules.map(toRuleDraft) };
 }
 
-function toDraft(block: GalleryBlock): BlockDraft {
+function toDraft(block: ViewBlock): BlockDraft {
+  if (block.type === "markdown") return { type: "markdown", content: block.content };
   return {
-    description: block.description ?? "",
-    footer: block.footer ?? "",
+    type: "gallery",
     scopeMatch: block.scope.match,
     groups: block.scope.groups.length > 0 ? block.scope.groups.map(toGroupDraft) : [{ match: "all", rules: [{ ...DEFAULT_RULE_DRAFT }] }],
     sort: block.sort,
@@ -142,24 +149,24 @@ function toDraft(block: GalleryBlock): BlockDraft {
 
 // Groups/rules that are incomplete (empty tag / property key) are dropped;
 // groups left with no rules are dropped entirely.
-function effectiveGroups(draft: BlockDraft): GalleryGroup[] {
+function effectiveGroups(draft: GalleryDraft): GalleryGroup[] {
   return draft.groups
     .map((g) => ({ match: g.match, rules: g.rules.map(fromRuleDraft).filter((r): r is GalleryRule => r !== undefined) }))
     .filter((g) => g.rules.length > 0);
 }
 
 // Badges missing a property key can never match a card, so they're dropped on save.
-function effectiveBadges(draft: BlockDraft): GalleryBadgeRule[] {
+function effectiveBadges(draft: GalleryDraft): GalleryBadgeRule[] {
   return draft.badges
     .filter((b) => b.propertyKey.trim() !== "")
     .map((b) => ({ ...b, title: b.title.slice(0, 5), propertyKey: b.propertyKey.trim() }))
     .slice(0, MAX_GALLERY_BADGES);
 }
 
-function fromDraft(draft: BlockDraft): GalleryBlock {
+function fromDraft(draft: BlockDraft): ViewBlock {
+  if (draft.type === "markdown") return { type: "markdown", content: draft.content };
   return {
-    description: draft.description.trim() ? draft.description : undefined,
-    footer: draft.footer.trim() ? draft.footer : undefined,
+    type: "gallery",
     scope: { match: draft.scopeMatch, groups: effectiveGroups(draft) },
     sort: draft.sort,
     cover: draft.cover,
@@ -169,7 +176,8 @@ function fromDraft(draft: BlockDraft): GalleryBlock {
 }
 
 function blockInvalid(draft: BlockDraft): boolean {
-  return effectiveGroups(draft).length === 0;
+  // A markdown block is never invalid — an empty one is simply dropped on save.
+  return draft.type === "gallery" && effectiveGroups(draft).length === 0;
 }
 
 // One editable gallery block. Controlled via `draft` / `onChange`.
@@ -179,9 +187,9 @@ const GalleryBlockForm = ({
   onChange,
   onRemove,
 }: {
-  draft: BlockDraft;
+  draft: GalleryDraft;
   index: number;
-  onChange: (patch: Partial<BlockDraft>) => void;
+  onChange: (patch: Partial<GalleryDraft>) => void;
   onRemove: () => void;
 }) => {
   const t = useTranslate();
@@ -378,16 +386,6 @@ const GalleryBlockForm = ({
         </Button>
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label>{t("gallery.description-label")}</Label>
-        <Textarea
-          rows={3}
-          placeholder={t("gallery.description-placeholder")}
-          value={draft.description}
-          onChange={(e) => onChange({ description: e.target.value })}
-        />
-      </div>
-
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
           <Label className="shrink-0">{t("gallery.scope-label")}</Label>
@@ -511,16 +509,43 @@ const GalleryBlockForm = ({
           </Button>
         )}
       </div>
+    </div>
+  );
+};
 
-      <div className="flex flex-col gap-1.5">
-        <Label>{t("gallery.footer-label")}</Label>
-        <Textarea
-          rows={3}
-          placeholder={t("gallery.footer-placeholder")}
-          value={draft.footer}
-          onChange={(e) => onChange({ footer: e.target.value })}
-        />
+// One editable markdown block: a plain markdown source box. Anything the
+// document renderer supports (including grid/calendar/kanban/sheets fences)
+// works here, so the view needs no block type of its own for them.
+const MarkdownBlockForm = ({
+  draft,
+  index,
+  onChange,
+  onRemove,
+}: {
+  draft: MarkdownDraft;
+  index: number;
+  onChange: (patch: Partial<MarkdownDraft>) => void;
+  onRemove: () => void;
+}) => {
+  const t = useTranslate();
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <FileTextIcon className="w-4 h-4 text-primary" />
+          {t("gallery.markdown-block-title", { index: index + 1 })}
+        </div>
+        <Button variant="ghost" size="icon" onClick={onRemove} title={t("gallery.remove-block")}>
+          <Trash2Icon className="w-4 h-4" />
+        </Button>
       </div>
+      <Textarea
+        rows={6}
+        className="font-mono text-sm"
+        placeholder={t("gallery.markdown-placeholder")}
+        value={draft.content}
+        onChange={(e) => onChange({ content: e.target.value })}
+      />
     </div>
   );
 };
@@ -537,11 +562,12 @@ const GalleryViewForm = ({ content, attachments = [], onSave, onCancel, onAddAtt
   const fileInputRef = useRef<HTMLInputElement>(null);
   const attachmentsEnabled = Boolean(onAddAttachments);
 
-  const updateBlock = (index: number, patch: Partial<BlockDraft>) => {
-    setBlocks((prev) => prev.map((b, i) => (i === index ? { ...b, ...patch } : b)));
+  const updateBlock = (index: number, patch: Partial<GalleryDraft> | Partial<MarkdownDraft>) => {
+    setBlocks((prev) => prev.map((b, i) => (i === index ? ({ ...b, ...patch } as BlockDraft) : b)));
   };
 
   const addGalleryBlock = () => setBlocks((prev) => [...prev, toDraft(DEFAULT_GALLERY_BLOCK)]);
+  const addMarkdownBlock = () => setBlocks((prev) => [...prev, { type: "markdown" as const, content: "" }]);
 
   const handleAddAttachmentsClick = () => fileInputRef.current?.click();
 
@@ -552,9 +578,9 @@ const GalleryViewForm = ({ content, attachments = [], onSave, onCancel, onAddAtt
   };
 
   const handleSave = () => {
-    onSave(
-      serializeGalleryViewConfig({ viewType: "gallery", blocks: blocks.map(fromDraft), frontmatter: frontmatter.trim() || undefined }),
-    );
+    // Blank markdown blocks are dropped rather than persisted as empty strings.
+    const saved = blocks.map(fromDraft).filter((b) => b.type !== "markdown" || b.content.trim() !== "");
+    onSave(serializeGalleryViewConfig({ viewType: "gallery", blocks: saved, frontmatter: frontmatter.trim() || undefined }));
   };
 
   const saveDisabled = blocks.length === 0 || blocks.some(blockInvalid);
@@ -580,12 +606,21 @@ const GalleryViewForm = ({ content, attachments = [], onSave, onCancel, onAddAtt
             blocks.map((draft, index) => (
               <div key={index} className="flex flex-col gap-6">
                 {index > 0 && <hr className="border-border" />}
-                <GalleryBlockForm
-                  draft={draft}
-                  index={index}
-                  onChange={(patch) => updateBlock(index, patch)}
-                  onRemove={() => setBlocks((prev) => prev.filter((_, i) => i !== index))}
-                />
+                {draft.type === "markdown" ? (
+                  <MarkdownBlockForm
+                    draft={draft}
+                    index={index}
+                    onChange={(patch) => updateBlock(index, patch)}
+                    onRemove={() => setBlocks((prev) => prev.filter((_, i) => i !== index))}
+                  />
+                ) : (
+                  <GalleryBlockForm
+                    draft={draft}
+                    index={index}
+                    onChange={(patch) => updateBlock(index, patch)}
+                    onRemove={() => setBlocks((prev) => prev.filter((_, i) => i !== index))}
+                  />
+                )}
               </div>
             ))
           )}
@@ -651,6 +686,10 @@ const GalleryViewForm = ({ content, attachments = [], onSave, onCancel, onAddAtt
             <DropdownMenuItem onClick={addGalleryBlock}>
               <LayoutGridIcon className="w-4 h-4" />
               {t("gallery.style-gallery")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={addMarkdownBlock}>
+              <FileTextIcon className="w-4 h-4" />
+              {t("gallery.style-markdown")}
             </DropdownMenuItem>
             {attachmentsEnabled && (
               <DropdownMenuItem onClick={handleAddAttachmentsClick}>

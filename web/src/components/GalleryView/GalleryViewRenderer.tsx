@@ -1,5 +1,5 @@
 import { LayoutGridIcon } from "lucide-react";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import MemoContent from "@/components/MemoContent";
 import { type BlockSourceValue, BlockSourceProvider } from "@/components/MemoContent/BlockSourceContext";
@@ -12,7 +12,7 @@ import { getAttachmentThumbnailUrl, isImage } from "@/utils/attachment";
 import { type MemoProperty, parseFrontmatter } from "@/utils/frontmatter";
 import { useTranslate } from "@/utils/i18n";
 import { fieldValue, matchesScope, propertyMap, propertyValueToString } from "./fields";
-import { type GalleryBadgeRule, type GalleryBlock, matchGalleryBadge, parseGalleryViewConfig, serializeGalleryViewConfig } from "./types";
+import { type GalleryBadgeRule, type GalleryBlock, type MarkdownBlock, matchGalleryBadge, parseGalleryViewConfig, serializeGalleryViewConfig } from "./types";
 
 interface Props {
   memo: Memo;
@@ -152,30 +152,36 @@ const GalleryCardBadge = ({ badge }: { badge: GalleryBadgeRule }) => {
   );
 };
 
-// Builds the read/write bridge that lets interactive blocks (calendar, kanban)
-// inside a block's Intro/Note markdown persist their edits: the rewritten
-// markdown goes back into that JSON field, and the whole config is re-serialized.
-const useGalleryMarkdownField = (memo: Memo, blockIndex: number, readonly: boolean) => {
+// Renders a markdown block through the ordinary document pipeline, and lets the
+// interactive blocks inside it (calendar, kanban, …) persist their edits: the
+// rewritten markdown goes back into this block's `content`, and the whole config
+// is re-serialized.
+const MarkdownBlockView = ({ block, blockIndex, memo, readonly }: Omit<BlockProps, "block" | "openDoc"> & { block: MarkdownBlock }) => {
   const { mutate: updateMemo } = useUpdateMemo();
 
-  return useCallback(
-    (field: "description" | "footer", source: string): BlockSourceValue => ({
-      source,
+  const source = useMemo<BlockSourceValue>(
+    () => ({
+      source: block.content,
       readonly,
       save: (next: string) => {
-        if (next === source) return;
+        if (next === block.content) return;
         // Re-parse at save time so we never write back a stale copy of the config.
         const config = parseGalleryViewConfig(memo.content);
-        const target = config?.blocks[blockIndex];
-        if (!target) return;
-        const blocks = config.blocks.map((b, i) => (i === blockIndex ? { ...b, [field]: next } : b));
+        if (config?.blocks[blockIndex]?.type !== "markdown") return;
+        const blocks = config.blocks.map((b, i) => (i === blockIndex ? { ...b, content: next } : b));
         updateMemo({
           update: { name: memo.name, content: serializeGalleryViewConfig({ ...config, blocks }) },
           updateMask: ["content", "update_time"],
         });
       },
     }),
-    [memo.content, memo.name, blockIndex, readonly, updateMemo],
+    [block.content, blockIndex, memo.content, memo.name, readonly, updateMemo],
+  );
+
+  return (
+    <BlockSourceProvider value={source}>
+      <MemoContent content={block.content} memoName={memo.name} headingIdPrefix={`vb${blockIndex}`} />
+    </BlockSourceProvider>
   );
 };
 
@@ -188,12 +194,11 @@ interface BlockProps {
   openDoc: (memoName: string) => void;
 }
 
-// Renders one gallery block: optional markdown intro (existing markdown
-// pipeline, including sanitization), then a card wall built by querying the
-// block's scope live — nothing is generated or cached.
-const GalleryBlockView = ({ block, blockIndex, memo, readonly, openDoc }: BlockProps) => {
+
+// Renders one gallery block: a card wall built by querying the block's scope
+// live — nothing is generated or cached.
+const GalleryBlockView = ({ block, memo, openDoc }: BlockProps) => {
   const t = useTranslate();
-  const markdownField = useGalleryMarkdownField(memo, blockIndex, readonly);
   const { data, isLoading } = useMemos({ pageSize: 1000, state: State.NORMAL, filter: `workspace == ${JSON.stringify(memo.workspace)}` });
 
   const docs = useMemo(() => {
@@ -206,11 +211,6 @@ const GalleryBlockView = ({ block, blockIndex, memo, readonly, openDoc }: BlockP
 
   return (
     <div className="w-full flex flex-col gap-4">
-      {block.description && (
-        <BlockSourceProvider value={markdownField("description", block.description)}>
-          <MemoContent content={block.description} memoName={memo.name} headingIdPrefix={`vb${blockIndex}-desc`} />
-        </BlockSourceProvider>
-      )}
       {isLoading ? (
         <div className="text-sm text-muted-foreground">{t("gallery.loading")}</div>
       ) : docs.length === 0 ? (
@@ -253,17 +253,13 @@ const GalleryBlockView = ({ block, blockIndex, memo, readonly, openDoc }: BlockP
           })}
         </div>
       )}
-      {block.footer && (
-        <BlockSourceProvider value={markdownField("footer", block.footer)}>
-          <MemoContent content={block.footer} memoName={memo.name} headingIdPrefix={`vb${blockIndex}-foot`} />
-        </BlockSourceProvider>
-      )}
     </div>
   );
 };
 
-// Renders a VIEW document: each configured gallery block top-to-bottom,
-// separated by dividers.
+// Renders a VIEW document: each configured block top-to-bottom. No dividers are
+// inserted between blocks — a markdown block can write its own `---` where one
+// is actually wanted.
 const GalleryViewRenderer = ({ memo, onOpenDoc, readonly = true, className }: Props) => {
   const t = useTranslate();
   const navigate = useNavigate();
@@ -281,8 +277,11 @@ const GalleryViewRenderer = ({ memo, onOpenDoc, readonly = true, className }: Pr
       <PropertiesPanel properties={properties} />
       {config.blocks.map((block, index) => (
         <div key={index} className="flex flex-col gap-6">
-          {index > 0 && <hr className="border-border" />}
-          <GalleryBlockView block={block} blockIndex={index} memo={memo} readonly={readonly} openDoc={openDoc} />
+          {block.type === "markdown" ? (
+            <MarkdownBlockView block={block} blockIndex={index} memo={memo} readonly={readonly} />
+          ) : (
+            <GalleryBlockView block={block} blockIndex={index} memo={memo} readonly={readonly} openDoc={openDoc} />
+          )}
         </div>
       ))}
     </div>

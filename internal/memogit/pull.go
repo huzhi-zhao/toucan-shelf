@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	v1pb "github.com/usememos/memos/proto/gen/api/v1"
 )
 
 // PullResult summarizes a pull run.
@@ -137,11 +139,10 @@ func Pull(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, ou
 		fmt.Fprintf(out, "  ~ %s\n", ms.Path)
 	}
 
-	// Reconcile server-side deletions/archives: the incremental filter above
-	// never returns deleted or archived memos, so tracked memos that no longer
-	// appear in a full current listing are removed locally (unless the local
-	// file has unpushed edits, in which case it is kept and reported).
-	if err := reconcileServerDeletions(ctx, client, ws, username, contentRoot, state, res, out); err != nil {
+	// Reconcile against a full current listing: catches server-side deletions
+	// (never returned by the incremental filter) and path drift (memos whose
+	// folder/title changed without their updated_ts moving).
+	if err := reconcileFullListing(ctx, client, ws, username, contentRoot, state, res, out); err != nil {
 		return nil, err
 	}
 
@@ -191,23 +192,31 @@ func syncWorkspaceTitle(ctx context.Context, client *Client, root string, cfg *C
 	return cfg.Save(root)
 }
 
-// reconcileServerDeletions removes local files for memos that were deleted or
-// archived on the server since the last sync. It does a full current listing
-// (scoped to the user's own memos in the workspace) and drops any tracked uid
-// no longer present — except when the local file has unpushed edits, which it
-// keeps and records in res.Orphaned for the user to resolve on push.
-func reconcileServerDeletions(ctx context.Context, client *Client, ws *WorkspaceConfig, username, contentRoot string, state *State, res *PullResult, out io.Writer) error {
+// reconcileFullListing walks a full current listing (scoped to the user's own
+// memos in the workspace) and fixes up two things the incremental pass can miss:
+//
+//   - deletions/archives: tracked uids no longer present are removed locally,
+//     except when the local file has unpushed edits, which are kept and recorded
+//     in res.Orphaned for the user to resolve on push.
+//   - path drift: a tracked memo whose server folder_path/title no longer matches
+//     the local path is relocated. Moves don't always bump updated_ts (older
+//     server versions never did), so the incremental filter can miss them
+//     entirely; comparing paths here makes pull self-healing.
+func reconcileFullListing(ctx context.Context, client *Client, ws *WorkspaceConfig, username, contentRoot string, state *State, res *PullResult, out io.Writer) error {
 	current, err := client.ListAllMemos(ctx, ws.Workspace, scopedFilter(username, ws.Filter))
 	if err != nil {
 		return err
 	}
-	alive := make(map[string]bool, len(current))
+	alive := make(map[string]*v1pb.Memo, len(current))
 	for _, m := range current {
-		alive[uidFromName(m.GetName())] = true
+		alive[uidFromName(m.GetName())] = m
 	}
 
 	for _, uid := range sortedUIDs(state) {
-		if alive[uid] {
+		if m := alive[uid]; m != nil {
+			if err := relocateDrifted(ctx, client, contentRoot, uid, m, state, res, out); err != nil {
+				return err
+			}
 			continue
 		}
 		prev := state.Memos[uid]
@@ -230,6 +239,42 @@ func reconcileServerDeletions(ctx context.Context, client *Client, ws *Workspace
 		res.Removed++
 		fmt.Fprintf(out, "  - %s: removed (deleted/archived on server)\n", prev.Path)
 	}
+	return nil
+}
+
+// relocateDrifted moves a tracked memo's local file when the server path no
+// longer matches the recorded one. A locally modified file is left alone (the
+// move would silently discard the edit's location); it is reported so the user
+// can push first and pull again.
+func relocateDrifted(ctx context.Context, client *Client, contentRoot, uid string, m *v1pb.Memo, state *State, res *PullResult, out io.Writer) error {
+	prev := state.Memos[uid]
+	newPath := memoState(m).Path
+	if newPath == prev.Path {
+		return nil
+	}
+
+	if prev.DocType != "PDF" {
+		data, readErr := os.ReadFile(filepath.Join(contentRoot, prev.Path))
+		if readErr != nil {
+			// Missing/unreadable file: the incremental pass already reports these.
+			return nil
+		}
+		if CanonicalHash(string(data)) != prev.ContentHash {
+			res.Orphaned = append(res.Orphaned, prev.Path)
+			fmt.Fprintf(out, "  ⚠ %s: moved on server to %s but modified locally, kept in place\n", prev.Path, newPath)
+			return nil
+		}
+	}
+
+	ms, nDown, err := relocateMemo(ctx, client, contentRoot, prev.Path, m, &prev)
+	if err != nil {
+		return err
+	}
+	removeConflictSidecar(contentRoot, prev.Path)
+	state.Memos[uid] = ms
+	res.Updated++
+	res.Attachments += nDown
+	fmt.Fprintf(out, "  → %s → %s\n", prev.Path, ms.Path)
 	return nil
 }
 

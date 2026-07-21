@@ -104,10 +104,7 @@ export const MAX_GALLERY_BADGES = 3;
 
 /** A single gallery within a VIEW document. */
 export interface GalleryBlock {
-  /** Optional markdown intro rendered above this block's cards. */
-  description?: string;
-  /** Optional markdown note rendered below this block's cards. */
-  footer?: string;
+  type: "gallery";
   scope: GalleryScope;
   sort: GallerySort;
   cover: GalleryCoverRule;
@@ -116,9 +113,22 @@ export interface GalleryBlock {
   badges: GalleryBadgeRule[];
 }
 
+/**
+ * A free markdown block within a VIEW document. Rendered by the same markdown
+ * pipeline as any other document, so every block type it supports (grid,
+ * calendar, kanban, sheets, …) works here too, editing included.
+ */
+export interface MarkdownBlock {
+  type: "markdown";
+  content: string;
+}
+
+/** Blocks are heterogeneous and render top-to-bottom in list order. */
+export type ViewBlock = GalleryBlock | MarkdownBlock;
+
 export interface GalleryViewConfig {
   viewType: "gallery";
-  blocks: GalleryBlock[];
+  blocks: ViewBlock[];
   /**
    * Raw YAML frontmatter (inner text, no `---` delimiters) stored ahead of the
    * config JSON in the document content. Gives VIEW documents their own
@@ -133,6 +143,7 @@ export const DEFAULT_CARD_FIELDS: GalleryCardFields = {
 };
 
 export const DEFAULT_GALLERY_BLOCK: GalleryBlock = {
+  type: "gallery",
   scope: { match: "all", groups: [{ match: "all", rules: [{ kind: "folder" }] }] },
   sort: "updated_desc",
   cover: "first_image",
@@ -255,10 +266,8 @@ function parseBadges(raw: unknown): GalleryBadgeRule[] {
     .slice(0, MAX_GALLERY_BADGES);
 }
 
-function parseBlock(raw: unknown): GalleryBlock {
+function parseGalleryBlock(raw: unknown): GalleryBlock {
   const b = (raw ?? {}) as {
-    description?: unknown;
-    footer?: unknown;
     scope?: unknown;
     sort?: unknown;
     cover?: unknown;
@@ -266,8 +275,7 @@ function parseBlock(raw: unknown): GalleryBlock {
     badges?: unknown;
   };
   return {
-    description: typeof b.description === "string" && b.description.trim() ? b.description : undefined,
-    footer: typeof b.footer === "string" && b.footer.trim() ? b.footer : undefined,
+    type: "gallery",
     scope: parseScope(b.scope),
     sort: normalizeSort(b.sort),
     cover: normalizeCover(b.cover),
@@ -298,6 +306,28 @@ export function matchGalleryBadge(
   });
 }
 
+function markdownBlock(raw: unknown): MarkdownBlock | undefined {
+  return typeof raw === "string" && raw.trim() ? { type: "markdown", content: raw } : undefined;
+}
+
+/**
+ * Parses one stored block. Blocks predating the heterogeneous list carried the
+ * markdown intro/note as `description`/`footer` fields on the gallery itself;
+ * those expand into standalone markdown blocks around it, which is how the old
+ * document renders identically under the new structure. Remove this expansion
+ * once stored documents have been migrated.
+ */
+function parseViewBlock(raw: unknown): ViewBlock[] {
+  const b = (raw ?? {}) as { type?: unknown; content?: unknown; description?: unknown; footer?: unknown };
+  if (b.type === "markdown") {
+    const block = markdownBlock(b.content);
+    return block ? [block] : [];
+  }
+  return [markdownBlock(b.description), parseGalleryBlock(raw), markdownBlock(b.footer)].filter(
+    (block): block is ViewBlock => block !== undefined,
+  );
+}
+
 /**
  * Parses a VIEW document's content into gallery blocks. Returns undefined when
  * the content isn't a gallery view at all (empty/invalid), so the editor can
@@ -313,7 +343,7 @@ export function parseGalleryViewConfig(content: string): GalleryViewConfig | und
     const raw = JSON.parse(body);
     if (!raw || typeof raw !== "object" || raw.viewType !== "gallery") return undefined;
     // Legacy single-config shape (no `blocks` array): treat the whole object as one block.
-    const blocks = Array.isArray(raw.blocks) ? raw.blocks.map(parseBlock) : [parseBlock(raw)];
+    const blocks = (Array.isArray(raw.blocks) ? raw.blocks : [raw]).flatMap(parseViewBlock);
     return { viewType: "gallery", blocks, frontmatter: frontmatter.trim() ? frontmatter : undefined };
   } catch {
     return undefined;

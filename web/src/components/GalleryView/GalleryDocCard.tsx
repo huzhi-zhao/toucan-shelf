@@ -12,7 +12,7 @@ interface Props {
 // intro snippet and links to the document, instead of dumping the config JSON.
 export const GalleryDocCard = ({ title, memoName, content }: Props) => {
   const config = parseGalleryViewConfig(content);
-  const snippet = config?.blocks.find((b) => b.description)?.description?.split("\n")[0];
+  const snippet = config?.blocks.find((b) => b.type === "markdown")?.content.split("\n")[0];
   return (
     <Link
       to={`/${memoName}`}
