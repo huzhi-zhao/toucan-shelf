@@ -18,7 +18,9 @@ export const isVideoAttachment = (attachment: Attachment): boolean => getAttachm
 export const isAudioAttachment = (attachment: Attachment): boolean => getAttachmentType(attachment) === "audio/*";
 export const isPdfAttachment = (attachment: Attachment): boolean => getAttachmentType(attachment) === "application/pdf";
 export const isHtmlAttachment = (attachment: Attachment): boolean => attachment.type === "text/html";
-export const isPreviewableAttachment = (attachment: Attachment): boolean => isPdfAttachment(attachment) || isHtmlAttachment(attachment);
+export const isEpubAttachment = (attachment: Attachment): boolean => getAttachmentType(attachment) === "application/epub+zip";
+export const isPreviewableAttachment = (attachment: Attachment): boolean =>
+  isPdfAttachment(attachment) || isHtmlAttachment(attachment) || isEpubAttachment(attachment);
 
 export const separateAttachments = (attachments: Attachment[]): AttachmentGroups => {
   return attachments.reduce<AttachmentGroups>(

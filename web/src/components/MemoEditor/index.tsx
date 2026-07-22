@@ -51,6 +51,7 @@ const MemoEditorImpl = forwardRef<EditorController, MemoEditorProps>(
       memo,
       parentMemoName,
       pdfAnnotation,
+      epubAnnotation,
       docAnchor,
       autoFocus,
       placeholder,
@@ -297,7 +298,7 @@ const MemoEditorImpl = forwardRef<EditorController, MemoEditorProps>(
       dispatch(actions.setLoading("saving", true));
 
       try {
-        const result = await memoService.save(state, { memoName, parentMemoName, pdfAnnotation, docAnchor });
+        const result = await memoService.save(state, { memoName, parentMemoName, pdfAnnotation, epubAnnotation, docAnchor });
 
         if (!result.hasChanges) {
           toast.error(t("editor.no-changes-detected"));

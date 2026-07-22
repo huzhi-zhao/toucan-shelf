@@ -11,6 +11,9 @@ export interface DocScrollPosition {
   // Current page number. Used for paginated (horizontal) PDF mode, where the container
   // itself doesn't scroll.
   page?: number;
+  // EPUB Canonical Fragment Identifier of the current reading location. EPUB has no fixed
+  // page numbers (reflowable), so location is restored by CFI instead.
+  cfi?: string;
 }
 
 export function getDocScrollPosition(key: string): DocScrollPosition | undefined {

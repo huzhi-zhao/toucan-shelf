@@ -146,6 +146,9 @@ func (s *APIV1Service) CreateMemo(ctx context.Context, request *v1pb.CreateMemoR
 	if request.Memo.PdfAnnotation != nil {
 		create.Payload.PdfAnnotation = convertPdfAnnotationToStore(request.Memo.PdfAnnotation)
 	}
+	if request.Memo.EpubAnnotation != nil {
+		create.Payload.EpubAnnotation = convertEpubAnnotationToStore(request.Memo.EpubAnnotation)
+	}
 	if request.Memo.DocAnchor != nil {
 		create.Payload.DocAnchor = convertDocAnchorToStore(request.Memo.DocAnchor)
 	}
@@ -587,6 +590,10 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 		} else if path == "pdf_annotation" {
 			payload := memo.Payload
 			payload.PdfAnnotation = convertPdfAnnotationToStore(request.Memo.PdfAnnotation)
+			update.Payload = payload
+		} else if path == "epub_annotation" {
+			payload := memo.Payload
+			payload.EpubAnnotation = convertEpubAnnotationToStore(request.Memo.EpubAnnotation)
 			update.Payload = payload
 		} else if path == "node_overlays" {
 			payload := memo.Payload

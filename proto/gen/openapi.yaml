@@ -3318,6 +3318,31 @@ components:
                 headingText:
                     type: string
                     description: The heading's display text, shown as the comment's anchor label.
+        EpubAnnotation:
+            required:
+                - attachmentName
+                - cfiRange
+            type: object
+            properties:
+                attachmentName:
+                    type: string
+                    description: |-
+                        The name of the attachment this annotation is anchored to.
+                         Format: attachments/{uid}
+                cfiRange:
+                    type: string
+                    description: The EPUB CFI range identifying the highlighted text span.
+                textSnippet:
+                    type: string
+                    description: |-
+                        Optional selected text snippet, shown as the comment's anchor label and used
+                         as a fallback if the CFI range can't be resolved.
+                color:
+                    type: string
+                    description: The mark's color, as a preset key (e.g. "yellow", "blue"). Empty means the default.
+                underline:
+                    type: boolean
+                    description: When true the mark renders as an underline in `color`; otherwise as a background highlight.
         FieldMapping:
             type: object
             properties:
@@ -4158,6 +4183,12 @@ components:
                     description: |-
                         Optional. Set when this memo is a comment anchored to a heading within a
                          document memo (markdown/view).
+                epubAnnotation:
+                    allOf:
+                        - $ref: '#/components/schemas/EpubAnnotation'
+                    description: |-
+                        Optional. Set when this memo is a comment anchored to a text range within
+                         an EPUB attachment.
                 nodeOverlays:
                     type: object
                     additionalProperties:

@@ -319,6 +319,10 @@ message Memo {
   // document memo (markdown/view).
   optional DocAnchor doc_anchor = 24 [(google.api.field_behavior) = OPTIONAL];
 
+  // Optional. Set when this memo is a comment anchored to a text range within
+  // an EPUB attachment.
+  optional EpubAnnotation epub_annotation = 26 [(google.api.field_behavior) = OPTIONAL];
+
   // Optional. Supplementary per-node data keyed by an in-document node anchor id
   // (e.g. a `sheets` block's `id:`). The value is an opaque JSON string whose
   // shape is owned by the node's renderer; the server never parses it. Lets
@@ -384,6 +388,25 @@ message DocAnchor {
 
   // The heading's display text, shown as the comment's anchor label.
   string heading_text = 2 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message EpubAnnotation {
+  // The name of the attachment this annotation is anchored to.
+  // Format: attachments/{uid}
+  string attachment_name = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // The EPUB CFI range identifying the highlighted text span.
+  string cfi_range = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // Optional selected text snippet, shown as the comment's anchor label and used
+  // as a fallback if the CFI range can't be resolved.
+  string text_snippet = 3 [(google.api.field_behavior) = OPTIONAL];
+
+  // The mark's color, as a preset key (e.g. "yellow", "blue"). Empty means the default.
+  string color = 4 [(google.api.field_behavior) = OPTIONAL];
+
+  // When true the mark renders as an underline in `color`; otherwise as a background highlight.
+  bool underline = 5 [(google.api.field_behavior) = OPTIONAL];
 }
 
 message CreateMemoRequest {

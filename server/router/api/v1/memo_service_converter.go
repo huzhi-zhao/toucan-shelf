@@ -62,6 +62,7 @@ func (s *APIV1Service) convertMemoFromStoreWithCreators(ctx context.Context, mem
 		memoMessage.Location = convertLocationFromStore(memo.Payload.Location)
 		memoMessage.PdfAnnotation = convertPdfAnnotationFromStore(memo.Payload.PdfAnnotation)
 		memoMessage.DocAnchor = convertDocAnchorFromStore(memo.Payload.DocAnchor)
+		memoMessage.EpubAnnotation = convertEpubAnnotationFromStore(memo.Payload.EpubAnnotation)
 		memoMessage.NodeOverlays = memo.Payload.NodeOverlays
 	}
 
@@ -389,6 +390,32 @@ func convertPdfAnnotationToStore(annotation *v1pb.PdfAnnotation) *storepb.MemoPa
 		Width:          annotation.Width,
 		Height:         annotation.Height,
 		TextSnippet:    annotation.TextSnippet,
+	}
+}
+
+func convertEpubAnnotationFromStore(annotation *storepb.MemoPayload_EpubAnnotation) *v1pb.EpubAnnotation {
+	if annotation == nil {
+		return nil
+	}
+	return &v1pb.EpubAnnotation{
+		AttachmentName: annotation.AttachmentName,
+		CfiRange:       annotation.CfiRange,
+		TextSnippet:    annotation.TextSnippet,
+		Color:          annotation.Color,
+		Underline:      annotation.Underline,
+	}
+}
+
+func convertEpubAnnotationToStore(annotation *v1pb.EpubAnnotation) *storepb.MemoPayload_EpubAnnotation {
+	if annotation == nil {
+		return nil
+	}
+	return &storepb.MemoPayload_EpubAnnotation{
+		AttachmentName: annotation.AttachmentName,
+		CfiRange:       annotation.CfiRange,
+		TextSnippet:    annotation.TextSnippet,
+		Color:          annotation.Color,
+		Underline:      annotation.Underline,
 	}
 }
 

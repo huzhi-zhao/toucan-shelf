@@ -1,5 +1,6 @@
 allowBuilds:
   core-js: false
+  es5-ext: false
   esbuild: true
   x-data-spreadsheet: false
 
@@ -8,4 +9,5 @@ onlyBuiltDependencies:
 
 ignoredBuiltDependencies:
   - core-js
+  - es5-ext
   - x-data-spreadsheet

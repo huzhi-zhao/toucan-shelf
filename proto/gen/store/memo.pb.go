@@ -35,9 +35,11 @@ type MemoPayload struct {
 	// owned by the node's renderer; the server never parses it. Lets clients
 	// attach overlay info (cell styles, etc.) to any addressable node without
 	// touching that node's raw content.
-	NodeOverlays  map[string]string `protobuf:"bytes,6,rep,name=node_overlays,json=nodeOverlays,proto3" json:"node_overlays,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	NodeOverlays map[string]string `protobuf:"bytes,6,rep,name=node_overlays,json=nodeOverlays,proto3" json:"node_overlays,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Set when this memo is a comment anchored to a text range within an EPUB attachment.
+	EpubAnnotation *MemoPayload_EpubAnnotation `protobuf:"bytes,7,opt,name=epub_annotation,json=epubAnnotation,proto3" json:"epub_annotation,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *MemoPayload) Reset() {
@@ -108,6 +110,13 @@ func (x *MemoPayload) GetDocAnchor() *MemoPayload_DocAnchor {
 func (x *MemoPayload) GetNodeOverlays() map[string]string {
 	if x != nil {
 		return x.NodeOverlays
+	}
+	return nil
+}
+
+func (x *MemoPayload) GetEpubAnnotation() *MemoPayload_EpubAnnotation {
+	if x != nil {
+		return x.EpubAnnotation
 	}
 	return nil
 }
@@ -401,11 +410,93 @@ func (x *MemoPayload_DocAnchor) GetHeadingText() string {
 	return ""
 }
 
+type MemoPayload_EpubAnnotation struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The name of the attachment this annotation is anchored to, e.g. "attachments/{uid}".
+	AttachmentName string `protobuf:"bytes,1,opt,name=attachment_name,json=attachmentName,proto3" json:"attachment_name,omitempty"`
+	// The EPUB CFI range identifying the highlighted text span.
+	CfiRange string `protobuf:"bytes,2,opt,name=cfi_range,json=cfiRange,proto3" json:"cfi_range,omitempty"`
+	// Optional selected text snippet, shown as the comment's anchor label and used as
+	// a fallback if the CFI range can't be resolved.
+	TextSnippet string `protobuf:"bytes,3,opt,name=text_snippet,json=textSnippet,proto3" json:"text_snippet,omitempty"`
+	// The mark's color, as a preset key (e.g. "yellow", "blue"). Empty means the default.
+	Color string `protobuf:"bytes,4,opt,name=color,proto3" json:"color,omitempty"`
+	// When true the mark renders as an underline in `color`; otherwise as a background highlight.
+	Underline     bool `protobuf:"varint,5,opt,name=underline,proto3" json:"underline,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MemoPayload_EpubAnnotation) Reset() {
+	*x = MemoPayload_EpubAnnotation{}
+	mi := &file_store_memo_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MemoPayload_EpubAnnotation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MemoPayload_EpubAnnotation) ProtoMessage() {}
+
+func (x *MemoPayload_EpubAnnotation) ProtoReflect() protoreflect.Message {
+	mi := &file_store_memo_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MemoPayload_EpubAnnotation.ProtoReflect.Descriptor instead.
+func (*MemoPayload_EpubAnnotation) Descriptor() ([]byte, []int) {
+	return file_store_memo_proto_rawDescGZIP(), []int{0, 5}
+}
+
+func (x *MemoPayload_EpubAnnotation) GetAttachmentName() string {
+	if x != nil {
+		return x.AttachmentName
+	}
+	return ""
+}
+
+func (x *MemoPayload_EpubAnnotation) GetCfiRange() string {
+	if x != nil {
+		return x.CfiRange
+	}
+	return ""
+}
+
+func (x *MemoPayload_EpubAnnotation) GetTextSnippet() string {
+	if x != nil {
+		return x.TextSnippet
+	}
+	return ""
+}
+
+func (x *MemoPayload_EpubAnnotation) GetColor() string {
+	if x != nil {
+		return x.Color
+	}
+	return ""
+}
+
+func (x *MemoPayload_EpubAnnotation) GetUnderline() bool {
+	if x != nil {
+		return x.Underline
+	}
+	return false
+}
+
 var File_store_memo_proto protoreflect.FileDescriptor
 
 const file_store_memo_proto_rawDesc = "" +
 	"\n" +
-	"\x10store/memo.proto\x12\vmemos.store\"\xe9\a\n" +
+	"\x10store/memo.proto\x12\vmemos.store\"\xeb\t\n" +
 	"\vMemoPayload\x12=\n" +
 	"\bproperty\x18\x01 \x01(\v2!.memos.store.MemoPayload.PropertyR\bproperty\x12=\n" +
 	"\blocation\x18\x02 \x01(\v2!.memos.store.MemoPayload.LocationR\blocation\x12\x12\n" +
@@ -413,7 +504,8 @@ const file_store_memo_proto_rawDesc = "" +
 	"\x0epdf_annotation\x18\x04 \x01(\v2&.memos.store.MemoPayload.PdfAnnotationR\rpdfAnnotation\x12A\n" +
 	"\n" +
 	"doc_anchor\x18\x05 \x01(\v2\".memos.store.MemoPayload.DocAnchorR\tdocAnchor\x12O\n" +
-	"\rnode_overlays\x18\x06 \x03(\v2*.memos.store.MemoPayload.NodeOverlaysEntryR\fnodeOverlays\x1a?\n" +
+	"\rnode_overlays\x18\x06 \x03(\v2*.memos.store.MemoPayload.NodeOverlaysEntryR\fnodeOverlays\x12P\n" +
+	"\x0fepub_annotation\x18\a \x01(\v2'.memos.store.MemoPayload.EpubAnnotationR\x0eepubAnnotation\x1a?\n" +
 	"\x11NodeOverlaysEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a\xac\x01\n" +
@@ -437,7 +529,13 @@ const file_store_memo_proto_rawDesc = "" +
 	"\ftext_snippet\x18\a \x01(\tR\vtextSnippet\x1aQ\n" +
 	"\tDocAnchor\x12!\n" +
 	"\fheading_slug\x18\x01 \x01(\tR\vheadingSlug\x12!\n" +
-	"\fheading_text\x18\x02 \x01(\tR\vheadingTextB\x94\x01\n" +
+	"\fheading_text\x18\x02 \x01(\tR\vheadingText\x1a\xad\x01\n" +
+	"\x0eEpubAnnotation\x12'\n" +
+	"\x0fattachment_name\x18\x01 \x01(\tR\x0eattachmentName\x12\x1b\n" +
+	"\tcfi_range\x18\x02 \x01(\tR\bcfiRange\x12!\n" +
+	"\ftext_snippet\x18\x03 \x01(\tR\vtextSnippet\x12\x14\n" +
+	"\x05color\x18\x04 \x01(\tR\x05color\x12\x1c\n" +
+	"\tunderline\x18\x05 \x01(\bR\tunderlineB\x94\x01\n" +
 	"\x0fcom.memos.storeB\tMemoProtoP\x01Z)github.com/usememos/memos/proto/gen/store\xa2\x02\x03MSX\xaa\x02\vMemos.Store\xca\x02\vMemos\\Store\xe2\x02\x17Memos\\Store\\GPBMetadata\xea\x02\fMemos::Storeb\x06proto3"
 
 var (
@@ -452,14 +550,15 @@ func file_store_memo_proto_rawDescGZIP() []byte {
 	return file_store_memo_proto_rawDescData
 }
 
-var file_store_memo_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_store_memo_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_store_memo_proto_goTypes = []any{
-	(*MemoPayload)(nil),               // 0: memos.store.MemoPayload
-	nil,                               // 1: memos.store.MemoPayload.NodeOverlaysEntry
-	(*MemoPayload_Property)(nil),      // 2: memos.store.MemoPayload.Property
-	(*MemoPayload_Location)(nil),      // 3: memos.store.MemoPayload.Location
-	(*MemoPayload_PdfAnnotation)(nil), // 4: memos.store.MemoPayload.PdfAnnotation
-	(*MemoPayload_DocAnchor)(nil),     // 5: memos.store.MemoPayload.DocAnchor
+	(*MemoPayload)(nil),                // 0: memos.store.MemoPayload
+	nil,                                // 1: memos.store.MemoPayload.NodeOverlaysEntry
+	(*MemoPayload_Property)(nil),       // 2: memos.store.MemoPayload.Property
+	(*MemoPayload_Location)(nil),       // 3: memos.store.MemoPayload.Location
+	(*MemoPayload_PdfAnnotation)(nil),  // 4: memos.store.MemoPayload.PdfAnnotation
+	(*MemoPayload_DocAnchor)(nil),      // 5: memos.store.MemoPayload.DocAnchor
+	(*MemoPayload_EpubAnnotation)(nil), // 6: memos.store.MemoPayload.EpubAnnotation
 }
 var file_store_memo_proto_depIdxs = []int32{
 	2, // 0: memos.store.MemoPayload.property:type_name -> memos.store.MemoPayload.Property
@@ -467,11 +566,12 @@ var file_store_memo_proto_depIdxs = []int32{
 	4, // 2: memos.store.MemoPayload.pdf_annotation:type_name -> memos.store.MemoPayload.PdfAnnotation
 	5, // 3: memos.store.MemoPayload.doc_anchor:type_name -> memos.store.MemoPayload.DocAnchor
 	1, // 4: memos.store.MemoPayload.node_overlays:type_name -> memos.store.MemoPayload.NodeOverlaysEntry
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	6, // 5: memos.store.MemoPayload.epub_annotation:type_name -> memos.store.MemoPayload.EpubAnnotation
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_store_memo_proto_init() }
@@ -485,7 +585,7 @@ func file_store_memo_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_store_memo_proto_rawDesc), len(file_store_memo_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

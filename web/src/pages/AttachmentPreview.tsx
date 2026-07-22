@@ -1,7 +1,8 @@
 import { ArrowUpIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { isHtmlAttachment, isPdfAttachment } from "@/components/MemoMetadata/Attachment/attachmentHelpers";
+import { EpubDocumentView } from "@/components/EpubViewer/EpubDocumentView";
+import { isEpubAttachment, isHtmlAttachment, isPdfAttachment } from "@/components/MemoMetadata/Attachment/attachmentHelpers";
 import { PdfDocumentView } from "@/components/PdfViewer/PdfDocumentView";
 import { attachmentNamePrefix } from "@/helpers/resource-names";
 import { useAttachment } from "@/hooks/useAttachmentQueries";
@@ -43,6 +44,7 @@ const AttachmentPreview = () => {
 
   const isHtml = attachment ? isHtmlAttachment(attachment) : false;
   const isPdf = attachment ? isPdfAttachment(attachment) : false;
+  const isEpub = attachment ? isEpubAttachment(attachment) : false;
   const cachedPosition = attachment ? getDocScrollPosition(attachment.name) : undefined;
 
   const isParentMemoQueryEnabled = !!attachment?.memo && isHtml;
@@ -130,7 +132,7 @@ const AttachmentPreview = () => {
     return <div className="flex h-screen w-screen items-center justify-center text-sm text-muted-foreground">{t("pdf.loading")}</div>;
   }
 
-  if (error || !attachment || (!isPdf && !isHtml)) {
+  if (error || !attachment || (!isPdf && !isHtml && !isEpub)) {
     return (
       <div className="flex h-screen w-screen items-center justify-center text-sm text-destructive">
         {t("attachment-preview.unavailable")}
@@ -164,6 +166,17 @@ const AttachmentPreview = () => {
             filename={attachment.filename}
             initialPageNumber={cachedPosition?.page}
             onPageNumberChange={(page) => saveDocScrollPosition(attachment.name, { page })}
+          />
+        )}
+        {isEpub && toolbarSlot && (
+          <EpubDocumentView
+            url={getAttachmentUrl(attachment)}
+            toolbarSlot={toolbarSlot}
+            className="px-6 py-4"
+            parentMemoName={attachment.memo}
+            attachmentName={attachment.name}
+            initialCfi={cachedPosition?.cfi}
+            onLocationChange={(cfi) => saveDocScrollPosition(attachment.name, { cfi })}
           />
         )}
         {isHtml &&

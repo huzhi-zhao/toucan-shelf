@@ -4,7 +4,7 @@ import { isEqual } from "lodash-es";
 import { memoServiceClient } from "@/connect";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 import { AttachmentSchema } from "@/types/proto/api/v1/attachment_service_pb";
-import type { DocAnchor, Memo, PdfAnnotation } from "@/types/proto/api/v1/memo_service_pb";
+import type { DocAnchor, EpubAnnotation, Memo, PdfAnnotation } from "@/types/proto/api/v1/memo_service_pb";
 import { MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
 import type { EditorState } from "../state";
 import { uploadService } from "./uploadService";
@@ -80,6 +80,7 @@ export const memoService = {
       memoName?: string;
       parentMemoName?: string;
       pdfAnnotation?: PdfAnnotation;
+      epubAnnotation?: EpubAnnotation;
       docAnchor?: DocAnchor;
     },
   ): Promise<{ memoName: string; hasChanges: boolean }> {
@@ -111,6 +112,7 @@ export const memoService = {
       relations: state.metadata.relations,
       location: state.metadata.location,
       pdfAnnotation: options.pdfAnnotation,
+      epubAnnotation: options.epubAnnotation,
       docAnchor: options.docAnchor,
       createTime: state.timestamps.createTime ? timestampFromDate(state.timestamps.createTime) : undefined,
       updateTime: state.timestamps.updateTime ? timestampFromDate(state.timestamps.updateTime) : undefined,

@@ -1,4 +1,4 @@
-import type { DocAnchor, Location, Memo, PdfAnnotation, Visibility } from "@/types/proto/api/v1/memo_service_pb";
+import type { DocAnchor, EpubAnnotation, Location, Memo, PdfAnnotation, Visibility } from "@/types/proto/api/v1/memo_service_pb";
 import type { AudioRecorderStatus } from "../hooks/useAudioRecorder";
 
 export interface MemoEditorProps {
@@ -10,6 +10,8 @@ export interface MemoEditorProps {
   parentMemoName?: string;
   /** Anchors the created comment to a location within a PDF attachment (create mode only). */
   pdfAnnotation?: PdfAnnotation;
+  /** Anchors the created comment to a text range within an EPUB attachment (create mode only). */
+  epubAnnotation?: EpubAnnotation;
   /** Anchors the created comment to a heading within a document memo (create mode only). */
   docAnchor?: DocAnchor;
   autoFocus?: boolean;
