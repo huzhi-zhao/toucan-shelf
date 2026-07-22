@@ -1,6 +1,7 @@
 import { LayoutGridIcon } from "lucide-react";
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { MARK_EXCLUDE_ATTR } from "@/components/DocComments/textAnchor";
 import MemoContent from "@/components/MemoContent";
 import { BlockSourceProvider, type BlockSourceValue } from "@/components/MemoContent/BlockSourceContext";
 import { PropertiesPanel } from "@/components/MemoContent/PropertiesPanel";
@@ -216,7 +217,9 @@ const GalleryBlockView = ({ block, memo, openDoc }: BlockProps) => {
   }, [data, block, memo.name, memo.folderPath]);
 
   return (
-    <div className="w-full flex flex-col gap-4">
+    // Card walls are rebuilt from a live query on every render, so their text is not something a
+    // comment can be anchored to — keep the whole subtree out of anchoring.
+    <div {...{ [MARK_EXCLUDE_ATTR]: "" }} className="w-full flex flex-col gap-4">
       {isLoading ? (
         <div className="text-sm text-muted-foreground">{t("gallery.loading")}</div>
       ) : docs.length === 0 ? (
@@ -280,7 +283,10 @@ const GalleryViewRenderer = ({ memo, onOpenDoc, readonly = true, className }: Pr
 
   return (
     <div className={cn("w-full flex flex-col gap-6", className)}>
-      <PropertiesPanel properties={properties} />
+      {/* Frontmatter properties are metadata, not prose — excluded from anchoring like card walls. */}
+      <div {...{ [MARK_EXCLUDE_ATTR]: "" }}>
+        <PropertiesPanel properties={properties} />
+      </div>
       {config.blocks.map((block, index) => (
         <div key={index} className="flex flex-col gap-6">
           {block.type === "markdown" ? (

@@ -118,9 +118,10 @@ const DocumentView = ({
   const remainingAttachments = partitionInlinedAttachments(memo.attachments, memo.content).rest;
   // Comments are available for markdown/view docs (PDF has its own annotation sidebar; HTML is skipped).
   const supportsComments = !isPdf && !isHtml;
-  // Text marks (highlight / underline) are a markdown-document affordance: gallery docs render
-  // live data rather than prose, so there's nothing stable to mark there.
-  const supportsMarks = supportsComments && !isView;
+  // Text marks (highlight / underline) follow prose. VIEW docs qualify through their markdown
+  // blocks; the card walls they also render are live query results, and the renderer keeps those
+  // out of anchoring so a mark can never latch onto a card that a later query drops.
+  const supportsMarks = supportsComments;
   const [commentsOpen, setCommentsOpen] = useState(false);
   // The floating mark toolbar, shown over the current text selection in the preview. Its anchor
   // is captured up front (heading + text quote) because the selection itself is gone the moment
@@ -455,6 +456,59 @@ const DocumentView = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, scrollCacheKey]);
 
+  // The in-text marking apparatus: the overlay plus the two floating toolbars (one for a fresh
+  // selection, one for an existing mark). Rendered as the last child of whichever positioned
+  // element wraps the rendered document — a markdown document, or a VIEW document's blocks.
+  const markOverlay = supportsMarks && mode === "preview" && (
+    <>
+      <DocMarkLayer
+        containerRef={markContainerRef}
+        marks={marks}
+        contentKey={memo.content}
+        selectedMemoName={selectedMemoName}
+        // Marking is a comment-panel activity: with the panel collapsed the document is just a
+        // document, so marks are shown but inert — the same rule the selection toolbar follows.
+        // Open the panel first, then mark or restyle.
+        onMarkClick={commentsOpen ? handleMarkClick : undefined}
+        onUnresolved={setUnresolvedMarks}
+        onAnchors={setMarkAnchors}
+      />
+      {selectionPopover && commentsOpen && (
+        <MarkToolbar
+          x={selectionPopover.left}
+          y={selectionPopover.top}
+          activeColorKey=""
+          activeUnderline={false}
+          onColor={(colorKey) => createMark(colorKey, false)}
+          onUnderline={() => createMark("", true)}
+          onNote={composeFromSelection}
+        />
+      )}
+      {activeMarkComment && activeMark && (
+        <MarkToolbar
+          // The live position wins over the clicked one; the latter only covers the frame before
+          // the first remeasure, and the case where the mark went unresolved.
+          x={markAnchors[activeMark.memoName]?.x ?? activeMark.x}
+          y={markAnchors[activeMark.memoName]?.y ?? activeMark.y}
+          activeColorKey={activeMarkComment.docAnchor?.color ?? ""}
+          activeUnderline={activeMarkComment.docAnchor?.underline ?? false}
+          // Picking a colour only ever applies it — clicking the current one again is a no-op,
+          // not a toggle-off. Removing a mark is the eraser button's job, and conflating the two
+          // makes re-picking the same colour feel like a misfire.
+          onColor={(colorKey) => updateMarkStyle(activeMarkComment, colorKey, activeMarkComment.docAnchor?.underline ?? false)}
+          onUnderline={() =>
+            updateMarkStyle(activeMarkComment, activeMarkComment.docAnchor?.color ?? "", !(activeMarkComment.docAnchor?.underline ?? false))
+          }
+          onNote={() => {
+            setActiveMark(undefined);
+            setEditingMarkComment(activeMarkComment);
+          }}
+          onClear={() => clearMark(activeMarkComment)}
+        />
+      )}
+    </>
+  );
+
   return (
     <div className="w-full h-full flex flex-col min-w-0">
       <div className="shrink-0 flex items-center gap-2 border-b border-border px-4 py-1.5">
@@ -656,13 +710,17 @@ const DocumentView = ({
             )
           ) : isView ? (
             mode === "preview" ? (
-              <div className="px-6 py-4">
+              // Positioned for the mark overlay, exactly like the markdown preview. A VIEW doc's
+              // markdown blocks are ordinary prose and get the same marking; its card walls are
+              // live query results and are excluded from anchoring by the renderer.
+              <div ref={markContainerRef} className="relative px-6 py-4">
                 <GalleryViewRenderer memo={memo} onOpenDoc={onOpenDocument} readonly={false} />
                 {remainingAttachments.length > 0 && (
                   <div id={ATTACHMENTS_ANCHOR_ID} className="mt-6 border-t border-border pt-4">
                     <AttachmentListView attachments={remainingAttachments} />
                   </div>
                 )}
+                {markOverlay}
               </div>
             ) : (
               <div className="h-full">
@@ -692,57 +750,7 @@ const DocumentView = ({
                   <AttachmentListView attachments={remainingAttachments} />
                 </div>
               )}
-              {supportsMarks && (
-                <DocMarkLayer
-                  containerRef={markContainerRef}
-                  marks={marks}
-                  contentKey={memo.content}
-                  selectedMemoName={selectedMemoName}
-                  // Marking is a comment-panel activity: with the panel collapsed the document is
-                  // just a document, so marks are shown but inert — the same rule the selection
-                  // toolbar follows. Open the panel first, then mark or restyle.
-                  onMarkClick={commentsOpen ? handleMarkClick : undefined}
-                  onUnresolved={setUnresolvedMarks}
-                  onAnchors={setMarkAnchors}
-                />
-              )}
-              {selectionPopover && commentsOpen && (
-                <MarkToolbar
-                  x={selectionPopover.left}
-                  y={selectionPopover.top}
-                  activeColorKey=""
-                  activeUnderline={false}
-                  onColor={(colorKey) => createMark(colorKey, false)}
-                  onUnderline={() => createMark("", true)}
-                  onNote={composeFromSelection}
-                />
-              )}
-              {activeMarkComment && activeMark && (
-                <MarkToolbar
-                  // The live position wins over the clicked one; the latter only covers the frame
-                  // before the first remeasure, and the case where the mark went unresolved.
-                  x={markAnchors[activeMark.memoName]?.x ?? activeMark.x}
-                  y={markAnchors[activeMark.memoName]?.y ?? activeMark.y}
-                  activeColorKey={activeMarkComment.docAnchor?.color ?? ""}
-                  activeUnderline={activeMarkComment.docAnchor?.underline ?? false}
-                  // Picking a colour only ever applies it — clicking the current one again is a
-                  // no-op, not a toggle-off. Removing a mark is the eraser button's job, and
-                  // conflating the two makes re-picking the same colour feel like a misfire.
-                  onColor={(colorKey) => updateMarkStyle(activeMarkComment, colorKey, activeMarkComment.docAnchor?.underline ?? false)}
-                  onUnderline={() =>
-                    updateMarkStyle(
-                      activeMarkComment,
-                      activeMarkComment.docAnchor?.color ?? "",
-                      !(activeMarkComment.docAnchor?.underline ?? false),
-                    )
-                  }
-                  onNote={() => {
-                    setActiveMark(undefined);
-                    setEditingMarkComment(activeMarkComment);
-                  }}
-                  onClear={() => clearMark(activeMarkComment)}
-                />
-              )}
+              {markOverlay}
             </div>
           ) : (
             <div className="h-full flex flex-col px-4 py-4">

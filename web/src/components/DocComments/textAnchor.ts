@@ -33,6 +33,11 @@ interface TextMap {
 // them would corrupt every offset. They're marked with this attribute so we can skip them.
 export const MARK_LAYER_ATTR = "data-doc-mark-layer";
 
+// Opts a subtree out of anchoring entirely: its text is neither offered for marking nor searched
+// when re-locating one. For content that isn't the document's own prose — a VIEW doc's card
+// walls, say, which are live query results whose text appears and vanishes as data changes.
+export const MARK_EXCLUDE_ATTR = "data-mark-exclude";
+
 const SKIP_TAGS = new Set(["SCRIPT", "STYLE", "NOSCRIPT"]);
 
 // Flattens the container's text nodes into one string plus an offset index, so a DOM position
@@ -43,7 +48,9 @@ const buildTextMap = (container: HTMLElement): TextMap => {
   const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
     acceptNode: (node) => {
       for (let el = node.parentElement; el && el !== container; el = el.parentElement) {
-        if (SKIP_TAGS.has(el.tagName) || el.hasAttribute(MARK_LAYER_ATTR)) return NodeFilter.FILTER_REJECT;
+        if (SKIP_TAGS.has(el.tagName) || el.hasAttribute(MARK_LAYER_ATTR) || el.hasAttribute(MARK_EXCLUDE_ATTR)) {
+          return NodeFilter.FILTER_REJECT;
+        }
       }
       return NodeFilter.FILTER_ACCEPT;
     },
@@ -129,8 +136,7 @@ const contextScore = (text: string, index: number, quote: TextQuote): number => 
  * anchor). When the text occurs more than once, the occurrence whose surrounding text best
  * matches the remembered prefix/suffix wins, so repeated phrases stay on the right one.
  */
-export const resolveTextQuote = (container: HTMLElement, quote: TextQuote): Range | undefined =>
-  createQuoteResolver(container)(quote);
+export const resolveTextQuote = (container: HTMLElement, quote: TextQuote): Range | undefined => createQuoteResolver(container)(quote);
 
 /**
  * Builds the container's text map once and returns a resolver over it. Resolving marks one by

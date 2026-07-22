@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { buildTextQuote, resolveTextQuote } from "@/components/DocComments/textAnchor";
+import { buildTextQuote, MARK_EXCLUDE_ATTR, resolveTextQuote } from "@/components/DocComments/textAnchor";
 
 // Builds a container and a Range over `text`'s first occurrence of `target`, the way a user's
 // selection would arrive from the browser.
@@ -89,6 +89,18 @@ describe("doc text anchors", () => {
 
     // The caller degrades to the comment's heading anchor rather than dropping the comment.
     expect(resolveTextQuote(container, quote!)).toBeUndefined();
+  });
+
+  it("ignores excluded subtrees on both sides — a VIEW doc's card wall never anchors a mark", () => {
+    const container = setup(`<p>prose about widgets</p><div ${MARK_EXCLUDE_ATTR}><span>prose about widgets</span></div>`);
+    // A quote taken from the prose must not be able to land in the card wall...
+    const quote = buildTextQuote(container, selectIn(container, "about widgets"));
+    container.innerHTML = `<div ${MARK_EXCLUDE_ATTR}><span>prose about widgets</span></div>`;
+    expect(resolveTextQuote(container, quote!)).toBeUndefined();
+
+    // ...and text selected inside the card wall yields no quote at all.
+    const excluded = setup(`<div ${MARK_EXCLUDE_ATTR}><span>card title text</span></div>`);
+    expect(buildTextQuote(excluded, selectIn(excluded, "card title"))).toBeUndefined();
   });
 
   it("ignores a selection that covers no text", () => {
