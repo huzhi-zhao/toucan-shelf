@@ -704,13 +704,36 @@ func (x *PdfAnnotation) GetTextSnippet() string {
 	return ""
 }
 
+// Anchors a comment to a location inside a document memo's own content. Two levels
+// of precision coexist: the heading fields always identify the enclosing section,
+// while the optional text_* fields pin an exact span of rendered text so the comment
+// can also render as an in-text mark (highlight or underline).
+//
+// The text span is stored as a quote selector (prefix + exact + suffix) rather than
+// as offsets, because a document's content is edited freely: matching by surrounding
+// text survives insertions and deletions elsewhere, whereas an offset would not. When
+// the span can no longer be found (the marked text itself was rewritten), clients fall
+// back to the heading anchor instead of dropping the comment.
 type DocAnchor struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The slug (DOM id) of the heading this comment is anchored to. Empty means the
 	// comment is anchored to the top of the document (no preceding heading).
 	HeadingSlug string `protobuf:"bytes,1,opt,name=heading_slug,json=headingSlug,proto3" json:"heading_slug,omitempty"`
 	// The heading's display text, shown as the comment's anchor label.
-	HeadingText   string `protobuf:"bytes,2,opt,name=heading_text,json=headingText,proto3" json:"heading_text,omitempty"`
+	HeadingText string `protobuf:"bytes,2,opt,name=heading_text,json=headingText,proto3" json:"heading_text,omitempty"`
+	// The exact marked text, as it appeared in the rendered document. Empty means this
+	// comment has no text-level anchor and is only attached to its heading.
+	TextExact string `protobuf:"bytes,3,opt,name=text_exact,json=textExact,proto3" json:"text_exact,omitempty"`
+	// The rendered text immediately before / after `text_exact` (a bounded window), used
+	// to pick the right occurrence when the same phrase appears more than once, and to
+	// re-locate the span after the surrounding text shifts.
+	TextPrefix string `protobuf:"bytes,4,opt,name=text_prefix,json=textPrefix,proto3" json:"text_prefix,omitempty"`
+	TextSuffix string `protobuf:"bytes,5,opt,name=text_suffix,json=textSuffix,proto3" json:"text_suffix,omitempty"`
+	// The mark's color, as a preset key (e.g. "yellow", "blue"). Empty means the default.
+	Color string `protobuf:"bytes,6,opt,name=color,proto3" json:"color,omitempty"`
+	// When true the mark renders as an underline in `color`; otherwise as a background
+	// highlight. Ignored when `text_exact` is empty.
+	Underline     bool `protobuf:"varint,7,opt,name=underline,proto3" json:"underline,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -757,6 +780,41 @@ func (x *DocAnchor) GetHeadingText() string {
 		return x.HeadingText
 	}
 	return ""
+}
+
+func (x *DocAnchor) GetTextExact() string {
+	if x != nil {
+		return x.TextExact
+	}
+	return ""
+}
+
+func (x *DocAnchor) GetTextPrefix() string {
+	if x != nil {
+		return x.TextPrefix
+	}
+	return ""
+}
+
+func (x *DocAnchor) GetTextSuffix() string {
+	if x != nil {
+		return x.TextSuffix
+	}
+	return ""
+}
+
+func (x *DocAnchor) GetColor() string {
+	if x != nil {
+		return x.Color
+	}
+	return ""
+}
+
+func (x *DocAnchor) GetUnderline() bool {
+	if x != nil {
+		return x.Underline
+	}
+	return false
 }
 
 type EpubAnnotation struct {
@@ -3136,10 +3194,18 @@ const file_api_v1_memo_service_proto_rawDesc = "" +
 	"\x01y\x18\x04 \x01(\x01B\x03\xe0A\x02R\x01y\x12\x19\n" +
 	"\x05width\x18\x05 \x01(\x01B\x03\xe0A\x02R\x05width\x12\x1b\n" +
 	"\x06height\x18\x06 \x01(\x01B\x03\xe0A\x02R\x06height\x12&\n" +
-	"\ftext_snippet\x18\a \x01(\tB\x03\xe0A\x01R\vtextSnippet\"[\n" +
+	"\ftext_snippet\x18\a \x01(\tB\x03\xe0A\x01R\vtextSnippet\"\x89\x02\n" +
 	"\tDocAnchor\x12&\n" +
 	"\fheading_slug\x18\x01 \x01(\tB\x03\xe0A\x01R\vheadingSlug\x12&\n" +
-	"\fheading_text\x18\x02 \x01(\tB\x03\xe0A\x01R\vheadingText\"\xc6\x01\n" +
+	"\fheading_text\x18\x02 \x01(\tB\x03\xe0A\x01R\vheadingText\x12\"\n" +
+	"\n" +
+	"text_exact\x18\x03 \x01(\tB\x03\xe0A\x01R\ttextExact\x12$\n" +
+	"\vtext_prefix\x18\x04 \x01(\tB\x03\xe0A\x01R\n" +
+	"textPrefix\x12$\n" +
+	"\vtext_suffix\x18\x05 \x01(\tB\x03\xe0A\x01R\n" +
+	"textSuffix\x12\x19\n" +
+	"\x05color\x18\x06 \x01(\tB\x03\xe0A\x01R\x05color\x12!\n" +
+	"\tunderline\x18\a \x01(\bB\x03\xe0A\x01R\tunderline\"\xc6\x01\n" +
 	"\x0eEpubAnnotation\x12,\n" +
 	"\x0fattachment_name\x18\x01 \x01(\tB\x03\xe0A\x02R\x0eattachmentName\x12 \n" +
 	"\tcfi_range\x18\x02 \x01(\tB\x03\xe0A\x02R\bcfiRange\x12&\n" +

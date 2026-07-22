@@ -132,12 +132,12 @@
 /* EPUB text marks live in the marks-pane SVG that epub.js overlays in the *parent*
    document (not the book iframe), so they're styled here rather than via epub themes.
    For underlines, marks-pane draws a <rect> that inherits the group's stroke — which
-   would render as a colored box around the text — plus a hardcoded-black <line>. Kill
-   the box, and make the line inherit the group's stroke (our per-mark color). */
+   would render as a colored box around the text — plus a <line>. Kill the box, and keep
+   the line a thin black rule. */
 .epub-mark-ul rect {
   stroke: none !important;
 }
 .epub-mark-ul line {
-  stroke: inherit !important;
-  stroke-width: 2 !important;
+  stroke: #000 !important;
+  stroke-width: 1 !important;
 }

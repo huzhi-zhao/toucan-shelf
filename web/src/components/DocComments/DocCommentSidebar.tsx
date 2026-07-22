@@ -17,8 +17,13 @@ interface Props {
   onChanged?: () => void;
   /** Captures the heading a new comment should anchor to (nearest heading above the current scroll). */
   getAnchor?: () => DocAnchor | undefined;
-  /** Scrolls the document preview to the heading a comment is anchored to. */
-  onJump?: (slug: string) => void;
+  /** Scrolls the document preview to what a comment is anchored to (its marked text, else its heading). */
+  onJump?: (anchor: DocAnchor | undefined) => void;
+  /** The comment whose mark is emphasized in the document, kept in sync with the cards. */
+  selectedMemoName?: string;
+  onSelect?: (memoName: string) => void;
+  /** Comments whose marked text is no longer in the document, shown with a "text changed" note. */
+  unresolvedMarks?: string[];
   /**
    * External request to open the composer pre-anchored to a specific heading (e.g. from the
    * selection popover). Bump `nonce` to (re)open the editor; `anchor` seeds the anchor chip.
@@ -38,6 +43,9 @@ export const DocCommentSidebar = ({
   onChanged,
   getAnchor,
   onJump,
+  selectedMemoName,
+  onSelect,
+  unresolvedMarks,
   composeRequest,
   className,
 }: Props) => {
@@ -106,15 +114,33 @@ export const DocCommentSidebar = ({
         {comments.length === 0 && !showEditor ? (
           <div className="text-sm text-muted-foreground px-2 py-4">{t("memo.comment.empty")}</div>
         ) : (
-          comments.map((comment) => (
-            <CommentCard
-              key={comment.name}
-              memo={comment}
-              anchorLabel={comment.docAnchor?.headingText}
-              onSelect={comment.docAnchor ? () => onJump?.(comment.docAnchor?.headingSlug ?? "") : undefined}
-              onEdited={onChanged}
-            />
-          ))
+          comments.map((comment) => {
+            const anchor = comment.docAnchor;
+            const stale = !!anchor?.textExact && !!unresolvedMarks?.includes(comment.name);
+            return (
+              <CommentCard
+                key={comment.name}
+                memo={comment}
+                selected={comment.name === selectedMemoName}
+                // A marked comment labels itself with the text it marks, which says far more about
+                // what it's about than the section it happens to sit in; heading-only comments keep
+                // showing their heading.
+                anchorLabel={anchor?.textExact || anchor?.headingText}
+                anchorColor={anchor?.textExact ? anchor.color : undefined}
+                anchorStale={stale}
+                staleLabel={t("mark.text-changed")}
+                onSelect={
+                  anchor
+                    ? () => {
+                        onSelect?.(comment.name);
+                        onJump?.(anchor);
+                      }
+                    : undefined
+                }
+                onEdited={onChanged}
+              />
+            );
+          })
         )}
       </div>
     </div>

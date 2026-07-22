@@ -381,6 +381,16 @@ message PdfAnnotation {
   string text_snippet = 7 [(google.api.field_behavior) = OPTIONAL];
 }
 
+// Anchors a comment to a location inside a document memo's own content. Two levels
+// of precision coexist: the heading fields always identify the enclosing section,
+// while the optional text_* fields pin an exact span of rendered text so the comment
+// can also render as an in-text mark (highlight or underline).
+//
+// The text span is stored as a quote selector (prefix + exact + suffix) rather than
+// as offsets, because a document's content is edited freely: matching by surrounding
+// text survives insertions and deletions elsewhere, whereas an offset would not. When
+// the span can no longer be found (the marked text itself was rewritten), clients fall
+// back to the heading anchor instead of dropping the comment.
 message DocAnchor {
   // The slug (DOM id) of the heading this comment is anchored to. Empty means the
   // comment is anchored to the top of the document (no preceding heading).
@@ -388,6 +398,23 @@ message DocAnchor {
 
   // The heading's display text, shown as the comment's anchor label.
   string heading_text = 2 [(google.api.field_behavior) = OPTIONAL];
+
+  // The exact marked text, as it appeared in the rendered document. Empty means this
+  // comment has no text-level anchor and is only attached to its heading.
+  string text_exact = 3 [(google.api.field_behavior) = OPTIONAL];
+
+  // The rendered text immediately before / after `text_exact` (a bounded window), used
+  // to pick the right occurrence when the same phrase appears more than once, and to
+  // re-locate the span after the surrounding text shifts.
+  string text_prefix = 4 [(google.api.field_behavior) = OPTIONAL];
+  string text_suffix = 5 [(google.api.field_behavior) = OPTIONAL];
+
+  // The mark's color, as a preset key (e.g. "yellow", "blue"). Empty means the default.
+  string color = 6 [(google.api.field_behavior) = OPTIONAL];
+
+  // When true the mark renders as an underline in `color`; otherwise as a background
+  // highlight. Ignored when `text_exact` is empty.
+  bool underline = 7 [(google.api.field_behavior) = OPTIONAL];
 }
 
 message EpubAnnotation {

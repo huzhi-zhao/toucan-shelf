@@ -11,11 +11,11 @@ import { cn } from "@/lib/utils";
 import type { Memo } from "@/types/proto/api/v1/memo_service_pb";
 import { EpubAnnotationSchema, MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
 import { useTranslate } from "@/utils/i18n";
-import { DEFAULT_MARK_COLOR, getMarkColor } from "./epubMarks";
 import { EpubAnnotationSidebar } from "./EpubAnnotationSidebar";
 import { EpubMarkToolbar } from "./EpubMarkToolbar";
-import { type EpubSettings, getBackgroundPreset, loadEpubSettings, saveEpubSettings } from "./epubSettings";
 import { EpubToolbar } from "./EpubToolbar";
+import { DEFAULT_MARK_COLOR, getMarkColor } from "./epubMarks";
+import { type EpubSettings, getBackgroundPreset, loadEpubSettings, saveEpubSettings } from "./epubSettings";
 import { useEpubAnnotations } from "./useEpubAnnotations";
 import { useEpubBook } from "./useEpubBook";
 import { MAX_FONT_SCALE, MIN_FONT_SCALE, useEpubRendition } from "./useEpubRendition";
@@ -38,15 +38,7 @@ interface Props {
 // Renders an EPUB with a toolbar (portaled into a caller-provided slot, e.g. a document
 // title bar) and the book area inline — mirroring PdfDocumentView so the two document
 // readers plug into the same surfaces (AttachmentPreview, Notebook DocumentView).
-export const EpubDocumentView = ({
-  url,
-  toolbarSlot,
-  className,
-  parentMemoName,
-  attachmentName,
-  initialCfi,
-  onLocationChange,
-}: Props) => {
+export const EpubDocumentView = ({ url, toolbarSlot, className, parentMemoName, attachmentName, initialCfi, onLocationChange }: Props) => {
   const t = useTranslate();
   const isDesktop = useMediaQuery("lg");
   const { bookRef, toc, loading, error } = useEpubBook(url);
@@ -81,7 +73,15 @@ export const EpubDocumentView = ({
   // Every annotation renders as an in-text mark; only ones with a written note show in the
   // sidebar list (bare marks stay visible in the book but don't clutter the note list).
   const highlights = useMemo(
-    () => annotations.map((a) => ({ cfiRange: a.cfiRange, memoName: a.memo.name, color: getMarkColor(a.color).color, underline: a.underline })),
+    () =>
+      annotations.map((a) => ({
+        cfiRange: a.cfiRange,
+        memoName: a.memo.name,
+        // An empty color key means "no background fill" (e.g. an underline-only mark); the
+        // background and the underline are independent and can be applied together.
+        bgColor: a.color ? getMarkColor(a.color).color : undefined,
+        underline: a.underline,
+      })),
     [annotations],
   );
   const notedAnnotations = useMemo(() => annotations.filter((a) => a.hasNote), [annotations]);
@@ -137,6 +137,22 @@ export const EpubDocumentView = ({
     [refetch],
   );
 
+  // Clear a mark's styling. A bare mark (no note) is deleted outright; a mark that carries a
+  // note is kept — the note must survive — and just reset to the default background color so
+  // it stays visible and locatable in the book.
+  const clearMark = useCallback(
+    async (memo: Memo) => {
+      setActiveMark(undefined);
+      if (memo.content.trim().length > 0) {
+        await updateMarkStyle(memo, DEFAULT_MARK_COLOR, false);
+        return;
+      }
+      await memoServiceClient.deleteMemo({ name: memo.name });
+      refetch();
+    },
+    [updateMarkStyle, refetch],
+  );
+
   const rendition = useEpubRendition({
     bookRef,
     ready: !loading && !error,
@@ -157,7 +173,7 @@ export const EpubDocumentView = ({
       setActiveMark({ memo: entry.memo, x: anchor.x, y: anchor.y });
     },
   });
-  const { containerRef, next, prev, goToCfi } = rendition;
+  const { containerRef, next, prev, goToCfi, clearSelection } = rendition;
   const nextRef = useRef(next);
   const prevRef = useRef(prev);
   nextRef.current = next;
@@ -230,10 +246,7 @@ export const EpubDocumentView = ({
       <div className="w-full flex items-start">
         {/* The chosen background also tints the page gutters/margins around the book iframe,
             so the reading surface reads as one color rather than paper-on-app-background. */}
-        <div
-          className={cn("relative min-w-0 flex-1", className)}
-          style={containerBg ? { background: containerBg } : undefined}
-        >
+        <div className={cn("relative min-w-0 flex-1", className)} style={containerBg ? { background: containerBg } : undefined}>
           {loading && (
             <div className="absolute inset-0 z-10 flex items-center justify-center text-sm text-muted-foreground">{t("epub.loading")}</div>
           )}
@@ -243,11 +256,22 @@ export const EpubDocumentView = ({
             <EpubMarkToolbar
               x={pendingSelection.x}
               y={pendingSelection.y}
-              onColor={(colorKey) => createMark(colorKey, false)}
-              onUnderline={() => createMark(DEFAULT_MARK_COLOR, true)}
+              // A fresh selection has no style yet; the first pick creates a background-only
+              // or underline-only mark. Stacking the two is done by clicking the mark again.
+              activeColorKey=""
+              activeUnderline={false}
+              onColor={(colorKey) => {
+                createMark(colorKey, false);
+                clearSelection();
+              }}
+              onUnderline={() => {
+                createMark("", true);
+                clearSelection();
+              }}
               onNote={() => {
                 setPendingAnnotation({ cfiRange: pendingSelection.cfiRange, text: pendingSelection.text });
                 setPendingSelection(undefined);
+                clearSelection();
               }}
             />
           )}
@@ -255,13 +279,25 @@ export const EpubDocumentView = ({
             <EpubMarkToolbar
               x={activeMark.x}
               y={activeMark.y}
-              onColor={(colorKey) => updateMarkStyle(activeMark.memo, colorKey, false)}
-              // Underlining an existing mark keeps its current color (fall back to default).
-              onUnderline={() => updateMarkStyle(activeMark.memo, activeMark.memo.epubAnnotation?.color || DEFAULT_MARK_COLOR, true)}
+              activeColorKey={activeMark.memo.epubAnnotation?.color ?? ""}
+              activeUnderline={activeMark.memo.epubAnnotation?.underline ?? false}
+              // Background and underline toggle independently, so each handler keeps the other's
+              // current state — letting a mark carry both at once. Re-picking the active color
+              // clears the background.
+              onColor={(colorKey) => {
+                const ann = activeMark.memo.epubAnnotation;
+                const nextColor = ann?.color === colorKey ? "" : colorKey;
+                updateMarkStyle(activeMark.memo, nextColor, ann?.underline ?? false);
+              }}
+              onUnderline={() => {
+                const ann = activeMark.memo.epubAnnotation;
+                updateMarkStyle(activeMark.memo, ann?.color ?? "", !(ann?.underline ?? false));
+              }}
               onNote={() => {
                 setEditingMemo(activeMark.memo);
                 setActiveMark(undefined);
               }}
+              onClear={() => clearMark(activeMark.memo)}
             />
           )}
         </div>

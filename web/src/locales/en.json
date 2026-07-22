@@ -1207,7 +1207,8 @@
     "annotations": "Notes",
     "no-annotations": "No notes yet. Toggle \"Add a note\" and select some text to write one about it.",
     "highlight": "Highlight",
-    "underline": "Underline"
+    "underline": "Underline",
+    "clear-mark": "Clear mark"
   },
   "bookshelf": {
     "title": "ToucanShelf",
@@ -1218,5 +1219,8 @@
     "no-results": "No matching documents found.",
     "keyword-only-hint": "Configure an embedding model to enable semantic search. Showing keyword results only.",
     "results-for": "Results for"
+  },
+  "mark": {
+    "text-changed": "Original text changed"
   }
 }

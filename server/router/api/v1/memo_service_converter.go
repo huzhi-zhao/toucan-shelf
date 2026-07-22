@@ -426,6 +426,11 @@ func convertDocAnchorFromStore(anchor *storepb.MemoPayload_DocAnchor) *v1pb.DocA
 	return &v1pb.DocAnchor{
 		HeadingSlug: anchor.HeadingSlug,
 		HeadingText: anchor.HeadingText,
+		TextExact:   anchor.TextExact,
+		TextPrefix:  anchor.TextPrefix,
+		TextSuffix:  anchor.TextSuffix,
+		Color:       anchor.Color,
+		Underline:   anchor.Underline,
 	}
 }
 
@@ -436,6 +441,11 @@ func convertDocAnchorToStore(anchor *v1pb.DocAnchor) *storepb.MemoPayload_DocAnc
 	return &storepb.MemoPayload_DocAnchor{
 		HeadingSlug: anchor.HeadingSlug,
 		HeadingText: anchor.HeadingText,
+		TextExact:   anchor.TextExact,
+		TextPrefix:  anchor.TextPrefix,
+		TextSuffix:  anchor.TextSuffix,
+		Color:       anchor.Color,
+		Underline:   anchor.Underline,
 	}
 }
 

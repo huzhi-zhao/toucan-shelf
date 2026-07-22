@@ -355,13 +355,27 @@ func (x *MemoPayload_PdfAnnotation) GetTextSnippet() string {
 	return ""
 }
 
+// Anchors a comment to a location inside a document memo's own content. The heading
+// fields always identify the enclosing section; the optional text_* fields additionally
+// pin an exact span of rendered text so the comment renders as an in-text mark. See
+// the api/v1 DocAnchor for why the span is stored as a quote selector, not offsets.
 type MemoPayload_DocAnchor struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The slug (DOM id) of the heading this comment is anchored to. Empty means the
 	// comment is anchored to the top of the document (no preceding heading).
 	HeadingSlug string `protobuf:"bytes,1,opt,name=heading_slug,json=headingSlug,proto3" json:"heading_slug,omitempty"`
 	// The heading's display text, shown as the comment's anchor label.
-	HeadingText   string `protobuf:"bytes,2,opt,name=heading_text,json=headingText,proto3" json:"heading_text,omitempty"`
+	HeadingText string `protobuf:"bytes,2,opt,name=heading_text,json=headingText,proto3" json:"heading_text,omitempty"`
+	// The exact marked text. Empty means the comment has no text-level anchor.
+	TextExact string `protobuf:"bytes,3,opt,name=text_exact,json=textExact,proto3" json:"text_exact,omitempty"`
+	// Bounded windows of rendered text surrounding `text_exact`, used to disambiguate
+	// repeated phrases and to re-locate the span after edits.
+	TextPrefix string `protobuf:"bytes,4,opt,name=text_prefix,json=textPrefix,proto3" json:"text_prefix,omitempty"`
+	TextSuffix string `protobuf:"bytes,5,opt,name=text_suffix,json=textSuffix,proto3" json:"text_suffix,omitempty"`
+	// The mark's color preset key (e.g. "yellow"). Empty means the default.
+	Color string `protobuf:"bytes,6,opt,name=color,proto3" json:"color,omitempty"`
+	// Render as an underline rather than a background highlight.
+	Underline     bool `protobuf:"varint,7,opt,name=underline,proto3" json:"underline,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -408,6 +422,41 @@ func (x *MemoPayload_DocAnchor) GetHeadingText() string {
 		return x.HeadingText
 	}
 	return ""
+}
+
+func (x *MemoPayload_DocAnchor) GetTextExact() string {
+	if x != nil {
+		return x.TextExact
+	}
+	return ""
+}
+
+func (x *MemoPayload_DocAnchor) GetTextPrefix() string {
+	if x != nil {
+		return x.TextPrefix
+	}
+	return ""
+}
+
+func (x *MemoPayload_DocAnchor) GetTextSuffix() string {
+	if x != nil {
+		return x.TextSuffix
+	}
+	return ""
+}
+
+func (x *MemoPayload_DocAnchor) GetColor() string {
+	if x != nil {
+		return x.Color
+	}
+	return ""
+}
+
+func (x *MemoPayload_DocAnchor) GetUnderline() bool {
+	if x != nil {
+		return x.Underline
+	}
+	return false
 }
 
 type MemoPayload_EpubAnnotation struct {
@@ -496,7 +545,7 @@ var File_store_memo_proto protoreflect.FileDescriptor
 
 const file_store_memo_proto_rawDesc = "" +
 	"\n" +
-	"\x10store/memo.proto\x12\vmemos.store\"\xeb\t\n" +
+	"\x10store/memo.proto\x12\vmemos.store\"\x81\v\n" +
 	"\vMemoPayload\x12=\n" +
 	"\bproperty\x18\x01 \x01(\v2!.memos.store.MemoPayload.PropertyR\bproperty\x12=\n" +
 	"\blocation\x18\x02 \x01(\v2!.memos.store.MemoPayload.LocationR\blocation\x12\x12\n" +
@@ -526,10 +575,18 @@ const file_store_memo_proto_rawDesc = "" +
 	"\x01y\x18\x04 \x01(\x01R\x01y\x12\x14\n" +
 	"\x05width\x18\x05 \x01(\x01R\x05width\x12\x16\n" +
 	"\x06height\x18\x06 \x01(\x01R\x06height\x12!\n" +
-	"\ftext_snippet\x18\a \x01(\tR\vtextSnippet\x1aQ\n" +
+	"\ftext_snippet\x18\a \x01(\tR\vtextSnippet\x1a\xe6\x01\n" +
 	"\tDocAnchor\x12!\n" +
 	"\fheading_slug\x18\x01 \x01(\tR\vheadingSlug\x12!\n" +
-	"\fheading_text\x18\x02 \x01(\tR\vheadingText\x1a\xad\x01\n" +
+	"\fheading_text\x18\x02 \x01(\tR\vheadingText\x12\x1d\n" +
+	"\n" +
+	"text_exact\x18\x03 \x01(\tR\ttextExact\x12\x1f\n" +
+	"\vtext_prefix\x18\x04 \x01(\tR\n" +
+	"textPrefix\x12\x1f\n" +
+	"\vtext_suffix\x18\x05 \x01(\tR\n" +
+	"textSuffix\x12\x14\n" +
+	"\x05color\x18\x06 \x01(\tR\x05color\x12\x1c\n" +
+	"\tunderline\x18\a \x01(\bR\tunderline\x1a\xad\x01\n" +
 	"\x0eEpubAnnotation\x12'\n" +
 	"\x0fattachment_name\x18\x01 \x01(\tR\x0eattachmentName\x12\x1b\n" +
 	"\tcfi_range\x18\x02 \x01(\tR\bcfiRange\x12!\n" +

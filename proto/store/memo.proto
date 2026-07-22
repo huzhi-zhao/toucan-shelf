@@ -57,12 +57,26 @@ message MemoPayload {
     string text_snippet = 7;
   }
 
+  // Anchors a comment to a location inside a document memo's own content. The heading
+  // fields always identify the enclosing section; the optional text_* fields additionally
+  // pin an exact span of rendered text so the comment renders as an in-text mark. See
+  // the api/v1 DocAnchor for why the span is stored as a quote selector, not offsets.
   message DocAnchor {
     // The slug (DOM id) of the heading this comment is anchored to. Empty means the
     // comment is anchored to the top of the document (no preceding heading).
     string heading_slug = 1;
     // The heading's display text, shown as the comment's anchor label.
     string heading_text = 2;
+    // The exact marked text. Empty means the comment has no text-level anchor.
+    string text_exact = 3;
+    // Bounded windows of rendered text surrounding `text_exact`, used to disambiguate
+    // repeated phrases and to re-locate the span after edits.
+    string text_prefix = 4;
+    string text_suffix = 5;
+    // The mark's color preset key (e.g. "yellow"). Empty means the default.
+    string color = 6;
+    // Render as an underline rather than a background highlight.
+    bool underline = 7;
   }
 
   message EpubAnnotation {

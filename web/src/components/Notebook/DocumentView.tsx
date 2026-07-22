@@ -1,4 +1,5 @@
-import { timestampDate } from "@bufbuild/protobuf/wkt";
+import { create } from "@bufbuild/protobuf";
+import { FieldMaskSchema, timestampDate } from "@bufbuild/protobuf/wkt";
 import copy from "copy-to-clipboard";
 import {
   ArchiveIcon,
@@ -17,12 +18,15 @@ import {
   SaveIcon,
   TrashIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { DocCommentSidebar } from "@/components/DocComments/DocCommentSidebar";
-import { nearestHeadingAnchor, nearestHeadingAnchorForNode, scrollToHeading } from "@/components/DocComments/docAnchor";
+import { type DocMark, DocMarkLayer } from "@/components/DocComments/DocMarkLayer";
+import { anchorTextQuote, buildSelectionAnchor, nearestHeadingAnchor, scrollToAnchor } from "@/components/DocComments/docAnchor";
+import { MARK_LAYER_ATTR } from "@/components/DocComments/textAnchor";
 import GalleryViewForm from "@/components/GalleryView/GalleryViewForm";
 import GalleryViewRenderer from "@/components/GalleryView/GalleryViewRenderer";
+import { MARK_TOOLBAR_ATTR, MarkToolbar } from "@/components/MarkToolbar";
 import CreateVersionDialog from "@/components/MemoActionMenu/CreateVersionDialog";
 import MemoContent from "@/components/MemoContent";
 import MemoEditor from "@/components/MemoEditor";
@@ -31,6 +35,7 @@ import { AttachmentListView } from "@/components/MemoMetadata";
 import { MemoViewContext, type MemoViewContextValue } from "@/components/MemoView/MemoViewContext";
 import { PdfDocumentView } from "@/components/PdfViewer/PdfDocumentView";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,16 +47,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { memoServiceClient } from "@/connect";
 import { useInstance } from "@/contexts/InstanceContext";
 import useMediaQuery from "@/hooks/useMediaQuery";
 import { useCreateMemoHistory, useMemoHistories, useRestoreMemoHistory } from "@/hooks/useMemoHistoryQueries";
 import { useInfiniteMemoComments } from "@/hooks/useMemoQueries";
 import { cn } from "@/lib/utils";
 import { State } from "@/types/proto/api/v1/common_pb";
-import { type DocAnchor, type Memo, Memo_DocType, type MemoHistory } from "@/types/proto/api/v1/memo_service_pb";
+import { type DocAnchor, type Memo, Memo_DocType, type MemoHistory, MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
 import { getAttachmentUrl, partitionInlinedAttachments } from "@/utils/attachment";
 import { parseFrontmatter } from "@/utils/frontmatter";
 import { useTranslate } from "@/utils/i18n";
+import { DEFAULT_MARK_COLOR } from "@/utils/markColors";
 import { attachmentUIDsOf, hashMemoState } from "@/utils/memoState";
 import { getDocScrollPosition, restoreScrollTopWhenReady, saveDocScrollPosition } from "@/utils/scrollPositionCache";
 import DocumentOutline, { ATTACHMENTS_ANCHOR_ID } from "./DocumentOutline";
@@ -111,10 +118,30 @@ const DocumentView = ({
   const remainingAttachments = partitionInlinedAttachments(memo.attachments, memo.content).rest;
   // Comments are available for markdown/view docs (PDF has its own annotation sidebar; HTML is skipped).
   const supportsComments = !isPdf && !isHtml;
+  // Text marks (highlight / underline) are a markdown-document affordance: gallery docs render
+  // live data rather than prose, so there's nothing stable to mark there.
+  const supportsMarks = supportsComments && !isView;
   const [commentsOpen, setCommentsOpen] = useState(false);
-  // Floating "comment on selection" button: positioned at the current text selection in the
-  // preview, carrying the heading anchor computed from where the selection starts.
+  // The floating mark toolbar, shown over the current text selection in the preview. Its anchor
+  // is captured up front (heading + text quote) because the selection itself is gone the moment
+  // focus moves to the toolbar.
   const [selectionPopover, setSelectionPopover] = useState<{ top: number; left: number; anchor: DocAnchor }>();
+  // The comment whose mark is currently emphasized — set by clicking a mark or a sidebar card.
+  const [selectedMemoName, setSelectedMemoName] = useState<string>();
+  // An existing mark that was clicked, with the toolbar open over it for restyling/clearing.
+  const [activeMark, setActiveMark] = useState<{ memoName: string; x: number; y: number }>();
+  // A bare mark being given a note, edited in a dialog over the document (the sidebar only lists
+  // comments that already have one).
+  const [editingMarkComment, setEditingMarkComment] = useState<Memo>();
+  // Marks whose text no longer exists in the document (it was edited away). They stay in the
+  // sidebar, flagged, rather than disappearing along with whatever note they carry.
+  const [unresolvedMarks, setUnresolvedMarks] = useState<string[]>([]);
+  // Where each mark currently sits, republished by the mark layer after every remeasure. The
+  // mark toolbar reads its position from here rather than from the click that opened it, so it
+  // stays over its mark when the click itself reflows the document (opening the comment panel
+  // and collapsing the outline both change the text's width — very visibly on a wide screen,
+  // where the outline is expanded to begin with).
+  const [markAnchors, setMarkAnchors] = useState<Record<string, { x: number; y: number }>>({});
   // A bump-to-open request handed to the comment sidebar to start composing pre-anchored.
   const [composeRequest, setComposeRequest] = useState<{ anchor: DocAnchor; nonce: number }>();
   const {
@@ -128,6 +155,25 @@ const DocumentView = ({
   useEffect(() => {
     if (hasMoreComments && !isFetchingMoreComments) fetchMoreComments();
   }, [hasMoreComments, isFetchingMoreComments, fetchMoreComments]);
+  // Comments carrying a pdf/epub annotation are anchored to an *attachment* (managed by the
+  // PDF/EPUB reader's own annotation sidebar), not to this document's body — so keep them out
+  // of the doc comment panel. Only doc-body comments (plain or heading-anchored) belong here.
+  const docComments = useMemo(() => comments.filter((c) => !c.pdfAnnotation && !c.epubAnnotation), [comments]);
+  // Every doc comment that carries a text quote also draws as an in-text mark. Comments anchored
+  // only to a heading (or to nothing) contribute no mark and just live in the sidebar.
+  const marks = useMemo<DocMark[]>(
+    () =>
+      docComments.flatMap((comment) => {
+        const quote = anchorTextQuote(comment.docAnchor);
+        if (!quote) return [];
+        return [{ memoName: comment.name, quote, color: comment.docAnchor?.color ?? "", underline: comment.docAnchor?.underline ?? false }];
+      }),
+    [docComments],
+  );
+  const activeMarkComment = useMemo(() => docComments.find((c) => c.name === activeMark?.memoName), [docComments, activeMark]);
+  // Only comments with something written in them belong in the panel; a bare mark is pure
+  // styling on the text and would otherwise show up as an empty card.
+  const notedComments = useMemo(() => docComments.filter((c) => c.content.trim()), [docComments]);
   const [mode, setMode] = useState<"preview" | "edit">("preview");
   const [outlineCollapsed, setOutlineCollapsed] = useState(() => {
     const displayOutline = parseFrontmatter(memo.content).properties.find((p) => p.key === "displayOutline")?.value;
@@ -140,6 +186,9 @@ const DocumentView = ({
   // Lazily load versions only once the "view versions" submenu is opened.
   const [versionsMenuOpen, setVersionsMenuOpen] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
+  // The rendered document itself, inside the scroll viewport. Marks are measured and positioned
+  // against this element (not the viewport), so they scroll with the text for free.
+  const markContainerRef = useRef<HTMLDivElement>(null);
   const [pdfToolbarSlot, setPdfToolbarSlot] = useState<HTMLDivElement | null>(null);
   const saveScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   // Live editor draft, kept in sync while `mode === "edit"` so the outline reflects
@@ -195,6 +244,10 @@ const DocumentView = ({
     setMode(isView && !memo.content.trim() ? "edit" : "preview");
     setCommentsOpen(false);
     setSelectionPopover(undefined);
+    // Mark state belongs to the document that was open, not to the one being opened.
+    setActiveMark(undefined);
+    setSelectedMemoName(undefined);
+    setUnresolvedMarks([]);
     setHtmlDraft(memo.content);
     setTitleDraft(memo.title);
     setEditDraftContent(null);
@@ -251,9 +304,8 @@ const DocumentView = ({
   }, [mode, scrollCacheKey]);
 
   const handlePreviewScroll = () => {
-    // The selection popover is positioned in viewport coordinates, so it goes stale the moment
-    // the preview scrolls — drop it rather than let it drift away from the selection.
-    if (selectionPopover) setSelectionPopover(undefined);
+    // The mark toolbar is positioned inside the document element, so it scrolls along with the
+    // selection it points at and doesn't need to be dismissed here.
     if (mode !== "preview" || !scrollCacheKey) return;
     const el = previewRef.current;
     if (!el) return;
@@ -262,16 +314,33 @@ const DocumentView = ({
     saveScrollTimeoutRef.current = setTimeout(() => saveDocScrollPosition(scrollCacheKey, { scrollTop }), 300);
   };
 
-  // On mouse-up in the preview, if the user has selected some text, capture the selection's
-  // start node *now* (before a click elsewhere clears it), resolve the nearest heading above it,
-  // and show a floating "comment on selection" button anchored to the selection's rect.
-  const handlePreviewMouseUp = () => {
-    // Selection-to-comment is only offered while the comment panel is open.
-    if (!supportsComments || mode !== "preview" || !commentsOpen) return;
-    const container = previewRef.current;
+  // Drops the current text selection. Used after a selection has been turned into a mark, so the
+  // browser's selection highlight doesn't sit on top of the mark that replaced it.
+  const clearSelection = () => window.getSelection()?.removeAllRanges();
+
+  // On mouse-up in the preview, if the user has selected some text, capture the selection *now*
+  // (before focus moves to the toolbar and clears it) as a full anchor — enclosing heading plus
+  // a quote selector for the text — and show the mark toolbar over the selection's rect.
+  const handlePreviewMouseUp = (event: React.MouseEvent) => {
+    // Selecting to mark/comment is only offered while the comment panel is open.
+    if (!supportsMarks || mode !== "preview" || !commentsOpen) return;
+    // A mouse-up on an existing mark is a click on that mark, handled by the mark's own click
+    // handler. It must not be read as a selection gesture: clicking inside text that is still
+    // selected (the selection survives the toolbar, which prevents its own mouse-down) leaves
+    // the old selection standing until after mouse-up, so this would re-open the "new mark"
+    // toolbar over the stale selection and fight the mark toolbar for the same spot.
+    // A mouse-up inside the toolbar itself must not dismiss it either — that would unmount it
+    // before the click reaches the button being pressed, so every button would silently do
+    // nothing. (Only while the comment panel is open, which is why this looked like a
+    // sidebar-width problem: with the panel closed this whole handler returns above.)
+    if (event.target instanceof Element && event.target.closest(`[${MARK_LAYER_ATTR}], [${MARK_TOOLBAR_ATTR}]`)) return;
+    const container = markContainerRef.current;
     const selection = window.getSelection();
     if (!container || !selection || selection.isCollapsed || !selection.rangeCount || !selection.toString().trim()) {
+      // A plain click in the document (outside any mark — those returned above) dismisses
+      // whatever the previous one opened.
       setSelectionPopover(undefined);
+      setActiveMark(undefined);
       return;
     }
     const range = selection.getRangeAt(0);
@@ -284,20 +353,97 @@ const DocumentView = ({
       setSelectionPopover(undefined);
       return;
     }
-    const anchor = nearestHeadingAnchorForNode(container, range.startContainer);
-    setSelectionPopover({ top: rect.top - 8, left: rect.left + rect.width / 2, anchor });
+    // The toolbar lives inside the (positioned) document element, so it scrolls along with the
+    // text it points at instead of drifting off it.
+    const origin = container.getBoundingClientRect();
+    setSelectedMemoName(undefined);
+    setSelectionPopover({
+      top: rect.top - origin.top,
+      left: rect.left - origin.left + rect.width / 2,
+      anchor: buildSelectionAnchor(container, range),
+    });
   };
 
-  // Fired from the floating button: open the comments panel and start composing, pre-anchored
-  // to the selection's section. The selection may clear as focus moves — the anchor is already
-  // captured, so that's fine.
+  // Creates a bare mark — a comment with no written note, existing only to colour its text —
+  // directly from the selection, the way the EPUB reader does. Adding a note to it later is a
+  // plain comment edit; the anchor and styling ride along untouched.
+  const createMark = useCallback(
+    async (color: string, underline: boolean) => {
+      if (!selectionPopover) return;
+      const anchor = { ...selectionPopover.anchor, color, underline };
+      setSelectionPopover(undefined);
+      // The toolbar deliberately keeps the selection alive while it is open (its mouse-down is
+      // prevented). Once the mark exists, that selection is done with — drop it, so the browser
+      // doesn't keep painting it over the new mark and the next click starts from a clean slate.
+      clearSelection();
+      await memoServiceClient.createMemoComment({
+        name: memo.name,
+        comment: create(MemoSchema, { content: "", docAnchor: anchor }),
+      });
+      refetchComments();
+    },
+    [selectionPopover, memo.name, refetchComments],
+  );
+
+  // Fired from the toolbar's note button: open the comments panel and start composing, anchored
+  // to the selection. The note also marks its text (as a default-coloured highlight), so writing
+  // a comment about a passage and highlighting it are the same act rather than two separate ones.
   const composeFromSelection = () => {
     if (!selectionPopover) return;
     setOutlineCollapsed(true);
     setCommentsOpen(true);
-    setComposeRequest({ anchor: selectionPopover.anchor, nonce: Date.now() });
+    const anchor = selectionPopover.anchor;
+    setComposeRequest({
+      anchor: anchor.textExact ? { ...anchor, color: anchor.color || DEFAULT_MARK_COLOR } : anchor,
+      nonce: Date.now(),
+    });
     setSelectionPopover(undefined);
+    clearSelection();
   };
+
+  // Clicking a mark selects its comment (the mark brightens, the panel opens on it) and puts the
+  // toolbar over it, so an existing mark can be recoloured or cleared in place — the same gesture
+  // the EPUB reader uses. Without this a bare mark, which has no sidebar card of its own, would
+  // have no way to be undone.
+  const handleMarkClick = useCallback((memoName: string, point: { x: number; y: number }) => {
+    setSelectionPopover(undefined);
+    setSelectedMemoName(memoName);
+    setActiveMark({ memoName, x: point.x, y: point.y });
+    setOutlineCollapsed(true);
+    setCommentsOpen(true);
+  }, []);
+
+  // Restyle an existing mark, keeping its anchor and any note it carries.
+  const updateMarkStyle = useCallback(
+    async (comment: Memo, color: string, underline: boolean) => {
+      setActiveMark(undefined);
+      if (!comment.docAnchor) return;
+      // Re-picking what the mark already has changes nothing — don't spend a round trip on it.
+      if ((comment.docAnchor.color ?? "") === color && (comment.docAnchor.underline ?? false) === underline) return;
+      await memoServiceClient.updateMemo({
+        memo: create(MemoSchema, { name: comment.name, docAnchor: { ...comment.docAnchor, color, underline } }),
+        updateMask: create(FieldMaskSchema, { paths: ["doc_anchor"] }),
+      });
+      refetchComments();
+    },
+    [refetchComments],
+  );
+
+  // Clearing a mark that carries a note only drops its styling — the note is the valuable part
+  // and stays, still anchored to its text. A bare mark *is* only its styling, so clearing it
+  // removes the comment outright.
+  const clearMark = useCallback(
+    async (comment: Memo) => {
+      setActiveMark(undefined);
+      setSelectedMemoName(undefined);
+      if (comment.content.trim()) await updateMarkStyle(comment, "", false);
+      else {
+        await memoServiceClient.deleteMemo({ name: comment.name });
+        refetchComments();
+      }
+    },
+    [updateMarkStyle, refetchComments],
+  );
 
   // Restore the cached scroll position (markdown preview, or continuous-scroll PDF mode)
   // once the switch to this document/mode has settled and content has laid out.
@@ -535,7 +681,9 @@ const DocumentView = ({
               </div>
             )
           ) : mode === "preview" ? (
-            <div className="px-6 py-4">
+            // Positioned, so the mark overlay and the mark toolbar can be placed against the
+            // rendered document and scroll with it.
+            <div ref={markContainerRef} className="relative px-6 py-4">
               <MemoViewContext.Provider value={buildPreviewContext(memo)}>
                 <MemoContent content={memo.content} memoName={memo.name} />
               </MemoViewContext.Provider>
@@ -543,6 +691,57 @@ const DocumentView = ({
                 <div id={ATTACHMENTS_ANCHOR_ID} className="mt-6 border-t border-border pt-4">
                   <AttachmentListView attachments={remainingAttachments} />
                 </div>
+              )}
+              {supportsMarks && (
+                <DocMarkLayer
+                  containerRef={markContainerRef}
+                  marks={marks}
+                  contentKey={memo.content}
+                  selectedMemoName={selectedMemoName}
+                  // Marking is a comment-panel activity: with the panel collapsed the document is
+                  // just a document, so marks are shown but inert — the same rule the selection
+                  // toolbar follows. Open the panel first, then mark or restyle.
+                  onMarkClick={commentsOpen ? handleMarkClick : undefined}
+                  onUnresolved={setUnresolvedMarks}
+                  onAnchors={setMarkAnchors}
+                />
+              )}
+              {selectionPopover && commentsOpen && (
+                <MarkToolbar
+                  x={selectionPopover.left}
+                  y={selectionPopover.top}
+                  activeColorKey=""
+                  activeUnderline={false}
+                  onColor={(colorKey) => createMark(colorKey, false)}
+                  onUnderline={() => createMark("", true)}
+                  onNote={composeFromSelection}
+                />
+              )}
+              {activeMarkComment && activeMark && (
+                <MarkToolbar
+                  // The live position wins over the clicked one; the latter only covers the frame
+                  // before the first remeasure, and the case where the mark went unresolved.
+                  x={markAnchors[activeMark.memoName]?.x ?? activeMark.x}
+                  y={markAnchors[activeMark.memoName]?.y ?? activeMark.y}
+                  activeColorKey={activeMarkComment.docAnchor?.color ?? ""}
+                  activeUnderline={activeMarkComment.docAnchor?.underline ?? false}
+                  // Picking a colour only ever applies it — clicking the current one again is a
+                  // no-op, not a toggle-off. Removing a mark is the eraser button's job, and
+                  // conflating the two makes re-picking the same colour feel like a misfire.
+                  onColor={(colorKey) => updateMarkStyle(activeMarkComment, colorKey, activeMarkComment.docAnchor?.underline ?? false)}
+                  onUnderline={() =>
+                    updateMarkStyle(
+                      activeMarkComment,
+                      activeMarkComment.docAnchor?.color ?? "",
+                      !(activeMarkComment.docAnchor?.underline ?? false),
+                    )
+                  }
+                  onNote={() => {
+                    setActiveMark(undefined);
+                    setEditingMarkComment(activeMarkComment);
+                  }}
+                  onClear={() => clearMark(activeMarkComment)}
+                />
               )}
             </div>
           ) : (
@@ -580,12 +779,15 @@ const DocumentView = ({
           <div className="w-72 shrink-0 min-h-0 border-l border-border">
             <DocCommentSidebar
               parentMemoName={memo.name}
-              comments={comments}
+              comments={notedComments}
               onClose={() => setCommentsOpen(false)}
               onChanged={refetchComments}
               getAnchor={() => nearestHeadingAnchor(previewRef.current)}
-              onJump={(slug) => scrollToHeading(previewRef.current, slug)}
+              onJump={(anchor) => scrollToAnchor(previewRef.current, markContainerRef.current, anchor)}
               composeRequest={composeRequest}
+              selectedMemoName={selectedMemoName}
+              onSelect={setSelectedMemoName}
+              unresolvedMarks={unresolvedMarks}
             />
           </div>
         )}
@@ -600,14 +802,17 @@ const DocumentView = ({
             <div className="h-[calc(100%-3.5rem)]">
               <DocCommentSidebar
                 parentMemoName={memo.name}
-                comments={comments}
+                comments={notedComments}
                 onChanged={refetchComments}
                 getAnchor={() => nearestHeadingAnchor(previewRef.current)}
-                onJump={(slug) => {
+                onJump={(anchor) => {
                   setCommentsOpen(false);
-                  scrollToHeading(previewRef.current, slug);
+                  scrollToAnchor(previewRef.current, markContainerRef.current, anchor);
                 }}
                 composeRequest={composeRequest}
+                selectedMemoName={selectedMemoName}
+                onSelect={setSelectedMemoName}
+                unresolvedMarks={unresolvedMarks}
                 className="border-l-0 border-t-0"
               />
             </div>
@@ -632,21 +837,32 @@ const DocumentView = ({
         </Sheet>
       )}
 
-      {selectionPopover && commentsOpen && (
-        <button
-          type="button"
-          style={{ position: "fixed", top: selectionPopover.top, left: selectionPopover.left, transform: "translate(-50%, -100%)" }}
-          className="z-50 flex items-center gap-1 rounded-full border border-border bg-popover px-2.5 py-1 text-xs font-medium text-foreground shadow-md hover:bg-accent"
-          // Fire before the click so the selection is still alive when we read it; also stop the
-          // mousedown from clearing the selection before onClick runs.
-          onMouseDown={(e) => {
-            e.preventDefault();
-            composeFromSelection();
-          }}
-        >
-          <MessageCircleIcon className="w-3.5 h-3.5" />
-          {t("memo.comment.write-a-comment")}
-        </button>
+      {/* Writing a note onto an existing bare mark. It's a plain comment edit — the mark keeps
+          its anchor and colour, and simply starts appearing in the sidebar once it has text. */}
+      {editingMarkComment && (
+        <Dialog open onOpenChange={(open) => !open && setEditingMarkComment(undefined)}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{t("epub.add-annotation")}</DialogTitle>
+            </DialogHeader>
+            {editingMarkComment.docAnchor?.textExact && (
+              <div className="mb-1 max-h-24 overflow-y-auto rounded-md bg-accent/40 px-2 py-1.5 text-xs text-muted-foreground">
+                {editingMarkComment.docAnchor.textExact}
+              </div>
+            )}
+            <MemoEditor
+              autoFocus
+              memo={editingMarkComment}
+              parentMemoName={memo.name}
+              toolbarVariant="comment"
+              onConfirm={() => {
+                setEditingMarkComment(undefined);
+                refetchComments();
+              }}
+              onCancel={() => setEditingMarkComment(undefined)}
+            />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

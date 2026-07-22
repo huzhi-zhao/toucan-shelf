@@ -3318,6 +3318,38 @@ components:
                 headingText:
                     type: string
                     description: The heading's display text, shown as the comment's anchor label.
+                textExact:
+                    type: string
+                    description: |-
+                        The exact marked text, as it appeared in the rendered document. Empty means this
+                         comment has no text-level anchor and is only attached to its heading.
+                textPrefix:
+                    type: string
+                    description: |-
+                        The rendered text immediately before / after `text_exact` (a bounded window), used
+                         to pick the right occurrence when the same phrase appears more than once, and to
+                         re-locate the span after the surrounding text shifts.
+                textSuffix:
+                    type: string
+                color:
+                    type: string
+                    description: The mark's color, as a preset key (e.g. "yellow", "blue"). Empty means the default.
+                underline:
+                    type: boolean
+                    description: |-
+                        When true the mark renders as an underline in `color`; otherwise as a background
+                         highlight. Ignored when `text_exact` is empty.
+            description: |-
+                Anchors a comment to a location inside a document memo's own content. Two levels
+                 of precision coexist: the heading fields always identify the enclosing section,
+                 while the optional text_* fields pin an exact span of rendered text so the comment
+                 can also render as an in-text mark (highlight or underline).
+
+                 The text span is stored as a quote selector (prefix + exact + suffix) rather than
+                 as offsets, because a document's content is edited freely: matching by surrounding
+                 text survives insertions and deletions elsewhere, whereas an offset would not. When
+                 the span can no longer be found (the marked text itself was rewritten), clients fall
+                 back to the heading anchor instead of dropping the comment.
         EpubAnnotation:
             required:
                 - attachmentName

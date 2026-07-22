@@ -595,6 +595,10 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 			payload := memo.Payload
 			payload.EpubAnnotation = convertEpubAnnotationToStore(request.Memo.EpubAnnotation)
 			update.Payload = payload
+		} else if path == "doc_anchor" {
+			payload := memo.Payload
+			payload.DocAnchor = convertDocAnchorToStore(request.Memo.DocAnchor)
+			update.Payload = payload
 		} else if path == "node_overlays" {
 			payload := memo.Payload
 			payload.NodeOverlays = request.Memo.NodeOverlays
