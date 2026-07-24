@@ -131,6 +131,13 @@ export interface CalendarLayoutBlock {
   dateProperty: string;
   /** Field shown as a tile card's label. Defaults to the document title. */
   cardField: GalleryCardField;
+  /**
+   * Folder (relative to the knowledge base root) new documents are created in
+   * from the add button. When empty, the doc is created in the scope's first
+   * folder rule, or the view's own folder — so setting this pins the location
+   * explicitly instead of relying on that fallback.
+   */
+  newDocFolder: string;
 }
 
 /**
@@ -176,6 +183,7 @@ export const DEFAULT_CALENDAR_LAYOUT_BLOCK: CalendarLayoutBlock = {
   scope: { match: "all", groups: [{ match: "all", rules: [{ kind: "folder" }] }] },
   dateProperty: "",
   cardField: "__title__",
+  newDocFolder: "",
 };
 
 function parseMatch(raw: unknown): GalleryMatch {
@@ -341,12 +349,13 @@ export function matchGalleryBadge(
 }
 
 function parseCalendarLayoutBlock(raw: unknown): CalendarLayoutBlock {
-  const b = (raw ?? {}) as { scope?: unknown; dateProperty?: unknown; cardField?: unknown };
+  const b = (raw ?? {}) as { scope?: unknown; dateProperty?: unknown; cardField?: unknown; newDocFolder?: unknown };
   return {
     type: "calendar",
     scope: parseScope(b.scope),
     dateProperty: typeof b.dateProperty === "string" ? b.dateProperty.trim() : "",
     cardField: normalizeCardField(b.cardField, "__title__"),
+    newDocFolder: typeof b.newDocFolder === "string" ? b.newDocFolder.trim() : "",
   };
 }
 

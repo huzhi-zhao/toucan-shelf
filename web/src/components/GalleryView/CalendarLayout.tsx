@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { State } from "@/types/proto/api/v1/common_pb";
 import { type Memo, MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
 import { useTranslate } from "@/utils/i18n";
-import { docCalendarDate, newCalendarDoc } from "./calendar";
+import { docCalendarDate, docColor, newCalendarDoc } from "./calendar";
 import { fieldValue, matchesScope, propertyMap } from "./fields";
 import type { CalendarLayoutBlock } from "./types";
 
@@ -27,8 +27,9 @@ interface Props {
 const MAX_TILE_DOCS = 3;
 
 // A compact card for a document on a calendar tile / in the day panel: label
-// only, click navigates to the document.
-const DocChip = ({ label, onOpen, className }: { label: string; onOpen: () => void; className?: string }) => (
+// only, click navigates to the document. When the document carries a `color`
+// property, `color` tints the bar's background (with white text for contrast).
+const DocChip = ({ label, onOpen, color, className }: { label: string; onOpen: () => void; color?: string; className?: string }) => (
   <button
     type="button"
     onClick={(e) => {
@@ -36,9 +37,17 @@ const DocChip = ({ label, onOpen, className }: { label: string; onOpen: () => vo
       onOpen();
     }}
     className={cn(
-      "w-full truncate rounded bg-card px-1.5 py-0.5 text-left text-[11px] leading-tight text-foreground border border-border/60 hover:border-accent hover:bg-accent/40 transition-colors",
+      "w-full truncate rounded px-1.5 py-0.5 text-left text-[11px] leading-tight border text-foreground transition-colors",
+      color ? "hover:opacity-80" : "bg-card border-border/60 hover:border-accent hover:bg-accent/40",
       className,
     )}
+    // A background tint, not a solid fill — the color is a label, so keep it
+    // translucent and let the normal foreground text stay readable.
+    style={
+      color
+        ? { backgroundColor: `color-mix(in srgb, ${color} 16%, transparent)`, borderColor: `color-mix(in srgb, ${color} 40%, transparent)` }
+        : undefined
+    }
     title={label}
   >
     {label}
@@ -104,6 +113,7 @@ const CalendarLayout = ({ block, memo, openDoc }: Props) => {
   const shiftMonth = (delta: number) => setMonth(dayjs(`${month}-01`).add(delta, "month").format("YYYY-MM"));
 
   const labelOf = (doc: Memo) => fieldValue(doc, propertyMap(doc.content), block.cardField) || doc.title || doc.name;
+  const colorOf = (doc: Memo) => docColor(propertyMap(doc.content));
 
   const selectedDocs = docsByDate.get(selectedDate) ?? [];
 
@@ -150,7 +160,7 @@ const CalendarLayout = ({ block, memo, openDoc }: Props) => {
         </div>
         <div className="grid grid-cols-7 gap-1">
           {days.map((day) => {
-            if (!day.isCurrentMonth) return <div key={day.date} className="min-h-16 md:min-h-20" aria-hidden="true" />;
+            if (!day.isCurrentMonth) return <div key={day.date} className="aspect-square" aria-hidden="true" />;
             const docs = docsByDate.get(day.date) ?? [];
             return (
               <button
@@ -158,7 +168,7 @@ const CalendarLayout = ({ block, memo, openDoc }: Props) => {
                 type="button"
                 onClick={() => setSelectedDate(day.date)}
                 className={cn(
-                  "flex min-h-16 flex-col gap-0.5 overflow-hidden rounded-md border border-border/10 bg-muted/10 p-1 text-left transition-colors hover:bg-muted/40 md:min-h-20",
+                  "flex aspect-square flex-col gap-0.5 overflow-hidden rounded-md border border-border/10 bg-muted/10 p-1 pb-2 text-left transition-colors hover:bg-muted/40",
                   day.isToday && "ring-1 ring-inset ring-primary",
                   day.isSelected && "ring-2 ring-inset ring-primary bg-accent/30",
                 )}
@@ -173,7 +183,7 @@ const CalendarLayout = ({ block, memo, openDoc }: Props) => {
                 {/* Desktop: up to 3 doc cards, then an overflow hint. */}
                 <div className="hidden flex-col gap-0.5 md:flex">
                   {docs.slice(0, MAX_TILE_DOCS).map((doc) => (
-                    <DocChip key={doc.name} label={labelOf(doc)} onOpen={() => openDoc(doc.name)} />
+                    <DocChip key={doc.name} label={labelOf(doc)} color={colorOf(doc)} onOpen={() => openDoc(doc.name)} />
                   ))}
                   {docs.length > MAX_TILE_DOCS && (
                     <span className="px-1 text-[10px] text-muted-foreground">
@@ -206,7 +216,13 @@ const CalendarLayout = ({ block, memo, openDoc }: Props) => {
         ) : (
           <div className="flex flex-col gap-1.5">
             {selectedDocs.map((doc) => (
-              <DocChip key={doc.name} label={labelOf(doc)} onOpen={() => openDoc(doc.name)} className="px-2 py-1.5 text-sm" />
+              <DocChip
+                key={doc.name}
+                label={labelOf(doc)}
+                color={colorOf(doc)}
+                onOpen={() => openDoc(doc.name)}
+                className="px-2 py-1.5 text-sm"
+              />
             ))}
           </div>
         )}

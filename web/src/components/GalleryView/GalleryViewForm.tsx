@@ -99,6 +99,7 @@ interface CalendarDraft {
   groups: GroupDraft[];
   dateProperty: string;
   cardField: CardFieldState;
+  newDocFolder: string;
 }
 
 /** Editable draft of a free markdown block. */
@@ -190,6 +191,7 @@ function toDraft(block: ViewBlock): BlockDraft {
       groups: block.scope.groups.length > 0 ? block.scope.groups.map(toGroupDraft) : [{ match: "all", rules: [{ ...DEFAULT_RULE_DRAFT }] }],
       dateProperty: block.dateProperty,
       cardField: toCardFieldState(block.cardField),
+      newDocFolder: block.newDocFolder,
     };
   return {
     type: "gallery",
@@ -234,6 +236,7 @@ function fromDraft(draft: BlockDraft): ViewBlock {
       scope: { match: draft.scopeMatch, groups: effectiveGroups(draft) },
       dateProperty: draft.dateProperty.trim(),
       cardField: fromCardFieldState(draft.cardField),
+      newDocFolder: draft.newDocFolder.trim(),
     };
   return {
     type: "gallery",
@@ -504,6 +507,16 @@ const CalendarLayoutBlockForm = ({
         allowNone={false}
         onChange={(cardField) => onChange({ cardField })}
       />
+
+      <div className="flex flex-col gap-1.5">
+        <Label>{t("gallery.calendar-folder-label")}</Label>
+        <Input
+          placeholder={t("gallery.calendar-folder-placeholder")}
+          value={draft.newDocFolder}
+          onChange={(e) => onChange({ newDocFolder: e.target.value })}
+        />
+        <p className="text-xs text-muted-foreground">{t("gallery.calendar-folder-hint")}</p>
+      </div>
     </div>
   );
 };
