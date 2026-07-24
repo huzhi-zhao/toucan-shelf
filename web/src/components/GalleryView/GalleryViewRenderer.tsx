@@ -12,6 +12,7 @@ import { type Memo, Memo_DocType } from "@/types/proto/api/v1/memo_service_pb";
 import { getAttachmentThumbnailUrl, isImage } from "@/utils/attachment";
 import { type MemoProperty, parseFrontmatter } from "@/utils/frontmatter";
 import { useTranslate } from "@/utils/i18n";
+import CalendarLayout from "./CalendarLayout";
 import { fieldValue, matchesScope, propertyMap, propertyValueToString } from "./fields";
 import {
   type GalleryBadgeRule,
@@ -291,6 +292,8 @@ const GalleryViewRenderer = ({ memo, onOpenDoc, readonly = true, className }: Pr
         <div key={index} className="flex flex-col gap-6">
           {block.type === "markdown" ? (
             <MarkdownBlockView block={block} blockIndex={index} memo={memo} readonly={readonly} />
+          ) : block.type === "calendar" ? (
+            <CalendarLayout block={block} memo={memo} openDoc={openDoc} />
           ) : (
             <GalleryBlockView block={block} blockIndex={index} memo={memo} readonly={readonly} openDoc={openDoc} />
           )}

@@ -141,12 +141,32 @@ export interface HeadingItem {
  */
 export function slugify(text: string): string {
   return text
+    .normalize("NFC")
     .toLowerCase()
     .trim()
     .replace(/[^\p{L}\p{N}\s-]/gu, "")
     .replace(/[\s_]+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+// Short, stable, non-cryptographic hash (sdbm → base36) for the rare heading whose text
+// slugifies to empty — e.g. one that is only emoji or punctuation.
+function shortHash(text: string): string {
+  let h = 0;
+  for (let i = 0; i < text.length; i++) {
+    h = (text.charCodeAt(i) + (h << 6) + (h << 16) - h) >>> 0;
+  }
+  return h.toString(36);
+}
+
+/**
+ * Canonical anchor id for a heading's text. A human-readable slug whenever possible; falls back
+ * to `h-<shorthash>` only when the slug would be empty (all-emoji / all-punctuation headings), so
+ * every heading stays addressable. Never returns "".
+ */
+export function headingSlug(text: string): string {
+  return slugify(text) || `h-${shortHash(text.normalize("NFC").trim())}`;
 }
 
 /**
@@ -167,7 +187,7 @@ export function extractHeadings(markdown: string): HeadingItem[] {
     const text = getNodeText(node as unknown as MdastNode);
     if (!text) return;
 
-    let slug = slugify(text);
+    let slug = headingSlug(text);
     const count = slugCounts.get(slug) || 0;
     slugCounts.set(slug, count + 1);
     if (count > 0) slug = `${slug}-${count}`;

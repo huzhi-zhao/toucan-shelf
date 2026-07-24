@@ -31,7 +31,7 @@ export const CalendarDayCell = ({ day, items, dayEvents, events, onClick }: Cale
       aria-current={day.isToday ? "date" : undefined}
       aria-pressed={day.isSelected}
       className={cn(
-        "relative flex aspect-square flex-col justify-between gap-0.5 overflow-hidden rounded-md border border-border/10 bg-muted/10 p-1 transition-colors",
+        "relative flex aspect-square flex-col justify-between gap-0.5 overflow-hidden rounded-xl border border-border/30 bg-muted/10 p-1 transition-colors",
         "md:justify-start md:gap-1 md:p-1.5",
         isInteractive ? "cursor-pointer hover:bg-muted/40" : "cursor-default",
         day.isToday && "ring-2 ring-inset ring-primary",
@@ -43,7 +43,7 @@ export const CalendarDayCell = ({ day, items, dayEvents, events, onClick }: Cale
           aria-hidden="true"
         />
       )}
-      <span className="self-end shrink-0 text-xs font-medium text-foreground md:text-sm">{day.label}</span>
+      <span className="self-start shrink-0 text-xs font-medium text-foreground md:text-sm">{day.label}</span>
       {/* 移动端：events 圆点横排一行，任务蓝点单独一行 */}
       {(hasEvents || hasTasks) && (
         <div className="mt-auto flex flex-col items-start gap-0.5 md:hidden">

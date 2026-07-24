@@ -32,6 +32,7 @@ import { type SearchHit, SearchMode } from "@/types/proto/api/v1/rag_service_pb"
 import type { WorkspaceTreeNode } from "@/types/proto/api/v1/workspace_service_pb";
 import { WorkspaceTreeNode_NodeType } from "@/types/proto/api/v1/workspace_service_pb";
 import { parseFrontmatter, readBooleanProperty } from "@/utils/frontmatter";
+import { resolveHeadingTarget } from "@/utils/heading-anchor";
 import { useTranslate } from "@/utils/i18n";
 import { setNotebookSidebarOverride } from "@/utils/notebookSidebar";
 
@@ -82,6 +83,9 @@ const Notebook = () => {
 
   const [workspaceName, setWorkspaceName] = useState<string | undefined>(undefined);
   const [selectedMemo, setSelectedMemo] = useState<string | undefined>(undefined);
+  // A heading fragment to scroll to once the freshly-selected document has rendered. Set when an
+  // in-workspace link carries an anchor (`document/abc#h-…`); consumed by the scroll effect below.
+  const pendingScrollHash = useRef<string | undefined>(undefined);
   const [archived, setArchived] = useState(false);
   // In-library (F2) search state. `search` is null when no search is active.
   const [search, setSearch] = useState<{ query: string; hits: SearchHit[]; degraded: boolean } | null>(null);
@@ -110,6 +114,28 @@ const Notebook = () => {
     enabled: !!selectedMemo,
   });
   usePageTitle(memo?.title);
+
+  // When an in-workspace link carried an anchor (`document/abc#h-…`), scroll to the heading once
+  // the newly-selected document has rendered. The markdown renders asynchronously, so retry across
+  // a few animation frames until the target appears (or give up after ~1.5s).
+  useEffect(() => {
+    const hash = pendingScrollHash.current;
+    if (!hash || memo?.name !== selectedMemo) return;
+    let raf = 0;
+    const deadline = performance.now() + 1500;
+    const tick = () => {
+      const target = resolveHeadingTarget(document, hash);
+      if (target) {
+        pendingScrollHash.current = undefined;
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      if (performance.now() < deadline) raf = requestAnimationFrame(tick);
+      else pendingScrollHash.current = undefined;
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [memo?.name, selectedMemo]);
 
   // A document can opt out of the folder tree via `displayFilter: false` in its frontmatter,
   // giving a clean full-width reading view (e.g. a landing/homepage doc). This feeds a transient
@@ -222,10 +248,12 @@ const Notebook = () => {
   );
 
   const handleSelectDocument = useCallback(
-    (memoName: string) => {
+    (memoName: string, anchorHref?: string) => {
       // Opening a document (incl. a search hit) shows it in the preview but KEEPS the
       // active search: the folder tree stays filtered to the hits so the user can keep
       // browsing results. Clearing the search box is what restores the full tree.
+      const hashIndex = anchorHref?.indexOf("#") ?? -1;
+      pendingScrollHash.current = hashIndex >= 0 ? anchorHref!.slice(hashIndex + 1) : undefined;
       setSelectedMemo(memoName);
       if (workspaceName) {
         const title = workspaces.find((w) => w.name === workspaceName)?.title ?? workspaceName;
@@ -524,7 +552,7 @@ const Notebook = () => {
           <DocumentLinkProvider
             value={{
               resolve: (href) => resolveWorkspacePath(tree, href, memo.folderPath),
-              navigate: (memoName) => handleSelectDocument(memoName),
+              navigate: (memoName, href) => handleSelectDocument(memoName, href),
             }}
           >
             <DocumentView

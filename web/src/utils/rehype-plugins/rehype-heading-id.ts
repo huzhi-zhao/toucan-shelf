@@ -1,6 +1,6 @@
 import type { Element, Root } from "hast";
 import { visit } from "unist-util-visit";
-import { slugify } from "@/utils/markdown-manipulation";
+import { headingSlug } from "@/utils/markdown-manipulation";
 
 function getTextContent(node: Element): string {
   let text = "";
@@ -39,7 +39,7 @@ export const rehypeHeadingId = (options?: Options) => {
       if (!/^h[1-6]$/.test(node.tagName)) return;
 
       const text = getTextContent(node);
-      const slug = slugify(text);
+      const slug = headingSlug(text);
       if (!slug) return;
 
       const count = slugCounts.get(slug) || 0;
@@ -58,8 +58,10 @@ export const rehypeHeadingId = (options?: Options) => {
       if (node.tagName !== "a") return;
       const href = node.properties?.href;
       if (typeof href !== "string" || !href.startsWith("#")) return;
-      const key = decodeURIComponent(href.slice(1));
-      const mapped = assigned.get(key);
+      // Match the same way link resolution does: the anchor may be the raw heading text or an
+      // already-slugified value, so try the exact fragment then its slug (slugify is idempotent).
+      const raw = decodeURIComponent(href.slice(1));
+      const mapped = assigned.get(raw) ?? assigned.get(headingSlug(raw));
       if (mapped) node.properties.href = `#${mapped}`;
     });
   };

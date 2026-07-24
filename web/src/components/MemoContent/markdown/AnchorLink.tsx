@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { markdownStyles } from "@/lib/markdownStyles";
 import { cn } from "@/lib/utils";
+import { resolveHeadingTarget } from "@/utils/heading-anchor";
 import type { ReactMarkdownProps } from "./types";
 
 interface AnchorLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement>, ReactMarkdownProps {
@@ -24,12 +25,11 @@ interface AnchorLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement>,
 export const AnchorLink = ({ href, memoName, compact, children, className, node: _node, ...props }: AnchorLinkProps) => {
   const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
     if (compact) return; // Let the link navigate to the detail page.
-    const id = decodeURIComponent(href.slice(1));
-    if (!id) return;
     // Scope the lookup to this memo's own container so duplicate footnote ids elsewhere in a feed
-    // can't steal the scroll.
+    // can't steal the scroll. resolveHeadingTarget also matches anchors written as raw heading
+    // text (`#82年，🔥了…`), not just the exact slugified id.
     const root = event.currentTarget.closest("[data-memo-content]");
-    const target = root?.querySelector(`#${CSS.escape(id)}`);
+    const target = resolveHeadingTarget(root, href.slice(1));
     if (target) {
       event.preventDefault();
       target.scrollIntoView({ behavior: "smooth", block: "center" });

@@ -1034,7 +1034,7 @@
     "properties-label": "属性（可选）",
     "properties-placeholder": "title: 我的相册\ntags: [索引, 相册]\nstatus: published",
     "properties-hint": "本视图的 YAML frontmatter，每行一个「键: 值」。可让其他相册对本视图进行筛选、排序和引用。",
-    "style-gallery": "相册视图",
+    "style-gallery": "相册布局",
     "style-markdown": "Markdown",
     "style-attachments": "附件",
     "attachments-title": "附件",
@@ -1099,7 +1099,17 @@
     "add-badge": "添加徽章",
     "not-configured": "该视图尚未配置，请切换到编辑模式进行设置。",
     "loading": "加载中…",
-    "empty": "该范围内暂无文档。"
+    "empty": "该范围内暂无文档。",
+    "style-calendar": "日历布局",
+    "calendar-block-title": "日历 {{index}}",
+    "calendar-date-label": "日期属性",
+    "calendar-date-placeholder": "属性名（可选，默认使用创建日期）",
+    "calendar-date-hint": "用于关联日历的 frontmatter 属性（YYYY-MM-DD）。留空则按文档创建日期归类。",
+    "calendar-card-label": "格子标签",
+    "calendar-add": "添加文档",
+    "calendar-add-failed": "创建文档失败。",
+    "calendar-empty-day": "这一天还没有文档。",
+    "calendar-more": "还有 {{count}} 个"
   },
   "bookshelf": {
     "title": "ToucanShelf",

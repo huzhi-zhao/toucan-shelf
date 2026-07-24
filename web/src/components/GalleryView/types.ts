@@ -114,6 +114,26 @@ export interface GalleryBlock {
 }
 
 /**
+ * A calendar layout block within a VIEW document. Like a gallery block it scans
+ * documents live via `scope` — no calendar→document mapping is ever persisted;
+ * the matched documents are bucketed onto a month grid by date each render.
+ *
+ * A document's date comes from the frontmatter property named by `dateProperty`
+ * (a `YYYY-MM-DD` string). When `dateProperty` is empty the block falls back to
+ * a `date` property if present, otherwise the document's creation date — so a
+ * document created through the calendar's add button (which always writes a
+ * `date` property) still lands on the chosen day.
+ */
+export interface CalendarLayoutBlock {
+  type: "calendar";
+  scope: GalleryScope;
+  /** Frontmatter property key holding the doc's date. Empty = creation date. */
+  dateProperty: string;
+  /** Field shown as a tile card's label. Defaults to the document title. */
+  cardField: GalleryCardField;
+}
+
+/**
  * A free markdown block within a VIEW document. Rendered by the same markdown
  * pipeline as any other document, so every block type it supports (grid,
  * calendar, kanban, sheets, …) works here too, editing included.
@@ -124,7 +144,7 @@ export interface MarkdownBlock {
 }
 
 /** Blocks are heterogeneous and render top-to-bottom in list order. */
-export type ViewBlock = GalleryBlock | MarkdownBlock;
+export type ViewBlock = GalleryBlock | MarkdownBlock | CalendarLayoutBlock;
 
 export interface GalleryViewConfig {
   viewType: "gallery";
@@ -149,6 +169,13 @@ export const DEFAULT_GALLERY_BLOCK: GalleryBlock = {
   cover: "first_image",
   cardFields: DEFAULT_CARD_FIELDS,
   badges: [],
+};
+
+export const DEFAULT_CALENDAR_LAYOUT_BLOCK: CalendarLayoutBlock = {
+  type: "calendar",
+  scope: { match: "all", groups: [{ match: "all", rules: [{ kind: "folder" }] }] },
+  dateProperty: "",
+  cardField: "__title__",
 };
 
 function parseMatch(raw: unknown): GalleryMatch {
@@ -313,6 +340,16 @@ export function matchGalleryBadge(
   });
 }
 
+function parseCalendarLayoutBlock(raw: unknown): CalendarLayoutBlock {
+  const b = (raw ?? {}) as { scope?: unknown; dateProperty?: unknown; cardField?: unknown };
+  return {
+    type: "calendar",
+    scope: parseScope(b.scope),
+    dateProperty: typeof b.dateProperty === "string" ? b.dateProperty.trim() : "",
+    cardField: normalizeCardField(b.cardField, "__title__"),
+  };
+}
+
 function markdownBlock(raw: unknown): MarkdownBlock | undefined {
   return typeof raw === "string" && raw.trim() ? { type: "markdown", content: raw } : undefined;
 }
@@ -346,8 +383,9 @@ function parseViewBlock(raw: unknown): ViewBlock[] {
     const block = markdownBlock(b.content);
     return block ? [block] : [];
   }
+  if (b.type === "calendar") return [parseCalendarLayoutBlock(raw)];
   return [markdownBlock(b.description), parseGalleryBlock(raw), markdownBlock(b.footer)].filter(
-    (block): block is ViewBlock => block !== undefined,
+    (block): block is GalleryBlock | MarkdownBlock => block !== undefined,
   );
 }
 

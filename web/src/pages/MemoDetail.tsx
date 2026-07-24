@@ -18,6 +18,7 @@ import usePageTitle from "@/hooks/usePageTitle";
 import { useWorkspaceTree } from "@/hooks/useWorkspaceQueries";
 import { cn } from "@/lib/utils";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
+import { resolveHeadingTarget } from "@/utils/heading-anchor";
 
 const MemoDetail = () => {
   const md = useMediaQuery("md");
@@ -77,7 +78,7 @@ const MemoDetail = () => {
   const scrolledHashRef = useRef("");
   useEffect(() => {
     if (!hash || scrolledHashRef.current === hash) return;
-    const el = document.getElementById(decodeURIComponent(hash.slice(1)));
+    const el = resolveHeadingTarget(document, hash.slice(1));
     if (!el) return;
     scrolledHashRef.current = hash;
     el.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -126,7 +127,12 @@ const MemoDetail = () => {
             <DocumentLinkProvider
               value={{
                 resolve: (href) => resolveWorkspacePath(workspaceTree, href, displayMemo.folderPath),
-                navigate: (memoName) => navigate(`/${memoName}`),
+                navigate: (memoName, href) => {
+                  // Carry the link's fragment across so the destination page can scroll to the
+                  // heading (`document/abc#h-…`); the scroll effect above resolves it there.
+                  const hashIndex = href.indexOf("#");
+                  navigate(`/${memoName}${hashIndex >= 0 ? href.slice(hashIndex) : ""}`);
+                },
               }}
             >
               <MemoView

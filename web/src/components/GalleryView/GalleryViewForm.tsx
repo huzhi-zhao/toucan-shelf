@@ -1,4 +1,5 @@
 import {
+  CalendarDaysIcon,
   ChevronDownIcon,
   FileIcon,
   FileTextIcon,
@@ -24,6 +25,7 @@ import { formatFileSize, getFileTypeLabel } from "@/utils/format";
 import { useTranslate } from "@/utils/i18n";
 import {
   DEFAULT_BADGE_COLOR,
+  DEFAULT_CALENDAR_LAYOUT_BLOCK,
   DEFAULT_GALLERY_BLOCK,
   type GalleryBadgeKind,
   type GalleryBadgeRule,
@@ -89,6 +91,16 @@ interface GalleryDraft {
   badges: GalleryBadgeRule[];
 }
 
+/** Editable draft of a calendar layout block (shares the scope draft shape). */
+interface CalendarDraft {
+  type: "calendar";
+  collapsed?: boolean;
+  scopeMatch: GalleryMatch;
+  groups: GroupDraft[];
+  dateProperty: string;
+  cardField: CardFieldState;
+}
+
 /** Editable draft of a free markdown block. */
 interface MarkdownDraft {
   type: "markdown";
@@ -96,7 +108,7 @@ interface MarkdownDraft {
   collapsed?: boolean;
 }
 
-type BlockDraft = GalleryDraft | MarkdownDraft;
+type BlockDraft = GalleryDraft | CalendarDraft | MarkdownDraft;
 
 const DEFAULT_BADGE_DRAFT: GalleryBadgeRule = {
   kind: "tag",
@@ -171,6 +183,14 @@ function toGroupDraft(group: GalleryGroup): GroupDraft {
 
 function toDraft(block: ViewBlock): BlockDraft {
   if (block.type === "markdown") return { type: "markdown", content: block.content };
+  if (block.type === "calendar")
+    return {
+      type: "calendar",
+      scopeMatch: block.scope.match,
+      groups: block.scope.groups.length > 0 ? block.scope.groups.map(toGroupDraft) : [{ match: "all", rules: [{ ...DEFAULT_RULE_DRAFT }] }],
+      dateProperty: block.dateProperty,
+      cardField: toCardFieldState(block.cardField),
+    };
   return {
     type: "gallery",
     scopeMatch: block.scope.match,
@@ -185,7 +205,7 @@ function toDraft(block: ViewBlock): BlockDraft {
 
 // Groups/rules that are incomplete (empty tag / property key) are dropped;
 // groups left with no rules are dropped entirely.
-function effectiveGroups(draft: GalleryDraft): GalleryGroup[] {
+function effectiveGroups(draft: { groups: GroupDraft[] }): GalleryGroup[] {
   return draft.groups
     .map((g) => ({
       match: g.match,
@@ -208,6 +228,13 @@ function effectiveBadges(draft: GalleryDraft): GalleryBadgeRule[] {
 
 function fromDraft(draft: BlockDraft): ViewBlock {
   if (draft.type === "markdown") return { type: "markdown", content: draft.content };
+  if (draft.type === "calendar")
+    return {
+      type: "calendar",
+      scope: { match: draft.scopeMatch, groups: effectiveGroups(draft) },
+      dateProperty: draft.dateProperty.trim(),
+      cardField: fromCardFieldState(draft.cardField),
+    };
   return {
     type: "gallery",
     scope: { match: draft.scopeMatch, groups: effectiveGroups(draft) },
@@ -223,167 +250,41 @@ function fromDraft(draft: BlockDraft): ViewBlock {
 
 function blockInvalid(draft: BlockDraft): boolean {
   // A markdown block is never invalid — an empty one is simply dropped on save.
-  return draft.type === "gallery" && effectiveGroups(draft).length === 0;
+  // Gallery and calendar blocks need at least one complete scope rule.
+  return draft.type !== "markdown" && effectiveGroups(draft).length === 0;
 }
 
-// One editable gallery block. Controlled via `draft` / `onChange`.
-const GalleryBlockForm = ({
-  draft,
+// The scope editor (groups of folder/tag/property rules), shared by the gallery
+// and calendar block forms. Patches the owning draft's `scopeMatch` / `groups`.
+const ScopeEditor = ({
   index,
+  scopeMatch,
+  groups,
   onChange,
-  onRemove,
-  onToggleCollapse,
-  dragHandlers,
 }: {
-  draft: GalleryDraft;
   index: number;
-  onChange: (patch: Partial<GalleryDraft>) => void;
-  onRemove: () => void;
-  onToggleCollapse: () => void;
-  dragHandlers: React.HTMLAttributes<HTMLDivElement> & { draggable: boolean };
+  scopeMatch: GalleryMatch;
+  groups: GroupDraft[];
+  onChange: (patch: { scopeMatch?: GalleryMatch; groups?: GroupDraft[] }) => void;
 }) => {
   const t = useTranslate();
 
   const updateGroup = (gi: number, patch: Partial<GroupDraft>) => {
-    onChange({
-      groups: draft.groups.map((g, i) => (i === gi ? { ...g, ...patch } : g)),
-    });
+    onChange({ groups: groups.map((g, i) => (i === gi ? { ...g, ...patch } : g)) });
   };
   const updateRule = (gi: number, ri: number, patch: Partial<RuleDraft>) => {
     onChange({
-      groups: draft.groups.map((g, i) =>
-        i === gi
-          ? {
-              ...g,
-              rules: g.rules.map((r, j) => (j === ri ? { ...r, ...patch } : r)),
-            }
-          : g,
-      ),
+      groups: groups.map((g, i) => (i === gi ? { ...g, rules: g.rules.map((r, j) => (j === ri ? { ...r, ...patch } : r)) } : g)),
     });
   };
   const removeRule = (gi: number, ri: number) => {
-    onChange({
-      groups: draft.groups.map((g, i) => (i === gi ? { ...g, rules: g.rules.filter((_, j) => j !== ri) } : g)),
-    });
+    onChange({ groups: groups.map((g, i) => (i === gi ? { ...g, rules: g.rules.filter((_, j) => j !== ri) } : g)) });
   };
   const addRule = (gi: number) => {
-    onChange({
-      groups: draft.groups.map((g, i) => (i === gi ? { ...g, rules: [...g.rules, { ...DEFAULT_RULE_DRAFT }] } : g)),
-    });
+    onChange({ groups: groups.map((g, i) => (i === gi ? { ...g, rules: [...g.rules, { ...DEFAULT_RULE_DRAFT }] } : g)) });
   };
-  const addGroup = () =>
-    onChange({
-      groups: [...draft.groups, { match: "all", rules: [{ ...DEFAULT_RULE_DRAFT }] }],
-    });
-  const removeGroup = (gi: number) => onChange({ groups: draft.groups.filter((_, i) => i !== gi) });
-
-  // Split the serialized sort/cover values into their editable "kind" + property key.
-  const sortMatch = draft.sort.match(/^prop_(asc|desc):(.*)$/s);
-  const sortKind = sortMatch ? "property" : draft.sort;
-  const sortDir = sortMatch?.[1] ?? "desc";
-  const sortKey = sortMatch?.[2] ?? "";
-  const setSort = (kind: string) =>
-    onChange({
-      sort: kind === "property" ? `prop_${sortDir}:${sortKey}` : (kind as GallerySort),
-    });
-
-  const coverIsProp = draft.cover.startsWith("prop:");
-  const coverKind = coverIsProp ? "property" : draft.cover;
-  const coverKey = coverIsProp ? draft.cover.slice(5) : "";
-  const setCover = (kind: string) =>
-    onChange({
-      cover: kind === "property" ? `prop:${coverKey}` : (kind as GalleryCoverRule),
-    });
-
-  const renderCardFieldRow = (label: string, state: CardFieldState, key: "primary" | "secondary", allowNone: boolean) => (
-    <div className="flex flex-col gap-1.5">
-      <Label>{label}</Label>
-      <div className="flex items-center gap-2">
-        <Select value={state.kind} onValueChange={(v) => onChange({ [key]: { ...state, kind: v as CardFieldState["kind"] } })}>
-          <SelectTrigger className="flex-1">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__title__">{t("gallery.field-title")}</SelectItem>
-            <SelectItem value="__updated__">{t("gallery.field-updated")}</SelectItem>
-            <SelectItem value="__created__">{t("gallery.field-created")}</SelectItem>
-            <SelectItem value="property">{t("gallery.field-property")}</SelectItem>
-            {allowNone && <SelectItem value="none">{t("gallery.field-none")}</SelectItem>}
-          </SelectContent>
-        </Select>
-        {state.kind === "property" && (
-          <Input
-            className="flex-1"
-            placeholder={t("gallery.property-key-placeholder")}
-            value={state.propKey}
-            onChange={(e) => onChange({ [key]: { ...state, propKey: e.target.value } })}
-          />
-        )}
-      </div>
-    </div>
-  );
-
-  const updateBadge = (bi: number, patch: Partial<GalleryBadgeRule>) => {
-    onChange({
-      badges: draft.badges.map((b, i) => (i === bi ? { ...b, ...patch } : b)),
-    });
-  };
-  const addBadge = () => onChange({ badges: [...draft.badges, { ...DEFAULT_BADGE_DRAFT }] });
-  const removeBadge = (bi: number) => onChange({ badges: draft.badges.filter((_, i) => i !== bi) });
-
-  const renderBadge = (badge: GalleryBadgeRule, bi: number) => (
-    <div key={bi} className="flex flex-col gap-2 rounded-lg border border-border p-3">
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">{t("gallery.badge-title", { index: bi + 1 })}</span>
-        <Button variant="ghost" size="icon" onClick={() => removeBadge(bi)}>
-          <Trash2Icon className="w-4 h-4" />
-        </Button>
-      </div>
-      <div className="flex items-center gap-2">
-        <Select value={badge.kind} onValueChange={(v) => updateBadge(bi, { kind: v as GalleryBadgeKind })}>
-          <SelectTrigger className="flex-1">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="tag">{t("gallery.badge-style-tag")}</SelectItem>
-            <SelectItem value="ribbon">{t("gallery.badge-style-ribbon")}</SelectItem>
-            <SelectItem value="corner">{t("gallery.badge-style-corner")}</SelectItem>
-          </SelectContent>
-        </Select>
-        <Input
-          className="flex-1"
-          maxLength={5}
-          placeholder={t("gallery.badge-text-placeholder")}
-          value={badge.title}
-          onChange={(e) => updateBadge(bi, { title: e.target.value.slice(0, 5) })}
-        />
-        <div className="flex h-9 items-center gap-1.5 rounded-md border border-border bg-background px-2 shrink-0">
-          <input
-            type="color"
-            className="size-6 cursor-pointer rounded border border-border bg-transparent p-0.5"
-            value={badge.color}
-            onChange={(e) => updateBadge(bi, { color: e.target.value })}
-            aria-label={t("gallery.badge-color")}
-          />
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <Input
-          className="flex-1"
-          placeholder={t("gallery.property-key-placeholder")}
-          value={badge.propertyKey}
-          onChange={(e) => updateBadge(bi, { propertyKey: e.target.value })}
-        />
-        <span className="text-muted-foreground text-sm">=</span>
-        <Input
-          className="flex-1"
-          placeholder={t("gallery.property-value-placeholder")}
-          value={badge.propertyValue}
-          onChange={(e) => updateBadge(bi, { propertyValue: e.target.value })}
-        />
-      </div>
-    </div>
-  );
+  const addGroup = () => onChange({ groups: [...groups, { match: "all", rules: [{ ...DEFAULT_RULE_DRAFT }] }] });
+  const removeGroup = (gi: number) => onChange({ groups: groups.filter((_, i) => i !== gi) });
 
   const renderRule = (rule: RuleDraft, gi: number, ri: number) => (
     <div key={ri} className="flex items-start gap-2">
@@ -448,6 +349,263 @@ const GalleryBlockForm = ({
     </div>
   );
 
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <Label className="shrink-0">{t("gallery.scope-label")}</Label>
+        <span className="text-sm text-muted-foreground">{t("gallery.match-label")}</span>
+        <Select value={scopeMatch} onValueChange={(v) => onChange({ scopeMatch: v as GalleryMatch })}>
+          <SelectTrigger className="w-28">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("gallery.match-all")}</SelectItem>
+            <SelectItem value="any">{t("gallery.match-any")}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {groups.map((group, gi) => (
+        <div key={gi} className="flex flex-col gap-2 rounded-lg border border-border p-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">{t("gallery.group-title", { index: gi + 1 })}</span>
+              <Select value={group.match} onValueChange={(v) => updateGroup(gi, { match: v as GalleryMatch })}>
+                <SelectTrigger className="w-28">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("gallery.match-all")}</SelectItem>
+                  <SelectItem value="any">{t("gallery.match-any")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {groups.length > 1 && (
+              <Button variant="ghost" size="icon" onClick={() => removeGroup(gi)}>
+                <Trash2Icon className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+          {group.rules.map((rule, ri) => renderRule(rule, gi, ri))}
+          <Button variant="outline" size="sm" className="self-start" onClick={() => addRule(gi)}>
+            <PlusIcon className="w-4 h-4 mr-1" />
+            {t("gallery.add-rule")}
+          </Button>
+        </div>
+      ))}
+      <Button variant="outline" size="sm" className="self-start" onClick={addGroup}>
+        <PlusIcon className="w-4 h-4 mr-1" />
+        {t("gallery.add-group")}
+      </Button>
+    </div>
+  );
+};
+
+// One card-field row (a "kind" select plus a property-key input), shared by the
+// gallery card fields and the calendar tile label.
+const CardFieldRow = ({
+  label,
+  state,
+  allowNone,
+  onChange,
+}: {
+  label: string;
+  state: CardFieldState;
+  allowNone: boolean;
+  onChange: (state: CardFieldState) => void;
+}) => {
+  const t = useTranslate();
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label>{label}</Label>
+      <div className="flex items-center gap-2">
+        <Select value={state.kind} onValueChange={(v) => onChange({ ...state, kind: v as CardFieldState["kind"] })}>
+          <SelectTrigger className="flex-1">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__title__">{t("gallery.field-title")}</SelectItem>
+            <SelectItem value="__updated__">{t("gallery.field-updated")}</SelectItem>
+            <SelectItem value="__created__">{t("gallery.field-created")}</SelectItem>
+            <SelectItem value="property">{t("gallery.field-property")}</SelectItem>
+            {allowNone && <SelectItem value="none">{t("gallery.field-none")}</SelectItem>}
+          </SelectContent>
+        </Select>
+        {state.kind === "property" && (
+          <Input
+            className="flex-1"
+            placeholder={t("gallery.property-key-placeholder")}
+            value={state.propKey}
+            onChange={(e) => onChange({ ...state, propKey: e.target.value })}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
+
+// One editable calendar layout block. Controlled via `draft` / `onChange`.
+const CalendarLayoutBlockForm = ({
+  draft,
+  index,
+  onChange,
+  onRemove,
+  onToggleCollapse,
+  dragHandlers,
+}: {
+  draft: CalendarDraft;
+  index: number;
+  onChange: (patch: Partial<CalendarDraft>) => void;
+  onRemove: () => void;
+  onToggleCollapse: () => void;
+  dragHandlers: React.HTMLAttributes<HTMLDivElement> & { draggable: boolean };
+}) => {
+  const t = useTranslate();
+
+  if (draft.collapsed) {
+    return (
+      <BlockHeader
+        icon={CalendarDaysIcon}
+        title={t("gallery.calendar-block-title", { index: index + 1 })}
+        collapsed
+        onToggleCollapse={onToggleCollapse}
+        onRemove={onRemove}
+        dragHandlers={dragHandlers}
+      />
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <BlockHeader
+        icon={CalendarDaysIcon}
+        title={t("gallery.calendar-block-title", { index: index + 1 })}
+        collapsed={false}
+        onToggleCollapse={onToggleCollapse}
+        onRemove={onRemove}
+        dragHandlers={dragHandlers}
+      />
+
+      <ScopeEditor index={index} scopeMatch={draft.scopeMatch} groups={draft.groups} onChange={onChange} />
+
+      <div className="flex flex-col gap-1.5">
+        <Label>{t("gallery.calendar-date-label")}</Label>
+        <Input
+          placeholder={t("gallery.calendar-date-placeholder")}
+          value={draft.dateProperty}
+          onChange={(e) => onChange({ dateProperty: e.target.value })}
+        />
+        <p className="text-xs text-muted-foreground">{t("gallery.calendar-date-hint")}</p>
+      </div>
+
+      <CardFieldRow
+        label={t("gallery.calendar-card-label")}
+        state={draft.cardField}
+        allowNone={false}
+        onChange={(cardField) => onChange({ cardField })}
+      />
+    </div>
+  );
+};
+
+// One editable gallery block. Controlled via `draft` / `onChange`.
+const GalleryBlockForm = ({
+  draft,
+  index,
+  onChange,
+  onRemove,
+  onToggleCollapse,
+  dragHandlers,
+}: {
+  draft: GalleryDraft;
+  index: number;
+  onChange: (patch: Partial<GalleryDraft>) => void;
+  onRemove: () => void;
+  onToggleCollapse: () => void;
+  dragHandlers: React.HTMLAttributes<HTMLDivElement> & { draggable: boolean };
+}) => {
+  const t = useTranslate();
+
+  // Split the serialized sort/cover values into their editable "kind" + property key.
+  const sortMatch = draft.sort.match(/^prop_(asc|desc):(.*)$/s);
+  const sortKind = sortMatch ? "property" : draft.sort;
+  const sortDir = sortMatch?.[1] ?? "desc";
+  const sortKey = sortMatch?.[2] ?? "";
+  const setSort = (kind: string) =>
+    onChange({
+      sort: kind === "property" ? `prop_${sortDir}:${sortKey}` : (kind as GallerySort),
+    });
+
+  const coverIsProp = draft.cover.startsWith("prop:");
+  const coverKind = coverIsProp ? "property" : draft.cover;
+  const coverKey = coverIsProp ? draft.cover.slice(5) : "";
+  const setCover = (kind: string) =>
+    onChange({
+      cover: kind === "property" ? `prop:${coverKey}` : (kind as GalleryCoverRule),
+    });
+
+  const updateBadge = (bi: number, patch: Partial<GalleryBadgeRule>) => {
+    onChange({
+      badges: draft.badges.map((b, i) => (i === bi ? { ...b, ...patch } : b)),
+    });
+  };
+  const addBadge = () => onChange({ badges: [...draft.badges, { ...DEFAULT_BADGE_DRAFT }] });
+  const removeBadge = (bi: number) => onChange({ badges: draft.badges.filter((_, i) => i !== bi) });
+
+  const renderBadge = (badge: GalleryBadgeRule, bi: number) => (
+    <div key={bi} className="flex flex-col gap-2 rounded-lg border border-border p-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">{t("gallery.badge-title", { index: bi + 1 })}</span>
+        <Button variant="ghost" size="icon" onClick={() => removeBadge(bi)}>
+          <Trash2Icon className="w-4 h-4" />
+        </Button>
+      </div>
+      <div className="flex items-center gap-2">
+        <Select value={badge.kind} onValueChange={(v) => updateBadge(bi, { kind: v as GalleryBadgeKind })}>
+          <SelectTrigger className="flex-1">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="tag">{t("gallery.badge-style-tag")}</SelectItem>
+            <SelectItem value="ribbon">{t("gallery.badge-style-ribbon")}</SelectItem>
+            <SelectItem value="corner">{t("gallery.badge-style-corner")}</SelectItem>
+          </SelectContent>
+        </Select>
+        <Input
+          className="flex-1"
+          maxLength={5}
+          placeholder={t("gallery.badge-text-placeholder")}
+          value={badge.title}
+          onChange={(e) => updateBadge(bi, { title: e.target.value.slice(0, 5) })}
+        />
+        <div className="flex h-9 items-center gap-1.5 rounded-md border border-border bg-background px-2 shrink-0">
+          <input
+            type="color"
+            className="size-6 cursor-pointer rounded border border-border bg-transparent p-0.5"
+            value={badge.color}
+            onChange={(e) => updateBadge(bi, { color: e.target.value })}
+            aria-label={t("gallery.badge-color")}
+          />
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <Input
+          className="flex-1"
+          placeholder={t("gallery.property-key-placeholder")}
+          value={badge.propertyKey}
+          onChange={(e) => updateBadge(bi, { propertyKey: e.target.value })}
+        />
+        <span className="text-muted-foreground text-sm">=</span>
+        <Input
+          className="flex-1"
+          placeholder={t("gallery.property-value-placeholder")}
+          value={badge.propertyValue}
+          onChange={(e) => updateBadge(bi, { propertyValue: e.target.value })}
+        />
+      </div>
+    </div>
+  );
+
   if (draft.collapsed) {
     return (
       <BlockHeader
@@ -472,54 +630,7 @@ const GalleryBlockForm = ({
         dragHandlers={dragHandlers}
       />
 
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <Label className="shrink-0">{t("gallery.scope-label")}</Label>
-          <span className="text-sm text-muted-foreground">{t("gallery.match-label")}</span>
-          <Select value={draft.scopeMatch} onValueChange={(v) => onChange({ scopeMatch: v as GalleryMatch })}>
-            <SelectTrigger className="w-28">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("gallery.match-all")}</SelectItem>
-              <SelectItem value="any">{t("gallery.match-any")}</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {draft.groups.map((group, gi) => (
-          <div key={gi} className="flex flex-col gap-2 rounded-lg border border-border p-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">{t("gallery.group-title", { index: gi + 1 })}</span>
-                <Select value={group.match} onValueChange={(v) => updateGroup(gi, { match: v as GalleryMatch })}>
-                  <SelectTrigger className="w-28">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t("gallery.match-all")}</SelectItem>
-                    <SelectItem value="any">{t("gallery.match-any")}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {draft.groups.length > 1 && (
-                <Button variant="ghost" size="icon" onClick={() => removeGroup(gi)}>
-                  <Trash2Icon className="w-4 h-4" />
-                </Button>
-              )}
-            </div>
-            {group.rules.map((rule, ri) => renderRule(rule, gi, ri))}
-            <Button variant="outline" size="sm" className="self-start" onClick={() => addRule(gi)}>
-              <PlusIcon className="w-4 h-4 mr-1" />
-              {t("gallery.add-rule")}
-            </Button>
-          </div>
-        ))}
-        <Button variant="outline" size="sm" className="self-start" onClick={addGroup}>
-          <PlusIcon className="w-4 h-4 mr-1" />
-          {t("gallery.add-group")}
-        </Button>
-      </div>
+      <ScopeEditor index={index} scopeMatch={draft.scopeMatch} groups={draft.groups} onChange={onChange} />
 
       <div className="flex flex-col gap-1.5">
         <Label>{t("gallery.sort-label")}</Label>
@@ -582,8 +693,18 @@ const GalleryBlockForm = ({
         </div>
       </div>
 
-      {renderCardFieldRow(t("gallery.card-primary-label"), draft.primary, "primary", false)}
-      {renderCardFieldRow(t("gallery.card-secondary-label"), draft.secondary, "secondary", true)}
+      <CardFieldRow
+        label={t("gallery.card-primary-label")}
+        state={draft.primary}
+        allowNone={false}
+        onChange={(primary) => onChange({ primary })}
+      />
+      <CardFieldRow
+        label={t("gallery.card-secondary-label")}
+        state={draft.secondary}
+        allowNone={true}
+        onChange={(secondary) => onChange({ secondary })}
+      />
 
       <div className="flex flex-col gap-2">
         <Label>{t("gallery.badges-label")}</Label>
@@ -696,11 +817,12 @@ const GalleryViewForm = ({ content, attachments = [], onSave, onCancel, onAddAtt
   const blockRefs = useRef<(HTMLDivElement | null)[]>([]);
   const attachmentsEnabled = Boolean(onAddAttachments);
 
-  const updateBlock = (index: number, patch: Partial<GalleryDraft> | Partial<MarkdownDraft>) => {
+  const updateBlock = (index: number, patch: Partial<GalleryDraft> | Partial<CalendarDraft> | Partial<MarkdownDraft>) => {
     setBlocks((prev) => prev.map((b, i) => (i === index ? ({ ...b, ...patch } as BlockDraft) : b)));
   };
 
   const addGalleryBlock = () => setBlocks((prev) => [...prev, toDraft(DEFAULT_GALLERY_BLOCK)]);
+  const addCalendarLayoutBlock = () => setBlocks((prev) => [...prev, toDraft(DEFAULT_CALENDAR_LAYOUT_BLOCK)]);
   const addMarkdownBlock = () => setBlocks((prev) => [...prev, { type: "markdown" as const, content: "" }]);
   const removeBlock = (index: number) => setBlocks((prev) => prev.filter((_, i) => i !== index));
   const toggleCollapse = (index: number) => updateBlock(index, { collapsed: !blocks[index].collapsed });
@@ -749,8 +871,11 @@ const GalleryViewForm = ({ content, attachments = [], onSave, onCancel, onAddAtt
   });
 
   // Outline entry label for a block, mirroring its form header.
-  const blockLabel = (draft: BlockDraft, index: number) =>
-    draft.type === "markdown" ? t("gallery.markdown-block-title", { index: index + 1 }) : t("gallery.block-title", { index: index + 1 });
+  const blockLabel = (draft: BlockDraft, index: number) => {
+    if (draft.type === "markdown") return t("gallery.markdown-block-title", { index: index + 1 });
+    if (draft.type === "calendar") return t("gallery.calendar-block-title", { index: index + 1 });
+    return t("gallery.block-title", { index: index + 1 });
+  };
 
   const scrollToBlock = (index: number) => {
     updateBlock(index, { collapsed: false });
@@ -816,6 +941,15 @@ const GalleryViewForm = ({ content, attachments = [], onSave, onCancel, onAddAtt
                   {index > 0 && <hr className="border-border" />}
                   {draft.type === "markdown" ? (
                     <MarkdownBlockForm
+                      draft={draft}
+                      index={index}
+                      onChange={(patch) => updateBlock(index, patch)}
+                      onRemove={() => removeBlock(index)}
+                      onToggleCollapse={() => toggleCollapse(index)}
+                      dragHandlers={dragHandlers(index)}
+                    />
+                  ) : draft.type === "calendar" ? (
+                    <CalendarLayoutBlockForm
                       draft={draft}
                       index={index}
                       onChange={(patch) => updateBlock(index, patch)}
@@ -911,6 +1045,8 @@ const GalleryViewForm = ({ content, attachments = [], onSave, onCancel, onAddAtt
                     >
                       {draft.type === "markdown" ? (
                         <FileTextIcon className="w-3.5 h-3.5 shrink-0" />
+                      ) : draft.type === "calendar" ? (
+                        <CalendarDaysIcon className="w-3.5 h-3.5 shrink-0" />
                       ) : (
                         <LayoutGridIcon className="w-3.5 h-3.5 shrink-0" />
                       )}
@@ -935,6 +1071,10 @@ const GalleryViewForm = ({ content, attachments = [], onSave, onCancel, onAddAtt
             <DropdownMenuItem onClick={addGalleryBlock}>
               <LayoutGridIcon className="w-4 h-4" />
               {t("gallery.style-gallery")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={addCalendarLayoutBlock}>
+              <CalendarDaysIcon className="w-4 h-4" />
+              {t("gallery.style-calendar")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={addMarkdownBlock}>
               <FileTextIcon className="w-4 h-4" />

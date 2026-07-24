@@ -1099,7 +1099,7 @@
     "properties-label": "Properties (optional)",
     "properties-placeholder": "title: My gallery\ntags: [index, gallery]\nstatus: published",
     "properties-hint": "YAML frontmatter for this view, one \"key: value\" per line. Lets other galleries filter, sort and reference this view.",
-    "style-gallery": "Gallery view",
+    "style-gallery": "Gallery layout",
     "style-markdown": "Markdown",
     "style-attachments": "Attachments",
     "attachments-title": "Attachments",
@@ -1164,7 +1164,17 @@
     "add-badge": "Add badge",
     "not-configured": "This view has not been configured yet. Switch to edit mode to set it up.",
     "loading": "Loading…",
-    "empty": "No documents in this scope yet."
+    "empty": "No documents in this scope yet.",
+    "style-calendar": "Calendar layout",
+    "calendar-block-title": "Calendar {{index}}",
+    "calendar-date-label": "Date property",
+    "calendar-date-placeholder": "Property name (optional, defaults to creation date)",
+    "calendar-date-hint": "Frontmatter property holding each document's date (YYYY-MM-DD). Leave empty to bucket documents by their creation date.",
+    "calendar-card-label": "Tile label",
+    "calendar-add": "Add document",
+    "calendar-add-failed": "Failed to create document.",
+    "calendar-empty-day": "No documents on this day yet.",
+    "calendar-more": "+{{count}} more"
   },
   "pdf": {
     "loading": "Loading…",
