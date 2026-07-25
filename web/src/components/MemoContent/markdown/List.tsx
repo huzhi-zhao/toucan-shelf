@@ -2,6 +2,7 @@ import { Children, cloneElement, isValidElement, type ReactElement, type ReactNo
 import { markdownStyles } from "@/lib/markdownStyles";
 import { cn } from "@/lib/utils";
 import { resolveTaskStatus } from "@/utils/task-status";
+import { Counter } from "../Counter";
 import { TASK_LIST_CLASS, TASK_LIST_ITEM_CLASS } from "../constants";
 import { NestedMarkdownRenderContext } from "../MarkdownRenderContext";
 import { TaskStatusContext } from "../TaskStatusContext";
@@ -108,14 +109,27 @@ export const ListItem = ({ children, className, node: _node, ...domProps }: List
         <NestedMarkdownRenderContext>
           <TaskStatusContext.Provider value={status.marker}>{checkbox}</TaskStatusContext.Provider>
           <div
-            className={cn(
-              markdownStyles.taskItemContent,
-              status.strikethrough && "line-through",
-              status.muted && "text-muted-foreground",
-            )}
+            className={cn(markdownStyles.taskItemContent, status.strikethrough && "line-through", status.muted && "text-muted-foreground")}
           >
             {content}
           </div>
+        </NestedMarkdownRenderContext>
+      </li>
+    );
+  }
+
+  // `- [N] label`: remark-counter lifted the marker onto the item, so render a
+  // clickable counter badge ahead of the content instead of a bullet.
+  const rawCounter = (domProps as Record<string, unknown>)["data-counter"];
+  if (typeof rawCounter === "string") {
+    const rawIndex = (domProps as Record<string, unknown>)["data-counter-index"];
+    const counterIndex = typeof rawIndex === "string" ? parseInt(rawIndex, 10) : NaN;
+
+    return (
+      <li className={cn(markdownStyles.listItem, "list-none flex items-baseline gap-1.5", className)} {...domProps}>
+        <NestedMarkdownRenderContext>
+          <Counter counterIndex={Number.isNaN(counterIndex) ? -1 : counterIndex}>{rawCounter}</Counter>
+          <div className={markdownStyles.taskItemContent}>{children}</div>
         </NestedMarkdownRenderContext>
       </li>
     );

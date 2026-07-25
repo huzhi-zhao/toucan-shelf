@@ -69,8 +69,9 @@ export const SANITIZE_SCHEMA = {
     img: [...(defaultSchema.attributes?.img || []), "height", "width"],
     input: INPUT_ATTRIBUTES,
     // `data-task-status` carries the extended checkbox marker (`- [/]`, `- [?]`, …)
-    // from remark-task-status through to the list item renderer.
-    li: [...(defaultSchema.attributes?.li || []), "dataTaskStatus"],
+    // from remark-task-status through to the list item renderer; `data-counter`
+    // carries a `- [N]` click counter's value and position (see remark-counter).
+    li: [...(defaultSchema.attributes?.li || []), "dataTaskStatus", "dataCounter", "dataCounterIndex"],
     // `data-sheet-id` carries a sheets block's style-overlay anchor from the fence
     // info string (```sheets id=xxx) through to CodeBlock; see remark-sheets-id.
     code: [

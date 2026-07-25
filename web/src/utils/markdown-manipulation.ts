@@ -91,6 +91,52 @@ export function toggleTaskAtIndex(markdown: string, taskIndex: number, checked: 
   return setTaskStatusAtIndex(markdown, taskIndex, checked ? "x" : " ");
 }
 
+// A counter list item line: `- [N] label` (any bullet). Must stay in lockstep
+// with remark-counter's COUNTER_MARKER_RE, or the indices the renderer assigns
+// won't address the same lines here. In particular the trailing lookahead is
+// what keeps `- [1]: url` (a link definition) and `- [1](url)` (a link) from
+// counting as counters — the plugin rejects both, so this must too.
+const COUNTER_LINE_RE = /^(\s*[-*+][ \t]+)\[(\d+)\](?=[ \t]|$)/;
+
+/**
+ * Line numbers (0-based) of every `- [N]` counter item in document order,
+ * skipping real GFM tasks and anything inside code. Matches the numbering
+ * remark-counter assigns to the rendered badges.
+ */
+function extractCounterItemLines(markdown: string): number[] {
+  const tree = fromMarkdown(markdown, {
+    extensions: [gfm()],
+    mdastExtensions: [gfmFromMarkdown()],
+  });
+
+  const lines = markdown.split("\n");
+  const counterLines: number[] = [];
+
+  visit(tree, "listItem", (node: ListItem) => {
+    if (!node.position?.start.line) return;
+    if (typeof node.checked === "boolean") return; // a real task, not a counter
+    const lineNumber = node.position.start.line - 1;
+    if (COUNTER_LINE_RE.test(lines[lineNumber])) {
+      counterLines.push(lineNumber);
+    }
+  });
+
+  return counterLines;
+}
+
+/** Increments the `- [N]` counter at `counterIndex` (document order) by one, returning the new markdown. */
+export function incrementCounterAtIndex(markdown: string, counterIndex: number): string {
+  const counterLines = extractCounterItemLines(markdown);
+  if (counterIndex < 0 || counterIndex >= counterLines.length) {
+    return markdown;
+  }
+
+  const lines = markdown.split("\n");
+  const lineNumber = counterLines[counterIndex];
+  lines[lineNumber] = lines[lineNumber].replace(COUNTER_LINE_RE, (_full, prefix, num) => `${prefix}[${parseInt(num, 10) + 1}]`);
+  return lines.join("\n");
+}
+
 export function countTasks(markdown: string): {
   total: number;
   completed: number;

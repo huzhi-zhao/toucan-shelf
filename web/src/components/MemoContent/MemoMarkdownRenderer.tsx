@@ -22,6 +22,7 @@ import {
 import { parseFrontmatter } from "@/utils/frontmatter";
 import { rehypeHeadingId } from "@/utils/rehype-plugins/rehype-heading-id";
 import { remarkAlert } from "@/utils/remark-plugins/remark-alert";
+import { remarkCounter } from "@/utils/remark-plugins/remark-counter";
 import { remarkDisableSetext } from "@/utils/remark-plugins/remark-disable-setext";
 import { remarkHighlight } from "@/utils/remark-plugins/remark-highlight";
 import { remarkMention } from "@/utils/remark-plugins/remark-mention";
@@ -215,6 +216,7 @@ export const MemoMarkdownRenderer = ({
           remarkBreaks,
           remarkMention,
           remarkTag,
+          remarkCounter,
           remarkHighlight,
           remarkAlert,
           remarkSheetsId,
