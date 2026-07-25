@@ -258,6 +258,13 @@ const DocumentView = ({
     setOutlineCollapsed(displayOutline === false || (typeof window !== "undefined" && !window.matchMedia("(min-width: 1024px)").matches));
   }, [memo.name]);
 
+  // Narrowing to a phone-sized viewport (opening on a phone, or rotating a tablet to portrait)
+  // must not leave the outline docked/opened over the document — it only ever opens by an
+  // explicit tap there. Widening never re-opens it; that stays the user's choice.
+  useEffect(() => {
+    if (!isDesktop) setOutlineCollapsed(true);
+  }, [isDesktop]);
+
   const isArchived = memo.state === State.ARCHIVED;
 
   const handleCopyLink = () => {

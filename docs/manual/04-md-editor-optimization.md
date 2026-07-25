@@ -62,8 +62,6 @@
 
 > [!FAQ] faq
 
-#### 下面是自定义 
-
 > [!IMPORTANT(📜)] this is a piece of important information , with a customed icon.
 
 > [!NOTE(🎯)] this is a note with a customized target icon.
@@ -275,3 +273,127 @@ only the selection's language decides the output.
 Under the hood this calls `AIService.PolishText`; see
 [Manual 7.4](./07-api-reference.md#74-aiservice--writing-assistants) for the
 HTTP shape.
+
+---
+
+## 4.6 Collapsible callouts
+
+Two callout families that **hide their body until you ask for it** — a folding
+card and a hover popover. They use the same `> [!TYPE]` blockquote syntax as the
+callouts in [4.1](#41--callout), so anything you can write in a callout body
+(lists, code, tables, images, nested Markdown) works inside them.
+
+Insert either from the editor toolbar's **Collapsible** button (the
+`ListCollapse` icon, immediately right of the **Callout** button), which drops a
+ready-to-edit snippet at the cursor.
+
+### Syntax
+
+| Syntax | Renders as |
+| --- | --- |
+| `> [!Collapse]- Title` | A card with a bold header + chevron. Click the header to fold/unfold the body. |
+| `> [!Popover] Title` | A pill button. **Hovering** (or tabbing to) it floats the body above it. |
+
+The text after the marker is the **title**; every following `>` line is the
+**body**. Omit the title and the family name is used instead ("Collapse").
+
+```markdown
+> [!Collapse]- Deployment Steps
+> 1. Build image
+> 2. Push to registry
+> 3. Rolling restart
+>
+> See [O&M Manual](https://example.com) for more details.
+
+> [!Popover] What is a workspace?
+> The top-level container for a knowledge base; every document belongs to and only to one workspace.
+```
+
+### The `+` / `-` fold marker
+
+A `+` or `-` **directly after the closing `]`** sets whether a **Collapse**
+starts open or folded — the same convention Obsidian uses:
+
+| Marker | Initial state |
+| --- | --- |
+| `> [!Collapse]-` | **Folded** (click to reveal) |
+| `> [!Collapse]+` | **Open** |
+| `> [!Collapse]` (no marker) | Folded |
+
+The marker is **per-render, not persisted**: folding or unfolding in the preview
+never rewrites your Markdown, and reopening the document returns to whatever the
+marker says. It has no effect on **Popover**, which is hover-driven and has no
+folded state.
+
+### Notes & limits
+
+- **Popover is hover-driven**, so it is awkward on touch devices — prefer
+  **Collapse** for content that must be reachable on mobile.
+- **Popover bodies should stay short.** The panel is capped at `max-w-sm` and
+  floats *above* the button; a long body is better served by a Collapse.
+- **Hidden text is still in the document.** A folded body is present in the
+  Markdown source, so search, `memogit`, and export all see it — collapsing is
+  presentation, not access control.
+
+Under the hood: `remark-alert.ts` parses the marker (including the `+`/`-` fold
+flag, emitted as `data-alert-fold`), `alertFamilies.ts` maps the type to the
+`collapse` / `popover` family, and `SpecialCallouts.tsx` renders the card.
+
+---
+
+## 4.7 Click counters
+
+A tally you can bump by clicking, stored **in the Markdown itself**. Useful for
+habit tracking, "how many times did I reach for this", spaced-repetition counts,
+or any lightweight running total you want to live next to the note.
+
+### Syntax
+
+Write a list item whose first token is a bracketed number:
+
+```markdown
+- [1] Used this command
+- [12] Review Rust lifetimes
+- [0] Things not started yet
+```
+
+Each renders as a clickable badge showing the number, followed by the label.
+**Clicking the badge increments it and saves the document** — `- [1]` becomes
+`- [2]` in the source, so the count survives reloads and is visible to
+`memogit`, export, and anything else that reads the Markdown.
+
+This is deliberately the same shape as a task list (`- [x] done`), and the two
+mix freely in one list:
+
+```markdown
+- [x] Completed task
+- [3] Click count
+- Normal list item
+```
+
+### Where clicking works
+
+The badge is only clickable where the document is **writable by you** — your own
+documents (or any document, if you are an instance super-user), in the Markdown
+and View document preview. On someone else's document the badge still renders,
+showing the count, but is inert.
+
+### Notes & limits
+
+- **The space is required.** `- [1] label` is a counter; `-[1] label` (no space
+  after the bullet) is plain text, and `- [1]label` (no space after the bracket)
+  is left alone too.
+- **Only digits.** `- [x]` / `- [ ]` / `- [/]` stay task checkboxes; `- [abc]`
+  is not a counter.
+- **Not confused by look-alikes.** A link definition (`- [1]: https://…`) or a
+  link (`- [1](https://…)`) is never treated as a counter.
+- **Code is untouched.** A `- [1]` inside a fenced or inline code block renders
+  literally and is never counted.
+- **Leading zeros are normalized.** `- [01]` increments to `- [2]`, not `- [02]`.
+- **No decrement or reset from the UI** — edit the number in the source to
+  adjust or zero it.
+
+Under the hood: `remark-counter.ts` lifts the `[N]` onto the `<li>` as
+`data-counter` (mirroring how `remark-task-status.ts` handles extended task
+markers), `List.tsx` renders the badge, and `incrementCounterAtIndex`
+(`markdown-manipulation.ts`) rewrites the matching line on click.

@@ -4,6 +4,7 @@ import useNotebookSidebarCollapsed from "@/hooks/useNotebookSidebarCollapsed";
 import usePrimaryNavLinks from "@/hooks/usePrimaryNavLinks";
 import { cn } from "@/lib/utils";
 import { Routes } from "@/router";
+import { isNotebookRoute } from "@/router/notebookRoute";
 import { useTranslate } from "@/utils/i18n";
 import { toggleNotebookSidebarCollapsed } from "@/utils/notebookSidebar";
 import MemosLogo from "./MemosLogo";
@@ -12,13 +13,15 @@ const MobileNavBar = () => {
   const t = useTranslate();
   const currentUser = useCurrentUser();
   const location = useLocation();
-  const isHome = location.pathname === Routes.HOME;
+  // Every Notebook route (not just "/") owns the secondary sidebar, so the logo doubles as its
+  // toggle there — on a phone that button is the only way back to the tree once it starts closed.
+  const isNotebook = isNotebookRoute(location.pathname);
   const notebookSidebarCollapsed = useNotebookSidebarCollapsed();
   const { primaryNavLinks, inboxAriaLabel } = usePrimaryNavLinks("w-5 h-auto shrink-0", true);
 
   return (
     <div className="flex flex-row items-center gap-0.5 shrink-0">
-      {isHome ? (
+      {isNotebook ? (
         <button
           type="button"
           className="rounded-lg flex items-center justify-center w-8 h-8 shrink-0 opacity-80"

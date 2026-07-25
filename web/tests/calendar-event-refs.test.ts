@@ -35,4 +35,10 @@ describe("calendar event refs", () => {
     expect(parseCalendarBlock("allowMaxUpdateDays: 7\n- 2026-07-19").allowMaxUpdateDays).toBe(7);
     expect(parseCalendarBlock("- 2026-07-19").allowMaxUpdateDays).toBeUndefined();
   });
+
+  it("parses showTaskDot", () => {
+    expect(parseCalendarBlock("showTaskDot: true\n- 2026-07-19").showTaskDot).toBe(true);
+    expect(parseCalendarBlock("@showTaskDot: false\n- 2026-07-19").showTaskDot).toBe(false);
+    expect(parseCalendarBlock("- 2026-07-19").showTaskDot).toBeUndefined();
+  });
 });

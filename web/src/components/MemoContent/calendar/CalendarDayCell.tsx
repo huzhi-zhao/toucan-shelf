@@ -8,12 +8,13 @@ interface CalendarDayCellProps {
   items: CalendarItem[];
   dayEvents: string[]; // 当天发生的 event 名称（已去重、按预定义顺序）
   events: string[]; // 预定义 event 列表，用于取色
+  showTaskDot: boolean; // 移动端是否在日期右侧画"当天有任务"的蓝点
   onClick?: (date: string) => void;
 }
 
 const MAX_PREVIEW_ITEMS = 2;
 
-export const CalendarDayCell = ({ day, items, dayEvents, events, onClick }: CalendarDayCellProps) => {
+export const CalendarDayCell = ({ day, items, dayEvents, events, showTaskDot, onClick }: CalendarDayCellProps) => {
   if (!day.isCurrentMonth) {
     return <div className="aspect-square" aria-hidden="true" />;
   }
@@ -43,10 +44,10 @@ export const CalendarDayCell = ({ day, items, dayEvents, events, onClick }: Cale
           aria-hidden="true"
         />
       )}
-      {/* 日期数字一行，右侧对齐当天有任务的蓝点 */}
+      {/* 日期数字一行，右侧对齐当天有任务的蓝点（仅 showTaskDot: true 时显示） */}
       <div className="flex w-full items-center justify-between gap-1">
         <span className="shrink-0 text-xs font-medium text-foreground md:text-sm">{day.label}</span>
-        {hasTasks && <span className="h-1 w-1 shrink-0 rounded-full bg-primary/70 md:hidden" aria-hidden="true" />}
+        {showTaskDot && hasTasks && <span className="h-1 w-1 shrink-0 rounded-full bg-primary/70 md:hidden" aria-hidden="true" />}
       </div>
       {/* 移动端：events 圆点横排一行 */}
       {hasEvents && (

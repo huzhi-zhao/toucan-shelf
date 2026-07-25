@@ -13,6 +13,7 @@ import { ragServiceClient } from "@/connect";
 import { useCreateAttachment } from "@/hooks/useAttachmentQueries";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import { useLastOpened } from "@/hooks/useLastOpened";
+import useMediaQuery from "@/hooks/useMediaQuery";
 import { useCreateMemo, useDeleteMemo, useMemo as useMemoDetail, useUpdateMemo } from "@/hooks/useMemoQueries";
 import useNotebookSidebarCollapsed from "@/hooks/useNotebookSidebarCollapsed";
 import usePageTitle from "@/hooks/usePageTitle";
@@ -73,6 +74,9 @@ const Notebook = () => {
   const { workspaceTitle, docId } = useParams<{ workspaceTitle?: string; docId?: string }>();
   const { data: workspaces = [] } = useWorkspaces();
   const sidebarCollapsed = useNotebookSidebarCollapsed();
+  // Phone-sized viewports (and tablets rotated to portrait) can't afford the 288px tree next to
+  // the document, so the secondary sidebar starts closed there — see the override effect below.
+  const isNarrow = !useMediaQuery("md");
   const { getLastOpened, setLastOpened } = useLastOpened(currentUser?.name);
   const requestedWorkspace =
     (location.state as { workspace?: string } | null)?.workspace ??
@@ -148,9 +152,12 @@ const Notebook = () => {
     const { properties } = parseFrontmatter(memo.content);
     return readBooleanProperty(properties, "displayFilter") === false;
   }, [memo?.content]);
+  // The same override channel carries the narrow-viewport default: on a phone (or after rotating
+  // to portrait) the tree starts collapsed regardless of the saved desktop preference, and one tap
+  // on the toggle still opens it — a manual toggle clears the override.
   useEffect(() => {
-    setNotebookSidebarOverride(docHidesFilter ? true : null);
-  }, [selectedMemo, docHidesFilter]);
+    setNotebookSidebarOverride(docHidesFilter || isNarrow ? true : null);
+  }, [selectedMemo, docHidesFilter, isNarrow]);
   useEffect(() => () => setNotebookSidebarOverride(null), []);
 
   // Keep the secondary sidebar visible when the knowledge base has no documents,

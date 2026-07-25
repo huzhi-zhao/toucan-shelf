@@ -56,6 +56,8 @@ events: 瑜伽, 早睡, 喝水
   - `- text` (no box) → plain text entry.
 - Item lines **before any date** collect into an *Ungrouped* section shown above
   the month grid.
+- A line `showTaskDot: true` **enables the blue "has tasks" dot** drawn next to the
+  day number on narrow screens. Omitted or `false` → no dot (the default).
 - Blank lines and non-matching prose are ignored. Non-adjacent groups with the
   same date merge; an empty body shows a friendly empty state.
 

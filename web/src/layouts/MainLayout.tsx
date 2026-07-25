@@ -9,22 +9,10 @@ import { useFilteredMemoStats } from "@/hooks/useFilteredMemoStats";
 import useMediaQuery from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/utils";
 import { Routes } from "@/router";
-import { ROUTES } from "@/router/routes";
+import { isNotebookRoute } from "@/router/notebookRoute";
 
 const ARCHIVED_ROUTE = "/archived";
 const PROFILE_ROUTE = "/u/:username";
-const WORKSPACE_ROUTE = "/:workspaceTitle";
-const WORKSPACE_DOC_ROUTE = "/:workspaceTitle/:docId";
-// Top-level path segments that are handled by their own static routes rather than
-// being a workspace title, so a match against WORKSPACE_ROUTE must exclude them.
-// Imported from "@/router/routes" directly (not "@/router") to avoid a circular
-// import with router/index.tsx, which imports this component.
-const RESERVED_TOP_SEGMENTS = new Set([
-  ...Object.values(ROUTES)
-    .filter((path) => path !== ROUTES.HOME)
-    .map((path) => path.split("/")[1]),
-  PROFILE_ROUTE.split("/")[1],
-]);
 const DESKTOP_EXPLORER_WIDTH_CLASS = "w-64";
 const DESKTOP_EXPLORER_CLASS_NAME = cn("sticky top-0 h-svh shrink-0 border-r border-border transition-all", DESKTOP_EXPLORER_WIDTH_CLASS);
 const MAIN_CONTENT_CLASS_NAME = "w-full min-h-full min-w-0 flex-1";
@@ -37,9 +25,7 @@ const MainLayout = () => {
   // The Notebook page ("/", plus its "/:workspaceTitle" and "/:workspaceTitle/:docId"
   // routes) owns its own secondary sidebar (workspace tree) and full-bleed two-pane
   // layout, so it opts out of the generic MemoExplorer chrome.
-  const workspaceMatch = matchPath(WORKSPACE_DOC_ROUTE, location.pathname) || matchPath(WORKSPACE_ROUTE, location.pathname);
-  const isNotebook =
-    location.pathname === Routes.HOME || (!!workspaceMatch && !RESERVED_TOP_SEGMENTS.has(workspaceMatch.params.workspaceTitle ?? ""));
+  const isNotebook = isNotebookRoute(location.pathname);
   // The Bookshelf page ("/shelf") is a standalone gallery with no filters, so it
   // doesn't need the MemoExplorer sidebar either.
   const isBookshelf = location.pathname === Routes.SHELF;

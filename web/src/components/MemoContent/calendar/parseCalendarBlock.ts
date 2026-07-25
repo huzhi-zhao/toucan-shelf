@@ -16,10 +16,12 @@ export interface ParsedCalendar {
   events: string[]; // 预定义的 event 名称列表，顺序即颜色下标
   groups: CalendarGroup[];
   allowMaxUpdateDays?: number; // 仅允许编辑最近 N 天内的日期，避免误点历史数据
+  showTaskDot?: boolean; // true 时移动端日历格子才画"当天有任务"的蓝点
 }
 
 const EVENTS_LINE_RE = /^@?events:\s*(.*)$/i;
 const ALLOW_MAX_UPDATE_DAYS_RE = /^@?allowMaxUpdateDays:\s*(\d+)\s*$/i;
+const SHOW_TASK_DOT_RE = /^@?showTaskDot:\s*(true|false)\s*$/i;
 const DATE_LINE_RE = /^-\s+(\d{4}-\d{2}-\d{2})\s*$/;
 const EVENT_ITEM_RE = /^-\s+@(.+)$/;
 // 方括号内接受任意扩展状态字符；未知字符按纯文本处理。
@@ -54,6 +56,7 @@ export function parseCalendarBlock(raw: string): ParsedCalendar {
   const groups: CalendarGroup[] = [];
   const events: string[] = [];
   let allowMaxUpdateDays: number | undefined;
+  let showTaskDot: boolean | undefined;
   let ungrouped: CalendarGroup | undefined;
   let current: CalendarGroup | undefined;
   // event 引用可能是下标，而 events: 行不保证出现在数据之前，故先记下待解析的条目。
@@ -63,6 +66,12 @@ export function parseCalendarBlock(raw: string): ParsedCalendar {
     const daysMatch = ALLOW_MAX_UPDATE_DAYS_RE.exec(line.trim());
     if (daysMatch) {
       allowMaxUpdateDays = Number(daysMatch[1]);
+      continue;
+    }
+
+    const dotMatch = SHOW_TASK_DOT_RE.exec(line.trim());
+    if (dotMatch) {
+      showTaskDot = dotMatch[1].toLowerCase() === "true";
       continue;
     }
 
@@ -125,5 +134,5 @@ export function parseCalendarBlock(raw: string): ParsedCalendar {
     groups.unshift(ungrouped);
   }
 
-  return { events, groups, allowMaxUpdateDays };
+  return { events, groups, allowMaxUpdateDays, showTaskDot };
 }

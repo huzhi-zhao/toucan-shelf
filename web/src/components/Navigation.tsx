@@ -6,6 +6,7 @@ import usePrimaryNavLinks from "@/hooks/usePrimaryNavLinks";
 import useSidebarMode from "@/hooks/useSidebarMode";
 import { cn } from "@/lib/utils";
 import { Routes } from "@/router";
+import { isNotebookRoute } from "@/router/notebookRoute";
 import { useTranslate } from "@/utils/i18n";
 import { toggleNotebookSidebarCollapsed } from "@/utils/notebookSidebar";
 import MemosLogo from "./MemosLogo";
@@ -21,7 +22,8 @@ const Navigation = (props: Props) => {
   const t = useTranslate();
   const currentUser = useCurrentUser();
   const location = useLocation();
-  const isHome = location.pathname === Routes.HOME;
+  // Every Notebook route (not just "/") owns the secondary sidebar, so the logo doubles as its toggle there.
+  const isNotebook = isNotebookRoute(location.pathname);
   const notebookSidebarCollapsed = useNotebookSidebarCollapsed();
   const sidebarMode = useSidebarMode();
   const isMini = sidebarMode === "mini";
@@ -31,7 +33,7 @@ const Navigation = (props: Props) => {
   return (
     <header className={cn("w-full h-full overflow-auto flex flex-col justify-between items-start gap-4", className)}>
       <div className="w-full px-1 py-1 flex flex-col justify-start items-start space-y-2 overflow-auto overflow-x-hidden shrink">
-        {isHome ? (
+        {isNotebook ? (
           <button
             type="button"
             className="mb-3 cursor-pointer"
