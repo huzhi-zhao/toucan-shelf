@@ -10,7 +10,15 @@ import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { cn } from "@/lib/utils";
-import { getAlertIcon, getAlertTitle, getAlertType, isMentionElement, isTagElement, isTaskListItemElement } from "@/types/markdown";
+import {
+  getAlertFold,
+  getAlertIcon,
+  getAlertTitle,
+  getAlertType,
+  isMentionElement,
+  isTagElement,
+  isTaskListItemElement,
+} from "@/types/markdown";
 import { parseFrontmatter } from "@/utils/frontmatter";
 import { rehypeHeadingId } from "@/utils/rehype-plugins/rehype-heading-id";
 import { remarkAlert } from "@/utils/remark-plugins/remark-alert";
@@ -127,7 +135,14 @@ export const MemoMarkdownRenderer = ({
       const alertType = node && getAlertType(node);
       if (alertType) {
         return (
-          <Alert {...props} node={node} alertType={alertType} alertIcon={getAlertIcon(node)} alertTitle={getAlertTitle(node)}>
+          <Alert
+            {...props}
+            node={node}
+            alertType={alertType}
+            alertIcon={getAlertIcon(node)}
+            alertTitle={getAlertTitle(node)}
+            alertFold={getAlertFold(node)}
+          >
             {children}
           </Alert>
         );

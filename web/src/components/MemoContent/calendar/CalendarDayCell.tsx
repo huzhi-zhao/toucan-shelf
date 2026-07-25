@@ -43,22 +43,21 @@ export const CalendarDayCell = ({ day, items, dayEvents, events, onClick }: Cale
           aria-hidden="true"
         />
       )}
-      <span className="self-start shrink-0 text-xs font-medium text-foreground md:text-sm">{day.label}</span>
-      {/* 移动端：events 圆点横排一行，任务蓝点单独一行 */}
-      {(hasEvents || hasTasks) && (
-        <div className="mt-auto flex flex-col items-start gap-0.5 md:hidden">
-          {hasTasks && <span className="h-1 w-1 shrink-0 self-end rounded-full bg-primary/70" aria-hidden="true" />}
-          {hasEvents && (
-            <div className="flex flex-wrap items-center justify-start gap-0.5" aria-hidden="true">
-              {dayEvents.map((name) => (
-                <span
-                  key={name}
-                  className="h-1 w-1 shrink-0 rounded-full"
-                  style={{ backgroundColor: getEventColorByName(name, events) }}
-                />
-              ))}
-            </div>
-          )}
+      {/* 日期数字一行，右侧对齐当天有任务的蓝点 */}
+      <div className="flex w-full items-center justify-between gap-1">
+        <span className="shrink-0 text-xs font-medium text-foreground md:text-sm">{day.label}</span>
+        {hasTasks && <span className="h-1 w-1 shrink-0 rounded-full bg-primary/70 md:hidden" aria-hidden="true" />}
+      </div>
+      {/* 移动端：events 圆点横排一行 */}
+      {hasEvents && (
+        <div className="mt-auto flex flex-wrap items-center justify-start gap-0.5 md:hidden" aria-hidden="true">
+          {dayEvents.map((name) => (
+            <span
+              key={name}
+              className="h-1 w-1 shrink-0 rounded-full"
+              style={{ backgroundColor: getEventColorByName(name, events) }}
+            />
+          ))}
         </div>
       )}
       {hasTasks && (

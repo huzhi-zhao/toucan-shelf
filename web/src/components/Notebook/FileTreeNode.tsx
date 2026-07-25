@@ -75,7 +75,7 @@ const FileTreeNode = ({
     <div className="w-full">
       <div
         className={cn(
-          "group flex items-center gap-1 rounded-md px-1 py-1 text-sm cursor-pointer hover:bg-accent/60",
+          "group flex items-center gap-1 rounded-md px-1 py-1 text-sm cursor-pointer select-none hover:bg-accent/60",
           isSelected && "bg-accent text-accent-foreground",
         )}
         style={{ paddingLeft: `${depth * 14 + 4}px` }}

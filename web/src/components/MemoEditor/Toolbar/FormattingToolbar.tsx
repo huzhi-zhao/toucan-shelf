@@ -10,12 +10,15 @@ import {
   Heading3Icon,
   InfoIcon,
   LayoutGridIcon,
+  ListCollapseIcon,
   ListIcon,
   type LucideIcon,
   MessageSquareQuoteIcon,
   MessagesSquareIcon,
   Minimize2Icon,
   MoreHorizontalIcon,
+  MousePointerClickIcon,
+  PanelTopOpenIcon,
   PencilIcon,
   QuoteIcon,
   SquareKanbanIcon,
@@ -98,6 +101,28 @@ const CALLOUT_MENU_GROUPS: CalloutMenuItem[][] = [
       snippet: ["> [!CHAT:R(Lindsay, 08:52)] Hi! How's it going?", "> [!CHAT:S] All good — shipping it today."].join("\n"),
     },
   ],
+];
+
+// Collapsible callouts offered by the toolbar's "collapsible" dropdown. Each
+// inserts a two-line seed: a visible title line plus the folded/hover body. The
+// `-` after `]` marks "folded by default" (`+` would be "open by default").
+interface CollapsibleMenuItem {
+  labelKey: Translations;
+  icon: LucideIcon;
+  snippet: string;
+}
+
+const COLLAPSIBLE_MENU_ITEMS: CollapsibleMenuItem[] = [
+  {
+    labelKey: "editor.collapsible.collapse",
+    icon: PanelTopOpenIcon,
+    snippet: ["> [!Collapse]- Collapsible section title", "> Rich body content, collapsed by default.", "> Supports full markdown."].join("\n"),
+  },
+  {
+    labelKey: "editor.collapsible.popover",
+    icon: MousePointerClickIcon,
+    snippet: ["> [!Popover] Hover me", "> Extra info shown on hover."].join("\n"),
+  },
 ];
 
 // View blocks offered by the toolbar's "view" dropdown. Picking one inserts a
@@ -291,6 +316,20 @@ export function FormattingToolbar({ controllerRef, onExit, className }: Formatti
                 </DropdownMenuItem>
               ))}
             </div>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <SegmentButton Icon={ListCollapseIcon} label={t("editor.collapsible.trigger")} onMouseDown={preventFocusSteal} />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" onCloseAutoFocus={returnFocusToEditor}>
+          {COLLAPSIBLE_MENU_ITEMS.map((item) => (
+            <DropdownMenuItem key={item.labelKey} onClick={() => controllerRef.current?.insertMarkdown(`\n${item.snippet}\n`)}>
+              <item.icon className="w-4 h-4" />
+              {t(item.labelKey)}
+            </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
       </DropdownMenu>

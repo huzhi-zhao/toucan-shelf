@@ -230,6 +230,11 @@
       "quote": "Quote",
       "chat": "Chat"
     },
+    "collapsible": {
+      "trigger": "Collapsible",
+      "collapse": "Collapse",
+      "popover": "Popover"
+    },
     "view": {
       "trigger": "View",
       "grid": "Grid view",

@@ -1,3 +1,5 @@
+import { ChevronDownIcon } from "lucide-react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { NestedMarkdownRenderContext } from "../MarkdownRenderContext";
 import { alertDisplayLabel } from "./alertFamilies";
@@ -10,6 +12,8 @@ interface SpecialCalloutProps {
   customIcon?: string;
   /** Custom title typed after the `[!TYPE]` marker; falls back to `alertDisplayLabel(rawType)` where used. */
   title?: string;
+  /** Default open state for collapsible families, from the `+`/`-` fold marker: "collapsed" | "expanded". */
+  fold?: string;
   className?: string;
   children: React.ReactNode;
 }
@@ -149,6 +153,60 @@ function ChatBubble({ family, customIcon, className, children }: SpecialCalloutP
   );
 }
 
+/**
+ * popover: the title renders as a pill button; hovering (or focusing) it reveals
+ * the body in a floating panel anchored above the button. The body is always in
+ * the DOM — only its visibility toggles — so it stays selectable and accessible.
+ */
+function PopoverCard({ rawType, title, className, children }: SpecialCalloutProps) {
+  return (
+    <span className={cn("group relative my-1 inline-flex not-italic", className)}>
+      <button
+        type="button"
+        className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-1 text-sm font-medium text-foreground shadow-sm"
+      >
+        {title || alertDisplayLabel(rawType)}
+      </button>
+      <span
+        role="tooltip"
+        className="pointer-events-none invisible absolute bottom-full left-0 z-20 mb-2 w-max max-w-sm rounded-xl border border-border bg-popover px-4 py-3 text-sm leading-6 text-popover-foreground opacity-0 shadow-lg transition-opacity duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+      >
+        <NestedMarkdownRenderContext>{children}</NestedMarkdownRenderContext>
+      </span>
+    </span>
+  );
+}
+
+/**
+ * collapse: a folding card — a title header with a chevron fold button, and, when
+ * open, a rich body region below the divider. `[!Collapse]+` starts open,
+ * `[!Collapse]-` (or no marker) starts folded.
+ */
+function CollapseCard({ rawType, title, fold, className, children }: SpecialCalloutProps) {
+  const [open, setOpen] = useState(fold === "expanded");
+  return (
+    <blockquote className={cn(CARD_BASE, "border-border p-0 overflow-hidden", className)}>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((prev) => !prev)}
+        className={cn(
+          "flex w-full items-center gap-2 bg-muted/50 px-5 py-3 text-left text-base font-bold text-foreground",
+          open && "border-b border-border",
+        )}
+      >
+        <ChevronDownIcon className={cn("w-4 h-4 shrink-0 text-muted-foreground transition-transform", !open && "-rotate-90")} />
+        <span className="min-w-0 truncate">{title || alertDisplayLabel(rawType)}</span>
+      </button>
+      {open && (
+        <div className="min-w-0 px-5 py-4 leading-7">
+          <NestedMarkdownRenderContext>{children}</NestedMarkdownRenderContext>
+        </div>
+      )}
+    </blockquote>
+  );
+}
+
 const SPECIAL_CARD_COMPONENTS: Record<string, React.ComponentType<SpecialCalloutProps>> = {
   note: NoteCard,
   quote: QuoteBox,
@@ -159,6 +217,8 @@ const SPECIAL_CARD_COMPONENTS: Record<string, React.ComponentType<SpecialCallout
   attention: ModernCalloutPill,
   "chat-send": ChatBubble,
   "chat-recv": ChatBubble,
+  collapse: CollapseCard,
+  popover: PopoverCard,
 };
 
 /** Renders the bespoke card for a family in SPECIAL_CARD_FAMILIES; returns null if the family has no special card. */

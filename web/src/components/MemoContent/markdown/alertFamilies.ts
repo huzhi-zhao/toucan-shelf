@@ -34,6 +34,11 @@ export const ALERT_FAMILY_ALIASES: Record<string, string> = {
   missing: "failure",
   bug: "bug",
   aside: "aside",
+  // Collapsible callouts (see SpecialCallouts.tsx): a folding card and a hover
+  // popover. Their open/closed default comes from the `+`/`-` fold marker parsed
+  // by remark-alert.
+  collapse: "collapse",
+  popover: "popover",
   // Chat transcript bubbles — S(end) is the outgoing (blue, right) side,
   // R(eceive) the incoming (grey, left) one. Bare `chat` defaults to incoming.
   chat: "chat-recv",
@@ -64,6 +69,8 @@ export const SPECIAL_CARD_FAMILIES = new Set([
   "attention",
   "chat-send",
   "chat-recv",
+  "collapse",
+  "popover",
 ]);
 
 /** Resolve a raw `[!TYPE]` string (any case) to its canonical family. Unknown types fall back to "note". */

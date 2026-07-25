@@ -15,7 +15,9 @@ const KEEP_BODY_ONLY_FAMILIES = new Set(["todo", "tip", "quote"]);
 // blockquote, e.g. `> [!WARNING]`, `> [!IMPORTANT(✍🏻)] inline body text`, or
 // `> [!NOTE]` on its own line followed by more lines. Only the marker itself is
 // consumed; whatever follows on the same line (if any) becomes the alert body.
-const ALERT_MARKER_RE = /^\[!([A-Za-z][\w:-]*)(?:\(([^)]+)\))?\][ \t]*/;
+// An optional `+`/`-` right after the `]` (Obsidian's fold syntax) sets the
+// default open state of collapsible callouts: `-` starts folded, `+` starts open.
+const ALERT_MARKER_RE = /^\[!([A-Za-z][\w:-]*)(?:\(([^)]+)\))?\]([+-]?)[ \t]*/;
 
 // Inside a chat blockquote every *line* may open a new bubble, so a whole
 // conversation can live in one `>` block without blank lines between turns:
@@ -159,7 +161,7 @@ export const remarkAlert = () => {
         return;
       }
 
-      const [, type, icon] = match;
+      const [, type, icon, fold] = match;
       const remainder = textNode.value.slice(match[0].length);
       const family = resolveAlertFamily(type);
 
@@ -213,6 +215,7 @@ export const remarkAlert = () => {
           "data-alert": type.toLowerCase(),
           ...(icon ? { "data-alert-icon": icon } : {}),
           ...(title ? { "data-alert-title": title } : {}),
+          ...(fold ? { "data-alert-fold": fold === "-" ? "collapsed" : "expanded" } : {}),
         },
       };
     });

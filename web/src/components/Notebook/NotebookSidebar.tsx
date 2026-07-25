@@ -265,7 +265,7 @@ const NotebookSidebar = ({
         />
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto select-none">
         {visibleTree.length === 0 ? (
           <div className="text-sm text-muted-foreground px-2 py-6 text-center">{t("notebook.no-documents")}</div>
         ) : (

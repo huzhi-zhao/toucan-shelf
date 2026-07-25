@@ -178,6 +178,11 @@
       "quote": "quote",
       "chat": "聊天气泡"
     },
+    "collapsible": {
+      "trigger": "折叠块",
+      "collapse": "折叠",
+      "popover": "悬浮提示"
+    },
     "view": {
       "trigger": "视图",
       "grid": "网格视图",

@@ -105,3 +105,9 @@ export function getAlertTitle(node: HastElement): string | undefined {
   const dataAlertTitle = node.properties?.dataAlertTitle;
   return typeof dataAlertTitle === "string" && dataAlertTitle !== "" ? dataAlertTitle : undefined;
 }
+
+/** Default open state for collapsible callouts, from the `+`/`-` fold marker: "collapsed" | "expanded". */
+export function getAlertFold(node: HastElement): string | undefined {
+  const dataAlertFold = node.properties?.dataAlertFold;
+  return typeof dataAlertFold === "string" && dataAlertFold !== "" ? dataAlertFold : undefined;
+}
