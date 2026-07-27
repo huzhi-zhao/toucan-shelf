@@ -1182,7 +1182,20 @@
     "calendar-add": "Add document",
     "calendar-add-failed": "Failed to create document.",
     "calendar-empty-day": "No documents on this day yet.",
-    "calendar-more": "+{{count}} more"
+    "calendar-more": "+{{count}} more",
+    "style-doc": "Knowledge base document",
+    "doc-block-title": "Document {{index}}",
+    "doc-block-selected": "Document:",
+    "doc-block-none": "Not selected",
+    "doc-block-search-placeholder": "Search documents…",
+    "doc-block-no-results": "No matching documents",
+    "doc-block-hint": "The referenced document is rendered read-only here; edit it in the document itself.",
+    "doc-block-missing": "The referenced document is unavailable.",
+    "markdown-source-inline": "Markdown source",
+    "markdown-source-doc": "Knowledge base document",
+    "workspace-scope-label": "Knowledge bases",
+    "workspace-scope-all": "All knowledge bases",
+    "workspace-scope-current": "This knowledge base"
   },
   "pdf": {
     "loading": "Loading…",
@@ -1243,5 +1256,18 @@
   },
   "mark": {
     "text-changed": "Original text changed"
+  },
+  "home": {
+    "title": "Home",
+    "default-section": "General",
+    "add-section": "Add section",
+    "section-name": "Section name",
+    "rename-section": "Rename section",
+    "delete-section": "Delete section",
+    "delete-section-confirm": "Delete this section and all of its blocks?",
+    "move-left": "Move left",
+    "move-right": "Move right",
+    "empty-section": "This section is empty. Edit it to add gallery, calendar or markdown blocks.",
+    "loading": "Loading…"
   }
 }

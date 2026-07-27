@@ -1,4 +1,4 @@
-import { BellIcon, InfoIcon, LibraryBigIcon, PaperclipIcon, SearchIcon, UserCircleIcon } from "lucide-react";
+import { BellIcon, HouseIcon, InfoIcon, LibraryBigIcon, PaperclipIcon, SearchIcon, UserCircleIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Routes } from "@/router";
 import { UserNotification_Status } from "@/types/proto/api/v1/user_service_pb";
@@ -18,6 +18,14 @@ const usePrimaryNavLinks = (iconSizeClass: string, isMini = true) => {
   const currentUser = useCurrentUser();
   const { data: notifications = [] } = useNotifications();
 
+  // The Home page: the user's own cross-knowledge-base entry points. Sits above
+  // search as the first thing in the sidebar.
+  const dashboardNavLink: NavLinkItem = {
+    id: "header-dashboard",
+    path: Routes.DASHBOARD,
+    title: t("home.title"),
+    icon: <HouseIcon className={iconSizeClass} />,
+  };
   const shelfNavLink: NavLinkItem = {
     id: "header-shelf",
     path: Routes.SHELF,
@@ -73,7 +81,7 @@ const usePrimaryNavLinks = (iconSizeClass: string, isMini = true) => {
   };
 
   const primaryNavLinks: NavLinkItem[] = currentUser
-    ? [exploreNavLink, shelfNavLink, attachmentsNavLink, inboxNavLink]
+    ? [dashboardNavLink, exploreNavLink, shelfNavLink, attachmentsNavLink, inboxNavLink]
     : [exploreNavLink, aboutNavLink, signInNavLink];
   const inboxAriaLabel = unreadCount > 0 ? `${t("common.inbox")}, ${unreadCount} unread` : t("common.inbox");
 

@@ -17,6 +17,7 @@ const AdminSignIn = lazyWithReload(() => import("@/pages/AdminSignIn"));
 const About = lazyWithReload(() => import("@/pages/About"));
 const Archived = lazyWithReload(() => import("@/pages/Archived"));
 const Bookshelf = lazyWithReload(() => import("@/pages/Bookshelf"));
+const Dashboard = lazyWithReload(() => import("@/pages/Dashboard"));
 const AuthCallback = lazyWithReload(() => import("@/pages/AuthCallback"));
 const Explore = lazyWithReload(() => import("@/pages/Explore"));
 const Notebook = lazyWithReload(() => import("@/pages/Notebook"));
@@ -97,6 +98,10 @@ export const routeConfig: RouteObject[] = [
                 element: <RequireAuthRoute />,
                 children: [
                   { path: Routes.ARCHIVED, element: <Archived /> },
+                  // The Home page. `:sectionId` selects the active tab so a
+                  // reload or a back-navigation lands on the same section.
+                  { path: Routes.DASHBOARD, element: <Dashboard /> },
+                  { path: `${Routes.DASHBOARD}/:sectionId`, element: <Dashboard /> },
                   { path: Routes.SHELF, element: <Bookshelf /> },
                   { path: Routes.SHORTCUTS, element: <Shortcuts /> },
                 ],

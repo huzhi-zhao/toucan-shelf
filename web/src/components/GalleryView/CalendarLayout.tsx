@@ -9,19 +9,19 @@ import { MARK_EXCLUDE_ATTR } from "@/components/DocComments/textAnchor";
 import PromptDialog from "@/components/Notebook/PromptDialog";
 import { Button } from "@/components/ui/button";
 import { useInstance } from "@/contexts/InstanceContext";
-import { useCreateMemo, useMemos } from "@/hooks/useMemoQueries";
+import { useCreateMemo } from "@/hooks/useMemoQueries";
 import { cn } from "@/lib/utils";
-import { State } from "@/types/proto/api/v1/common_pb";
 import { type Memo, MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import { docCalendarDate, docColor, newCalendarDoc } from "./calendar";
 import { fieldValue, matchesScope, propertyMap } from "./fields";
 import type { CalendarLayoutBlock } from "./types";
+import { useScopeMemos } from "./useScopeMemos";
 
 interface Props {
   block: CalendarLayoutBlock;
   memo: Memo;
-  openDoc: (memoName: string) => void;
+  openDoc: (memoName: string, doc?: Memo) => void;
 }
 
 const MAX_TILE_DOCS = 3;
@@ -64,11 +64,7 @@ const CalendarLayout = ({ block, memo, openDoc }: Props) => {
   const weekDays = useWeekdayLabels();
   const createMemo = useCreateMemo();
 
-  const { data, isLoading } = useMemos({
-    pageSize: 1000,
-    state: State.NORMAL,
-    filter: `workspace == ${JSON.stringify(memo.workspace)}`,
-  });
+  const { memos, isLoading } = useScopeMemos(block.scope, memo.workspace);
 
   const [month, setMonth] = useState(() => dayjs(today).format("YYYY-MM"));
   const [selectedDate, setSelectedDate] = useState(today);
@@ -79,7 +75,7 @@ const CalendarLayout = ({ block, memo, openDoc }: Props) => {
   const docsByDate = useMemo(() => {
     const ctx = { viewFolderPath: memo.folderPath };
     const map = new Map<string, Memo[]>();
-    for (const doc of data?.memos ?? []) {
+    for (const doc of memos) {
       if (doc.name === memo.name) continue;
       const props = propertyMap(doc.content);
       if (!matchesScope(doc, props, block.scope, ctx)) continue;
@@ -90,7 +86,7 @@ const CalendarLayout = ({ block, memo, openDoc }: Props) => {
       else map.set(date, [doc]);
     }
     return map;
-  }, [data, block, memo.name, memo.folderPath]);
+  }, [memos, block, memo.name, memo.folderPath]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
@@ -183,7 +179,7 @@ const CalendarLayout = ({ block, memo, openDoc }: Props) => {
                 {/* Desktop: up to 3 doc cards, then an overflow hint. */}
                 <div className="hidden flex-col gap-0.5 md:flex">
                   {docs.slice(0, MAX_TILE_DOCS).map((doc) => (
-                    <DocChip key={doc.name} label={labelOf(doc)} color={colorOf(doc)} onOpen={() => openDoc(doc.name)} />
+                    <DocChip key={doc.name} label={labelOf(doc)} color={colorOf(doc)} onOpen={() => openDoc(doc.name, doc)} />
                   ))}
                   {docs.length > MAX_TILE_DOCS && (
                     <span className="px-1 text-[10px] text-muted-foreground">
@@ -220,7 +216,7 @@ const CalendarLayout = ({ block, memo, openDoc }: Props) => {
                 key={doc.name}
                 label={labelOf(doc)}
                 color={colorOf(doc)}
-                onOpen={() => openDoc(doc.name)}
+                onOpen={() => openDoc(doc.name, doc)}
                 className="px-2 py-1.5 text-sm"
               />
             ))}

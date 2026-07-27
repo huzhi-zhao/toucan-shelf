@@ -734,6 +734,8 @@ const DocumentView = ({
                 <GalleryViewForm
                   key={memo.name}
                   content={memo.content}
+                  workspace={memo.workspace}
+                  memoName={memo.name}
                   attachments={remainingAttachments}
                   onSave={(content) => {
                     onSaveHtml(content);

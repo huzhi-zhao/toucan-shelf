@@ -37,6 +37,33 @@ export interface GalleryGroup {
 export interface GalleryScope {
   match: GalleryMatch;
   groups: GalleryGroup[];
+  /**
+   * Which knowledge bases the block scans, as `workspaces/{uid}` resource names.
+   * Omitted (the only thing an ordinary VIEW document ever stores) means "the
+   * view document's own workspace". `[ALL_WORKSPACES]` means every workspace the
+   * viewer can see. Only the Home document's editor exposes this.
+   */
+  workspaces?: string[];
+}
+
+/** Sentinel inside `GalleryScope.workspaces` meaning "every visible workspace". */
+export const ALL_WORKSPACES = "*";
+
+/**
+ * Turns a scope's workspace selection into the two things a block needs to run
+ * its query: the server-side `ListMemos` filter, and — when the selection can't
+ * be expressed as a single equality — the set of workspaces to keep client-side.
+ *
+ * The memo filter grammar only allows `==`/`!=` on `workspace`, so a multi-base
+ * selection is fetched unfiltered and narrowed in the browser, the same way the
+ * scope's own rules already are.
+ */
+export function resolveScopeWorkspaces(scope: GalleryScope, ownWorkspace: string): { filter?: string; allowed?: ReadonlySet<string> } {
+  const selected = (scope.workspaces ?? []).filter((w) => w.trim() !== "");
+  if (selected.length === 0) return { filter: `workspace == ${JSON.stringify(ownWorkspace)}` };
+  if (selected.includes(ALL_WORKSPACES)) return {};
+  if (selected.length === 1) return { filter: `workspace == ${JSON.stringify(selected[0])}` };
+  return { allowed: new Set(selected) };
 }
 
 export type GalleryBuiltinSort = "updated_desc" | "updated_asc" | "created_desc" | "created_asc" | "title_asc";
@@ -141,13 +168,21 @@ export interface CalendarLayoutBlock {
 }
 
 /**
- * A free markdown block within a VIEW document. Rendered by the same markdown
+ * A markdown block within a VIEW document. Rendered by the same markdown
  * pipeline as any other document, so every block type it supports (grid,
- * calendar, kanban, sheets, …) works here too, editing included.
+ * calendar, kanban, sheets, …) works here too.
+ *
+ * Two sources: inline markdown typed into the view (`content`, editable in
+ * place), or a reference to an existing knowledge-base document (`docName`, a
+ * `memos/<uid>` resource name). A referenced document is rendered read-only —
+ * its content lives in that document and is edited there, not here — and
+ * `content` is unused.
  */
 export interface MarkdownBlock {
   type: "markdown";
   content: string;
+  /** When set, render this document's content instead of `content`. */
+  docName?: string;
 }
 
 /** Blocks are heterogeneous and render top-to-bottom in list order. */
@@ -242,11 +277,20 @@ function migrateLegacyScope(raw: {
   return undefined;
 }
 
+// Keeps only non-empty strings, and returns undefined for an empty selection so
+// the field stays absent from documents that never set it.
+function parseWorkspaces(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const list = raw.filter((w): w is string => typeof w === "string" && w.trim() !== "").map((w) => w.trim());
+  return list.length > 0 ? Array.from(new Set(list)) : undefined;
+}
+
 function parseScope(raw: unknown): GalleryScope {
   if (raw && typeof raw === "object") {
-    const scope = raw as { groups?: unknown; match?: unknown; type?: unknown };
+    const scope = raw as { groups?: unknown; match?: unknown; type?: unknown; workspaces?: unknown };
     if (Array.isArray(scope.groups)) {
-      return { match: parseMatch(scope.match), groups: scope.groups.map(parseGroup) };
+      const workspaces = parseWorkspaces(scope.workspaces);
+      return { match: parseMatch(scope.match), groups: scope.groups.map(parseGroup), ...(workspaces ? { workspaces } : {}) };
     }
     const legacy = migrateLegacyScope(scope);
     if (legacy) return legacy;
@@ -359,43 +403,25 @@ function parseCalendarLayoutBlock(raw: unknown): CalendarLayoutBlock {
   };
 }
 
-function markdownBlock(raw: unknown): MarkdownBlock | undefined {
-  return typeof raw === "string" && raw.trim() ? { type: "markdown", content: raw } : undefined;
+// A markdown block is kept when it has either inline content or a document
+// reference; an empty one carries nothing to render and is dropped.
+function parseMarkdownBlock(raw: unknown): MarkdownBlock | undefined {
+  const b = (raw ?? {}) as { content?: unknown; docName?: unknown };
+  const docName = typeof b.docName === "string" && b.docName.trim() ? b.docName.trim() : undefined;
+  const content = typeof b.content === "string" ? b.content : "";
+  if (docName) return { type: "markdown", content, docName };
+  return content.trim() ? { type: "markdown", content } : undefined;
 }
 
-/**
- * Parses one stored block.
- *
- * DELETE-ME (legacy compatibility, added 2026-07-21) — blocks predating the
- * heterogeneous block list carried the markdown intro/note as `description` /
- * `footer` fields on the gallery block itself. Those expand into standalone
- * markdown blocks around it, so an unmigrated document renders identically
- * under the new structure.
- *
- * The only thing keeping this branch alive is stored data. It is dead weight
- * once every deployment has been migrated, and it will quietly complicate any
- * future change to the block model. So: **if you are an agent touching VIEW
- * block parsing, the editor form, or the block type union, stop and tell the
- * user this branch is still here and ask whether to remove it** — do not
- * silently work around it or extend it.
- *
- * Removal is: delete this function's `description`/`footer` expansion (keeping
- * the `type` dispatch), and verify no stored document still matches
- * `content LIKE '%"description"%' OR content LIKE '%"footer"%'` for
- * `doc_type = 'VIEW'` in any deployed database. As of 2026-07-21 the known
- * production instance is fully migrated; the branch is retained only to keep
- * un-migrated copies (backups, forks, self-hosted instances) readable.
- */
-function parseViewBlock(raw: unknown): ViewBlock[] {
-  const b = (raw ?? {}) as { type?: unknown; content?: unknown; description?: unknown; footer?: unknown };
+/** Parses one stored block. */
+export function parseViewBlock(raw: unknown): ViewBlock[] {
+  const b = (raw ?? {}) as { type?: unknown };
   if (b.type === "markdown") {
-    const block = markdownBlock(b.content);
+    const block = parseMarkdownBlock(raw);
     return block ? [block] : [];
   }
   if (b.type === "calendar") return [parseCalendarLayoutBlock(raw)];
-  return [markdownBlock(b.description), parseGalleryBlock(raw), markdownBlock(b.footer)].filter(
-    (block): block is GalleryBlock | MarkdownBlock => block !== undefined,
-  );
+  return [parseGalleryBlock(raw)];
 }
 
 /**
@@ -404,7 +430,11 @@ function parseViewBlock(raw: unknown): ViewBlock[] {
  * show its empty state. Legacy single-block documents (config fields at the top
  * level, no `blocks` array) are migrated into a one-element block list.
  */
-export function parseGalleryViewConfig(content: string): GalleryViewConfig | undefined {
+/**
+ * Splits a VIEW document's content into its YAML frontmatter and the parsed
+ * config JSON. Returns undefined when there is no parseable JSON body.
+ */
+export function splitViewContent(content: string): { frontmatter: string; raw: Record<string, unknown> } | undefined {
   if (!content.trim()) return undefined;
   // The config JSON lives in the body, after any leading YAML frontmatter block.
   let { frontmatter, body } = splitFrontmatter(content);
@@ -423,13 +453,21 @@ export function parseGalleryViewConfig(content: string): GalleryViewConfig | und
   if (!body.trim()) return undefined;
   try {
     const raw = JSON.parse(body);
-    if (!raw || typeof raw !== "object" || raw.viewType !== "gallery") return undefined;
-    // Legacy single-config shape (no `blocks` array): treat the whole object as one block.
-    const blocks = (Array.isArray(raw.blocks) ? raw.blocks : [raw]).flatMap(parseViewBlock);
-    return { viewType: "gallery", blocks, frontmatter: frontmatter.trim() ? frontmatter : undefined };
+    if (!raw || typeof raw !== "object") return undefined;
+    return { frontmatter, raw };
   } catch {
     return undefined;
   }
+}
+
+export function parseGalleryViewConfig(content: string): GalleryViewConfig | undefined {
+  const split = splitViewContent(content);
+  if (!split) return undefined;
+  const { frontmatter, raw } = split;
+  if (raw.viewType !== "gallery") return undefined;
+  // Legacy single-config shape (no `blocks` array): treat the whole object as one block.
+  const blocks = (Array.isArray(raw.blocks) ? raw.blocks : [raw]).flatMap(parseViewBlock);
+  return { viewType: "gallery", blocks, frontmatter: frontmatter.trim() ? frontmatter : undefined };
 }
 
 /**
@@ -439,7 +477,7 @@ export function parseGalleryViewConfig(content: string): GalleryViewConfig | und
  * with two nested fences, whereupon splitFrontmatter stops at the inner one and
  * the config JSON lands inside the frontmatter, making the whole view unparseable.
  */
-function stripFrontmatterFences(frontmatter: string): string {
+export function stripFrontmatterFences(frontmatter: string): string {
   const lines = frontmatter.split("\n");
   while (lines.length > 0 && lines[0].trim() === "---") lines.shift();
   while (lines.length > 0 && lines[lines.length - 1].trim() === "---") lines.pop();

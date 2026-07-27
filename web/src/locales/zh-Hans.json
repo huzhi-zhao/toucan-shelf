@@ -1117,7 +1117,20 @@
     "calendar-add": "添加文档",
     "calendar-add-failed": "创建文档失败。",
     "calendar-empty-day": "这一天还没有文档。",
-    "calendar-more": "还有 {{count}} 个"
+    "calendar-more": "还有 {{count}} 个",
+    "style-doc": "知识库文档",
+    "doc-block-title": "文档 {{index}}",
+    "doc-block-selected": "文档：",
+    "doc-block-none": "未选择",
+    "doc-block-search-placeholder": "搜索文档……",
+    "doc-block-no-results": "没有匹配的文档",
+    "doc-block-hint": "引用的文档在此只读渲染，内容请到该文档中编辑。",
+    "doc-block-missing": "引用的文档不可用。",
+    "markdown-source-inline": "Markdown 代码块",
+    "markdown-source-doc": "知识库文档",
+    "workspace-scope-label": "知识库",
+    "workspace-scope-all": "全部知识库",
+    "workspace-scope-current": "本知识库"
   },
   "bookshelf": {
     "title": "ToucanShelf",
@@ -1159,5 +1172,18 @@
     "no-annotations": "还没有评论。开启「添加评论」并选中文字即可为其写评论。",
     "highlight": "高亮",
     "underline": "下划线"
+  },
+  "home": {
+    "title": "首页",
+    "default-section": "常用",
+    "add-section": "添加分区",
+    "section-name": "分区名称",
+    "rename-section": "重命名分区",
+    "delete-section": "删除分区",
+    "delete-section-confirm": "删除该分区及其中的所有区块？",
+    "move-left": "左移",
+    "move-right": "右移",
+    "empty-section": "该分区还没有内容，进入编辑添加卡片墙、日历或 Markdown 区块。",
+    "loading": "加载中…"
   }
 }

@@ -150,6 +150,17 @@ func (s *APIV1Service) DeleteWorkspace(ctx context.Context, request *v1pb.Delete
 	return &emptypb.Empty{}, nil
 }
 
+// HomeFolderPath is the reserved folder holding the user's single Home
+// document. It is not a real folder (no folder row is ever created for it) and
+// is hidden from the workspace tree, so the Home page's own configuration never
+// shows up as a document the user can stumble into.
+const HomeFolderPath = ".home"
+
+// isHomeFolder reports whether a memo's folder path is the reserved Home folder.
+func isHomeFolder(path string) bool {
+	return normalizeFolderPath(path) == HomeFolderPath
+}
+
 func (s *APIV1Service) GetWorkspaceTree(ctx context.Context, request *v1pb.GetWorkspaceTreeRequest) (*v1pb.GetWorkspaceTreeResponse, error) {
 	workspace, _, err := s.getWorkspaceAndCheckOwnership(ctx, request.Name)
 	if err != nil {
@@ -174,6 +185,9 @@ func (s *APIV1Service) GetWorkspaceTree(ctx context.Context, request *v1pb.GetWo
 	}
 	for _, m := range memos {
 		if m.RowStatus == store.Archived != request.Archived {
+			continue
+		}
+		if isHomeFolder(m.FolderPath) {
 			continue
 		}
 		var segments []string

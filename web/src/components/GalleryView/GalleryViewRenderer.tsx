@@ -1,13 +1,12 @@
-import { LayoutGridIcon } from "lucide-react";
+import { FileTextIcon, LayoutGridIcon } from "lucide-react";
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { MARK_EXCLUDE_ATTR } from "@/components/DocComments/textAnchor";
 import MemoContent from "@/components/MemoContent";
 import { BlockSourceProvider, type BlockSourceValue } from "@/components/MemoContent/BlockSourceContext";
 import { PropertiesPanel } from "@/components/MemoContent/PropertiesPanel";
-import { useMemos, useUpdateMemo } from "@/hooks/useMemoQueries";
+import { useMemo as useMemoQuery, useUpdateMemo } from "@/hooks/useMemoQueries";
 import { cn } from "@/lib/utils";
-import { State } from "@/types/proto/api/v1/common_pb";
 import { type Memo, Memo_DocType } from "@/types/proto/api/v1/memo_service_pb";
 import { getAttachmentThumbnailUrl, isImage } from "@/utils/attachment";
 import { type MemoProperty, parseFrontmatter } from "@/utils/frontmatter";
@@ -21,12 +20,26 @@ import {
   matchGalleryBadge,
   parseGalleryViewConfig,
   serializeGalleryViewConfig,
+  type ViewBlock,
 } from "./types";
+import { useScopeMemos } from "./useScopeMemos";
 
 interface Props {
   memo: Memo;
-  /** How a card click opens the target document. Defaults to navigating to the memo detail page. */
-  onOpenDoc?: (memoName: string) => void;
+  /**
+   * Blocks to render instead of the ones stored in `memo.content`. The Home page
+   * passes the active section's blocks; everything else (queries, editing of
+   * inline markdown, card clicks) still runs against `memo`.
+   */
+  blocks?: ViewBlock[];
+  /** Hides the frontmatter properties panel. The Home page has no document header to attach it to. */
+  hideProperties?: boolean;
+  /**
+   * How a card click opens the target document. Defaults to navigating to the
+   * memo detail page. The matched document is passed along when the click came
+   * from a card, so a caller spanning knowledge bases can route by its workspace.
+   */
+  onOpenDoc?: (memoName: string, doc?: Memo) => void;
   /** Whether the viewer may edit interactive blocks inside the Intro/Note markdown. */
   readonly?: boolean;
   className?: string;
@@ -161,10 +174,48 @@ const GalleryCardBadge = ({ badge }: { badge: GalleryBadgeRule }) => {
   );
 };
 
-// Renders a markdown block through the ordinary document pipeline, and lets the
-// interactive blocks inside it (calendar, kanban, …) persist their edits: the
-// rewritten markdown goes back into this block's `content`, and the whole config
-// is re-serialized.
+// Renders a markdown block that references a knowledge-base document: the
+// referenced document's own content, read-only (it is edited in that document),
+// with a header that opens it.
+const ReferencedDocBlockView = ({
+  block,
+  blockIndex,
+  openDoc,
+}: {
+  block: MarkdownBlock;
+  blockIndex: number;
+  openDoc: (memoName: string, doc?: Memo) => void;
+}) => {
+  const t = useTranslate();
+  const docName = block.docName ?? "";
+  const { data: doc, isLoading, isError } = useMemoQuery(docName, { enabled: Boolean(docName) });
+
+  const source = useMemo<BlockSourceValue>(() => ({ source: doc?.content ?? "", readonly: true, save: () => {} }), [doc?.content]);
+
+  if (isLoading) return <div className="text-sm text-muted-foreground">{t("gallery.loading")}</div>;
+  if (isError || !doc) return <div className="text-sm text-muted-foreground">{t("gallery.doc-block-missing")}</div>;
+
+  return (
+    <div className="w-full flex flex-col gap-2">
+      <button
+        type="button"
+        onClick={() => openDoc(doc.name, doc)}
+        className="self-start flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+      >
+        <FileTextIcon className="w-4 h-4 shrink-0" />
+        <span className="truncate">{doc.title || doc.name}</span>
+      </button>
+      <BlockSourceProvider value={source}>
+        <MemoContent content={doc.content} memoName={doc.name} headingIdPrefix={`vb${blockIndex}`} />
+      </BlockSourceProvider>
+    </div>
+  );
+};
+
+// Renders an inline markdown block through the ordinary document pipeline, and
+// lets the interactive blocks inside it (calendar, kanban, …) persist their
+// edits: the rewritten markdown goes back into this block's `content`, and the
+// whole config is re-serialized.
 const MarkdownBlockView = ({ block, blockIndex, memo, readonly }: Omit<BlockProps, "block" | "openDoc"> & { block: MarkdownBlock }) => {
   const { mutate: updateMemo } = useUpdateMemo();
 
@@ -200,22 +251,22 @@ interface BlockProps {
   blockIndex: number;
   memo: Memo;
   readonly: boolean;
-  openDoc: (memoName: string) => void;
+  openDoc: (memoName: string, doc?: Memo) => void;
 }
 
 // Renders one gallery block: a card wall built by querying the block's scope
 // live — nothing is generated or cached.
 const GalleryBlockView = ({ block, memo, openDoc }: BlockProps) => {
   const t = useTranslate();
-  const { data, isLoading } = useMemos({ pageSize: 1000, state: State.NORMAL, filter: `workspace == ${JSON.stringify(memo.workspace)}` });
+  const { memos, isLoading } = useScopeMemos(block.scope, memo.workspace);
 
   const docs = useMemo(() => {
     // VIEW docs are eligible too: they now carry frontmatter properties, so a
     // gallery can filter, sort and reference other views like any other doc.
     const ctx = { viewFolderPath: memo.folderPath };
-    const list = (data?.memos ?? []).filter((m) => m.name !== memo.name && matchesScope(m, propertyMap(m.content), block.scope, ctx));
+    const list = memos.filter((m) => m.name !== memo.name && matchesScope(m, propertyMap(m.content), block.scope, ctx));
     return sortDocs(list, block);
-  }, [data, block, memo.name, memo.folderPath]);
+  }, [memos, block, memo.name, memo.folderPath]);
 
   return (
     // Card walls are rebuilt from a live query on every render, so their text is not something a
@@ -244,7 +295,7 @@ const GalleryBlockView = ({ block, memo, openDoc }: BlockProps) => {
                   "relative flex flex-col rounded-lg border border-border overflow-hidden text-left bg-card hover:shadow-md hover:border-accent transition-all",
                   badge?.kind === "tag" && "opacity-60 grayscale",
                 )}
-                onClick={() => openDoc(doc.name)}
+                onClick={() => openDoc(doc.name, doc)}
               >
                 {badge && <GalleryCardBadge badge={badge} />}
                 <div className="w-full aspect-[2/1] bg-muted flex items-center justify-center overflow-hidden">
@@ -270,13 +321,14 @@ const GalleryBlockView = ({ block, memo, openDoc }: BlockProps) => {
 // Renders a VIEW document: each configured block top-to-bottom. No dividers are
 // inserted between blocks — a markdown block can write its own `---` where one
 // is actually wanted.
-const GalleryViewRenderer = ({ memo, onOpenDoc, readonly = true, className }: Props) => {
+const GalleryViewRenderer = ({ memo, blocks, hideProperties, onOpenDoc, readonly = true, className }: Props) => {
   const t = useTranslate();
   const navigate = useNavigate();
   const config = parseGalleryViewConfig(memo.content);
   const { properties } = useMemo(() => parseFrontmatter(memo.content), [memo.content]);
 
-  if (!config) {
+  const viewBlocks = blocks ?? config?.blocks;
+  if (!viewBlocks) {
     return <div className={cn("text-sm text-muted-foreground", className)}>{t("gallery.not-configured")}</div>;
   }
 
@@ -285,13 +337,19 @@ const GalleryViewRenderer = ({ memo, onOpenDoc, readonly = true, className }: Pr
   return (
     <div className={cn("w-full flex flex-col gap-6", className)}>
       {/* Frontmatter properties are metadata, not prose — excluded from anchoring like card walls. */}
-      <div {...{ [MARK_EXCLUDE_ATTR]: "" }}>
-        <PropertiesPanel properties={properties} />
-      </div>
-      {config.blocks.map((block, index) => (
+      {!hideProperties && (
+        <div {...{ [MARK_EXCLUDE_ATTR]: "" }}>
+          <PropertiesPanel properties={properties} />
+        </div>
+      )}
+      {viewBlocks.map((block, index) => (
         <div key={index} className="flex flex-col gap-6">
           {block.type === "markdown" ? (
-            <MarkdownBlockView block={block} blockIndex={index} memo={memo} readonly={readonly} />
+            block.docName ? (
+              <ReferencedDocBlockView block={block} blockIndex={index} openDoc={openDoc} />
+            ) : (
+              <MarkdownBlockView block={block} blockIndex={index} memo={memo} readonly={readonly} />
+            )
           ) : block.type === "calendar" ? (
             <CalendarLayout block={block} memo={memo} openDoc={openDoc} />
           ) : (
