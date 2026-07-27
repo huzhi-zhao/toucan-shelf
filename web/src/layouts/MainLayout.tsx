@@ -29,7 +29,11 @@ const MainLayout = () => {
   // The Bookshelf page ("/shelf") is a standalone gallery with no filters, so it
   // doesn't need the MemoExplorer sidebar either.
   const isBookshelf = location.pathname === Routes.SHELF;
-  const showMemoExplorer = location.pathname !== Routes.ABOUT && !isNotebook && !isBookshelf;
+  // The Home page ("/dashboard", plus its "/dashboard/:sectionId" tabs) is a
+  // cross-knowledge-base page of its own, unrelated to the memo feed the
+  // MemoExplorer filters — and its tab bar spans the full width, like Notebook.
+  const isDashboard = location.pathname === Routes.DASHBOARD || location.pathname.startsWith(`${Routes.DASHBOARD}/`);
+  const showMemoExplorer = location.pathname !== Routes.ABOUT && !isNotebook && !isBookshelf && !isDashboard;
 
   // Determine context based on current route
   const context: MemoExplorerContext = useMemo(() => {
@@ -92,7 +96,7 @@ const MainLayout = () => {
         </div>
       )}
       <div className={MAIN_CONTENT_CLASS_NAME}>
-        {isNotebook ? (
+        {isNotebook || isDashboard ? (
           <Outlet />
         ) : (
           <div className={cn("w-full mx-auto px-4 sm:px-6 md:pt-6 pb-8")}>

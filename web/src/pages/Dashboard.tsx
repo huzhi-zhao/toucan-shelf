@@ -127,7 +127,7 @@ const Dashboard = () => {
   }
 
   return (
-    <section className="w-full h-full flex flex-col">
+    <section className="w-full min-h-full flex flex-col">
       <div className="w-full flex items-center gap-1 border-b border-border px-4 overflow-x-auto shrink-0">
         {sections.map((section, index) => (
           <div key={section.id} className="flex items-center shrink-0">
