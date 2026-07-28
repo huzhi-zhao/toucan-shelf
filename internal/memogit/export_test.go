@@ -40,13 +40,21 @@ func TestExportMemoSidecarModel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Verbatim content + single trailing newline; no memogit frontmatter added.
-	if string(data) != content+"\n" {
-		t.Errorf("file content not verbatim:\n got %q\nwant %q", data, content+"\n")
+	// The body is verbatim: the user's own Obsidian frontmatter is still the
+	// first thing in the file, and memogit adds no block of its own — only the
+	// trailing identity marker, which strips back off to nothing.
+	if !strings.HasPrefix(string(data), content) {
+		t.Errorf("file content not verbatim:\n got %q\nwant prefix %q", data, content)
 	}
-	// Baseline hash must match the file's on-disk bytes (canonical form).
-	if CanonicalHash(string(data)) != ms.ContentHash {
-		t.Errorf("baseline hash %q != file hash %q", ms.ContentHash, CanonicalHash(string(data)))
+	if got := StripLocalID(string(data)); got != content {
+		t.Errorf("stripped content = %q, want %q", got, content)
+	}
+	if got := ParseLocalID(string(data)); got != "abc" {
+		t.Errorf("marker uid = %q, want %q", got, "abc")
+	}
+	// Baseline hash must match the file's on-disk bytes once the marker is off.
+	if localHash(data) != ms.ContentHash {
+		t.Errorf("baseline hash %q != file hash %q", ms.ContentHash, localHash(data))
 	}
 	if ms.DocType != "MARKDOWN" || ms.Visibility != "PRIVATE" {
 		t.Errorf("metadata mismatch: %+v", ms)

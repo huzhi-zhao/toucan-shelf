@@ -248,7 +248,18 @@ func (s *APIV1Service) DeleteWorkspaceFolder(ctx context.Context, request *v1pb.
 	}
 	path := normalizeFolderPath(request.Path)
 
-	memos, err := s.Store.ListMemos(ctx, &store.FindMemo{WorkspaceID: &workspace.ID, FolderPathPrefix: &path})
+	// Only live documents block the delete. Archived ones keep their folder_path
+	// forever (archiving never moves a memo), but the tree hides them, so counting
+	// them here would make any folder that ever held a deleted document
+	// permanently undeletable while looking empty in the UI. Folders are implicit
+	// in the tree anyway, so an archived memo restored later still finds its way
+	// back into a folder with no row.
+	normal := store.Normal
+	memos, err := s.Store.ListMemos(ctx, &store.FindMemo{
+		WorkspaceID:      &workspace.ID,
+		FolderPathPrefix: &path,
+		RowStatus:        &normal,
+	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to check folder contents: %v", err)
 	}

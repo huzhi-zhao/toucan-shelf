@@ -220,6 +220,26 @@ func (c *Client) UpdateMemoContent(ctx context.Context, uid, content string) (*v
 	return resp.Msg, nil
 }
 
+// MoveMemo relocates an existing memo in the knowledge base hierarchy,
+// touching only folder_path and title (update_mask=[folder_path, title]) so the
+// document keeps its uid — and with it its version history, comments,
+// reactions, shares and every inbound link. This is what a local `mv` or rename
+// pushes; recreating the document instead would strand all of that on the
+// original. The server bumps updated_ts for structural changes, so the next
+// pull sees the move, and rejects a move onto an existing (folder_path, title)
+// with a duplicate-path error rather than silently merging.
+func (c *Client) MoveMemo(ctx context.Context, uid, folderPath, title string) (*v1pb.Memo, error) {
+	req := &v1pb.UpdateMemoRequest{
+		Memo:       &v1pb.Memo{Name: "memos/" + uid, FolderPath: folderPath, Title: title},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"folder_path", "title"}},
+	}
+	resp, err := c.memo.UpdateMemo(ctx, connect.NewRequest(req))
+	if err != nil {
+		return nil, fmt.Errorf("move memo %s to %s/%s: %w", uid, folderPath, title, err)
+	}
+	return resp.Msg, nil
+}
+
 // ArchiveMemo soft-deletes a memo by moving it to the ARCHIVED state
 // (update_mask=[state]). memogit never hard-deletes on the server.
 func (c *Client) ArchiveMemo(ctx context.Context, uid string) error {

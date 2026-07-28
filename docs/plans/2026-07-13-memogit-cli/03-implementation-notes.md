@@ -3,7 +3,8 @@
 状态：login / clone / pull / push / status 均已实现并本地实测跑通，含附件单向下载、
 pull 服务端删除对账、以及**冲突落地成 `.remote` sidecar 供 IDE 合并**；待做：附件上传、
 `commit` 透传。
-关联：[[01-memogit-cli]]（需求与方案，已按真实模型修订）、[[02-api-survey-and-estimate]]（API 调研）。
+关联：[[01-memogit-cli]]（需求与方案，已按真实模型修订）、[[02-api-survey-and-estimate]]（API 调研）、
+[[04-move-semantics-and-doc-identity]]（文档身份标记与移动语义，2026-07-28 补齐）。
 
 本文档记录**实际写出来的东西**——代码结构、落地时做的关键决策、以及联调过程中踩到
 的真实问题，供后续接手 push/附件同步时参考。面向使用者的操作手册见
@@ -16,7 +17,7 @@ pull 服务端删除对账、以及**冲突落地成 `.remote` sidecar 供 IDE �
 | `memogit login` | ✅ 已实现 | 写 server / token 到 `.memogit/config.yaml`（0600） |
 | `memogit clone [workspace-title]` | ✅ 已实现 | 全量导出 + git init + baseline commit |
 | `memogit pull` | ✅ 已实现 | 增量拉取 + 冲突检测 + commit |
-| `memogit push [--dry-run]` | ✅ 已实现 | 新建→CreateMemo、修改→UpdateMemo(content)、删除→ARCHIVED、push 前冲突检查 |
+| `memogit push [--dry-run]` | ✅ 已实现 | 新建→CreateMemo、修改→UpdateMemo(content)、**移动/改名→UpdateMemo(folder_path,title)**、删除→ARCHIVED、push 前冲突检查 |
 | `memogit status` | ✅ 已实现 | 本地/远端待同步双层展示 + git 工作区脏文件数 |
 | `memogit commit` | ⛔ 未实现 | 阶段 6，仅透传 `git commit` |
 | pull 服务端删除对账 | ✅ 已实现 | 全量对账，删除/归档的文档本地移除（有本地改动则保留并提示） |
@@ -50,8 +51,13 @@ internal/memogit/
 
 ### 3.1 sidecar 元数据模型（重要，区别于需求初稿）
 本地文件**只存 memo 的原始 content**，不再套 memogit 自己的 frontmatter。所有元数据
-（uid、doc_type、visibility、pinned、timestamps、content_hash、relations）只存
+（doc_type、visibility、pinned、timestamps、content_hash、relations）只存
 `.memogit/sync-state.json`，以 uid 为 key。
+
+> **2026-07-28 修订**：其中 **uid 一项已移回文件**（末尾一行 `<!-- memogit-id: -->`，
+> VIEW 则是 JSON 顶层键），否则本地 `mv` 无法被识别成移动，只能退化成
+> 归档旧文档 + 新建，把版本历史、评论、分享链接和被引用关系全部留在归档件上。
+> 头部不塞 frontmatter 这条约束原样保留。详见 [[04-move-semantics-and-doc-identity]]。
 
 原因：memo 的 content 本身可能已带一段 Obsidian 风格 `---` frontmatter（喂给 gallery
 view 的 properties），再套一层会产生两个堆叠的 `---` 块、污染用户的 properties 命名

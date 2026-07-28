@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"sort"
 
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
@@ -17,6 +15,9 @@ type StatusResult struct {
 	LocalModified []string
 	LocalNew      []string
 	LocalDeleted  []string
+	// LocalMoved holds "<old path> → <new path>" for files that moved or were
+	// renamed in the work tree; push relocates the memo rather than recreating it.
+	LocalMoved []string
 	// Remote changes pending pull.
 	RemoteNew     []string
 	RemoteUpdated []string
@@ -45,7 +46,6 @@ func Status(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, 
 		return nil, err
 	}
 	contentRoot := ContentRoot(root, ws)
-	pathIndex := state.PathIndex()
 
 	res := &StatusResult{GitDirty: GitStatusPorcelain(root)}
 
@@ -64,37 +64,42 @@ func Status(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, 
 		alive[uid] = true
 	}
 
-	// --- Local side: walk the work tree, classify each file. ---
+	// --- Local side: walk the work tree, classify each file. Identity comes from
+	// the same resolution push uses, so a moved file is reported as a move here
+	// and pushed as one. ---
 	present, err := listDocFiles(contentRoot)
 	if err != nil {
 		return nil, err
 	}
-	presentSet := make(map[string]bool, len(present))
-	for _, rel := range present {
-		presentSet[rel] = true
-		if docTypeFromExt(rel) == "PDF" {
-			continue // generated stub, not editable
-		}
-		uid, tracked := pathIndex[rel]
-		if !tracked {
-			res.LocalNew = append(res.LocalNew, rel)
+	docs, err := loadLocalDocs(contentRoot, present)
+	if err != nil {
+		return nil, err
+	}
+	resolveIdentities(docs, state)
+
+	claimed := make(map[string]bool, len(docs))
+	for _, doc := range docs {
+		if doc.UID == "" {
+			if doc.DocType != "PDF" { // generated stub, never pushed as new
+				res.LocalNew = append(res.LocalNew, doc.Path)
+			}
 			continue
 		}
-		prev := state.Memos[uid]
-		if prev.DocType == "PDF" {
+		claimed[doc.UID] = true
+		prev := state.Memos[doc.UID]
+		if prev.Path != doc.Path {
+			res.LocalMoved = append(res.LocalMoved, prev.Path+" → "+doc.Path)
+		}
+		if prev.DocType == "PDF" || doc.DocType == "PDF" {
 			continue
 		}
-		data, err := os.ReadFile(filepath.Join(contentRoot, rel))
-		if err != nil {
-			return nil, fmt.Errorf("read %s: %w", rel, err)
-		}
-		localChanged := CanonicalHash(string(data)) != prev.ContentHash
-		serverChanged := alive[uid] && serverByUID[uid] != prev.ContentHash
+		localChanged := CanonicalHash(doc.Content) != prev.ContentHash
+		serverChanged := alive[doc.UID] && serverByUID[doc.UID] != prev.ContentHash
 		switch {
 		case localChanged && serverChanged:
-			res.Conflicts = append(res.Conflicts, rel)
+			res.Conflicts = append(res.Conflicts, doc.Path)
 		case localChanged:
-			res.LocalModified = append(res.LocalModified, rel)
+			res.LocalModified = append(res.LocalModified, doc.Path)
 		}
 	}
 
@@ -117,11 +122,11 @@ func Status(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, 
 		}
 	}
 
-	// Local files tracked but now missing → pending archive on push.
+	// Tracked memos no longer claimed by any local file → pending archive on push.
+	// A file that merely moved was claimed above, so it is not a deletion.
 	for _, uid := range sortedUIDs(state) {
-		prev := state.Memos[uid]
-		if !presentSet[prev.Path] && alive[uid] {
-			res.LocalDeleted = append(res.LocalDeleted, prev.Path)
+		if !claimed[uid] && alive[uid] {
+			res.LocalDeleted = append(res.LocalDeleted, state.Memos[uid].Path)
 		}
 	}
 
@@ -176,13 +181,14 @@ func printStatus(out io.Writer, ws *WorkspaceConfig, res *StatusResult) {
 	}
 
 	group("Local changes to push:",
-		line{"~", res.LocalModified}, line{"+", res.LocalNew}, line{"-", res.LocalDeleted})
+		line{"~", res.LocalModified}, line{"+", res.LocalNew},
+		line{"→", res.LocalMoved}, line{"-", res.LocalDeleted})
 	group("Remote changes to pull:",
 		line{"~", res.RemoteUpdated}, line{"+", res.RemoteNew}, line{"-", res.RemoteDeleted})
 	group("Conflicts (changed on both sides — resolve manually):",
 		line{"⚠", res.Conflicts})
 
-	nLocal := len(res.LocalModified) + len(res.LocalNew) + len(res.LocalDeleted)
+	nLocal := len(res.LocalModified) + len(res.LocalNew) + len(res.LocalDeleted) + len(res.LocalMoved)
 	nRemote := len(res.RemoteUpdated) + len(res.RemoteNew) + len(res.RemoteDeleted)
 	if nLocal == 0 && nRemote == 0 && len(res.Conflicts) == 0 {
 		fmt.Fprintln(out, "In sync with the server. Nothing to push or pull.")

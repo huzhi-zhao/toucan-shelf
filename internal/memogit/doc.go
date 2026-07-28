@@ -107,16 +107,21 @@ func relationUIDs(m *v1pb.Memo) []string {
 	return out
 }
 
-// FileContent renders the local file bytes for a memo. Under the sidecar model
-// the file holds the memo's content verbatim (no memogit frontmatter), except
-// PDF documents which carry no editable body — for those we write a small
-// human-/AI-readable reference stub pointing at the downloaded attachment bytes.
-// refs are the memo's downloaded attachments (may be nil).
+// FileContent renders the local file bytes for a memo: the content verbatim
+// (no memogit frontmatter — the top of the file belongs to the user's own
+// Obsidian properties), except PDF documents which carry no editable body and
+// get a small human-/AI-readable reference stub pointing at the downloaded
+// attachment bytes. refs are the memo's downloaded attachments (may be nil).
+//
+// This is the single place the local identity marker is added; StripLocalID is
+// the single place it comes back off. See localid.go for why files carry one.
 func FileContent(m *v1pb.Memo, refs []AttachmentRef) string {
-	if docTypeString(m) == "PDF" {
-		return pdfPlaceholder(m, refs)
+	docType := docTypeString(m)
+	body := m.GetContent()
+	if docType == "PDF" {
+		body = pdfPlaceholder(m, refs)
 	}
-	return m.GetContent()
+	return InjectLocalID(body, uidFromName(m.GetName()), docType)
 }
 
 // pdfPlaceholder builds the stub body for a PDF document (no editable content),

@@ -9,24 +9,44 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"time"
+
+	v1pb "github.com/usememos/memos/proto/gen/api/v1"
 )
 
 // PushResult summarizes a push run.
 type PushResult struct {
 	Created   int
 	Updated   int
+	Moved     int
 	Archived  int
 	Unchanged int
 	Conflicts []string // repo-relative paths skipped because both sides changed
 }
 
+// localDoc is one work-tree document file, resolved to the memo it belongs to.
+type localDoc struct {
+	// Path is the file's current repo-relative path.
+	Path string
+	// Content is the file body with the identity marker stripped — i.e. exactly
+	// what the server should hold.
+	Content string
+	// MarkerUID is the uid the file itself claims, "" when it carries no marker.
+	MarkerUID string
+	// UID is the resolved identity: the memo this file will be pushed to, or ""
+	// for a document that does not exist on the server yet.
+	UID string
+	// DocType is derived from the file extension.
+	DocType string
+}
+
 // Push syncs local file changes back to the server: new files become memos
 // (CreateMemo), edited tracked files update their memo's content
-// (UpdateMemo, content-only), and tracked files deleted locally archive their
-// memo (soft delete). Before updating a changed file it re-checks the server:
-// if the server also changed since the last sync, the file is reported as a
-// conflict and left for manual resolution (run `memogit pull` first).
+// (UpdateMemo, content-only), files that moved or were renamed relocate their
+// memo (UpdateMemo folder_path/title, uid preserved), and tracked files deleted
+// locally archive their memo (soft delete). Before updating a changed file it
+// re-checks the server: if the server also changed since the last sync, the file
+// is reported as a conflict and left for manual resolution (run `memogit pull`
+// first).
 //
 // dryRun prints the plan without calling the API, mutating sync-state, or
 // committing. Attachments are one-way (download only) and never pushed.
@@ -40,160 +60,79 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 	}
 	client := NewClient(cfg)
 	contentRoot := ContentRoot(root, ws)
-	pathIndex := state.PathIndex()
 
 	present, err := listDocFiles(contentRoot)
 	if err != nil {
 		return nil, err
 	}
+	docs, err := loadLocalDocs(contentRoot, present)
+	if err != nil {
+		return nil, err
+	}
+	resolveIdentities(docs, state)
 
 	res := &PushResult{}
 	fmt.Fprintf(out, "Pushing workspace %q ...\n", ws.Title)
 	if dryRun {
 		fmt.Fprintln(out, "Dry run — no changes will be sent.")
 	}
+	warnUnmarked(docs, out)
 
-	// 1. New + modified local files (deterministic order for stable output).
-	for _, relPath := range present {
-		// PDF stubs are generated, not editable content — never push them.
-		if docTypeFromExt(relPath) == "PDF" {
-			continue
-		}
-		data, err := os.ReadFile(filepath.Join(contentRoot, relPath))
-		if err != nil {
-			return nil, fmt.Errorf("read %s: %w", relPath, err)
-		}
-		content := string(data)
-		localHash := CanonicalHash(content)
-
-		uid, tracked := pathIndex[relPath]
-		if !tracked {
-			// New document → CreateMemo.
-			folderPath, title, docType := deriveMemoFromPath(relPath)
-			// Sparse checkout: local paths have the mapped folder stripped, so
-			// re-add the prefix to target the right server folder_path.
-			folderPath = ws.ServerFolderPath(folderPath)
-			fmt.Fprintf(out, "  + %s (new)\n", relPath)
-			if dryRun {
-				res.Created++
-				continue
-			}
-			created, err := client.CreateMemo(ctx, ws.Workspace, folderPath, title, docType, content)
+	// 1. New, moved, and modified local files (listDocFiles sorts, so the output
+	// order is stable).
+	for i := range docs {
+		doc := docs[i]
+		if doc.UID == "" {
+			uid, err := pushNewDoc(ctx, client, ws, contentRoot, doc, state, res, dryRun, out)
 			if err != nil {
 				return nil, err
 			}
-			ms := memoState(ws, created)
-			ms.Path = relPath // keep the local mapping even if the server normalized title
-			state.Memos[uidFromName(created.GetName())] = ms
-			res.Created++
+			// Record the identity the server just handed out: the archive pass below
+			// works off claimed identities, and a document created moments ago must
+			// not look like one whose file went missing.
+			docs[i].UID = uid
 			continue
 		}
 
-		prev := state.Memos[uid]
-		if prev.DocType == "PDF" {
-			continue
-		}
-
-		// A document already flagged as a conflict is only pushable once the user
-		// has merged and deleted its "<path>.remote" sidecar.
-		if prev.ConflictServerHash != "" {
-			if conflictSidecarExists(contentRoot, relPath) {
-				res.Conflicts = append(res.Conflicts, relPath)
-				fmt.Fprintf(out, "  ⚠ %s: unresolved conflict — merge and delete %s, then push\n",
-					relPath, conflictSidecarRel(relPath))
-				continue
-			}
-			// Sidecar gone → resolved. Push only if the server hasn't moved again
-			// since the conflict was recorded.
-			serverMemo, err := client.GetMemo(ctx, uid)
+		prev := state.Memos[doc.UID]
+		if prev.Path != doc.Path {
+			// The file moved or was renamed locally. Relocate the memo in place so
+			// its history, comments and inbound links follow the document, then fall
+			// through to the content comparison below — a move and an edit in the
+			// same push are two independent changes to the same memo.
+			moved, err := moveDoc(ctx, client, ws, doc, prev, dryRun, out)
 			if err != nil {
 				return nil, err
 			}
-			if CanonicalHash(serverMemo.GetContent()) != prev.ConflictServerHash {
-				// Server changed again → re-open the conflict with fresh content.
-				if !dryRun {
-					if err := writeConflictSidecar(contentRoot, relPath, serverMemo.GetContent()); err != nil {
-						return nil, err
-					}
-					p := prev
-					p.ConflictServerHash = CanonicalHash(serverMemo.GetContent())
-					state.Memos[uid] = p
-				}
-				res.Conflicts = append(res.Conflicts, relPath)
-				fmt.Fprintf(out, "  ⚠ %s: server changed again — new %s written, merge again\n",
-					relPath, conflictSidecarRel(relPath))
-				continue
-			}
-			fmt.Fprintf(out, "  ~ %s (resolved conflict)\n", relPath)
-			if dryRun {
-				res.Updated++
-				continue
-			}
-			updated, err := client.UpdateMemoContent(ctx, uid, content)
-			if err != nil {
-				return nil, err
-			}
-			ms := memoState(ws, updated)
-			ms.Path = prev.Path
-			ms.Attachments = prev.Attachments
-			state.Memos[uid] = ms // ConflictServerHash cleared (fresh memoState)
-			res.Updated++
-			continue
-		}
-
-		if localHash == prev.ContentHash {
-			res.Unchanged++
-			continue
-		}
-
-		// Local file changed → make sure the server hasn't also moved on.
-		serverMemo, err := client.GetMemo(ctx, uid)
-		if err != nil {
-			return nil, err
-		}
-		if CanonicalHash(serverMemo.GetContent()) != prev.ContentHash {
-			// Both sides changed → write the server version to "<path>.remote" for
-			// the user to merge, record the conflict, and skip.
 			if !dryRun {
-				if err := writeConflictSidecar(contentRoot, relPath, serverMemo.GetContent()); err != nil {
-					return nil, err
-				}
-				p := prev
-				p.ConflictServerHash = CanonicalHash(serverMemo.GetContent())
-				state.Memos[uid] = p
+				prev = rebaseState(ws, moved, doc.Path, prev)
+				state.Memos[doc.UID] = prev
+			} else {
+				prev.Path = doc.Path
 			}
-			res.Conflicts = append(res.Conflicts, relPath)
-			fmt.Fprintf(out, "  ⚠ %s: conflict — server version written to %s, merge and delete it, then push\n",
-				relPath, conflictSidecarRel(relPath))
+			res.Moved++
+		}
+
+		// PDF documents are backed by uploaded bytes; the local file is a generated
+		// stub with no editable body, so a move is the only thing worth pushing.
+		if prev.DocType == "PDF" || doc.DocType == "PDF" {
 			continue
 		}
 
-		fmt.Fprintf(out, "  ~ %s (modified)\n", relPath)
-		if dryRun {
-			res.Updated++
-			continue
-		}
-		updated, err := client.UpdateMemoContent(ctx, uid, content)
-		if err != nil {
+		if err := pushDocContent(ctx, client, ws, contentRoot, doc, prev, state, res, dryRun, out); err != nil {
 			return nil, err
 		}
-		ms := memoState(ws, updated)
-		ms.Path = prev.Path
-		ms.Attachments = prev.Attachments
-		state.Memos[uid] = ms
-		res.Updated++
 	}
 
-	// 2. Tracked files deleted locally → archive the memo (soft delete).
-	presentSet := make(map[string]bool, len(present))
-	for _, p := range present {
-		presentSet[p] = true
-	}
+	// 2. Tracked memos no longer claimed by any local file → archive (soft
+	// delete). A memo whose file merely moved was claimed above by its marker, so
+	// it never reaches this loop.
+	claimed := claimedUIDs(docs)
 	for _, uid := range sortedUIDs(state) {
-		prev := state.Memos[uid]
-		if presentSet[prev.Path] {
+		if claimed[uid] {
 			continue
 		}
+		prev := state.Memos[uid]
 		fmt.Fprintf(out, "  - %s (deleted → archive)\n", prev.Path)
 		if dryRun {
 			res.Archived++
@@ -207,25 +146,306 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 	}
 
 	if dryRun {
-		fmt.Fprintf(out, "Dry run: %d to create, %d to update, %d to archive, %d unchanged, %d conflicts.\n",
-			res.Created, res.Updated, res.Archived, res.Unchanged, len(res.Conflicts))
+		fmt.Fprintf(out, "Dry run: %d to create, %d to update, %d to move, %d to archive, %d unchanged, %d conflicts.\n",
+			res.Created, res.Updated, res.Moved, res.Archived, res.Unchanged, len(res.Conflicts))
 		return res, nil
 	}
 
-	state.LastSync = time.Now().UTC()
+	// LastSync is pull's incremental watermark and is deliberately left alone
+	// here: advancing it on push would hide every server-side memo whose last
+	// update predates this moment but was never pulled, and the updated_ts filter
+	// only looks forward, so those memos would never be fetched again.
+	state.Server = cfg.Server
 	if err := state.Save(root, ws.stateName()); err != nil {
 		return nil, err
 	}
-	if err := GitCommitAll(root, fmt.Sprintf("memogit push %s: %d created, %d updated, %d archived", ws.Title, res.Created, res.Updated, res.Archived)); err != nil {
+	if err := GitCommitAll(root, fmt.Sprintf("memogit push %s: %d created, %d updated, %d moved, %d archived",
+		ws.Title, res.Created, res.Updated, res.Moved, res.Archived)); err != nil {
 		return nil, err
 	}
 
-	fmt.Fprintf(out, "Push complete: %d created, %d updated, %d archived, %d unchanged, %d conflicts.\n",
-		res.Created, res.Updated, res.Archived, res.Unchanged, len(res.Conflicts))
+	fmt.Fprintf(out, "Push complete: %d created, %d updated, %d moved, %d archived, %d unchanged, %d conflicts.\n",
+		res.Created, res.Updated, res.Moved, res.Archived, res.Unchanged, len(res.Conflicts))
 	if len(res.Conflicts) > 0 {
 		fmt.Fprintf(out, "Conflicts left for manual resolution: %v\n", res.Conflicts)
 	}
 	return res, nil
+}
+
+// pushNewDoc creates a memo for a work-tree file that belongs to no known memo,
+// then stamps the file with the uid the server assigned so the next move of this
+// file is recognised as a move. Returns that uid ("" for a dry run, or for a PDF
+// stub, which is generated output and never becomes a document).
+func pushNewDoc(ctx context.Context, client *Client, ws *WorkspaceConfig, contentRoot string,
+	doc localDoc, state *State, res *PushResult, dryRun bool, out io.Writer) (string, error) {
+	// PDF stubs are generated, not editable content — never push them.
+	if doc.DocType == "PDF" {
+		return "", nil
+	}
+	folderPath, title, docType := deriveMemoFromPath(doc.Path)
+	// Sparse checkout: local paths have the mapped folder stripped, so re-add the
+	// prefix to target the right server folder_path.
+	folderPath = ws.ServerFolderPath(folderPath)
+	fmt.Fprintf(out, "  + %s (new)\n", doc.Path)
+	if dryRun {
+		res.Created++
+		return "", nil
+	}
+	created, err := client.CreateMemo(ctx, ws.Workspace, folderPath, title, docType, doc.Content)
+	if err != nil {
+		return "", err
+	}
+	uid := uidFromName(created.GetName())
+	// Keep the local mapping even if the server normalized the title.
+	state.Memos[uid] = rebaseState(ws, created, doc.Path, MemoState{})
+	if err := writeFile(contentRoot, doc.Path, InjectLocalID(doc.Content, uid, docType)); err != nil {
+		return "", err
+	}
+	res.Created++
+	return uid, nil
+}
+
+// moveDoc relocates a memo to match its file's new path. The target folder/title
+// are derived from the path, which is the same derivation used for new
+// documents, so a move and a create place a document identically.
+func moveDoc(ctx context.Context, client *Client, ws *WorkspaceConfig, doc localDoc,
+	prev MemoState, dryRun bool, out io.Writer) (*v1pb.Memo, error) {
+	folderPath, title, _ := deriveMemoFromPath(doc.Path)
+	folderPath = ws.ServerFolderPath(folderPath)
+	fmt.Fprintf(out, "  → %s → %s (moved)\n", prev.Path, doc.Path)
+	if dryRun {
+		return nil, nil
+	}
+	moved, err := client.MoveMemo(ctx, doc.UID, folderPath, title)
+	if err != nil {
+		return nil, err
+	}
+	// A server that does not understand these mask paths ignores them and answers
+	// 200 with the document right where it was. Left unchecked, the local move
+	// would be recorded as done and the next pull would quietly drag the file
+	// back, so verify the server actually moved it.
+	// Comparing where the document now maps locally (rather than the raw fields)
+	// absorbs the server's own normalization and the filename sanitization, and
+	// asks the only question that matters: did the document end up where the file
+	// is?
+	if landed := memoState(ws, moved).Path; landed != doc.Path {
+		return nil, fmt.Errorf("server did not apply the move of %s: it now maps to %s, not %s "+
+			"(server too old to move documents? move it in the web UI and run `memogit pull`)",
+			prev.Path, landed, doc.Path)
+	}
+	return moved, nil
+}
+
+// pushDocContent is the content half of a push for one tracked document:
+// conflict bookkeeping, the server re-check, and the actual content update.
+func pushDocContent(ctx context.Context, client *Client, ws *WorkspaceConfig, contentRoot string,
+	doc localDoc, prev MemoState, state *State, res *PushResult, dryRun bool, out io.Writer) error {
+	uid := doc.UID
+
+	// A document already flagged as a conflict is only pushable once the user
+	// has merged and deleted its "<path>.remote" sidecar.
+	if prev.ConflictServerHash != "" {
+		if conflictSidecarExists(contentRoot, doc.Path) {
+			res.Conflicts = append(res.Conflicts, doc.Path)
+			fmt.Fprintf(out, "  ⚠ %s: unresolved conflict — merge and delete %s, then push\n",
+				doc.Path, conflictSidecarRel(doc.Path))
+			return nil
+		}
+		// Sidecar gone → resolved. Push only if the server hasn't moved again
+		// since the conflict was recorded.
+		serverMemo, err := client.GetMemo(ctx, uid)
+		if err != nil {
+			return err
+		}
+		if CanonicalHash(serverMemo.GetContent()) != prev.ConflictServerHash {
+			// Server changed again → re-open the conflict with fresh content.
+			if !dryRun {
+				if err := writeConflictSidecar(contentRoot, doc.Path, FileContent(serverMemo, prev.Attachments)); err != nil {
+					return err
+				}
+				p := prev
+				p.ConflictServerHash = CanonicalHash(serverMemo.GetContent())
+				state.Memos[uid] = p
+			}
+			res.Conflicts = append(res.Conflicts, doc.Path)
+			fmt.Fprintf(out, "  ⚠ %s: server changed again — new %s written, merge again\n",
+				doc.Path, conflictSidecarRel(doc.Path))
+			return nil
+		}
+		fmt.Fprintf(out, "  ~ %s (resolved conflict)\n", doc.Path)
+		if dryRun {
+			res.Updated++
+			return nil
+		}
+		updated, err := client.UpdateMemoContent(ctx, uid, doc.Content)
+		if err != nil {
+			return err
+		}
+		// ConflictServerHash is cleared by the fresh baseline.
+		state.Memos[uid] = rebaseState(ws, updated, doc.Path, prev)
+		res.Updated++
+		return nil
+	}
+
+	if CanonicalHash(doc.Content) == prev.ContentHash {
+		res.Unchanged++
+		return nil
+	}
+
+	// Local file changed → make sure the server hasn't also moved on.
+	serverMemo, err := client.GetMemo(ctx, uid)
+	if err != nil {
+		return err
+	}
+	if CanonicalHash(serverMemo.GetContent()) != prev.ContentHash {
+		// Both sides changed → write the server version to "<path>.remote" for
+		// the user to merge, record the conflict, and skip.
+		if !dryRun {
+			if err := writeConflictSidecar(contentRoot, doc.Path, FileContent(serverMemo, prev.Attachments)); err != nil {
+				return err
+			}
+			p := prev
+			p.ConflictServerHash = CanonicalHash(serverMemo.GetContent())
+			state.Memos[uid] = p
+		}
+		res.Conflicts = append(res.Conflicts, doc.Path)
+		fmt.Fprintf(out, "  ⚠ %s: conflict — server version written to %s, merge and delete it, then push\n",
+			doc.Path, conflictSidecarRel(doc.Path))
+		return nil
+	}
+
+	fmt.Fprintf(out, "  ~ %s (modified)\n", doc.Path)
+	if dryRun {
+		res.Updated++
+		return nil
+	}
+	updated, err := client.UpdateMemoContent(ctx, uid, doc.Content)
+	if err != nil {
+		return err
+	}
+	state.Memos[uid] = rebaseState(ws, updated, doc.Path, prev)
+	res.Updated++
+	return nil
+}
+
+// rebaseState builds a fresh baseline from a server response, keeping the two
+// things the response cannot tell us: the local path mapping (the server may
+// have normalized the title, but the file on disk is what it is) and the
+// attachment record (pull owns that). ConflictServerHash is deliberately not
+// carried over — reaching here means the document is in sync again.
+func rebaseState(ws *WorkspaceConfig, m *v1pb.Memo, localPath string, prev MemoState) MemoState {
+	ms := memoState(ws, m)
+	ms.Path = localPath
+	ms.Attachments = prev.Attachments
+	return ms
+}
+
+// loadLocalDocs reads every work-tree document, stripping the identity marker so
+// Content is what the server should hold and MarkerUID is what the file claims
+// to be.
+func loadLocalDocs(contentRoot string, present []string) ([]localDoc, error) {
+	docs := make([]localDoc, 0, len(present))
+	for _, relPath := range present {
+		data, err := os.ReadFile(filepath.Join(contentRoot, relPath))
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", relPath, err)
+		}
+		raw := string(data)
+		docs = append(docs, localDoc{
+			Path:      relPath,
+			Content:   StripLocalID(raw),
+			MarkerUID: ParseLocalID(raw),
+			DocType:   docTypeFromExt(relPath),
+		})
+	}
+	return docs, nil
+}
+
+// resolveIdentities decides, for every work-tree file, which memo it is — the
+// step that turns a local `mv` into a move rather than a delete plus a create.
+//
+// The file's own marker wins, because it is the only signal that survives being
+// moved. The path index is the fallback for files written before markers existed
+// (or whose marker a human or an agent deleted), which is exactly the
+// pre-marker behaviour: a move without a marker still degrades to
+// archive-plus-create, and nothing else regresses.
+//
+// A uid claimed by two files is a copy, not a move: the file sitting at the
+// memo's recorded path keeps the identity, and the others are pushed as new
+// documents (their stale marker is replaced when they are created).
+func resolveIdentities(docs []localDoc, state *State) {
+	claimed := make(map[string]int, len(docs)) // uid -> index of the winning doc
+	for i, doc := range docs {
+		if doc.MarkerUID == "" {
+			continue
+		}
+		prev, tracked := state.Memos[doc.MarkerUID]
+		if !tracked {
+			// A marker pointing at nothing we track: a document copied in from
+			// another checkout, or one archived on the server. Treat it as new.
+			continue
+		}
+		if winner, dup := claimed[doc.MarkerUID]; dup {
+			// Keep whichever file sits where the memo is recorded; if neither does,
+			// the first in sorted order wins so the outcome is deterministic.
+			if docs[winner].Path == prev.Path || doc.Path != prev.Path {
+				continue
+			}
+			docs[winner].UID = ""
+		}
+		claimed[doc.MarkerUID] = i
+		docs[i].UID = doc.MarkerUID
+	}
+
+	pathIndex := state.PathIndex()
+	for i, doc := range docs {
+		if doc.UID != "" {
+			continue
+		}
+		uid, tracked := pathIndex[doc.Path]
+		if !tracked {
+			continue
+		}
+		if _, taken := claimed[uid]; taken {
+			// Another file already carries this memo's marker — this one is a
+			// leftover at the old path, so it becomes a new document.
+			continue
+		}
+		claimed[uid] = i
+		docs[i].UID = uid
+	}
+}
+
+// claimedUIDs is the set of memos some work-tree file is responsible for. Push
+// archives exactly the tracked memos missing from it, so every file that stands
+// for a live document — including one created earlier in the same run — must
+// have had its identity recorded by the time this is called.
+func claimedUIDs(docs []localDoc) map[string]bool {
+	claimed := make(map[string]bool, len(docs))
+	for _, doc := range docs {
+		if doc.UID != "" {
+			claimed[doc.UID] = true
+		}
+	}
+	return claimed
+}
+
+// warnUnmarked reports work-tree files that belong to a known memo but carry no
+// identity marker. They still sync, but a move of one cannot be told apart from
+// a delete plus a create, so it would lose the document's history. A pull
+// re-stamps them.
+func warnUnmarked(docs []localDoc, out io.Writer) {
+	n := 0
+	for _, doc := range docs {
+		if doc.MarkerUID == "" && doc.UID != "" {
+			n++
+		}
+	}
+	if n == 0 {
+		return
+	}
+	fmt.Fprintf(out, "  note: %d tracked file(s) carry no memogit id (checkout predates them). "+
+		"Run `memogit pull` once so moves are pushed as moves, not as delete+create.\n", n)
 }
 
 // listDocFiles returns every document file under contentRoot (repo-relative to

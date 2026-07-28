@@ -46,6 +46,40 @@ func writeFile(root, relPath, content string) error {
 	return nil
 }
 
+// localHash hashes a work-tree file's bytes the way the server sees them: with
+// the local identity marker removed. Every comparison between a local file and
+// its baseline must go through this — hashing the raw bytes would read the
+// marker as an edit and manufacture a conflict on the next sync.
+func localHash(data []byte) string {
+	return CanonicalHash(StripLocalID(string(data)))
+}
+
+// ensureLocalIDs re-stamps tracked files whose identity marker is missing or
+// points at the wrong memo, and returns how many it fixed. It exists for
+// checkouts made before markers (their files carry none, so a move of one would
+// still be pushed as delete+create) and to heal files whose marker was deleted
+// by a hand or an agent. Re-stamping never counts as a local edit, because the
+// marker is stripped before hashing.
+func ensureLocalIDs(contentRoot string, state *State) (int, error) {
+	n := 0
+	for _, uid := range sortedUIDs(state) {
+		ms := state.Memos[uid]
+		data, err := os.ReadFile(filepath.Join(contentRoot, ms.Path))
+		if err != nil {
+			continue // missing/unreadable files are reported by the callers
+		}
+		raw := string(data)
+		if ParseLocalID(raw) == uid {
+			continue
+		}
+		if err := writeFile(contentRoot, ms.Path, InjectLocalID(raw, uid, ms.DocType)); err != nil {
+			return n, err
+		}
+		n++
+	}
+	return n, nil
+}
+
 // memoState builds the sync-state baseline for a memo (path + metadata + hash).
 // The hash is over the server content (m.GetContent()), which is what push/pull
 // compare against — not over the possibly-stubbed local file bytes.
@@ -151,21 +185,39 @@ func pruneEmptyDirs(root, dir string) {
 	}
 }
 
-// inScopeMemos returns only the memos that belong to the workspace's checkout.
-// For a full checkout it returns the input unchanged; for a sparse checkout it
-// drops memos outside the mapped folder (the server has no folder_path filter,
-// so scoping happens client-side after ListAllMemos).
+// inScopeMemos returns only the memos that belong to the workspace's checkout:
+// for a sparse checkout, those under the mapped folder (the server has no
+// folder_path filter, so scoping happens client-side after ListAllMemos), and in
+// every case only those that land on a path the work-tree scanner can actually
+// see.
 func inScopeMemos(ws *WorkspaceConfig, memos []*v1pb.Memo) []*v1pb.Memo {
-	if ws.Sparse == "" {
-		return memos
-	}
 	out := memos[:0:0]
 	for _, m := range memos {
-		if ws.inScope(m.GetFolderPath()) {
-			out = append(out, m)
+		if ws.Sparse != "" && !ws.inScope(m.GetFolderPath()) {
+			continue
 		}
+		if isHiddenPath(ws.LocalRelPath(m.GetFolderPath(), m.GetTitle(), docTypeString(m))) {
+			continue
+		}
+		out = append(out, m)
 	}
 	return out
+}
+
+// isHiddenPath reports whether a repo-relative path lies under a dot-directory
+// (or is itself a dotfile). listDocFiles skips those, so exporting such a memo
+// would write a file nothing can ever find again: it would read as "deleted
+// locally" on the very next push and archive a live document. The server's
+// reserved Home folder (".home") is exactly this case — it holds the Home page's
+// configuration, which the server itself hides from the workspace tree and which
+// was never meant to be checked out.
+func isHiddenPath(relPath string) bool {
+	for _, seg := range strings.Split(filepath.ToSlash(relPath), "/") {
+		if strings.HasPrefix(seg, ".") {
+			return true
+		}
+	}
+	return false
 }
 
 // checkPathCollisions guards against two distinct server documents mapping to
