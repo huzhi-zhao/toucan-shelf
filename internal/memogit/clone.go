@@ -93,6 +93,11 @@ func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter
 	if err := writeGitignore(root); err != nil {
 		return err
 	}
+	// Make the checkout self-describing to coding agents before the baseline
+	// commit, so the guide is part of the first snapshot.
+	if err := WriteAgentDocs(root, cfg, out); err != nil {
+		return err
+	}
 	if err := GitInitIfNeeded(root); err != nil {
 		return err
 	}

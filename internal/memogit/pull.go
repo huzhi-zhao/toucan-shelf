@@ -163,6 +163,11 @@ func Pull(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, ou
 	if err := state.Save(root, ws.stateName()); err != nil {
 		return nil, err
 	}
+	// Refresh the agent guide silently, so a checkout picks up manual updates
+	// that shipped with a newer memogit.
+	if err := WriteAgentDocs(root, cfg, nil); err != nil {
+		return nil, err
+	}
 	if err := GitCommitAll(root, commitMessage(ws, res)); err != nil {
 		return nil, err
 	}

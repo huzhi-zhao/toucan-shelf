@@ -63,12 +63,18 @@ avoids a confusing second frontmatter block.
 my-kb/                        ← the checkout root (metadata only)
 ├── .memogit/
 │   ├── config.yaml           ← server URL, token, cloned workspaces (chmod 600)
-│   └── state/                ← one sync baseline per knowledge base
-│       ├── Default.json      ← (ID ↔ path, hashes…)
-│       └── Life.json
+│   ├── state/                ← one sync baseline per knowledge base
+│   │   ├── Default.json      ← (ID ↔ path, hashes…)
+│   │   └── Life.json
+│   └── toucanshelf-guide.md  ← the agent manual, written on clone/pull
 ├── .git/                     ← a real local git repo (snapshots only, no remote)
 ├── .gitignore                ← excludes .memogit/config.yaml (it holds a token)
+├── AGENTS.md                 ← agent entry point (Codex, Cursor, …) — see §5.2a
+├── CLAUDE.md                 ← agent entry point (Claude Code)
+├── .cursor/rules/            ← agent entry point (Cursor project rule)
 ├── Default/                  ← one document tree per workspace, named after it
+│   ├── AGENTS.md             ← same entry points, for agents started in here
+│   ├── CLAUDE.md             ←   (they link up to ../.memogit/toucanshelf-guide.md)
 │   ├── garden/notes/todo.md
 │   ├── papers/attention.pdf.md
 │   ├── dashboards/all.view.json
@@ -89,6 +95,57 @@ characters, its subfolder falls back to `work/`.)
 `.memogit/config.yaml` is git-ignored because it contains your Personal Access
 Token; the rest of the tree (including `.memogit/state/`) is tracked so your
 baseline is captured in git history.
+
+---
+
+## 5.2a The checkout explains itself to AI coding agents
+
+A checkout looks like an ordinary Markdown folder but isn't one: identity
+markers, `.view.json` documents, PDF stubs and the pull/push contract are all
+invisible to an agent that just starts editing files. So `clone` (and every
+later `pull`) writes the agent manual and the entry points each tool reads by
+itself:
+
+| File | Read automatically by |
+| --- | --- |
+| `.memogit/toucanshelf-guide.md` | the full manual — the other three link to it |
+| `AGENTS.md` | Codex, and any agent following the AGENTS.md convention |
+| `CLAUDE.md` | Claude Code |
+| `.cursor/rules/toucanshelf-memogit.mdc` | Cursor (`alwaysApply: true`) |
+
+The guide is compiled into the `memogit` binary (a copy of
+[`pumpkin_book_for_llms.md`](pumpkin_book_for_llms.md)), so a checkout carries
+its own instructions without needing this repository. The three entry points
+hold a short brief — the identity-marker rule, "no frontmatter header", the
+special document types, and the `pull → edit → status → push` loop — plus a link
+to the full guide.
+
+### One guide at the root, entry points in every knowledge base
+
+The guide exists once, in `.memogit/`, because that is where the checkout's
+identity lives. But an agent is usually started **inside one knowledge base**
+(`my-kb/Default/`), not at the checkout root, so `AGENTS.md`, `CLAUDE.md` and
+`.cursor/rules/` are written into each workspace subfolder as well, linking up
+to `../.memogit/toucanshelf-guide.md` and stating which knowledge base the
+folder is and where the credentials live. Nothing outside the entry points is
+duplicated. (A `--sparse-checkout` clone maps its content onto the root itself,
+so it gets the root copy only.)
+
+`push` skips files named `AGENTS.md` and `CLAUDE.md` inside the content tree, so
+these entry points are never uploaded as knowledge-base documents. If you
+genuinely want a document titled "AGENTS" on the server, give it another
+filename.
+
+In `AGENTS.md` and `CLAUDE.md`, memogit only owns the text between its
+`<!-- BEGIN memogit … -->` / `<!-- END memogit -->` markers. Add your own
+project instructions above or below the block; they survive regeneration.
+
+```bash
+memogit agents
+```
+
+Rewrites all four files. `clone` and `pull` already do it — run this by hand for
+a checkout made with an older memogit, or to restore a file you deleted.
 
 ---
 

@@ -528,8 +528,10 @@ func listDocFiles(contentRoot string) ([]string, error) {
 			}
 			return nil
 		}
-		if strings.HasPrefix(d.Name(), ".") || isConflictSidecar(d.Name()) {
-			return nil // dotfiles and conflict sidecars are not documents
+		if strings.HasPrefix(d.Name(), ".") || isConflictSidecar(d.Name()) || isAgentDoc(d.Name()) {
+			// Dotfiles, conflict sidecars and memogit's own agent entry points
+			// live in the tree but are not knowledge-base documents.
+			return nil
 		}
 		rel, err := filepath.Rel(contentRoot, p)
 		if err != nil {

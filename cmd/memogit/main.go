@@ -30,7 +30,7 @@ func rootCmd() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	root.AddCommand(loginCmd(), cloneCmd(), workspacesCmd(), pullCmd(), pushCmd(), statusCmd())
+	root.AddCommand(loginCmd(), cloneCmd(), workspacesCmd(), pullCmd(), pushCmd(), statusCmd(), agentsCmd())
 	return root
 }
 
@@ -281,6 +281,34 @@ func pushCmd() *cobra.Command {
 	}
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "print the push plan without sending changes")
 	return cmd
+}
+
+// agentsCmd (re)writes the AI-agent entry points. clone/pull do this on their
+// own; this is for older checkouts and for restoring files the user deleted.
+func agentsCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "agents",
+		Short: "Write the AI-agent guide (.memogit/" + memogit.GuideFile + ") and AGENTS.md / CLAUDE.md / .cursor rules",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			cwd, err := os.Getwd()
+			if err != nil {
+				return err
+			}
+			root, err := memogit.FindRoot(cwd)
+			if err != nil {
+				return err
+			}
+			cfg, err := memogit.LoadConfig(root)
+			if err != nil {
+				return err
+			}
+			if err := memogit.Migrate(root, cfg); err != nil {
+				return err
+			}
+			return memogit.WriteAgentDocs(root, cfg, cmd.OutOrStdout())
+		},
+	}
 }
 
 func statusCmd() *cobra.Command {
