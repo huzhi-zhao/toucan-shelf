@@ -267,3 +267,35 @@ func TestIsHiddenPath(t *testing.T) {
 		}
 	}
 }
+
+// A document archived on the web while its local file stays untouched used to be
+// invisible to push: the hash matched the baseline, so push reported "unchanged"
+// and never asked the server anything. The user kept pushing, kept seeing a
+// clean run, and never learned the document was not published.
+func TestArchivedOnServerIsReportedNotSilentlyUnchanged(t *testing.T) {
+	state := mkState(map[string]string{"gone1": "research/talk.md", "live1": "research/keep.md"})
+	docs := []localDoc{
+		{Path: "research/keep.md", MarkerUID: "live1", DocType: "MARKDOWN"},
+		{Path: "research/talk.md", MarkerUID: "gone1", DocType: "MARKDOWN"},
+	}
+	resolveIdentities(docs, state)
+
+	// The server's live listing no longer contains the archived memo.
+	alive := map[string]bool{"live1": true}
+
+	var orphaned []string
+	for _, d := range docs {
+		if d.UID != "" && !alive[d.UID] {
+			orphaned = append(orphaned, d.Path)
+		}
+	}
+	if len(orphaned) != 1 || orphaned[0] != "research/talk.md" {
+		t.Fatalf("orphaned = %v, want [research/talk.md]", orphaned)
+	}
+
+	// It must still count as claimed, so the archive pass leaves it alone rather
+	// than trying to archive an already-archived memo.
+	if !claimedUIDs(docs)["gone1"] {
+		t.Error("archived-on-server document was unclaimed and would be re-archived")
+	}
+}

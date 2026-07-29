@@ -124,7 +124,7 @@ memogit 会把移动记为已完成，下一次 pull 又把文件拖回原处。
 memo 映射到的本地路径是否等于文件当前路径，不等就明确报错。用"映射后的本地路径"而不是
 裸字段比较，可以顺带吸收服务端的 `normalizeFolderPath` 和文件名清洗差异。
 
-## 6. 顺带修掉的三个问题
+## 6. 顺带修掉的四个问题
 
 排查和实测过程中撞出来的，都不是本次改造引入的：
 
@@ -145,7 +145,35 @@ memo 映射到的本地路径是否等于文件当前路径，不等就明确报
 实测时 English 知识库正好处在这个状态（status 显示 `- .home/Home.view.json` 待归档）。
 修法：`inScopeMemos` 统一过滤掉任何会落到点目录下的 memo，让"写得出"和"扫得到"对称。
 
-### 6.3 pull 修路径漂移但不修内容漂移
+### 6.3 push 对"服务端已归档"完全无感（上线后暴露）
+
+上线后用户反馈"新增的文件没推到服务端"。查下来文件其实推上去了，是之后在网页端被
+**归档**了——而 `memogit push` 一路报 `unchanged`，看不出任何异常。
+
+根因：push 在"本地哈希 == 基线哈希"时**根本不联网**（这是有意的优化，避免每篇文档
+一次 GetMemo）。于是服务端归档/硬删除对 push 完全不可见，用户可以无限次 push 看到
+干净的输出，却始终不知道文档在网页上并不存在。`memogit status` 反倒是能看出来的
+（它拿全量列表，会报 `-` 待拉取），两个命令口径不一致。
+
+修法：push 开头也拉一次全量存活列表（和 status 同样的调用），被跟踪文档不在其中就
+明确报出来并跳过：
+
+```
+! research/consultations/xxx.md: archived or deleted on the server — local file kept.
+  Restore the document on the server, or delete this file and push to confirm the removal.
+Not on the server (archived or deleted there), kept locally: [...]
+```
+
+**不自动做任何事**：不重新创建（会丢 uid），也不删本地文件（pull 才做这件事，且是
+用户显式发起的）。归档态由用户决定是恢复还是确认删除。
+
+顺带：归档阶段遇到"本地没了 + 服务端也没了"的条目，不再花一次 API 去重复归档，
+直接停止跟踪。
+
+代价是 push 多两次只读调用（GetCurrentUser + 分页 ListMemos）。相对于"用户以为发布了
+其实没有"的代价，这个交换很划算。
+
+### 6.4 pull 修路径漂移但不修内容漂移
 
 增量过滤器只看 `updated_ts > last_sync`。一旦某次改动早于水位线（push 推进水位线、
 或历史遗留），它对增量过滤器就**永久不可见**了。全量对账本来已经把服务端内容抓在
@@ -168,6 +196,7 @@ memo 映射到的本地路径是否等于文件当前路径，不等就明确报
 | 真实 push 移动 | uid 移动前后一致；服务端 `folderPath`/`title` 确认已更新，state 仍 NORMAL |
 | 手动删掉标记 | 退回路径识别，正常同步，打印补写提示 |
 | 删除文件 | 仍然正常归档（未回归） |
+| 服务端归档一篇再 push | 明确报 `!` + 汇总行，不再静默 unchanged（6.3，上线后补） |
 
 **实测抓到一个单元测试没覆盖的 bug**：`pushNewDoc` 把新 uid 写进了 state，却没写回
 `docs` 切片，导致归档阶段认为它无人认领——文档刚创建就被立刻归档。已修，并补了
@@ -191,7 +220,8 @@ internal/memogit/localid.go                新增：标记注入/剥离/解析�
 internal/memogit/doc.go                    FileContent 成为唯一注入点
 internal/memogit/client.go                 新增 MoveMemo
 internal/memogit/push.go                   身份解析 + 移动语义 + 归档改按 uid 判断（5）
-internal/memogit/pull.go                   ensureLocalIDs 补写（4.3）、reconcileDrifted（6.3）
+internal/memogit/push.go                   存活性检查 aliveMemoUIDs + Orphaned 上报（6.3）
+internal/memogit/pull.go                   ensureLocalIDs 补写（4.3）、reconcileDrifted（6.4）
 internal/memogit/sync.go                   localHash、ensureLocalIDs、isHiddenPath（6.2）
 internal/memogit/status.go                 复用身份解析，新增 LocalMoved
 internal/memogit/{localid,identity,pull}_test.go  新增用例

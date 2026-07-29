@@ -1255,7 +1255,12 @@
     "results-for": "Results for"
   },
   "mark": {
-    "text-changed": "Original text changed"
+    "text-changed": "Original text changed",
+    "orphaned": "Lost anchor",
+    "note-less": "Highlight without a note",
+    "relink": "Re-anchor",
+    "relink-here": "Anchor here",
+    "relink-hint": "Select the text in the document to anchor this comment to (Esc to cancel)"
   },
   "home": {
     "title": "Home",

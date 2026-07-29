@@ -1173,6 +1173,14 @@
     "highlight": "高亮",
     "underline": "下划线"
   },
+  "mark": {
+    "text-changed": "原文已变更",
+    "orphaned": "失联备注",
+    "note-less": "无备注的标记",
+    "relink": "重新关联",
+    "relink-here": "关联到这里",
+    "relink-hint": "在文档中选择要关联的文本（Esc 取消）"
+  },
   "home": {
     "title": "首页",
     "default-section": "常用",

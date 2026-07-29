@@ -22,8 +22,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { DocCommentSidebar } from "@/components/DocComments/DocCommentSidebar";
 import { type DocMark, DocMarkLayer } from "@/components/DocComments/DocMarkLayer";
-import { anchorTextQuote, buildSelectionAnchor, nearestHeadingAnchor, scrollToAnchor } from "@/components/DocComments/docAnchor";
+import { anchorTextQuote, buildSelectionAnchor, scrollToAnchor } from "@/components/DocComments/docAnchor";
 import { MARK_LAYER_ATTR } from "@/components/DocComments/textAnchor";
+import { useAnchorHealth } from "@/components/DocComments/useAnchorHealth";
 import GalleryViewForm from "@/components/GalleryView/GalleryViewForm";
 import GalleryViewRenderer from "@/components/GalleryView/GalleryViewRenderer";
 import { MARK_TOOLBAR_ATTR, MarkToolbar } from "@/components/MarkToolbar";
@@ -172,9 +173,6 @@ const DocumentView = ({
     [docComments],
   );
   const activeMarkComment = useMemo(() => docComments.find((c) => c.name === activeMark?.memoName), [docComments, activeMark]);
-  // Only comments with something written in them belong in the panel; a bare mark is pure
-  // styling on the text and would otherwise show up as an empty card.
-  const notedComments = useMemo(() => docComments.filter((c) => c.content.trim()), [docComments]);
   const [mode, setMode] = useState<"preview" | "edit">("preview");
   const [outlineCollapsed, setOutlineCollapsed] = useState(() => {
     const displayOutline = parseFrontmatter(memo.content).properties.find((p) => p.key === "displayOutline")?.value;
@@ -204,6 +202,19 @@ const DocumentView = ({
   const scrollCacheKey = isPdf ? pdfAttachment?.name : !isHtml && !isView ? `${memo.name}:${mode}` : undefined;
   const cachedPosition = scrollCacheKey ? getDocScrollPosition(scrollCacheKey) : undefined;
   const outlineContent = mode === "edit" && editDraftContent != null ? editDraftContent : memo.content;
+  // Which comments can still find what they were written about. Orphans are the ones the
+  // document has edited out from under them.
+  const anchorHealth = useAnchorHealth(docComments, unresolvedMarks, markContainerRef, memo.content);
+  // What the panel lists: everything with a note, plus anything that has come adrift — including
+  // a note-less mark, which is invisible in the document once its text is gone and would
+  // otherwise be impossible to re-anchor or delete.
+  const listedComments = useMemo(
+    () => docComments.filter((c) => c.content.trim() || anchorHealth.get(c.name) === "orphan"),
+    [docComments, anchorHealth],
+  );
+  // The comment being re-anchored: while this is set, selecting text in the document offers
+  // "anchor it here" instead of the usual new-mark toolbar.
+  const [relinkTarget, setRelinkTarget] = useState<Memo>();
 
   const { mutateAsync: createMemoHistory } = useCreateMemoHistory();
   const { mutateAsync: restoreMemoHistory } = useRestoreMemoHistory();
@@ -330,8 +341,9 @@ const DocumentView = ({
   // (before focus moves to the toolbar and clears it) as a full anchor — enclosing heading plus
   // a quote selector for the text — and show the mark toolbar over the selection's rect.
   const handlePreviewMouseUp = (event: React.MouseEvent) => {
-    // Selecting to mark/comment is only offered while the comment panel is open.
-    if (!supportsMarks || mode !== "preview" || !commentsOpen) return;
+    // Selecting to mark/comment is only offered while the comment panel is open — or while a
+    // comment is waiting to be re-anchored, which on a phone deliberately closes the panel first.
+    if (!supportsMarks || mode !== "preview" || (!commentsOpen && !relinkTarget)) return;
     // A mouse-up on an existing mark is a click on that mark, handled by the mark's own click
     // handler. It must not be read as a selection gesture: clicking inside text that is still
     // selected (the selection survives the toolbar, which prevents its own mouse-down) leaves
@@ -437,6 +449,72 @@ const DocumentView = ({
     [refetchComments],
   );
 
+  // Start re-anchoring an orphaned comment. The document has to be readable and selectable for
+  // this, so leave edit mode, drop anything else that owns the selection, and — on a phone, where
+  // the panel is a sheet covering the document — get the panel out of the way.
+  const startRelink = useCallback(
+    (comment: Memo) => {
+      setRelinkTarget(comment);
+      setMode("preview");
+      setSelectionPopover(undefined);
+      setActiveMark(undefined);
+      setSelectedMemoName(undefined);
+      setOutlineCollapsed(true);
+      if (!isDesktop) setCommentsOpen(false);
+    },
+    [isDesktop],
+  );
+
+  const cancelRelink = useCallback(() => {
+    setRelinkTarget(undefined);
+    setSelectionPopover(undefined);
+    clearSelection();
+  }, []);
+
+  useEffect(() => {
+    if (!relinkTarget) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") cancelRelink();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [relinkTarget, cancelRelink]);
+
+  // Point the comment at the freshly selected text. Only the anchor changes — the note, and the
+  // mark's own styling, ride along — so re-anchoring is a repair, not a rewrite. A comment that
+  // had no mark of its own (a legacy heading-anchored one) becomes a normal highlight, since
+  // from here on a comment's anchor *is* its mark.
+  const confirmRelink = useCallback(async () => {
+    if (!relinkTarget || !selectionPopover?.anchor.textExact) return;
+    const previous = relinkTarget.docAnchor;
+    const style = previous?.textExact
+      ? { color: previous.color ?? "", underline: previous.underline ?? false }
+      : { color: DEFAULT_MARK_COLOR, underline: false };
+    const anchor = { ...selectionPopover.anchor, ...style };
+    setRelinkTarget(undefined);
+    setSelectionPopover(undefined);
+    clearSelection();
+    await memoServiceClient.updateMemo({
+      memo: create(MemoSchema, { name: relinkTarget.name, docAnchor: anchor }),
+      updateMask: create(FieldMaskSchema, { paths: ["doc_anchor"] }),
+    });
+    setCommentsOpen(true);
+    setSelectedMemoName(relinkTarget.name);
+    refetchComments();
+  }, [relinkTarget, selectionPopover, refetchComments]);
+
+  // Deleting an orphan is the other way out of the panel's orphan pile, for a comment that is
+  // simply no longer worth re-anchoring.
+  const deleteComment = useCallback(
+    async (comment: Memo) => {
+      if (!window.confirm(t("memo.delete-confirm"))) return;
+      if (relinkTarget?.name === comment.name) cancelRelink();
+      await memoServiceClient.deleteMemo({ name: comment.name });
+      refetchComments();
+    },
+    [t, relinkTarget, cancelRelink, refetchComments],
+  );
+
   // Clearing a mark that carries a note only drops its styling — the note is the valuable part
   // and stays, still anchored to its text. A bare mark *is* only its styling, so clearing it
   // removes the comment outright.
@@ -476,11 +554,30 @@ const DocumentView = ({
         // Marking is a comment-panel activity: with the panel collapsed the document is just a
         // document, so marks are shown but inert — the same rule the selection toolbar follows.
         // Open the panel first, then mark or restyle.
-        onMarkClick={commentsOpen ? handleMarkClick : undefined}
+        onMarkClick={commentsOpen && !relinkTarget ? handleMarkClick : undefined}
         onUnresolved={setUnresolvedMarks}
         onAnchors={setMarkAnchors}
       />
-      {selectionPopover && commentsOpen && (
+      {/* While re-anchoring, a selection means "put it here" — the mark toolbar would offer to
+          create a second, unrelated mark instead. It carries the toolbar's own attribute so the
+          document's mouse-up handler doesn't dismiss it before the click lands. */}
+      {selectionPopover && relinkTarget && selectionPopover.anchor.textExact && (
+        <div
+          {...{ [MARK_TOOLBAR_ATTR]: "" }}
+          className={cn(
+            "absolute z-20 -translate-x-1/2 rounded-lg border border-border bg-popover p-1 shadow-md",
+            selectionPopover.top >= 44 && "-translate-y-full",
+          )}
+          style={{ left: selectionPopover.left, top: selectionPopover.top >= 44 ? selectionPopover.top - 6 : selectionPopover.top + 26 }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <Button size="sm" className="h-7 text-xs" onClick={confirmRelink}>
+            <LinkIcon className="mr-1 h-3.5 w-3.5" />
+            {t("mark.relink-here")}
+          </Button>
+        </div>
+      )}
+      {selectionPopover && commentsOpen && !relinkTarget && (
         <MarkToolbar
           x={selectionPopover.left}
           y={selectionPopover.top}
@@ -491,7 +588,7 @@ const DocumentView = ({
           onNote={composeFromSelection}
         />
       )}
-      {activeMarkComment && activeMark && (
+      {activeMarkComment && activeMark && !relinkTarget && (
         <MarkToolbar
           // The live position wins over the clicked one; the latter only covers the frame before
           // the first remeasure, and the case where the mark went unresolved.
@@ -679,6 +776,20 @@ const DocumentView = ({
 
       <CreateVersionDialog open={createVersionDialogOpen} onOpenChange={setCreateVersionDialogOpen} onConfirm={handleCreateVersion} />
 
+      {relinkTarget && (
+        <div className="shrink-0 flex items-center justify-between gap-3 border-b border-border bg-primary/10 px-4 py-1.5 text-xs">
+          <span className="min-w-0 truncate text-foreground">
+            {t("mark.relink-hint")}
+            {relinkTarget.docAnchor?.textExact && (
+              <span className="ml-1.5 text-muted-foreground line-through">{relinkTarget.docAnchor.textExact}</span>
+            )}
+          </span>
+          <Button variant="ghost" size="sm" className="h-6 shrink-0 text-xs" onClick={cancelRelink}>
+            {t("common.cancel")}
+          </Button>
+        </div>
+      )}
+
       <div className="flex-1 min-h-0 flex">
         <div
           className={cn("flex-1 min-w-0", mode === "edit" ? "overflow-hidden" : "overflow-y-auto")}
@@ -796,15 +907,16 @@ const DocumentView = ({
           <div className="w-72 shrink-0 min-h-0 border-l border-border">
             <DocCommentSidebar
               parentMemoName={memo.name}
-              comments={notedComments}
+              comments={listedComments}
               onClose={() => setCommentsOpen(false)}
               onChanged={refetchComments}
-              getAnchor={() => nearestHeadingAnchor(previewRef.current)}
               onJump={(anchor) => scrollToAnchor(previewRef.current, markContainerRef.current, anchor)}
               composeRequest={composeRequest}
               selectedMemoName={selectedMemoName}
               onSelect={setSelectedMemoName}
-              unresolvedMarks={unresolvedMarks}
+              anchorHealth={anchorHealth}
+              onRelink={startRelink}
+              onDelete={deleteComment}
             />
           </div>
         )}
@@ -819,9 +931,8 @@ const DocumentView = ({
             <div className="h-[calc(100%-3.5rem)]">
               <DocCommentSidebar
                 parentMemoName={memo.name}
-                comments={notedComments}
+                comments={listedComments}
                 onChanged={refetchComments}
-                getAnchor={() => nearestHeadingAnchor(previewRef.current)}
                 onJump={(anchor) => {
                   setCommentsOpen(false);
                   scrollToAnchor(previewRef.current, markContainerRef.current, anchor);
@@ -829,7 +940,9 @@ const DocumentView = ({
                 composeRequest={composeRequest}
                 selectedMemoName={selectedMemoName}
                 onSelect={setSelectedMemoName}
-                unresolvedMarks={unresolvedMarks}
+                anchorHealth={anchorHealth}
+                onRelink={startRelink}
+                onDelete={deleteComment}
                 className="border-l-0 border-t-0"
               />
             </div>

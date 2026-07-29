@@ -15,6 +15,16 @@
 /** How much surrounding text to keep on each side of a mark, in characters. */
 const CONTEXT_LENGTH = 32;
 
+// A short quote ("清单变更", a term, a step number) recurs all over a document, so finding the
+// string somewhere is no evidence that it's *this* mark's text: once the marked passage is
+// rewritten, a bare string match silently drags the mark onto an unrelated occurrence, which is
+// worse than admitting the mark is lost. Short quotes therefore have to bring some of their
+// remembered neighbourhood with them to count as located. Long quotes are distinctive enough on
+// their own and keep matching on text alone, so re-indenting or re-wording around them is
+// harmless.
+const SHORT_QUOTE_LENGTH = 12;
+const MIN_CONTEXT_SCORE = 4;
+
 /** The text-level part of a DocAnchor: what was marked, and what sat around it. */
 export interface TextQuote {
   exact: string;
@@ -163,6 +173,10 @@ const resolveInMap = (map: TextMap, quote: TextQuote): Range | undefined => {
     }
   }
   if (best < 0) return undefined;
+  // A mark made at the very start or end of a document has little or no remembered context, so
+  // the requirement can never exceed what was stored for it.
+  const required = Math.min(MIN_CONTEXT_SCORE, quote.prefix.length + quote.suffix.length);
+  if (quote.exact.length < SHORT_QUOTE_LENGTH && bestScore < required) return undefined;
   const start = positionOfOffset(map, best);
   const end = positionOfOffset(map, best + quote.exact.length);
   if (!start || !end) return undefined;

@@ -91,6 +91,25 @@ describe("doc text anchors", () => {
     expect(resolveTextQuote(container, quote!)).toBeUndefined();
   });
 
+  it("treats a short quote as lost rather than dragging it onto an unrelated occurrence", () => {
+    const container = setup("<p>程序基准：清单变更以申请日为准</p>");
+    const quote = buildTextQuote(container, selectIn(container, "清单变更"));
+
+    // The marked sentence is gone; the same short phrase happens to survive somewhere else.
+    // Matching on the string alone would silently move the mark there, which reads as "still
+    // anchored" while pointing at text the comment was never about.
+    container.innerHTML = "<p>附录里偶然提到清单变更这个词。</p>";
+    expect(resolveTextQuote(container, quote!)).toBeUndefined();
+  });
+
+  it("keeps a long quote anchored even when the text around it was reworded", () => {
+    const container = setup("<p>对冲动作：若 2027 年中传出 11.0102 要被移除，我当时还剩哪些动作？</p>");
+    const quote = buildTextQuote(container, selectIn(container, "11.0102 要被移除，我当时还剩哪些动作"));
+
+    container.innerHTML = "<p>换了个说法的开场，11.0102 要被移除，我当时还剩哪些动作，以及别的结尾。</p>";
+    expect(resolveTextQuote(container, quote!)?.toString()).toBe("11.0102 要被移除，我当时还剩哪些动作");
+  });
+
   it("ignores excluded subtrees on both sides — a VIEW doc's card wall never anchors a mark", () => {
     const container = setup(`<p>prose about widgets</p><div ${MARK_EXCLUDE_ATTR}><span>prose about widgets</span></div>`);
     // A quote taken from the prose must not be able to land in the card wall...

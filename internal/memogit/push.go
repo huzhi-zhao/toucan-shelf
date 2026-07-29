@@ -21,6 +21,11 @@ type PushResult struct {
 	Archived  int
 	Unchanged int
 	Conflicts []string // repo-relative paths skipped because both sides changed
+	// Orphaned holds paths whose memo is no longer live on the server (archived
+	// there, or hard-deleted) while the local file is still present. Nothing is
+	// pushed for them; the user decides whether to restore the document or drop
+	// the file.
+	Orphaned []string
 }
 
 // localDoc is one work-tree document file, resolved to the memo it belongs to.
@@ -71,6 +76,11 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 	}
 	resolveIdentities(docs, state)
 
+	alive, err := aliveMemoUIDs(ctx, client, ws)
+	if err != nil {
+		return nil, err
+	}
+
 	res := &PushResult{}
 	fmt.Fprintf(out, "Pushing workspace %q ...\n", ws.Title)
 	if dryRun {
@@ -91,6 +101,17 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 			// works off claimed identities, and a document created moments ago must
 			// not look like one whose file went missing.
 			docs[i].UID = uid
+			continue
+		}
+
+		// The document is tracked, but is it still live on the server? Without this
+		// check an unchanged file never touches the network, so a document archived
+		// on the web reads as "in sync" forever: the user keeps pushing, keeps
+		// seeing "unchanged", and never learns their document is not published.
+		if !alive[doc.UID] {
+			res.Orphaned = append(res.Orphaned, doc.Path)
+			fmt.Fprintf(out, "  ! %s: archived or deleted on the server — local file kept. "+
+				"Restore the document on the server, or delete this file and push to confirm the removal.\n", doc.Path)
 			continue
 		}
 
@@ -133,6 +154,15 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 			continue
 		}
 		prev := state.Memos[uid]
+		if !alive[uid] {
+			// Gone locally and gone on the server: nothing to archive, just stop
+			// tracking it rather than spending a call to re-archive an archived memo.
+			fmt.Fprintf(out, "  - %s (already gone on the server, untracked)\n", prev.Path)
+			if !dryRun {
+				delete(state.Memos, uid)
+			}
+			continue
+		}
 		fmt.Fprintf(out, "  - %s (deleted → archive)\n", prev.Path)
 		if dryRun {
 			res.Archived++
@@ -148,6 +178,7 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 	if dryRun {
 		fmt.Fprintf(out, "Dry run: %d to create, %d to update, %d to move, %d to archive, %d unchanged, %d conflicts.\n",
 			res.Created, res.Updated, res.Moved, res.Archived, res.Unchanged, len(res.Conflicts))
+		reportOrphans(out, res)
 		return res, nil
 	}
 
@@ -169,7 +200,19 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 	if len(res.Conflicts) > 0 {
 		fmt.Fprintf(out, "Conflicts left for manual resolution: %v\n", res.Conflicts)
 	}
+	reportOrphans(out, res)
 	return res, nil
+}
+
+// reportOrphans surfaces documents that exist locally but not on the server. It
+// is called out separately from the counts because "nothing was pushed" is
+// exactly what it looks like otherwise, and that is the misreading it exists to
+// prevent.
+func reportOrphans(out io.Writer, res *PushResult) {
+	if len(res.Orphaned) == 0 {
+		return
+	}
+	fmt.Fprintf(out, "Not on the server (archived or deleted there), kept locally: %v\n", res.Orphaned)
 }
 
 // pushNewDoc creates a memo for a work-tree file that belongs to no known memo,
@@ -414,6 +457,26 @@ func resolveIdentities(docs []localDoc, state *State) {
 		claimed[uid] = i
 		docs[i].UID = uid
 	}
+}
+
+// aliveMemoUIDs returns the uids of every memo currently live in the workspace's
+// checkout scope. Push needs it to tell "nothing to do" apart from "this
+// document is not on the server any more", which the hash comparison alone can
+// never distinguish — an unchanged file is never looked up remotely.
+func aliveMemoUIDs(ctx context.Context, client *Client, ws *WorkspaceConfig) (map[string]bool, error) {
+	username, err := client.CurrentUsername(ctx)
+	if err != nil {
+		return nil, err
+	}
+	current, err := client.ListAllMemos(ctx, ws.Workspace, scopedFilter(username, ws.Filter))
+	if err != nil {
+		return nil, err
+	}
+	alive := make(map[string]bool, len(current))
+	for _, m := range inScopeMemos(ws, current) {
+		alive[uidFromName(m.GetName())] = true
+	}
+	return alive, nil
 }
 
 // claimedUIDs is the set of memos some work-tree file is responsible for. Push

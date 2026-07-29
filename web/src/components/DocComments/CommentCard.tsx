@@ -1,4 +1,4 @@
-import { HashIcon, PencilIcon } from "lucide-react";
+import { HashIcon, LinkIcon, PencilIcon, Trash2Icon } from "lucide-react";
 import { forwardRef, useState } from "react";
 import MemoContent from "@/components/MemoContent";
 import MemoEditor from "@/components/MemoEditor";
@@ -25,6 +25,15 @@ interface Props {
   staleLabel?: string;
   /** Called after the comment memo is edited in place, so the caller can refetch. */
   onEdited?: () => void;
+  /**
+   * Offered only on a stale card: start re-anchoring this comment to a fresh text selection.
+   * Without it a comment whose text was rewritten stays permanently detached.
+   */
+  onRelink?: () => void;
+  /** Offered alongside `onRelink`, so a mark that lost its text can also just be thrown away. */
+  onDelete?: () => void;
+  /** Shown in place of the content for a mark that carries no note of its own. */
+  emptyLabel?: string;
 }
 
 // A single comment card, shared by the PDF annotation sidebar and the notebook document
@@ -32,7 +41,7 @@ interface Props {
 // a MemoEditor for editing in place. Kept intentionally compact (small padding, no avatar
 // row) so it reads as a docked note list rather than a full memo thread.
 export const CommentCard = forwardRef<HTMLDivElement, Props>(
-  ({ memo, selected, onSelect, anchorLabel, anchorColor, anchorStale, staleLabel, onEdited }, ref) => {
+  ({ memo, selected, onSelect, anchorLabel, anchorColor, anchorStale, staleLabel, onEdited, onRelink, onDelete, emptyLabel }, ref) => {
     const t = useTranslate();
     const [editing, setEditing] = useState(false);
     const text = memo.content || memo.snippet;
@@ -55,13 +64,29 @@ export const CommentCard = forwardRef<HTMLDivElement, Props>(
       );
     }
 
+    const editButton = (
+      <button
+        type="button"
+        className="inline-flex items-center gap-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+        onClick={(e) => {
+          e.stopPropagation();
+          setEditing(true);
+        }}
+      >
+        <PencilIcon className="w-3 h-3" />
+        {t("common.edit")}
+      </button>
+    );
+
     return (
       <div
         ref={ref}
         role="button"
         tabIndex={0}
         className={cn(
-          "min-w-0 text-left rounded-lg border px-2.5 py-2 text-xs leading-relaxed transition-colors cursor-pointer",
+          "min-w-0 text-left rounded-lg border px-2.5 py-2 text-xs leading-relaxed transition-colors",
+          // An orphaned card has nothing to jump to, so it must not advertise itself as clickable.
+          onSelect ? "cursor-pointer" : "cursor-default",
           selected
             ? "border-primary/40 bg-primary/10 text-foreground shadow-sm"
             : "border-border/60 bg-accent/30 text-muted-foreground hover:border-border hover:bg-accent/60 hover:text-foreground",
@@ -87,27 +112,49 @@ export const CommentCard = forwardRef<HTMLDivElement, Props>(
             {anchorStale && staleLabel && <span className="shrink-0 text-muted-foreground/70">· {staleLabel}</span>}
           </div>
         )}
-        <div className="break-words [&_*]:!text-xs">
-          <MemoContent
-            content={text}
-            memoName={memo.name}
-            compact
-            contentClassName="!p-0"
-            actions={
+        {text ? (
+          <div className="break-words [&_*]:!text-xs">
+            <MemoContent content={text} memoName={memo.name} compact contentClassName="!p-0" actions={editButton} />
+          </div>
+        ) : (
+          // A mark with no note of its own only reaches the list once it has lost its text: with
+          // the highlight gone there is nothing left to click in the document, so the card is the
+          // only handle on it. Say what it is rather than rendering an empty body.
+          <div className="flex items-center justify-between gap-2">
+            <span className="italic text-muted-foreground/70">{emptyLabel}</span>
+            {editButton}
+          </div>
+        )}
+        {anchorStale && (onRelink || onDelete) && (
+          <div className="mt-1.5 flex items-center gap-3 border-t border-border/60 pt-1.5">
+            {onRelink && (
               <button
                 type="button"
                 className="inline-flex items-center gap-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setEditing(true);
+                  onRelink();
                 }}
               >
-                <PencilIcon className="w-3 h-3" />
-                {t("common.edit")}
+                <LinkIcon className="w-3 h-3" />
+                {t("mark.relink")}
               </button>
-            }
-          />
-        </div>
+            )}
+            {onDelete && (
+              <button
+                type="button"
+                className="inline-flex items-center gap-0.5 text-[11px] font-medium text-muted-foreground hover:text-destructive"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+              >
+                <Trash2Icon className="w-3 h-3" />
+                {t("common.delete")}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     );
   },
