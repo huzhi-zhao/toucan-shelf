@@ -186,7 +186,7 @@ func TestLoadLocalDocsStripsMarkers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	present, err := listDocFiles(root)
+	present, err := listDocFiles(root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -218,7 +218,7 @@ func TestPdfStubMoveKeepsIdentity(t *testing.T) {
 	if err := writeFile(root, filepath.Join("archive", "Paper.pdf.md"), stub); err != nil {
 		t.Fatal(err)
 	}
-	present, err := listDocFiles(root)
+	present, err := listDocFiles(root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

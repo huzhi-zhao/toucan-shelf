@@ -73,7 +73,7 @@ func TestListDocFilesSkipsAttachmentsAndDotfiles(t *testing.T) {
 	must(filepath.Join(attachmentsDir, "uid", "img.png"), "x") // must be skipped
 	must(".hidden", "x")                                       // must be skipped
 
-	got, err := listDocFiles(root)
+	got, err := listDocFiles(root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func TestConflictSidecarHelpers(t *testing.T) {
 		t.Fatal("sidecar should exist after write")
 	}
 	// The sidecar must be skipped by the document scanner.
-	docs, err := listDocFiles(root)
+	docs, err := listDocFiles(root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

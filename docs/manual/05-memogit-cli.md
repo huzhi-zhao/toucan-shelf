@@ -4,14 +4,16 @@ Everything else in this manual is about working *inside* the app. `memogit` is
 the opposite: a small command-line tool that **checks a knowledge base out to
 local Markdown files**, so you (or an AI agent like Claude Code) can `grep`,
 bulk-edit, and cross-reference documents with ordinary filesystem tools, then
-sync changes back to the server.
+sync changes back to the server. A checkout ships with its own agent manual
+(§5.2a), so those agents learn the file format's rules before they touch
+anything.
 
 It borrows git's vocabulary — `clone`, `pull`, `push`, `status` — but it does
 **not** implement the git network protocol. It is a thin **DB ↔ local file**
 bridge over the existing Memos API; version history is delegated to a real local
 git repo that `memogit` initializes for you.
 
-> **Status:** `login`, `clone`, `pull`, `push`, and `status` are implemented,
+> **Status:** `login`, `clone`, `pull`, `push`, `status`, and `agents` are implemented,
 > with **one-way attachment download** (attachments and PDF bytes are pulled down
 > so tools/LLMs have the full context) and **IDE-mergeable conflict resolution**
 > via `.remote` sidecars (§5.7a). You can pull the knowledge base down, edit
@@ -132,9 +134,27 @@ duplicated. (A `--sparse-checkout` clone maps its content onto the root itself,
 so it gets the root copy only.)
 
 `push` skips files named `AGENTS.md` and `CLAUDE.md` inside the content tree, so
-these entry points are never uploaded as knowledge-base documents. If you
-genuinely want a document titled "AGENTS" on the server, give it another
-filename.
+these entry points are never uploaded as knowledge-base documents — **unless the
+path is already a tracked document**. A knowledge base cloned before these files
+existed may genuinely contain a document titled "AGENTS"; that document keeps
+winning, memogit writes no entry point over it, and push still syncs it
+normally.
+
+### Upgrading a checkout made with an older memogit
+
+Nothing to migrate — install the new binary and run either command in the
+checkout root:
+
+```bash
+memogit pull      # syncs and writes the guide as a side effect
+```
+
+```bash
+memogit agents    # just the guide + entry points, no network
+```
+
+Both are idempotent, and both leave anything you wrote outside the managed
+blocks alone.
 
 In `AGENTS.md` and `CLAUDE.md`, memogit only owns the text between its
 `<!-- BEGIN memogit … -->` / `<!-- END memogit -->` markers. Add your own
@@ -562,3 +582,13 @@ to a workspace in the app first.
 
 **Re-login to change server/token.** Just run `memogit login …` again; it
 overwrites `.memogit/config.yaml`.
+
+**No `AGENTS.md` / `CLAUDE.md` in the checkout.** The checkout predates them, or
+they were deleted. Run `memogit agents` in the checkout root (§5.2a) — it needs
+no network. If one folder stays empty, check the command's output: memogit
+refuses to overwrite a path that is one of your own documents, and says so.
+
+**An agent edited files without following the rules anyway.** The entry points
+carry a short brief and a link; the full guide is only read if the agent follows
+that link. For a large or risky refactor, tell it explicitly to read
+`.memogit/toucanshelf-guide.md` first, and check `memogit status` before pushing.

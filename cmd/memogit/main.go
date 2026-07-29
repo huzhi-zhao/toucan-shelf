@@ -25,8 +25,33 @@ func main() {
 
 func rootCmd() *cobra.Command {
 	root := &cobra.Command{
-		Use:           "memogit",
-		Short:         "Check out and sync a memos knowledge base to local files",
+		Use:   "memogit",
+		Short: "Check out and sync a memos knowledge base to local files",
+		Long: `Check out and sync a memos knowledge base to local files.
+
+memogit borrows git's vocabulary but is not git: it is a DB <-> file bridge over
+the memos API, with a real local git repo for history (snapshots only, no
+remote). One checkout root holds the credentials once and can track several
+knowledge bases, each in its own subfolder:
+
+  my-kb/
+  |- .memogit/          config.yaml (server + token), state/ (sync baseline),
+  |                     toucanshelf-guide.md (the manual for AI agents)
+  |- Default/           one document tree per knowledge base
+  '- Life/
+
+Typical session:
+
+  memogit login --server https://memos.example.com --token memos_pat_...
+  memogit clone "My KB"      # first export + git init + baseline commit
+  memogit pull               # fetch server changes
+  ... edit files ...
+  memogit status             # what is out of sync
+  memogit push               # send local edits back
+
+Files are the only carrier of content; everything else (doc type, visibility,
+hashes) lives in .memogit/state/. The one exception is the identity marker at
+the end of each document -- never delete, edit, or hand-write it.`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -288,8 +313,26 @@ func pushCmd() *cobra.Command {
 func agentsCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "agents",
-		Short: "Write the AI-agent guide (.memogit/" + memogit.GuideFile + ") and AGENTS.md / CLAUDE.md / .cursor rules",
-		Args:  cobra.NoArgs,
+		Short: "Write the guide that teaches AI coding agents this checkout's rules",
+		Long: `Write the guide that teaches AI coding agents this checkout's rules.
+
+A checkout looks like an ordinary Markdown folder but isn't one, so memogit
+drops its own manual into the tree along with the entry points each tool reads
+by itself:
+
+  .memogit/` + memogit.GuideFile + `   the full manual (compiled into this binary)
+  AGENTS.md                       Codex and other AGENTS.md-aware agents
+  CLAUDE.md                       Claude Code
+  .cursor/rules/                  Cursor
+
+The manual is written once, at the root; the three entry points are written at
+the root and inside each knowledge base, since agents are often started in one.
+
+clone and pull already do this. Run it by hand for a checkout made with an older
+memogit, or to restore a file you deleted. Only the text between memogit's
+<!-- BEGIN memogit --> markers is rewritten, so your own notes around it survive.
+A path that is already one of your documents is never overwritten.`,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {

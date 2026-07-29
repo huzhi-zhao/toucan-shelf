@@ -92,13 +92,18 @@ func WriteAgentDocs(root string, cfg *Config, out io.Writer) error {
 	if err := os.WriteFile(guide, []byte(guideDoc), 0o644); err != nil {
 		return fmt.Errorf("write %s: %w", guide, err)
 	}
-	if err := writeEntryPoints(root, ""); err != nil {
+	// A knowledge base cloned before these files existed may already contain a
+	// document named AGENTS.md or CLAUDE.md. Never write over one: the block
+	// would corrupt the user's document and get pushed to the server.
+	taken := trackedEntryPoints(root, cfg, out)
+
+	if err := writeEntryPoints(root, "", taken); err != nil {
 		return err
 	}
 
 	dirs := workspaceDirs(cfg)
 	for _, dir := range dirs {
-		if err := writeEntryPoints(filepath.Join(root, dir), dir); err != nil {
+		if err := writeEntryPoints(filepath.Join(root, dir), dir, taken); err != nil {
 			return err
 		}
 	}
@@ -130,10 +135,51 @@ func workspaceDirs(cfg *Config) []string {
 	return dirs
 }
 
+// trackedPaths indexes the document paths a state records, relative to that
+// workspace's content root, in slash form. Returns nil for a nil state.
+func trackedPaths(state *State) map[string]bool {
+	if state == nil {
+		return nil
+	}
+	paths := make(map[string]bool, len(state.Memos))
+	for _, ms := range state.Memos {
+		paths[filepath.ToSlash(ms.Path)] = true
+	}
+	return paths
+}
+
+// trackedEntryPoints returns the checkout-relative paths where an entry-point
+// file name is taken by a real tracked document, so generation can leave it
+// alone. Unreadable state files are ignored: at clone time none exist yet.
+func trackedEntryPoints(root string, cfg *Config, out io.Writer) map[string]bool {
+	taken := map[string]bool{}
+	if cfg == nil {
+		return taken
+	}
+	for _, ws := range cfg.Workspaces {
+		state, err := LoadState(root, ws.stateName())
+		if err != nil {
+			continue
+		}
+		for path := range trackedPaths(state) {
+			if !isAgentDoc(filepath.Base(path)) {
+				continue
+			}
+			rel := filepath.ToSlash(filepath.Join(ws.Dir, path))
+			taken[rel] = true
+			if out != nil {
+				fmt.Fprintf(out, "  note: %s is one of your documents — agent entry point not written there.\n", rel)
+			}
+		}
+	}
+	return taken
+}
+
 // writeEntryPoints writes the three agent entry points into dir. subdir is the
 // directory's path relative to the checkout root ("" for the root itself); it
-// is used to point the links back up at the single copy of the guide.
-func writeEntryPoints(dir, subdir string) error {
+// is used to point the links back up at the single copy of the guide. Paths in
+// taken belong to real documents and are left untouched.
+func writeEntryPoints(dir, subdir string, taken map[string]bool) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
@@ -143,12 +189,16 @@ func writeEntryPoints(dir, subdir string) error {
 		guideLink = "../" + guideLink
 		brief = fmt.Sprintf(workspaceHeader, subdir) + strings.ReplaceAll(agentBrief, MetaDir+"/"+GuideFile, guideLink)
 	}
-	if err := upsertManagedBlock(filepath.Join(dir, "AGENTS.md"), brief); err != nil {
-		return err
+	if !taken[filepath.ToSlash(filepath.Join(subdir, "AGENTS.md"))] {
+		if err := upsertManagedBlock(filepath.Join(dir, "AGENTS.md"), brief); err != nil {
+			return err
+		}
 	}
 	pointer := fmt.Sprintf(claudePointer, guideLink, guideLink)
-	if err := upsertManagedBlock(filepath.Join(dir, "CLAUDE.md"), pointer); err != nil {
-		return err
+	if !taken[filepath.ToSlash(filepath.Join(subdir, "CLAUDE.md"))] {
+		if err := upsertManagedBlock(filepath.Join(dir, "CLAUDE.md"), pointer); err != nil {
+			return err
+		}
 	}
 	rule := filepath.Join(dir, ".cursor", "rules", "toucanshelf-memogit.mdc")
 	if err := os.MkdirAll(filepath.Dir(rule), 0o755); err != nil {

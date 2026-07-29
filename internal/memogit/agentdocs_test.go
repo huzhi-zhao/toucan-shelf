@@ -109,12 +109,58 @@ func TestListDocFilesSkipsAgentDocs(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	got, err := listDocFiles(dir)
+	got, err := listDocFiles(dir, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(got) != 1 || got[0] != "real-note.md" {
 		t.Errorf("agent entry points must not be pushed as documents, got %v", got)
+	}
+}
+
+// A knowledge base cloned before the entry points existed may already hold a
+// document named AGENTS.md. Generation must not overwrite it, and push must
+// still treat it as the document it is (not archive it as "deleted locally").
+func TestAgentDocsYieldToExistingDocument(t *testing.T) {
+	root := t.TempDir()
+	ws := &WorkspaceConfig{Title: "Default", Dir: "Default"}
+	cfg := &Config{Workspaces: []*WorkspaceConfig{ws}}
+
+	state := NewState("https://example.com")
+	state.Memos["abc123"] = MemoState{Path: "AGENTS.md"}
+	if err := state.Save(root, ws.stateName()); err != nil {
+		t.Fatal(err)
+	}
+	doc := "我自己写的一篇叫 AGENTS 的文档\n"
+	contentRoot := filepath.Join(root, ws.Dir)
+	if err := os.MkdirAll(contentRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(contentRoot, "AGENTS.md"), []byte(doc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := WriteAgentDocs(root, cfg, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := read(t, filepath.Join(contentRoot, "AGENTS.md")); got != doc {
+		t.Errorf("a tracked document was overwritten:\n%s", got)
+	}
+	// CLAUDE.md is free, so the brief still reaches an agent working in here.
+	if got := read(t, filepath.Join(contentRoot, "CLAUDE.md")); !strings.Contains(got, GuideFile) {
+		t.Errorf("CLAUDE.md should still be written:\n%s", got)
+	}
+
+	loaded, err := LoadState(root, ws.stateName())
+	if err != nil {
+		t.Fatal(err)
+	}
+	docs, err := listDocFiles(contentRoot, loaded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(docs) != 1 || docs[0] != "AGENTS.md" {
+		t.Errorf("tracked AGENTS.md must stay a document (else push archives it), got %v", docs)
 	}
 }
 

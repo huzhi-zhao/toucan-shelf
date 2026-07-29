@@ -67,7 +67,7 @@ func Status(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, 
 	// --- Local side: walk the work tree, classify each file. Identity comes from
 	// the same resolution push uses, so a moved file is reported as a move here
 	// and pushed as one. ---
-	present, err := listDocFiles(contentRoot)
+	present, err := listDocFiles(contentRoot, state)
 	if err != nil {
 		return nil, err
 	}

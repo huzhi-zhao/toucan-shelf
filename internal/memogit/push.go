@@ -66,7 +66,7 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 	client := NewClient(cfg)
 	contentRoot := ContentRoot(root, ws)
 
-	present, err := listDocFiles(contentRoot)
+	present, err := listDocFiles(contentRoot, state)
 	if err != nil {
 		return nil, err
 	}
@@ -513,7 +513,14 @@ func warnUnmarked(docs []localDoc, out io.Writer) {
 
 // listDocFiles returns every document file under contentRoot (repo-relative to
 // contentRoot), sorted, skipping the attachments directory and any dotfiles.
-func listDocFiles(contentRoot string) ([]string, error) {
+//
+// state may be nil. When given, it decides the one ambiguous case: a file named
+// AGENTS.md or CLAUDE.md is normally memogit's generated agent entry point and
+// not a document, but a knowledge base cloned before those files existed may
+// genuinely contain a document by that name. A tracked path always wins, so
+// pushing never archives a real document just because it shares the name.
+func listDocFiles(contentRoot string, state *State) ([]string, error) {
+	tracked := trackedPaths(state)
 	var out []string
 	err := filepath.WalkDir(contentRoot, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -528,14 +535,18 @@ func listDocFiles(contentRoot string) ([]string, error) {
 			}
 			return nil
 		}
-		if strings.HasPrefix(d.Name(), ".") || isConflictSidecar(d.Name()) || isAgentDoc(d.Name()) {
-			// Dotfiles, conflict sidecars and memogit's own agent entry points
-			// live in the tree but are not knowledge-base documents.
-			return nil
+		if strings.HasPrefix(d.Name(), ".") || isConflictSidecar(d.Name()) {
+			return nil // dotfiles and conflict sidecars are not documents
 		}
 		rel, err := filepath.Rel(contentRoot, p)
 		if err != nil {
 			return err
+		}
+		// memogit's own agent entry points live in the tree but are not
+		// knowledge-base documents — unless one is a document already tracked
+		// from before they existed.
+		if isAgentDoc(d.Name()) && !tracked[filepath.ToSlash(rel)] {
+			return nil
 		}
 		out = append(out, rel)
 		return nil
