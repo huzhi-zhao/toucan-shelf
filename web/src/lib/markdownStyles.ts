@@ -41,7 +41,7 @@ const headingClasses: Record<HeadingLevel, string> = {
  */
 export const markdownStyles = {
   paragraph: "my-0 mb-2 leading-6",
-  blockquote: "my-0 mb-2 border-l-4 border-primary/30 pl-3 text-muted-foreground italic",
+  blockquote: "my-0 mb-2 border-l-4 border-primary/30 pl-3 not-italic font-medium text-foreground/85",
   bulletList: "my-0 mb-2 list-outside pl-6 list-disc",
   orderedList: "my-0 mb-2 list-outside pl-6 list-decimal",
   listItem: "mt-0.5 leading-6",

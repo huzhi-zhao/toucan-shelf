@@ -34,12 +34,12 @@ function NoteCard({ rawType, title, className, children }: SpecialCalloutProps) 
   );
 }
 
-/** quote / cite: a plain oversized italic quote, no icon or label. */
+/** quote / cite: a plain oversized quote, no icon or label. */
 function QuoteBox({ className, children }: SpecialCalloutProps) {
   return (
     <blockquote
       className={cn(
-        "my-3 rounded-2xl border-l-4 border-l-indigo-500 bg-indigo-500/5 px-6 py-5 text-lg italic leading-relaxed text-foreground",
+        "my-3 rounded-2xl border-l-4 border-l-indigo-500 bg-indigo-500/5 px-6 py-5 text-lg font-medium not-italic leading-relaxed text-foreground",
         className,
       )}
     >

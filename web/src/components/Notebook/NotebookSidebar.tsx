@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 import { CalendarIcon, FilePlusIcon, FolderPlusIcon, LayoutGridIcon, SearchIcon, TagsIcon, UploadIcon, XIcon } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { calculateMaxCount, MonthCalendar } from "@/components/ActivityCalendar";
 import { MonthNavigator } from "@/components/StatisticsView/MonthNavigator";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import type { Workspace, WorkspaceTreeNode } from "@/types/proto/api/v1/workspac
 import { WorkspaceTreeNode_NodeType } from "@/types/proto/api/v1/workspace_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import FileTreeNode from "./FileTreeNode";
+import { buildFreshnessMap } from "./notebookFreshness";
 import { normalizeSortField, normalizeSortOrder, sortTree } from "./notebookSort";
 import WorkspaceSelector from "./WorkspaceSelector";
 
@@ -166,6 +167,17 @@ const NotebookSidebar = ({
     return sortTree(nodes, sortField, sortOrder, foldersFirst);
   }, [tree, query, dateFilter, sortField, sortOrder, foldersFirst, restrictToMemos]);
 
+  // Recency tints are relative to "now", so the clock has to advance on its own for a long-open
+  // sidebar; five minutes is fine given the coarsest boundary is an hour.
+  const [nowSeconds, setNowSeconds] = useState(() => Math.floor(Date.now() / 1000));
+  useEffect(() => {
+    const timer = setInterval(() => setNowSeconds(Math.floor(Date.now() / 1000)), 5 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // The archived view is a graveyard — "recently changed" means nothing there.
+  const freshness = useMemo(() => (archived ? undefined : buildFreshnessMap(tree, nowSeconds)), [tree, nowSeconds, archived]);
+
   const clearSearch = () => {
     setQuery("");
     onSearch?.("");
@@ -277,6 +289,7 @@ const NotebookSidebar = ({
               node={node}
               depth={0}
               selectedMemo={selectedMemo}
+              freshness={freshness}
               onSelectDocument={onSelectDocument}
               onOpenDocumentInNewTab={onOpenDocumentInNewTab}
               onRenameFolder={onRenameFolder}

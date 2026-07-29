@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import {
   ChevronRightIcon,
   CodeIcon,
@@ -16,11 +17,15 @@ import { cn } from "@/lib/utils";
 import type { WorkspaceTreeNode } from "@/types/proto/api/v1/workspace_service_pb";
 import { WorkspaceTreeNode_NodeType } from "@/types/proto/api/v1/workspace_service_pb";
 import { useTranslate } from "@/utils/i18n";
+import type { FreshnessMap } from "./notebookFreshness";
+import { freshnessClass, freshnessKey } from "./notebookFreshness";
 
 interface Props {
   node: WorkspaceTreeNode;
   depth: number;
   selectedMemo?: string;
+  // Recency tints keyed by node; absent when the workspace has nothing recent to highlight.
+  freshness?: FreshnessMap;
   onSelectDocument: (memoName: string) => void;
   onOpenDocumentInNewTab?: (memoName: string) => void;
   onRenameFolder: (path: string) => void;
@@ -44,6 +49,7 @@ const FileTreeNode = ({
   node,
   depth,
   selectedMemo,
+  freshness,
   onSelectDocument,
   onOpenDocumentInNewTab,
   onRenameFolder,
@@ -73,6 +79,13 @@ const FileTreeNode = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const isSelected = !isFolder && node.memo === selectedMemo;
+  // The selected row already stands out through its background, so let it keep the accent
+  // foreground rather than fighting the tint.
+  const freshClass = isSelected ? undefined : freshnessClass(freshness?.get(freshnessKey(node)));
+  const updatedTitle =
+    !isFolder && freshness?.has(freshnessKey(node)) && node.updateTime
+      ? dayjs(Number(node.updateTime.seconds) * 1000).format("YYYY-MM-DD HH:mm")
+      : undefined;
 
   return (
     <div className="w-full">
@@ -104,7 +117,9 @@ const FileTreeNode = ({
         ) : (
           <FileTextIcon className="w-4 h-4 shrink-0 text-muted-foreground" />
         )}
-        <span className="truncate flex-1">{node.name}</span>
+        <span className={cn("truncate flex-1", freshClass)} title={updatedTitle}>
+          {node.name}
+        </span>
         {!isFolder && onOpenDocumentInNewTab && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -186,6 +201,7 @@ const FileTreeNode = ({
               node={child}
               depth={depth + 1}
               selectedMemo={selectedMemo}
+              freshness={freshness}
               onSelectDocument={onSelectDocument}
               onOpenDocumentInNewTab={onOpenDocumentInNewTab}
               onRenameFolder={onRenameFolder}
