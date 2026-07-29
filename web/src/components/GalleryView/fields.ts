@@ -1,6 +1,6 @@
-import type { Memo } from "@/types/proto/api/v1/memo_service_pb";
-import { type MemoProperty, parseFrontmatter } from "@/utils/frontmatter";
-import type { GalleryCardField, GalleryGroup, GalleryRule, GalleryScope } from "./types";
+import { type Memo, Memo_DocType } from "@/types/proto/api/v1/memo_service_pb";
+import { BUILTIN_DOC_PROPERTIES, type MemoProperty, parseFrontmatter } from "@/utils/frontmatter";
+import type { GalleryBlock, GalleryCardField, GalleryGroup, GalleryRule, GalleryScope } from "./types";
 
 // Builds a key -> property lookup from a document's frontmatter. Keys are
 // compared case-sensitively, matching how the properties panel displays them.
@@ -77,4 +77,81 @@ export function fieldValue(memo: Memo, props: Map<string, MemoProperty>, field: 
     return prop ? propertyValueToString(prop) : "";
   }
   return "";
+}
+
+/** How many properties a coverless (text-only) card lists under its title. */
+export const TEXT_CARD_PROPERTY_LIMIT = 3;
+/** How many body lines a coverless card previews when the document has no listable property. */
+export const TEXT_CARD_PREVIEW_LINES = 3;
+
+// Properties that carry configuration rather than content, so they'd be noise on a card.
+const HIDDEN_CARD_PROPERTY_KEYS = new Set<string>([...BUILTIN_DOC_PROPERTIES, "cover"]);
+
+// The frontmatter key a `prop:<key>` token refers to, if it is one.
+const propFieldKey = (field: string): string | undefined => (field.startsWith("prop:") ? field.slice(5).trim() : undefined);
+
+/**
+ * The leading frontmatter properties a coverless card shows beneath its title:
+ * document order, skipping empties, configuration keys, and anything already
+ * displayed as the card's own primary/secondary/cover field.
+ */
+export function textCardProperties(props: Map<string, MemoProperty>, block: GalleryBlock): { key: string; value: string }[] {
+  const shown = new Set(
+    [propFieldKey(block.cardFields.primary), propFieldKey(block.cardFields.secondary), propFieldKey(block.cover)].filter(
+      (key): key is string => Boolean(key),
+    ),
+  );
+  const rows: { key: string; value: string }[] = [];
+  for (const [key, prop] of props) {
+    if (HIDDEN_CARD_PROPERTY_KEYS.has(key) || shown.has(key)) continue;
+    const value = propertyValueToString(prop);
+    if (!value) continue;
+    rows.push({ key, value });
+    if (rows.length >= TEXT_CARD_PROPERTY_LIMIT) break;
+  }
+  return rows;
+}
+
+// Reduces one markdown line to its plain text, dropping the lines that carry no
+// prose at all (rules, table rows, bare images).
+const plainTextLine = (line: string): string => {
+  if (/^([-*_]\s*){3,}$/.test(line)) return "";
+  if (line.startsWith("|")) return "";
+  const unprefixed = line
+    .replace(/^#{1,6}\s+/, "")
+    .replace(/^>\s?/, "")
+    .replace(/^(?:[-*+]|\d+[.)])\s+/, "")
+    .replace(/^\[[ xX]\]\s*/, "");
+  return unprefixed
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/`([^`]*)`/g, "$1")
+    .replace(/[*_~]{1,3}/g, "")
+    .replace(/<[^>]+>/g, "")
+    .trim();
+};
+
+/**
+ * The document's first few lines of prose, used as a coverless card's filler
+ * when the document has no properties to list. Frontmatter, fenced code and
+ * non-prose lines are skipped; only markdown documents have a readable body.
+ */
+export function contentPreviewLines(memo: Memo, limit: number = TEXT_CARD_PREVIEW_LINES): string[] {
+  if (memo.docType !== Memo_DocType.MARKDOWN) return [];
+  const { body } = parseFrontmatter(memo.content);
+  const lines: string[] = [];
+  let inFence = false;
+  for (const raw of body.split("\n")) {
+    const line = raw.trim();
+    if (line.startsWith("```")) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
+    const text = plainTextLine(line);
+    if (!text) continue;
+    lines.push(text);
+    if (lines.length >= limit) break;
+  }
+  return lines;
 }

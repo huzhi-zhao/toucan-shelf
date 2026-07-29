@@ -12,7 +12,7 @@ import { getAttachmentThumbnailUrl, isImage } from "@/utils/attachment";
 import { type MemoProperty, parseFrontmatter } from "@/utils/frontmatter";
 import { useTranslate } from "@/utils/i18n";
 import CalendarLayout from "./CalendarLayout";
-import { fieldValue, matchesScope, propertyMap, propertyValueToString } from "./fields";
+import { contentPreviewLines, fieldValue, matchesScope, propertyMap, propertyValueToString, textCardProperties } from "./fields";
 import {
   type GalleryBadgeRule,
   type GalleryBlock,
@@ -174,6 +174,57 @@ const GalleryCardBadge = ({ badge }: { badge: GalleryBadgeRule }) => {
   );
 };
 
+/**
+ * The card body used when the block's cover rule is `none`: no image well at
+ * all, but a text-first layout — a large title and subtitle, followed by the
+ * document's first few properties. A document with no listable property falls
+ * back to the opening lines of its text, so the card is never left half-empty.
+ */
+const TextCardBody = ({
+  doc,
+  props,
+  block,
+  primary,
+  secondary,
+}: {
+  doc: Memo;
+  props: Map<string, MemoProperty>;
+  block: GalleryBlock;
+  primary: string;
+  secondary: string;
+}) => {
+  const rows = textCardProperties(props, block);
+  const preview = rows.length === 0 ? contentPreviewLines(doc) : [];
+  return (
+    <div className="flex flex-col gap-2 px-4 py-4">
+      <div className="flex flex-col gap-1">
+        <div className="text-lg font-semibold leading-snug line-clamp-2">{primary}</div>
+        {secondary && <div className="text-sm text-muted-foreground line-clamp-1">{secondary}</div>}
+      </div>
+      {rows.length > 0 ? (
+        <div className="flex flex-col gap-1">
+          {rows.map((row) => (
+            <div key={row.key} className="flex items-baseline gap-2 text-xs min-w-0">
+              <span className="shrink-0 max-w-[40%] truncate text-muted-foreground">{row.key}</span>
+              <span className="truncate text-foreground/80">{row.value}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        preview.length > 0 && (
+          <div className="flex flex-col gap-0.5">
+            {preview.map((line, i) => (
+              <div key={i} className="text-xs leading-relaxed text-muted-foreground truncate">
+                {line}
+              </div>
+            ))}
+          </div>
+        )
+      )}
+    </div>
+  );
+};
+
 // Renders a markdown block that references a knowledge-base document: the
 // referenced document's own content, read-only (it is edited in that document),
 // with a header that opens it.
@@ -287,28 +338,42 @@ const GalleryBlockView = ({ block, memo, openDoc }: BlockProps) => {
             const primary = fieldValue(doc, props, block.cardFields.primary) || doc.title || doc.name;
             const secondary = fieldValue(doc, props, block.cardFields.secondary);
             const badge = matchGalleryBadge(block.badges, props);
+            // With covers off the card is pure text, so it needs no image well — but the
+            // badge that used to sit over the cover now sits over the title, so the text
+            // is inset away from whichever corner that badge occupies.
+            const textOnly = block.cover === "none";
+            const badgeInset =
+              badge?.kind === "ribbon" ? "pl-9" : badge?.kind === "tag" ? "pt-7" : badge?.kind === "corner" ? "pr-16" : undefined;
             return (
               <button
                 key={doc.name}
                 type="button"
                 className={cn(
                   "relative flex flex-col rounded-lg border border-border overflow-hidden text-left bg-card hover:shadow-md hover:border-accent transition-all",
+                  textOnly && "justify-start min-h-[9rem]",
+                  textOnly && badgeInset,
                   badge?.kind === "tag" && "opacity-60 grayscale",
                 )}
                 onClick={() => openDoc(doc.name, doc)}
               >
                 {badge && <GalleryCardBadge badge={badge} />}
-                <div className="w-full aspect-[2/1] bg-muted flex items-center justify-center overflow-hidden">
-                  {cover ? (
-                    <img src={cover} alt="" loading="lazy" className="w-full h-full object-cover" />
-                  ) : (
-                    <LayoutGridIcon className="w-8 h-8 text-muted-foreground/40" />
-                  )}
-                </div>
-                <div className="flex flex-col gap-0.5 px-3 py-2">
-                  <div className="text-sm font-medium truncate">{primary}</div>
-                  {secondary && <div className="text-xs text-muted-foreground truncate">{secondary}</div>}
-                </div>
+                {textOnly ? (
+                  <TextCardBody doc={doc} props={props} block={block} primary={primary} secondary={secondary} />
+                ) : (
+                  <>
+                    <div className="w-full aspect-[2/1] bg-muted flex items-center justify-center overflow-hidden">
+                      {cover ? (
+                        <img src={cover} alt="" loading="lazy" className="w-full h-full object-cover" />
+                      ) : (
+                        <LayoutGridIcon className="w-8 h-8 text-muted-foreground/40" />
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-0.5 px-3 py-2">
+                      <div className="text-sm font-medium truncate">{primary}</div>
+                      {secondary && <div className="text-xs text-muted-foreground truncate">{secondary}</div>}
+                    </div>
+                  </>
+                )}
               </button>
             );
           })}

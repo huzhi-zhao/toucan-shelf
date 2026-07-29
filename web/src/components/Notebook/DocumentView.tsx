@@ -832,7 +832,10 @@ const DocumentView = ({
               // markdown blocks are ordinary prose and get the same marking; its card walls are
               // live query results and are excluded from anchoring by the renderer.
               <div ref={markContainerRef} className="relative px-6 py-4">
-                <GalleryViewRenderer memo={memo} onOpenDoc={onOpenDocument} readonly={false} />
+                {/* Only the memo name crosses over: the gallery's second argument is the matched
+                    document, while callers of onOpenDocument take an anchor href there — passing
+                    the callback straight through made every card click throw. */}
+                <GalleryViewRenderer memo={memo} onOpenDoc={(memoName) => onOpenDocument?.(memoName)} readonly={false} />
                 {remainingAttachments.length > 0 && (
                   <div id={ATTACHMENTS_ANCHOR_ID} className="mt-6 border-t border-border pt-4">
                     <AttachmentListView attachments={remainingAttachments} />
