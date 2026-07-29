@@ -279,6 +279,16 @@ const Notebook = () => {
     window.open(`${window.location.origin}${path}`, "_blank", "noopener,noreferrer");
   }, [workspaceName, selectedMemo, workspaces]);
 
+  const handleOpenDocumentInNewTab = useCallback(
+    (memoName: string) => {
+      if (!workspaceName) return;
+      const title = workspaces.find((w) => w.name === workspaceName)?.title ?? workspaceName;
+      const path = `/${encodeURIComponent(title)}/${encodeURIComponent(memoUid(memoName))}`;
+      window.open(`${window.location.origin}${path}`, "_blank", "noopener,noreferrer");
+    },
+    [workspaceName, workspaces],
+  );
+
   const invalidateTree = useCallback(() => {
     if (workspaceName) {
       queryClient.invalidateQueries({
@@ -538,6 +548,7 @@ const Notebook = () => {
             tree={tree}
             selectedMemo={selectedMemo}
             onSelectDocument={handleSelectDocument}
+            onOpenDocumentInNewTab={handleOpenDocumentInNewTab}
             onOpenInNewTab={handleOpenInNewTab}
             archived={archived}
             onArchivedChange={setArchived}

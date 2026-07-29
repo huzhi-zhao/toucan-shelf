@@ -35,6 +35,11 @@ interface Props {
   /** Hides the frontmatter properties panel. The Home page has no document header to attach it to. */
   hideProperties?: boolean;
   /**
+   * Enables in-place editing of the properties panel. Called with the property key and its new
+   * value; the caller writes it back into the view document's frontmatter.
+   */
+  onPropertyChange?: (key: string, value: MemoProperty["value"]) => void;
+  /**
    * How a card click opens the target document. Defaults to navigating to the
    * memo detail page. The matched document is passed along when the click came
    * from a card, so a caller spanning knowledge bases can route by its workspace.
@@ -386,7 +391,7 @@ const GalleryBlockView = ({ block, memo, openDoc }: BlockProps) => {
 // Renders a VIEW document: each configured block top-to-bottom. No dividers are
 // inserted between blocks — a markdown block can write its own `---` where one
 // is actually wanted.
-const GalleryViewRenderer = ({ memo, blocks, hideProperties, onOpenDoc, readonly = true, className }: Props) => {
+const GalleryViewRenderer = ({ memo, blocks, hideProperties, onPropertyChange, onOpenDoc, readonly = true, className }: Props) => {
   const t = useTranslate();
   const navigate = useNavigate();
   const config = parseGalleryViewConfig(memo.content);
@@ -404,7 +409,7 @@ const GalleryViewRenderer = ({ memo, blocks, hideProperties, onOpenDoc, readonly
       {/* Frontmatter properties are metadata, not prose — excluded from anchoring like card walls. */}
       {!hideProperties && (
         <div {...{ [MARK_EXCLUDE_ATTR]: "" }}>
-          <PropertiesPanel properties={properties} />
+          <PropertiesPanel properties={properties} onChange={onPropertyChange} />
         </div>
       )}
       {viewBlocks.map((block, index) => (

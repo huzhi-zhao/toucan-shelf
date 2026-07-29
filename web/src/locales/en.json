@@ -467,6 +467,12 @@
       "private": "Private",
       "protected": "Protected",
       "public": "Public"
+    },
+    "properties": {
+      "edit": "Edit properties",
+      "done": "Done",
+      "add-item": "Add item",
+      "clear": "Clear"
     }
   },
   "message": {

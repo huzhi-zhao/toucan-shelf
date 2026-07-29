@@ -18,13 +18,28 @@
 // intentionally flat, so this both keeps us dependency-free and makes rejecting
 // non-compliant (nested) values fall out naturally.
 
-export type PropertyType = "text" | "list" | "number" | "checkbox" | "date" | "datetime";
+export type PropertyType = "text" | "list" | "number" | "checkbox" | "date" | "datetime" | "select";
 
 export interface MemoProperty {
   key: string;
   type: PropertyType;
-  /** Normalised value: string for text/date/datetime, number, boolean, or string[] for lists. null = empty. */
+  /** Normalised value: string for text/date/datetime/select, number, boolean, or string[] for lists. null = empty. */
   value: string | number | boolean | string[] | null;
+}
+
+// Single-select ("one of a fixed set") is deliberately *not* inferred from the document: there is
+// no syntax that distinguishes `status: done` from any other text. Instead a small set of reserved
+// keys carries a system-defined option list, and a value from that list classifies as `select`.
+// A reserved key holding anything else stays text, so authors are never locked out of their own
+// wording — it simply doesn't get the chip/dropdown treatment.
+export const SELECT_PROPERTY_OPTIONS: Record<string, readonly string[]> = {
+  status: ["created", "in-process", "done"],
+  priority: ["p0", "p1", "p2", "p3"],
+};
+
+/** The option list for a reserved single-select key, or undefined for any other key. */
+export function selectOptionsFor(key: string): readonly string[] | undefined {
+  return Object.hasOwn(SELECT_PROPERTY_OPTIONS, key) ? SELECT_PROPERTY_OPTIONS[key] : undefined;
 }
 
 export interface ParsedContent {
@@ -75,6 +90,12 @@ function classifyScalar(key: string, raw: string): MemoProperty {
   // Quoted values are always text, regardless of what they look like inside.
   const quoted = raw[0] === '"' || raw[0] === "'";
   const value = unquote(raw);
+
+  // A reserved key holding one of its built-in options. Quoting is incidental here — the value
+  // is an identifier from a closed set either way.
+  if (selectOptionsFor(key)?.includes(value)) {
+    return { key, type: "select", value };
+  }
 
   if (!quoted) {
     if (raw === "true" || raw === "false") {
@@ -167,7 +188,9 @@ export function parseFrontmatter(content: string): ParsedContent {
     // Empty inline value: the type is decided by the child block.
     if (children.length === 0) {
       seen.add(key);
-      properties.push({ key, type: "text", value: null });
+      // An empty reserved key is still a select — that's how an unset `status:` offers its
+      // dropdown rather than a text box.
+      properties.push({ key, type: selectOptionsFor(key) ? "select" : "text", value: null });
       continue;
     }
 
@@ -195,6 +218,83 @@ export function parseFrontmatter(content: string): ParsedContent {
   }
 
   return { properties, body };
+}
+
+// --- Writing back -----------------------------------------------------------------------
+//
+// The properties panel edits values in place, so only the one line being changed is rewritten:
+// everything else in the block (comments, blank lines, keys we don't understand, key order)
+// survives untouched.
+
+const doubleQuote = (raw: string): string => `"${raw.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n")}"`;
+
+// Whether a string has to be quoted to survive a round trip: either YAML itself would mis-read it
+// (leading indicator character, a `key: value` lookalike, surrounding whitespace) or our own
+// classifier would hand it back as a different type than the one being written.
+function needsQuoting(raw: string): boolean {
+  if (raw === "") return true;
+  if (raw !== raw.trim()) return true;
+  if (/^[[\]{}#&*!|>'"%@`,-]/.test(raw)) return true;
+  if (/:(\s|$)/.test(raw)) return true;
+  if (raw === "true" || raw === "false" || raw === "null" || raw === "~") return true;
+  return NUMBER_RE.test(raw) || DATE_RE.test(raw) || DATETIME_RE.test(raw);
+}
+
+const serializeScalar = (raw: string): string => (needsQuoting(raw) ? doubleQuote(raw) : raw);
+
+// Flow-list items live inside `[...]`, so a comma or bracket in the item itself must be quoted
+// on top of the usual scalar rules.
+const serializeListItem = (raw: string): string => (/[,[\]]/.test(raw) ? doubleQuote(raw) : serializeScalar(raw));
+
+/**
+ * Renders a property value as the YAML text that follows `key:`. Returns "" for an empty value,
+ * which the caller writes as a bare `key:` line.
+ */
+export function serializePropertyValue(value: MemoProperty["value"]): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "number") return Number.isFinite(value) ? String(value) : "";
+  if (Array.isArray(value)) return `[${value.map(serializeListItem).join(", ")}]`;
+  return value === "" ? "" : serializeScalar(value);
+}
+
+/**
+ * Returns `content` with the frontmatter property `key` set to `value`, adding the key at the end
+ * of the block when it isn't there yet. Content without a frontmatter block is returned unchanged
+ * — the panel only ever edits properties a document already declares.
+ */
+export function setFrontmatterProperty(content: string, key: string, value: MemoProperty["value"]): string {
+  const normalised = content.replace(/\r\n/g, "\n");
+  const match = FRONTMATTER_RE.exec(normalised);
+  if (!match) return content;
+
+  const inner = match[1] ?? "";
+  const body = match[2] ?? "";
+  const lines = inner === "" ? [] : inner.split("\n");
+  const serialized = serializePropertyValue(value);
+  const newLine = serialized === "" ? `${key}:` : `${key}: ${serialized}`;
+
+  const out: string[] = [];
+  let replaced = false;
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const keyMatch = /^[ \t]/.test(line) ? null : KEY_LINE_RE.exec(line);
+    if (!replaced && keyMatch && keyMatch[1].trim() === key) {
+      out.push(newLine);
+      replaced = true;
+      i++;
+      // Drop whatever block was indented under the old key (e.g. a `- item` list), since the
+      // replacement carries the whole value inline.
+      while (i < lines.length && /^[ \t]/.test(lines[i])) i++;
+      continue;
+    }
+    out.push(line);
+    i++;
+  }
+  if (!replaced) out.push(newLine);
+
+  return `---\n${out.join("\n")}\n---\n${body}`;
 }
 
 // Built-in document property keys the app gives special meaning to (beyond being displayed

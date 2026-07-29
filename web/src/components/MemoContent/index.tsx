@@ -78,6 +78,7 @@ const MemoContent = (props: MemoContentProps) => {
             memoName={props.memoName}
             compact={Boolean(props.compact)}
             headingIdPrefix={props.headingIdPrefix}
+            onPropertyChange={props.onPropertyChange}
           />
         )}
         {showCompactMode === "ALL" && (

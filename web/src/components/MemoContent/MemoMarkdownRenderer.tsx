@@ -19,7 +19,7 @@ import {
   isTagElement,
   isTaskListItemElement,
 } from "@/types/markdown";
-import { parseFrontmatter } from "@/utils/frontmatter";
+import { type MemoProperty, parseFrontmatter } from "@/utils/frontmatter";
 import { rehypeHeadingId } from "@/utils/rehype-plugins/rehype-heading-id";
 import { remarkAlert } from "@/utils/remark-plugins/remark-alert";
 import { remarkCounter } from "@/utils/remark-plugins/remark-counter";
@@ -51,6 +51,8 @@ interface MemoMarkdownRendererProps {
   compact?: boolean;
   /** Prefix for heading ids, to keep them unique across multi-snippet documents (e.g. gallery View blocks). */
   headingIdPrefix?: string;
+  /** When set, the properties panel becomes editable and reports value changes through this callback. */
+  onPropertyChange?: (key: string, value: MemoProperty["value"]) => void;
 }
 
 function getMentionUsername(node: Element, children?: React.ReactNode): string {
@@ -78,6 +80,7 @@ export const MemoMarkdownRenderer = ({
   memoName,
   compact,
   headingIdPrefix,
+  onPropertyChange,
 }: MemoMarkdownRendererProps) => {
   // Split off any leading Obsidian-style frontmatter: compliant properties render
   // as a read-only panel above the body, and the raw `---` block never reaches
@@ -205,7 +208,7 @@ export const MemoMarkdownRenderer = ({
 
   return (
     <MarkdownRenderContext.Provider value={rootMarkdownRenderContext}>
-      <PropertiesPanel properties={properties} />
+      <PropertiesPanel properties={properties} onChange={onPropertyChange} />
       <ReactMarkdown
         remarkPlugins={[
           remarkDisableSetext,

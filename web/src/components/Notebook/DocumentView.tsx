@@ -57,7 +57,7 @@ import { cn } from "@/lib/utils";
 import { State } from "@/types/proto/api/v1/common_pb";
 import { type DocAnchor, type Memo, Memo_DocType, type MemoHistory, MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
 import { getAttachmentUrl, partitionInlinedAttachments } from "@/utils/attachment";
-import { parseFrontmatter } from "@/utils/frontmatter";
+import { type MemoProperty, parseFrontmatter, setFrontmatterProperty } from "@/utils/frontmatter";
 import { useTranslate } from "@/utils/i18n";
 import { DEFAULT_MARK_COLOR } from "@/utils/markColors";
 import { attachmentUIDsOf, hashMemoState } from "@/utils/memoState";
@@ -277,6 +277,17 @@ const DocumentView = ({
   }, [isDesktop]);
 
   const isArchived = memo.state === State.ARCHIVED;
+
+  // Editing a header property from the preview: only the one frontmatter line changes, and the
+  // document is saved through the same path the raw editor uses. Offered for markdown and VIEW
+  // documents (the two doc types that carry frontmatter), and never on an archived one.
+  const handlePropertyChange = useCallback(
+    (key: string, value: MemoProperty["value"]) => {
+      onSaveHtml(setFrontmatterProperty(memo.content, key, value));
+    },
+    [memo.content, onSaveHtml],
+  );
+  const propertyChangeHandler = !isHtml && !isPdf && !isArchived && mode === "preview" ? handlePropertyChange : undefined;
 
   const handleCopyLink = () => {
     const host = profile.instanceUrl || window.location.origin;
@@ -835,7 +846,12 @@ const DocumentView = ({
                 {/* Only the memo name crosses over: the gallery's second argument is the matched
                     document, while callers of onOpenDocument take an anchor href there — passing
                     the callback straight through made every card click throw. */}
-                <GalleryViewRenderer memo={memo} onOpenDoc={(memoName) => onOpenDocument?.(memoName)} readonly={false} />
+                <GalleryViewRenderer
+                  memo={memo}
+                  onOpenDoc={(memoName) => onOpenDocument?.(memoName)}
+                  onPropertyChange={propertyChangeHandler}
+                  readonly={false}
+                />
                 {remainingAttachments.length > 0 && (
                   <div id={ATTACHMENTS_ANCHOR_ID} className="mt-6 border-t border-border pt-4">
                     <AttachmentListView attachments={remainingAttachments} />
@@ -866,7 +882,7 @@ const DocumentView = ({
             // rendered document and scroll with it.
             <div ref={markContainerRef} className="relative px-6 py-4">
               <MemoViewContext.Provider value={buildPreviewContext(memo)}>
-                <MemoContent content={memo.content} memoName={memo.name} />
+                <MemoContent content={memo.content} memoName={memo.name} onPropertyChange={propertyChangeHandler} />
               </MemoViewContext.Provider>
               {remainingAttachments.length > 0 && (
                 <div id={ATTACHMENTS_ANCHOR_ID} className="mt-6 border-t border-border pt-4">

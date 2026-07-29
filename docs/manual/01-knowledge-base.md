@@ -96,7 +96,7 @@ View documents have no outline and no toggle.
 ### Document properties (frontmatter)
 
 A Markdown document may open with a YAML **frontmatter** block — a `---` fenced
-section at the very top — whose keys render as a read-only properties panel above
+section at the very top — whose keys render as a properties panel above
 the body (`web/src/components/MemoContent/PropertiesPanel.tsx`). Most keys are
 free-form and shown as-is, but a few are **built-in** and change how the document
 behaves (`web/src/utils/frontmatter.ts`, `BUILTIN_DOC_PROPERTIES`):
@@ -118,6 +118,30 @@ This document opens without the folder tree beside it.
 
 Booleans accept a real YAML boolean (`displayFilter: false`) or the string forms
 `"true"` / `"false"`. An absent key means "unset" — the default behavior applies.
+
+#### Reserved single-select keys
+
+Two keys are **reserved** for single-select values drawn from a system-defined
+option list (`web/src/utils/frontmatter.ts`, `SELECT_PROPERTY_OPTIONS`):
+
+| Property   | Options                        |
+| ---------- | ------------------------------ |
+| `status`   | `created`, `in-process`, `done` |
+| `priority` | `p0`, `p1`, `p2`, `p3`          |
+
+A reserved key holding one of its options renders as a coloured chip and edits
+through a dropdown. Holding anything else it stays ordinary text — your own
+wording is never rejected, it just doesn't get the chip.
+
+#### Editing properties from the preview
+
+Markdown and View documents show an **edit toggle** at the end of the property
+rows in the Notebook preview. Switching it on replaces each value with a control
+matched to its type — dropdown for the reserved selects, switch for booleans, date
+picker for dates, tag box for lists, text field for everything else (numbers and
+off-list select values included). Each change rewrites only that one frontmatter
+line and saves the document; the rest of the block (key order, comments, keys the
+parser doesn't understand) is left untouched. Archived documents are read-only.
 
 ---
 

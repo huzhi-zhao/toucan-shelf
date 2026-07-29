@@ -22,6 +22,7 @@ interface Props {
   tree: WorkspaceTreeNode[];
   selectedMemo?: string;
   onSelectDocument: (memoName: string) => void;
+  onOpenDocumentInNewTab?: (memoName: string) => void;
   archived: boolean;
   onArchivedChange: (archived: boolean) => void;
   onNewDocument: (folderPath: string) => void;
@@ -111,6 +112,7 @@ const NotebookSidebar = ({
   tree,
   selectedMemo,
   onSelectDocument,
+  onOpenDocumentInNewTab,
   archived,
   onArchivedChange,
   onNewDocument,
@@ -276,6 +278,7 @@ const NotebookSidebar = ({
               depth={0}
               selectedMemo={selectedMemo}
               onSelectDocument={onSelectDocument}
+              onOpenDocumentInNewTab={onOpenDocumentInNewTab}
               onRenameFolder={onRenameFolder}
               onMoveFolder={onMoveFolder}
               onDeleteFolder={onDeleteFolder}

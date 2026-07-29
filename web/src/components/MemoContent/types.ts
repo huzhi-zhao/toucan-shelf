@@ -1,5 +1,8 @@
 import type React from "react";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
+import type { MemoProperty } from "@/utils/frontmatter";
+
+type MemoPropertyValue = MemoProperty["value"];
 
 export interface MemoContentProps {
   content: string;
@@ -28,6 +31,11 @@ export interface MemoContentProps {
   contentClassName?: string;
   /** Prefix for rendered heading ids, to keep them unique across multi-snippet documents (e.g. gallery View blocks). */
   headingIdPrefix?: string;
+  /**
+   * Enables editing the frontmatter properties panel in place (markdown documents only). Called
+   * with the property key and its new value; the caller writes it back into the document.
+   */
+  onPropertyChange?: (key: string, value: MemoPropertyValue) => void;
   onClick?: (e: React.MouseEvent) => void;
   onDoubleClick?: (e: React.MouseEvent) => void;
 }

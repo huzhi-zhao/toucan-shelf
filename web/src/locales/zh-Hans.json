@@ -392,6 +392,12 @@
       "title": "任务",
       "uncheck-all": "全部取消完成",
       "updated": "任务已更新"
+    },
+    "properties": {
+      "edit": "编辑属性",
+      "done": "完成",
+      "add-item": "添加项",
+      "clear": "清空"
     }
   },
   "message": {

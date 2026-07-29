@@ -1,6 +1,7 @@
 import {
   ChevronRightIcon,
   CodeIcon,
+  ExternalLinkIcon,
   FileIcon,
   FileTextIcon,
   FolderIcon,
@@ -21,6 +22,7 @@ interface Props {
   depth: number;
   selectedMemo?: string;
   onSelectDocument: (memoName: string) => void;
+  onOpenDocumentInNewTab?: (memoName: string) => void;
   onRenameFolder: (path: string) => void;
   onMoveFolder: (path: string) => void;
   onDeleteFolder: (path: string) => void;
@@ -43,6 +45,7 @@ const FileTreeNode = ({
   depth,
   selectedMemo,
   onSelectDocument,
+  onOpenDocumentInNewTab,
   onRenameFolder,
   onMoveFolder,
   onDeleteFolder,
@@ -102,6 +105,26 @@ const FileTreeNode = ({
           <FileTextIcon className="w-4 h-4 shrink-0 text-muted-foreground" />
         )}
         <span className="truncate flex-1">{node.name}</span>
+        {!isFolder && onOpenDocumentInNewTab && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="w-5 h-5 opacity-0 group-hover:opacity-100 shrink-0"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreHorizontalIcon className="w-3.5 h-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem onClick={() => onOpenDocumentInNewTab(node.memo)}>
+                <ExternalLinkIcon className="w-4 h-4 mr-2" />
+                {t("notebook.open-in-new-tab")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         {isFolder && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -164,6 +187,7 @@ const FileTreeNode = ({
               depth={depth + 1}
               selectedMemo={selectedMemo}
               onSelectDocument={onSelectDocument}
+              onOpenDocumentInNewTab={onOpenDocumentInNewTab}
               onRenameFolder={onRenameFolder}
               onMoveFolder={onMoveFolder}
               onDeleteFolder={onDeleteFolder}
