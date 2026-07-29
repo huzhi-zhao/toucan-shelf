@@ -227,8 +227,12 @@ export function extractHeadings(markdown: string): HeadingItem[] {
   const headings: HeadingItem[] = [];
   const slugCounts = new Map<string, number>();
 
-  visit(tree, "heading", (node: Heading) => {
+  visit(tree, "heading", (node: Heading, _index, parent) => {
     if (node.depth < 1 || node.depth > 4) return;
+    // Only document-level headings belong in the outline. Notably, a `---` line inside a
+    // callout/blockquote turns the preceding lines into a setext heading, which would
+    // otherwise surface the callout's raw title (e.g. "[!Collapse]- …") as an outline entry.
+    if (parent?.type !== "root") return;
 
     const text = getNodeText(node as unknown as MdastNode);
     if (!text) return;
