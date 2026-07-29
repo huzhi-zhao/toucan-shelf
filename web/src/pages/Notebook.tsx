@@ -32,7 +32,7 @@ import { Memo_DocType, MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
 import { type SearchHit, SearchMode } from "@/types/proto/api/v1/rag_service_pb";
 import type { WorkspaceTreeNode } from "@/types/proto/api/v1/workspace_service_pb";
 import { WorkspaceTreeNode_NodeType } from "@/types/proto/api/v1/workspace_service_pb";
-import { parseFrontmatter, readBooleanProperty } from "@/utils/frontmatter";
+import { resolveMemoDocConfig } from "@/utils/docConfig";
 import { resolveHeadingTarget } from "@/utils/heading-anchor";
 import { useTranslate } from "@/utils/i18n";
 import { setNotebookSidebarOverride } from "@/utils/notebookSidebar";
@@ -141,17 +141,13 @@ const Notebook = () => {
     return () => cancelAnimationFrame(raf);
   }, [memo?.name, selectedMemo]);
 
-  // A document can opt out of the folder tree via `displayFilter: false` in its frontmatter,
-  // giving a clean full-width reading view (e.g. a landing/homepage doc). This feeds a transient
+  // A document can opt out of the folder tree in its document settings, giving a clean
+  // full-width reading view (e.g. a landing/homepage doc). This feeds a transient
   // per-document override in the sidebar store: it collapses the tree by default while such a
   // document is open, a manual toggle of the switch reveals it in one click, and switching to a
   // normal document restores the user's saved preference. The override is cleared on unmount so
   // it never leaks to the rest of the app.
-  const docHidesFilter = useMemo(() => {
-    if (!memo?.content) return false;
-    const { properties } = parseFrontmatter(memo.content);
-    return readBooleanProperty(properties, "displayFilter") === false;
-  }, [memo?.content]);
+  const docHidesFilter = useMemo(() => !resolveMemoDocConfig(memo).displayFilter, [memo?.docConfig]);
   // The same override channel carries the narrow-viewport default: on a phone (or after rotating
   // to portrait) the tree starts collapsed regardless of the saved desktop preference, and one tap
   // on the toggle still opens it — a manual toggle clears the override.

@@ -330,6 +330,12 @@ message Memo {
   // without touching that node's raw content.
   map<string, string> node_overlays = 25 [(google.api.field_behavior) = OPTIONAL];
 
+  // Optional. How this document is framed by the app (body width, outline,
+  // folder tree, properties panel). This is view configuration, not document
+  // content: it is stored alongside the memo rather than in its frontmatter, so
+  // changing it neither rewrites the document nor shows up in a memogit export.
+  optional DocConfig doc_config = 27 [(google.api.field_behavior) = OPTIONAL];
+
   enum DocType {
     DOC_TYPE_UNSPECIFIED = 0;
     MARKDOWN = 1;
@@ -447,6 +453,30 @@ message DocAnchor {
   // When true the mark renders as an underline in `color`; otherwise as a background
   // highlight. Ignored when `text_exact` is empty.
   bool underline = 7 [(google.api.field_behavior) = OPTIONAL];
+}
+
+// Per-document view configuration — how the app frames a document, as opposed to
+// what the document says. Content semantics (date, status, tags) belong in the
+// document's own frontmatter properties; these knobs deliberately do not, because
+// they are meaningless outside this app and would otherwise pollute every exported
+// markdown file.
+//
+// Every field uses explicit presence. Unset means "never configured" and resolves
+// to the app default, which for `full_width` is true — so a plain bool could not
+// tell an unconfigured document from one the author explicitly narrowed.
+message DocConfig {
+  // Whether the document body spans the full width of its pane. Default true.
+  optional bool full_width = 1 [(google.api.field_behavior) = OPTIONAL];
+
+  // Whether the outline panel opens by default on a desktop viewport. Default true.
+  optional bool display_outline = 2 [(google.api.field_behavior) = OPTIONAL];
+
+  // Whether the left secondary sidebar (the folder tree) stays expanded while this
+  // document is open. Default true.
+  optional bool display_filter = 3 [(google.api.field_behavior) = OPTIONAL];
+
+  // Whether the frontmatter properties panel renders above the body. Default true.
+  optional bool show_properties = 4 [(google.api.field_behavior) = OPTIONAL];
 }
 
 message EpubAnnotation {

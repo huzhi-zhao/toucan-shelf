@@ -13,8 +13,24 @@ const headingLevelClasses: Record<HeadingLevel, string> = {
   6: "text-base font-medium text-muted-foreground",
 };
 
+/**
+ * Per-level heading spacing, driven by the density tokens (see `--md-*` in
+ * index.css). Headings deliberately get much more space above than below, so a
+ * heading groups with the section it introduces instead of floating between two.
+ * h4-h6 share one pair of tokens — they are sub-sub-sections and don't need
+ * their own rhythm.
+ */
+const headingSpacingClasses: Record<HeadingLevel, string> = {
+  1: "mt-[var(--md-h1-gap-top)] mb-[var(--md-h1-gap-bottom)]",
+  2: "mt-[var(--md-h2-gap-top)] mb-[var(--md-h2-gap-bottom)]",
+  3: "mt-[var(--md-h3-gap-top)] mb-[var(--md-h3-gap-bottom)]",
+  4: "mt-[var(--md-h4-gap-top)] mb-[var(--md-h4-gap-bottom)]",
+  5: "mt-[var(--md-h4-gap-top)] mb-[var(--md-h4-gap-bottom)]",
+  6: "mt-[var(--md-h4-gap-top)] mb-[var(--md-h4-gap-bottom)]",
+};
+
 /** Shared base classes applied to every heading level. */
-const headingBaseClasses = "mt-3 mb-2 leading-tight";
+const headingBaseClasses = "leading-tight";
 
 /**
  * Complete heading class per level, precomputed once at module load (base +
@@ -22,12 +38,12 @@ const headingBaseClasses = "mt-3 mb-2 leading-tight";
  * on every content render — so the cn() merge happens here, not per call.
  */
 const headingClasses: Record<HeadingLevel, string> = {
-  1: cn(headingBaseClasses, headingLevelClasses[1]),
-  2: cn(headingBaseClasses, headingLevelClasses[2]),
-  3: cn(headingBaseClasses, headingLevelClasses[3]),
-  4: cn(headingBaseClasses, headingLevelClasses[4]),
-  5: cn(headingBaseClasses, headingLevelClasses[5]),
-  6: cn(headingBaseClasses, headingLevelClasses[6]),
+  1: cn(headingBaseClasses, headingSpacingClasses[1], headingLevelClasses[1]),
+  2: cn(headingBaseClasses, headingSpacingClasses[2], headingLevelClasses[2]),
+  3: cn(headingBaseClasses, headingSpacingClasses[3], headingLevelClasses[3]),
+  4: cn(headingBaseClasses, headingSpacingClasses[4], headingLevelClasses[4]),
+  5: cn(headingBaseClasses, headingSpacingClasses[5], headingLevelClasses[5]),
+  6: cn(headingBaseClasses, headingSpacingClasses[6], headingLevelClasses[6]),
 };
 
 /**
@@ -38,20 +54,31 @@ const headingClasses: Record<HeadingLevel, string> = {
  * markdown source via CodeMirror decorations in `MemoEditor/Editor/theme.ts`.
  *
  * These are static string literals so Tailwind's JIT scanner detects them.
+ *
+ * Vertical rhythm (block gaps, line height, heading spacing) is not hard-coded
+ * here — it reads the `--md-*` density tokens defined in index.css, so the same
+ * markup renders tight in a feed card and airy in a long document. See
+ * `MemoContent`'s `density` prop.
  */
 export const markdownStyles = {
-  paragraph: "my-0 mb-2 leading-6",
-  blockquote: "my-0 mb-2 border-l-4 border-primary/30 pl-3 not-italic font-medium text-foreground/85",
-  bulletList: "my-0 mb-2 list-outside pl-6 list-disc",
-  orderedList: "my-0 mb-2 list-outside pl-6 list-decimal",
-  listItem: "mt-0.5 leading-6",
+  paragraph: "my-0 mb-[var(--md-block-gap)] leading-[var(--md-leading)]",
+  blockquote:
+    "my-0 mb-[var(--md-block-gap)] border-l-4 border-primary/30 pl-[var(--md-quote-pad)] not-italic font-medium text-foreground/85 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+  bulletList: "my-0 mb-[var(--md-block-gap)] list-outside pl-6 list-disc",
+  orderedList: "my-0 mb-[var(--md-block-gap)] list-outside pl-6 list-decimal",
+  listItem: "mt-[var(--md-li-gap)] leading-[var(--md-leading)]",
   // Shared by the read-only task item (MemoContent/markdown/List.tsx) and the
   // editor so the checkbox + text grid stays identical in both.
-  taskListItem: "mt-0.5 min-w-0 leading-6 list-none grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-2 [&>[data-slot=checkbox]]:mt-[3px]",
-  taskItemContent: "min-w-0 [overflow-wrap:anywhere] [&>*:last-child]:mb-0",
+  taskListItem:
+    "mt-[var(--md-li-gap)] min-w-0 leading-[var(--md-leading)] list-none grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-2 [&>[data-slot=checkbox]]:mt-[3px]",
+  taskItemContent: "min-w-0 [overflow-wrap:anywhere] [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
   inlineCode: "font-mono text-sm bg-muted px-1 py-0.5 rounded-md",
   link: "text-primary underline decoration-primary/50 underline-offset-2 transition-colors hover:decoration-primary",
-  horizontalRule: "my-2 h-0 border-0 border-b border-border",
+  horizontalRule: "my-[var(--md-rule-gap)] h-0 border-0 border-b border-border",
+  /** Wrapper spacing for block-level embeds (tables, code fences, mermaid, sheets…). */
+  blockWrapper: "mt-0 mb-[var(--md-block-gap)]",
+  /** Table header/body cell padding. */
+  tableCell: "px-[var(--md-cell-pad-x)] py-[var(--md-cell-pad-y)] [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
 } as const;
 
 /** Complete heading class for a given level (shared base + per-level classes). */
@@ -121,5 +148,8 @@ export const alertStyles: Record<string, { icon: LucideIcon | string; classes: s
     icon: XIcon,
     classes: "bg-rose-100 dark:bg-rose-500/15 border-l-rose-600 dark:border-l-rose-400 text-rose-900 dark:text-rose-100",
   },
-  bug: { icon: BugIcon, classes: "bg-pink-100 dark:bg-pink-500/15 border-l-pink-600 dark:border-l-pink-400 text-pink-900 dark:text-pink-100" },
+  bug: {
+    icon: BugIcon,
+    classes: "bg-pink-100 dark:bg-pink-500/15 border-l-pink-600 dark:border-l-pink-400 text-pink-900 dark:text-pink-100",
+  },
 } as const;

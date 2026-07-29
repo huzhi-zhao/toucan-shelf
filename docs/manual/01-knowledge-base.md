@@ -98,26 +98,36 @@ View documents have no outline and no toggle.
 A Markdown document may open with a YAML **frontmatter** block — a `---` fenced
 section at the very top — whose keys render as a properties panel above
 the body (`web/src/components/MemoContent/PropertiesPanel.tsx`). Most keys are
-free-form and shown as-is, but a few are **built-in** and change how the document
-behaves (`web/src/utils/frontmatter.ts`, `BUILTIN_DOC_PROPERTIES`):
+free-form and shown as-is.
 
-| Property        | Type      | Effect |
-| --------------- | --------- | ------ |
-| `hidden`        | boolean   | When `true`, suppresses the properties panel for the document (the frontmatter is still stored and editable in the raw Markdown). |
-| `displayFilter` | boolean   | When `false`, collapses the left secondary sidebar (the folder tree) **by default** while this document is open — a clean, full-width reading view suited to a landing / homepage document. Switching to another document restores the tree, and the sidebar toggle in the navigation rail still overrides it. |
+Properties describe **what the document is about** — its date, status, category,
+tags. They deliberately do not control how the app renders the document; that is
+[document settings](#document-settings), stored outside the content.
 
-```markdown
----
-displayFilter: false
----
-
-# Welcome
-
-This document opens without the folder tree beside it.
-```
-
-Booleans accept a real YAML boolean (`displayFilter: false`) or the string forms
+Booleans accept a real YAML boolean (`reviewed: false`) or the string forms
 `"true"` / `"false"`. An absent key means "unset" — the default behavior applies.
+
+<a id="document-settings"></a>
+### Document settings
+
+How a document is *framed* — body width, outline, folder tree, properties panel —
+is per-document configuration, set from the document's **⋮ → Document settings**
+menu and stored on the document record rather than in its text:
+
+| Setting | Default | Effect |
+| ------- | ------- | ------ |
+| Full width | on | Off caps the body at a comfortable reading measure instead of filling the pane. |
+| Show outline | on | Off opens the document with the outline panel collapsed. The toolbar toggle still overrides it for the current session. |
+| Show document tree | on | Off collapses the left secondary sidebar while this document is open — a clean reading view suited to a landing / homepage document. Switching to another document restores the tree, and the sidebar toggle still overrides it. |
+| Show properties | on | Off hides the properties panel above the body. The frontmatter is still stored, and still feeds gallery views, sorting and search. |
+
+Because these live outside the content, changing one does **not** create a new
+revision, bump the document's update time, produce a memogit diff, or re-index
+the document for search.
+
+They are also not the same thing as **Compact reading** in *Settings →
+Preferences*, which is a per-reader, per-device choice about line spacing and
+applies to every document you open.
 
 #### Reserved single-select keys
 

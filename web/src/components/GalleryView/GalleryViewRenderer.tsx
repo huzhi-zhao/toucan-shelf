@@ -35,6 +35,12 @@ interface Props {
   /** Hides the frontmatter properties panel. The Home page has no document header to attach it to. */
   hideProperties?: boolean;
   /**
+   * Whether the properties panel renders, from the document's view configuration
+   * (`docConfig.showProperties`). Omitted, the panel falls back to the deprecated `hidden`
+   * frontmatter key. Distinct from `hideProperties`, which is the caller saying "not here".
+   */
+  showProperties?: boolean;
+  /**
    * Enables in-place editing of the properties panel. Called with the property key and its new
    * value; the caller writes it back into the view document's frontmatter.
    */
@@ -391,7 +397,16 @@ const GalleryBlockView = ({ block, memo, openDoc }: BlockProps) => {
 // Renders a VIEW document: each configured block top-to-bottom. No dividers are
 // inserted between blocks — a markdown block can write its own `---` where one
 // is actually wanted.
-const GalleryViewRenderer = ({ memo, blocks, hideProperties, onPropertyChange, onOpenDoc, readonly = true, className }: Props) => {
+const GalleryViewRenderer = ({
+  memo,
+  blocks,
+  hideProperties,
+  showProperties,
+  onPropertyChange,
+  onOpenDoc,
+  readonly = true,
+  className,
+}: Props) => {
   const t = useTranslate();
   const navigate = useNavigate();
   const config = parseGalleryViewConfig(memo.content);
@@ -409,7 +424,7 @@ const GalleryViewRenderer = ({ memo, blocks, hideProperties, onPropertyChange, o
       {/* Frontmatter properties are metadata, not prose — excluded from anchoring like card walls. */}
       {!hideProperties && (
         <div {...{ [MARK_EXCLUDE_ATTR]: "" }}>
-          <PropertiesPanel properties={properties} onChange={onPropertyChange} />
+          <PropertiesPanel properties={properties} onChange={onPropertyChange} visible={showProperties} />
         </div>
       )}
       {viewBlocks.map((block, index) => (

@@ -99,11 +99,9 @@ Open `http://localhost:5230` and start writing.
 ### Development
 
 ```shell
-# backend
 go run ./cmd/memos --port 8081  
 ```
 ```shell
-# web (in ./web)
 cd web && pnpm dev                      
 ```
 

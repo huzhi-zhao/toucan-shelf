@@ -3357,6 +3357,33 @@ components:
                  text survives insertions and deletions elsewhere, whereas an offset would not. When
                  the span can no longer be found (the marked text itself was rewritten), clients fall
                  back to the heading anchor instead of dropping the comment.
+        DocConfig:
+            type: object
+            properties:
+                fullWidth:
+                    type: boolean
+                    description: Whether the document body spans the full width of its pane. Default true.
+                displayOutline:
+                    type: boolean
+                    description: Whether the outline panel opens by default on a desktop viewport. Default true.
+                displayFilter:
+                    type: boolean
+                    description: |-
+                        Whether the left secondary sidebar (the folder tree) stays expanded while this
+                         document is open. Default true.
+                showProperties:
+                    type: boolean
+                    description: Whether the frontmatter properties panel renders above the body. Default true.
+            description: |-
+                Per-document view configuration — how the app frames a document, as opposed to
+                 what the document says. Content semantics (date, status, tags) belong in the
+                 document's own frontmatter properties; these knobs deliberately do not, because
+                 they are meaningless outside this app and would otherwise pollute every exported
+                 markdown file.
+
+                 Every field uses explicit presence. Unset means "never configured" and resolves
+                 to the app default, which for `full_width` is true — so a plain bool could not
+                 tell an unconfigured document from one the author explicitly narrowed.
         EpubAnnotation:
             required:
                 - attachmentName
@@ -4238,6 +4265,14 @@ components:
                          shape is owned by the node's renderer; the server never parses it. Lets
                          clients attach overlay info (cell styles, etc.) to any addressable node
                          without touching that node's raw content.
+                docConfig:
+                    allOf:
+                        - $ref: '#/components/schemas/DocConfig'
+                    description: |-
+                        Optional. How this document is framed by the app (body width, outline,
+                         folder tree, properties panel). This is view configuration, not document
+                         content: it is stored alongside the memo rather than in its frontmatter, so
+                         changing it neither rewrites the document nor shows up in a memogit export.
         MemoHistory:
             type: object
             properties:

@@ -493,6 +493,7 @@
     "restored-successfully": "Restored successfully",
     "succeed-copy-content": "Content copied successfully.",
     "succeed-copy-link": "Link copied successfully.",
+    "update-failed": "Update failed",
     "update-succeed": "Update succeeded",
     "user-not-found": "User not found"
   },
@@ -755,6 +756,8 @@
     "preference": {
       "appearance-description": "Choose how the app looks and which language it uses for your account.",
       "appearance-title": "Appearance",
+      "compact-reading": "Compact reading",
+      "compact-reading-description": "Tightens line spacing in documents on this device. Off gives the roomier long-form rhythm.",
       "default-memo-sort-option": "Memo display time",
       "default-memo-visibility": "Default memo visibility",
       "default-memo-visibility-description": "Visibility applied to newly created memos unless changed in the editor.",
@@ -1104,6 +1107,11 @@
     "change-cover": "Change cover",
     "set-cover-color": "Set cover color",
     "set-cover-image": "Set cover image",
+    "document-settings": "Document settings",
+    "full-width": "Full width",
+    "show-outline": "Show outline",
+    "show-document-tree": "Show document tree",
+    "show-properties": "Show properties",
     "cover-image-url-placeholder": "Image URL"
   },
   "gallery": {

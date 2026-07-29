@@ -7,6 +7,7 @@ import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 import remarkBreaks from "remark-breaks";
+import remarkCjkFriendly from "remark-cjk-friendly/parseOnly";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { cn } from "@/lib/utils";
@@ -53,6 +54,8 @@ interface MemoMarkdownRendererProps {
   headingIdPrefix?: string;
   /** When set, the properties panel becomes editable and reports value changes through this callback. */
   onPropertyChange?: (key: string, value: MemoProperty["value"]) => void;
+  /** Whether the properties panel renders; omitted, it falls back to the deprecated `hidden` key. */
+  showProperties?: boolean;
 }
 
 function getMentionUsername(node: Element, children?: React.ReactNode): string {
@@ -81,6 +84,7 @@ export const MemoMarkdownRenderer = ({
   compact,
   headingIdPrefix,
   onPropertyChange,
+  showProperties,
 }: MemoMarkdownRendererProps) => {
   // Split off any leading Obsidian-style frontmatter: compliant properties render
   // as a read-only panel above the body, and the raw `---` block never reaches
@@ -208,12 +212,14 @@ export const MemoMarkdownRenderer = ({
 
   return (
     <MarkdownRenderContext.Provider value={rootMarkdownRenderContext}>
-      <PropertiesPanel properties={properties} onChange={onPropertyChange} />
+      <PropertiesPanel properties={properties} onChange={onPropertyChange} visible={showProperties} />
       <ReactMarkdown
         remarkPlugins={[
           remarkDisableSetext,
           remarkMath,
           remarkGfm,
+          // 让 **加粗：**中文 这类紧贴中文标点的强调也能识别（CommonMark 原规则会失败）
+          remarkCjkFriendly,
           remarkTaskStatus,
           remarkSplitMixedTaskLists,
           remarkBreaks,

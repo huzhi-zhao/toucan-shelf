@@ -226,6 +226,12 @@ interface PropertiesPanelProps {
    * the panel stays exactly as it was: display only.
    */
   onChange?: (key: string, value: MemoProperty["value"]) => void;
+  /**
+   * Whether the panel renders at all. Comes from the document's view configuration
+   * (`docConfig.showProperties`), which is stored on the memo, not in its frontmatter — where
+   * the panel is shown is app chrome, not a property of the content. Defaults to shown.
+   */
+  visible?: boolean;
 }
 
 /**
@@ -234,11 +240,10 @@ interface PropertiesPanelProps {
  * controls (dropdown, switch, date picker, tag box, text field) so the header can be edited
  * without opening the raw markdown editor.
  */
-export const PropertiesPanel = ({ properties, onChange }: PropertiesPanelProps) => {
+export const PropertiesPanel = ({ properties, onChange, visible }: PropertiesPanelProps) => {
   const t = useTranslate();
   const [editing, setEditing] = useState(false);
-  const isHidden = properties.some((property) => property.key === "hidden" && property.type === "checkbox" && property.value === true);
-  if (properties.length === 0 || isHidden) {
+  if (properties.length === 0 || visible === false) {
     return null;
   }
 

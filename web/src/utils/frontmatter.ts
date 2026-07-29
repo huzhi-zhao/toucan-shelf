@@ -297,28 +297,6 @@ export function setFrontmatterProperty(content: string, key: string, value: Memo
   return `---\n${out.join("\n")}\n---\n${body}`;
 }
 
-// Built-in document property keys the app gives special meaning to (beyond being displayed
-// in the properties panel). Kept here as the single source of truth; documented for authors
-// in docs/manual/01-knowledge-base.md.
-//   - `hidden`: when true, suppresses the properties panel for the document.
-//   - `displayFilter`: when false, collapses the left secondary sidebar (folder tree) by
-//     default while the document is open, for a clean full-width reading view.
-export const BUILTIN_DOC_PROPERTIES = ["hidden", "displayFilter"] as const;
-
-/**
- * Reads a boolean-valued frontmatter property, accepting either a real YAML boolean
- * (`key: true`) or the string forms `"true"`/`"false"`. Returns undefined when the key is
- * absent or not boolean-like, so callers can distinguish "unset" from an explicit `false`.
- */
-export function readBooleanProperty(properties: MemoProperty[], key: string): boolean | undefined {
-  const property = properties.find((p) => p.key === key);
-  if (!property) return undefined;
-  if (typeof property.value === "boolean") return property.value;
-  if (property.value === "true") return true;
-  if (property.value === "false") return false;
-  return undefined;
-}
-
 /** Whether the content already opens with a frontmatter block (compliant or not). */
 export function hasFrontmatter(content: string): boolean {
   return FRONTMATTER_RE.test(content.replace(/\r\n/g, "\n"));

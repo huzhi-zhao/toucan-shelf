@@ -2,6 +2,61 @@
 @import "tw-animate-css";
 @import "./themes/default.css";
 
+/* ---------------------------------------------------------------------------
+   Markdown reading rhythm tokens.
+
+   `markdownStyles.ts` builds every block's spacing out of these variables, so a
+   single element (a paragraph, a heading) renders tight inside a feed card and
+   airy inside a long document without a second set of components.
+
+   `:root` holds the COMPACT scale — the historical values, tuned for short
+   memos in a list, where vertical space is the scarce resource. Anything that
+   doesn't opt in keeps rendering exactly as before.
+
+   `.md-density-reading` holds the READING scale, applied by `MemoContent`
+   when `density="reading"` (Notebook document preview, reader page). It follows
+   the GitHub/Obsidian/Notion conventions, loosened for CJK text: line height
+   1.75 rather than 1.5, paragraph gap at least ~0.9x the line box, and headings
+   with far more space above than below so a heading visually belongs to the
+   section it introduces. It deliberately does NOT cap the line length — the
+   document fills whatever width its pane gives it.
+   --------------------------------------------------------------------------- */
+:root {
+  --md-leading: 1.5;
+  --md-block-gap: 0.5rem;
+  --md-li-gap: 0.125rem;
+  --md-rule-gap: 0.5rem;
+  --md-quote-pad: 0.75rem;
+  --md-cell-pad-x: 0.5rem;
+  --md-cell-pad-y: 0.25rem;
+  --md-h1-gap-top: 0.75rem;
+  --md-h1-gap-bottom: 0.5rem;
+  --md-h2-gap-top: 0.75rem;
+  --md-h2-gap-bottom: 0.5rem;
+  --md-h3-gap-top: 0.75rem;
+  --md-h3-gap-bottom: 0.5rem;
+  --md-h4-gap-top: 0.75rem;
+  --md-h4-gap-bottom: 0.5rem;
+}
+
+.md-density-reading {
+  --md-leading: 1.75;
+  --md-block-gap: 1rem;
+  --md-li-gap: 0.375rem;
+  --md-rule-gap: 2rem;
+  --md-quote-pad: 1rem;
+  --md-cell-pad-x: 0.75rem;
+  --md-cell-pad-y: 0.5rem;
+  --md-h1-gap-top: 2.5rem;
+  --md-h1-gap-bottom: 1rem;
+  --md-h2-gap-top: 2.5rem;
+  --md-h2-gap-bottom: 1rem;
+  --md-h3-gap-top: 2rem;
+  --md-h3-gap-bottom: 0.75rem;
+  --md-h4-gap-top: 1.5rem;
+  --md-h4-gap-bottom: 0.5rem;
+}
+
 @layer base {
   * {
     @apply border-border outline-none ring-0;

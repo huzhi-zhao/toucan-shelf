@@ -4,6 +4,7 @@ import { indentUnit } from "@codemirror/language";
 import type { Extension } from "@codemirror/state";
 import { placeholder as cmPlaceholder, drawSelection, dropCursor, EditorView, type KeyBinding, keymap } from "@codemirror/view";
 import { GFM } from "@lezer/markdown";
+import { cjkEmphasis } from "./cjkEmphasis";
 import { createFormattingKeymap } from "./formatting";
 import { headingDecorations } from "./headingDecorations";
 import { liftListItem, sinkListItem } from "./listIndent";
@@ -44,7 +45,7 @@ export function buildEditorExtensions({ placeholder, onChange, onUpdate, getTags
     dropCursor(),
     // Indent with spaces (markdown), matching the 2-space bullet nesting.
     indentUnit.of("  "),
-    markdown({ extensions: [GFM] }),
+    markdown({ extensions: [GFM, cjkEmphasis] }),
     ...memoEditorTheme,
     EditorView.lineWrapping,
     cmPlaceholder(placeholder),

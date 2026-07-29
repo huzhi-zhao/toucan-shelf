@@ -164,22 +164,11 @@ date: 2026-07-11
   never writes back to the document; editing a property means editing the raw
   frontmatter text.
 
-Properties are free-form — you can add any key. Two keys are reserved and
-change editor/viewer behavior instead of just being displayed:
-
-| Key | Type | Effect |
-| --- | --- | --- |
-| `displayOutline` | checkbox | `displayOutline: false` collapses the document outline sidebar by default when the document is opened (see `web/src/components/Notebook/DocumentView.tsx`). Any other value, or omitting the key, falls back to the normal viewport-based default (collapsed on narrow screens, expanded on desktop). |
-| `hidden` | checkbox | `hidden: true` hides the properties panel itself from the rendered document (see `PropertiesPanel.tsx`). The properties are still parsed and still take effect (e.g. `displayOutline` keeps working) — only the visual key/value list is suppressed. |
-
-```markdown
----
-displayOutline: false
-hidden: true
----
-
-# body starts here
-```
+Properties are free-form — you can add any key. They describe the document's
+content (date, status, category, tags); how the app *renders* the document —
+width, outline, folder tree, whether the properties panel shows at all — is
+document configuration, set from the document's **⋮ → Document settings** menu and
+stored on the memo rather than in the text (`web/src/utils/docConfig.ts`).
 
 ---
 

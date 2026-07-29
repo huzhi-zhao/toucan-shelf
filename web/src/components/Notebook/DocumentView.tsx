@@ -16,6 +16,7 @@ import {
   PaperclipIcon,
   PencilIcon,
   SaveIcon,
+  Settings2Icon,
   TrashIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -39,6 +40,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSub,
@@ -52,15 +54,24 @@ import { memoServiceClient } from "@/connect";
 import { useInstance } from "@/contexts/InstanceContext";
 import useMediaQuery from "@/hooks/useMediaQuery";
 import { useCreateMemoHistory, useMemoHistories, useRestoreMemoHistory } from "@/hooks/useMemoHistoryQueries";
-import { useInfiniteMemoComments } from "@/hooks/useMemoQueries";
+import { useInfiniteMemoComments, useUpdateMemo } from "@/hooks/useMemoQueries";
 import { cn } from "@/lib/utils";
 import { State } from "@/types/proto/api/v1/common_pb";
-import { type DocAnchor, type Memo, Memo_DocType, type MemoHistory, MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
+import {
+  type DocAnchor,
+  DocConfigSchema,
+  type Memo,
+  Memo_DocType,
+  type MemoHistory,
+  MemoSchema,
+} from "@/types/proto/api/v1/memo_service_pb";
 import { getAttachmentUrl, partitionInlinedAttachments } from "@/utils/attachment";
-import { type MemoProperty, parseFrontmatter, setFrontmatterProperty } from "@/utils/frontmatter";
+import { type ResolvedDocConfig, resolveMemoDocConfig } from "@/utils/docConfig";
+import { type MemoProperty, setFrontmatterProperty } from "@/utils/frontmatter";
 import { useTranslate } from "@/utils/i18n";
 import { DEFAULT_MARK_COLOR } from "@/utils/markColors";
 import { attachmentUIDsOf, hashMemoState } from "@/utils/memoState";
+import { useReadingDensity } from "@/utils/readingDensity";
 import { getDocScrollPosition, restoreScrollTopWhenReady, saveDocScrollPosition } from "@/utils/scrollPositionCache";
 import DocumentOutline, { ATTACHMENTS_ANCHOR_ID } from "./DocumentOutline";
 import MoveDocumentDialog from "./MoveDocumentDialog";
@@ -174,10 +185,10 @@ const DocumentView = ({
   );
   const activeMarkComment = useMemo(() => docComments.find((c) => c.name === activeMark?.memoName), [docComments, activeMark]);
   const [mode, setMode] = useState<"preview" | "edit">("preview");
-  const [outlineCollapsed, setOutlineCollapsed] = useState(() => {
-    const displayOutline = parseFrontmatter(memo.content).properties.find((p) => p.key === "displayOutline")?.value;
-    return displayOutline === false || (typeof window !== "undefined" && !window.matchMedia("(min-width: 1024px)").matches);
-  });
+  const [outlineCollapsed, setOutlineCollapsed] = useState(
+    () =>
+      !resolveMemoDocConfig(memo).displayOutline || (typeof window !== "undefined" && !window.matchMedia("(min-width: 1024px)").matches),
+  );
   const [htmlDraft, setHtmlDraft] = useState(memo.content);
   const [titleDraft, setTitleDraft] = useState(memo.title);
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
@@ -263,10 +274,11 @@ const DocumentView = ({
     setHtmlDraft(memo.content);
     setTitleDraft(memo.title);
     setEditDraftContent(null);
-    // `displayOutline: false` in frontmatter collapses the outline by default
-    // when opening this document; otherwise fall back to the viewport check.
-    const displayOutline = parseFrontmatter(memo.content).properties.find((p) => p.key === "displayOutline")?.value;
-    setOutlineCollapsed(displayOutline === false || (typeof window !== "undefined" && !window.matchMedia("(min-width: 1024px)").matches));
+    // A document configured with the outline off opens collapsed; otherwise fall back to the
+    // viewport check. Only the *default* — the toolbar toggle still wins for this session.
+    setOutlineCollapsed(
+      !resolveMemoDocConfig(memo).displayOutline || (typeof window !== "undefined" && !window.matchMedia("(min-width: 1024px)").matches),
+    );
   }, [memo.name]);
 
   // Narrowing to a phone-sized viewport (opening on a phone, or rotating a tablet to portrait)
@@ -277,6 +289,30 @@ const DocumentView = ({
   }, [isDesktop]);
 
   const isArchived = memo.state === State.ARCHIVED;
+
+  // How this document is framed (width, outline, folder tree, properties panel). Stored on the
+  // memo; frontmatter has no say in it — properties are for what the document says, never for
+  // how it looks. Reading density is deliberately absent too: that's a reader preference, kept
+  // per-device in localStorage.
+  const docConfig = useMemo(() => resolveMemoDocConfig(memo), [memo.docConfig]);
+  const { density } = useReadingDensity();
+  const { mutateAsync: updateMemoAsync } = useUpdateMemo();
+
+  // Flipping a switch writes the payload only: no content revision, no `updatedTs` bump, no
+  // memogit diff, no re-embedding.
+  const updateDocConfig = useCallback(
+    async (patch: Partial<ResolvedDocConfig>) => {
+      try {
+        await updateMemoAsync({
+          update: { name: memo.name, docConfig: create(DocConfigSchema, { ...docConfig, ...patch }) },
+          updateMask: ["doc_config"],
+        });
+      } catch {
+        toast.error(t("message.update-failed"));
+      }
+    },
+    [docConfig, memo.name, updateMemoAsync, t],
+  );
 
   // Editing a header property from the preview: only the one frontmatter line changes, and the
   // document is saved through the same path the raw editor uses. Offered for markdown and VIEW
@@ -728,6 +764,50 @@ const DocumentView = ({
                 <FolderInputIcon className="w-4 h-4 mr-2" />
                 {t("notebook.move")}
               </DropdownMenuItem>
+              {/* This document's own framing. Reading density is NOT here: it's a per-reader
+                  preference and lives in the appearance settings, applied to every document. */}
+              {!isPdf && !isHtml && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Settings2Icon className="w-4 h-4 mr-2" />
+                    {t("notebook.document-settings")}
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuCheckboxItem
+                      checked={docConfig.fullWidth}
+                      onCheckedChange={(checked) => updateDocConfig({ fullWidth: checked })}
+                    >
+                      {t("notebook.full-width")}
+                    </DropdownMenuCheckboxItem>
+                    {!isView && (
+                      <DropdownMenuCheckboxItem
+                        checked={docConfig.displayOutline}
+                        onCheckedChange={(checked) => {
+                          updateDocConfig({ displayOutline: checked });
+                          // The stored value is only a default for the *next* open, so apply it
+                          // now too — otherwise the switch appears to do nothing.
+                          setOutlineCollapsed(!checked || !isDesktop);
+                          if (checked) setCommentsOpen(false);
+                        }}
+                      >
+                        {t("notebook.show-outline")}
+                      </DropdownMenuCheckboxItem>
+                    )}
+                    <DropdownMenuCheckboxItem
+                      checked={docConfig.displayFilter}
+                      onCheckedChange={(checked) => updateDocConfig({ displayFilter: checked })}
+                    >
+                      {t("notebook.show-document-tree")}
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem
+                      checked={docConfig.showProperties}
+                      onCheckedChange={(checked) => updateDocConfig({ showProperties: checked })}
+                    >
+                      {t("notebook.show-properties")}
+                    </DropdownMenuCheckboxItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )}
               {canManageVersions && (
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
@@ -842,7 +922,7 @@ const DocumentView = ({
               // Positioned for the mark overlay, exactly like the markdown preview. A VIEW doc's
               // markdown blocks are ordinary prose and get the same marking; its card walls are
               // live query results and are excluded from anchoring by the renderer.
-              <div ref={markContainerRef} className="relative px-6 py-4">
+              <div ref={markContainerRef} className={cn("relative px-6 py-4", !docConfig.fullWidth && "mx-auto w-full max-w-3xl")}>
                 {/* Only the memo name crosses over: the gallery's second argument is the matched
                     document, while callers of onOpenDocument take an anchor href there — passing
                     the callback straight through made every card click throw. */}
@@ -850,6 +930,7 @@ const DocumentView = ({
                   memo={memo}
                   onOpenDoc={(memoName) => onOpenDocument?.(memoName)}
                   onPropertyChange={propertyChangeHandler}
+                  showProperties={docConfig.showProperties}
                   readonly={false}
                 />
                 {remainingAttachments.length > 0 && (
@@ -880,9 +961,17 @@ const DocumentView = ({
           ) : mode === "preview" ? (
             // Positioned, so the mark overlay and the mark toolbar can be placed against the
             // rendered document and scroll with it.
-            <div ref={markContainerRef} className="relative px-6 py-4">
+            // Narrowing is a per-document choice, applied to the reading view only: the raw
+            // editor is a different job and keeps the whole pane.
+            <div ref={markContainerRef} className={cn("relative px-6 py-4", !docConfig.fullWidth && "mx-auto w-full max-w-3xl")}>
               <MemoViewContext.Provider value={buildPreviewContext(memo)}>
-                <MemoContent content={memo.content} memoName={memo.name} onPropertyChange={propertyChangeHandler} />
+                <MemoContent
+                  content={memo.content}
+                  memoName={memo.name}
+                  density={density}
+                  showProperties={docConfig.showProperties}
+                  onPropertyChange={propertyChangeHandler}
+                />
               </MemoViewContext.Provider>
               {remainingAttachments.length > 0 && (
                 <div id={ATTACHMENTS_ANCHOR_ID} className="mt-6 border-t border-border pt-4">

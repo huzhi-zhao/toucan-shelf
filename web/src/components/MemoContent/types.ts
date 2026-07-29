@@ -9,6 +9,13 @@ export interface MemoContentProps {
   /** Resource name of the memo (e.g. `memos/abc123`). Enables footnote links to target the memo detail page. */
   memoName?: string;
   compact?: boolean;
+  /**
+   * Vertical rhythm of the rendered markdown (see the `--md-*` tokens in index.css).
+   * `"compact"` (default) is the dense feed/card scale; `"reading"` is the long-form
+   * scale — looser line height, real paragraph gaps, section-forming heading spacing,
+   * and a max line length. Unrelated to `compact`, which folds overlong content.
+   */
+  density?: "compact" | "reading";
   /** Renders `content` as a sandboxed HTML preview instead of markdown (memo.docType === HTML). */
   isHtml?: boolean;
   /** Renders the memo's linked PDF instead of markdown (memo.docType === PDF). */
@@ -36,6 +43,12 @@ export interface MemoContentProps {
    * with the property key and its new value; the caller writes it back into the document.
    */
   onPropertyChange?: (key: string, value: MemoPropertyValue) => void;
+  /**
+   * Whether the frontmatter properties panel renders. Comes from the document's view
+   * configuration (`docConfig.showProperties`); omitted, the panel falls back to the
+   * deprecated `hidden: true` frontmatter key.
+   */
+  showProperties?: boolean;
   onClick?: (e: React.MouseEvent) => void;
   onDoubleClick?: (e: React.MouseEvent) => void;
 }

@@ -1,5 +1,5 @@
 import { type Memo, Memo_DocType } from "@/types/proto/api/v1/memo_service_pb";
-import { BUILTIN_DOC_PROPERTIES, type MemoProperty, parseFrontmatter } from "@/utils/frontmatter";
+import { type MemoProperty, parseFrontmatter } from "@/utils/frontmatter";
 import type { GalleryBlock, GalleryCardField, GalleryGroup, GalleryRule, GalleryScope } from "./types";
 
 // Builds a key -> property lookup from a document's frontmatter. Keys are
@@ -50,7 +50,9 @@ function matchesRule(doc: Memo, props: Map<string, MemoProperty>, rule: GalleryR
 
 function matchesGroup(doc: Memo, props: Map<string, MemoProperty>, group: GalleryGroup, ctx: RuleContext): boolean {
   if (group.rules.length === 0) return true;
-  return group.match === "any" ? group.rules.some((r) => matchesRule(doc, props, r, ctx)) : group.rules.every((r) => matchesRule(doc, props, r, ctx));
+  return group.match === "any"
+    ? group.rules.some((r) => matchesRule(doc, props, r, ctx))
+    : group.rules.every((r) => matchesRule(doc, props, r, ctx));
 }
 
 // True when a document falls within a gallery block's scope: each group is
@@ -85,7 +87,8 @@ export const TEXT_CARD_PROPERTY_LIMIT = 3;
 export const TEXT_CARD_PREVIEW_LINES = 3;
 
 // Properties that carry configuration rather than content, so they'd be noise on a card.
-const HIDDEN_CARD_PROPERTY_KEYS = new Set<string>([...BUILTIN_DOC_PROPERTIES, "cover"]);
+// `cover` is already shown — as the card's cover image.
+const HIDDEN_CARD_PROPERTY_KEYS = new Set<string>(["cover"]);
 
 // The frontmatter key a `prop:<key>` token refers to, if it is one.
 const propFieldKey = (field: string): string | undefined => (field.startsWith("prop:") ? field.slice(5).trim() : undefined);

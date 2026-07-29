@@ -27,6 +27,15 @@ message MemoPayload {
   // Set when this memo is a comment anchored to a text range within an EPUB attachment.
   EpubAnnotation epub_annotation = 7;
 
+  // How this document is framed by the app: body width, outline, folder tree,
+  // properties panel. Deliberately NOT stored in the document's frontmatter —
+  // frontmatter carries content semantics (date, status, tags), while this is
+  // chrome that only means anything inside this app and so has no business
+  // travelling with the exported markdown. Storing it here also keeps toggling
+  // a view knob from rewriting the content: no new revision, no updated_ts
+  // bump, no memogit diff, and no re-embedding (see updateAffectsIndex).
+  DocConfig doc_config = 8;
+
   // The calculated properties from the memo content.
   message Property {
     bool has_link = 1;
@@ -41,6 +50,23 @@ message MemoPayload {
     string placeholder = 1;
     double latitude = 2;
     double longitude = 3;
+  }
+
+  // Per-document view configuration. Every field uses explicit presence: unset
+  // means "never configured" and falls back to the app default (or, for now, to
+  // the deprecated frontmatter key), which is NOT the same as an explicit false.
+  // `full_width` in particular defaults to true, so a bare `bool` would make the
+  // two indistinguishable.
+  message DocConfig {
+    // Whether the document body spans the full width of its pane. Default true.
+    optional bool full_width = 1;
+    // Whether the outline panel opens by default (desktop only). Default true.
+    optional bool display_outline = 2;
+    // Whether the left secondary sidebar (folder tree) stays expanded while this
+    // document is open. Default true.
+    optional bool display_filter = 3;
+    // Whether the frontmatter properties panel renders above the body. Default true.
+    optional bool show_properties = 4;
   }
 
   message PdfAnnotation {

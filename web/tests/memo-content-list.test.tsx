@@ -1,10 +1,17 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { List, ListItem } from "@/components/MemoContent/markdown";
-import { TASK_LIST_CLASS, TASK_LIST_ITEM_CLASS } from "@/components/MemoContent/constants";
-import { remarkSplitMixedTaskLists } from "@/utils/remark-plugins/remark-split-mixed-task-lists";
 import { describe, expect, it } from "vitest";
+import { TASK_LIST_CLASS, TASK_LIST_ITEM_CLASS } from "@/components/MemoContent/constants";
+import { List, ListItem } from "@/components/MemoContent/markdown";
+import { markdownStyles } from "@/lib/markdownStyles";
+import { remarkSplitMixedTaskLists } from "@/utils/remark-plugins/remark-split-mixed-task-lists";
+
+/** React escapes `&`/`>` when serializing the arbitrary-variant class strings. */
+const esc = (className: string): string => className.replaceAll("&", "&amp;").replaceAll(">", "&gt;");
+
+const listItemClass = esc(markdownStyles.listItem);
+const taskBodyClass = esc(markdownStyles.taskItemContent);
 
 const renderListContent = (content: string): string =>
   renderToStaticMarkup(
@@ -31,11 +38,11 @@ describe("memo content lists", () => {
     expect(listOpenTags[1]).not.toContain(TASK_LIST_CLASS);
     expect(listOpenTags[1]).toContain("pl-6");
     expect(listOpenTags[1]).toContain("list-disc");
-    expect(html).toContain('<li class="mt-0.5 leading-6">milk</li>');
-    expect(html).not.toContain('<li class="mt-0.5 leading-6">\n<p>milk</p>');
+    expect(html).toContain(`<li class="${listItemClass}">milk</li>`);
+    expect(html).not.toContain(`<li class="${listItemClass}">\n<p>milk</p>`);
     expect(html).toContain(TASK_LIST_ITEM_CLASS);
     expect(html).toContain("grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-2");
-    expect(html).toContain('<div class="min-w-0 [overflow-wrap:anywhere] [&amp;&gt;*:last-child]:mb-0"> pickup package</div>');
+    expect(html).toContain(`<div class="${taskBodyClass}"> pickup package</div>`);
     expect(html).not.toMatch(/<li class="[^"]*task-list-item[^"]*"><p\b/);
   });
 
@@ -51,7 +58,7 @@ describe("memo content lists", () => {
     const html = renderListContent("- [ ] asdas\n  - [ ] zzzz");
 
     expect(html).toContain("grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-2");
-    expect(html).toContain('<div class="min-w-0 [overflow-wrap:anywhere] [&amp;&gt;*:last-child]:mb-0"> asdas');
+    expect(html).toContain(`<div class="${taskBodyClass}"> asdas`);
     expect(html).not.toContain("[&amp;_ul.contains-task-list]:ml-6");
     expect(html).toContain("zzzz");
   });
@@ -60,7 +67,7 @@ describe("memo content lists", () => {
     const html = renderListContent("- [ ] plan\n\n  keep details\n\n- [ ] zzzz");
 
     expect(html).toMatch(/<li class="[^"]*task-list-item[^"]*">\s*<input type="checkbox" disabled=""\/>/);
-    expect(html).toContain('<div class="min-w-0 [overflow-wrap:anywhere] [&amp;&gt;*:last-child]:mb-0">');
+    expect(html).toContain(`<div class="${taskBodyClass}">`);
     expect(html).toContain("<p> plan</p>");
     expect(html).toContain("<p>keep details</p>");
     expect(html).toContain("zzzz");
@@ -70,8 +77,6 @@ describe("memo content lists", () => {
     const html = renderListContent("- [ ] Northern Lights in Iceland — booking this for winter, *finally*");
 
     expect(html).toContain('<input type="checkbox" disabled=""/>');
-    expect(html).toContain(
-      '<div class="min-w-0 [overflow-wrap:anywhere] [&amp;&gt;*:last-child]:mb-0"> Northern Lights in Iceland — booking this for winter, <em>finally</em></div>',
-    );
+    expect(html).toContain(`<div class="${taskBodyClass}"> Northern Lights in Iceland — booking this for winter, <em>finally</em></div>`);
   });
 });

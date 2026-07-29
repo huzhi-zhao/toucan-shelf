@@ -149,13 +149,10 @@ date: 2026-07-11
   标量/列表值：`text` / `list`（`[a, b, c]`）/ `number` / `checkbox`（`true`/`false`）
   / `date`（`YYYY-MM-DD`）/ `datetime`。
 - **嵌套 map、对象数组、畸形行会被静默忽略**，不报错也不渲染。所以别写嵌套 YAML。
-- 属性是自由 key，但两个 key 有特殊行为：
-
-| Key | 类型 | 效果 |
-|-----|------|------|
-| `displayOutline` | checkbox | `false` → 打开文档时默认折叠大纲侧栏 |
-| `hidden` | checkbox | `true` → 隐藏属性面板本身（属性仍解析、仍生效） |
-
+- 属性是自由 key，描述的是**文档内容本身**（日期、状态、分类、标签）。
+  文档**怎么渲染**（是否全宽、是否显示大纲 / 文档树 / 属性面板）不属于属性，
+  而是「文档设置」，存在 memo 记录上（`web/src/utils/docConfig.ts`），
+  从文档标题栏的 **⋮ → 文档设置** 修改，不会改动正文、不产生版本和 memogit diff。
 - frontmatter 属性会喂给 **Gallery View 的 scope/sort/cover**（§3.5）和
   **看板**，所以改属性可能影响别处的视图。改之前想想谁在消费它。
 

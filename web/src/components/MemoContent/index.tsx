@@ -17,6 +17,7 @@ const MemoContent = (props: MemoContentProps) => {
     className,
     contentClassName,
     content,
+    density = "compact",
     isHtml,
     isPdf,
     pdfTitle,
@@ -45,8 +46,14 @@ const MemoContent = (props: MemoContentProps) => {
         ref={memoContentContainerRef}
         data-memo-content
         className={cn(
-          "relative w-full max-w-full wrap-break-word text-base leading-6",
+          "relative w-full max-w-full wrap-break-word text-base leading-[var(--md-leading)]",
+          // Reading density loosens the vertical rhythm only; the content still
+          // spans the full width of its pane.
+          density === "reading" && "md-density-reading",
           "[&>*:last-child]:mb-0",
+          // A leading heading must not push the whole document down by its (large)
+          // section gap — that space separates sections, and there is nothing above.
+          "[&>*:first-child]:mt-0",
           "[&_.katex-display]:max-w-full",
           "[&_.katex-display]:overflow-x-auto",
           "[&_.katex-display]:overflow-y-hidden",
@@ -79,6 +86,7 @@ const MemoContent = (props: MemoContentProps) => {
             compact={Boolean(props.compact)}
             headingIdPrefix={props.headingIdPrefix}
             onPropertyChange={props.onPropertyChange}
+            showProperties={props.showProperties}
           />
         )}
         {showCompactMode === "ALL" && (

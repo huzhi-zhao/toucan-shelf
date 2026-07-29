@@ -20,7 +20,9 @@ describe("textCardProperties", () => {
   });
 
   it("skips empty values, config keys, and fields the card already shows", () => {
-    const props = propertyMap("---\nhidden: true\ncover: pic.png\nempty:\nstatus: done\nowner: mo\n---\nbody");
+    // `cover` is the only key still treated as configuration — it's already drawn as the card's
+    // cover image. Nothing else in frontmatter is special any more, view settings included.
+    const props = propertyMap("---\ncover: pic.png\nempty:\nstatus: done\nowner: mo\n---\nbody");
     const rows = textCardProperties(props, block({ cardFields: { primary: "prop:status", secondary: "__updated__" } }));
     expect(rows).toEqual([{ key: "owner", value: "mo" }]);
   });

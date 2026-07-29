@@ -10,6 +10,7 @@ import { Memo_DocType } from "@/types/proto/api/v1/memo_service_pb";
 import { parseFrontmatter } from "@/utils/frontmatter";
 import { useTranslate } from "@/utils/i18n";
 import { buildMemoFileBaseName } from "@/utils/memo";
+import { useReadingDensity } from "@/utils/readingDensity";
 import "./memoReader.css";
 
 // Bare page (no sidebar/app chrome) opened in its own tab to read a memo as a plain
@@ -23,6 +24,7 @@ import "./memoReader.css";
 const MemoReader = () => {
   const t = useTranslate();
   const params = useParams();
+  const { density } = useReadingDensity();
 
   const name = params.uid ? `${memoNamePrefix}${params.uid}` : "";
   const { data: memo, isLoading, error } = useMemoQuery(name, { enabled: !!name });
@@ -63,7 +65,7 @@ const MemoReader = () => {
         <PrinterIcon className="w-4 h-auto" />
         {t("memo.print")}
       </Button>
-      <MemoContent memoName={memo.name} content={body} isHtml={memo.docType === Memo_DocType.HTML} />
+      <MemoContent memoName={memo.name} content={body} density={density} isHtml={memo.docType === Memo_DocType.HTML} />
     </div>
   );
 };

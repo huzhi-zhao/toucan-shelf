@@ -47,7 +47,14 @@ export const Alert = ({ children, className, alertType, alertIcon, alertTitle, a
   const Icon = style && typeof style.icon !== "string" ? style.icon : undefined;
 
   return (
-    <blockquote className={cn("my-0 mb-2 rounded-xl border-l-4 px-4 py-3 not-italic", style?.classes, className)} {...props}>
+    <blockquote
+      className={cn(
+        "my-0 mb-[var(--md-block-gap)] rounded-xl border-l-4 px-4 py-3 not-italic [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+        style?.classes,
+        className,
+      )}
+      {...props}
+    >
       <div className="flex items-center gap-1.5 font-bold">
         <span aria-hidden className="shrink-0 leading-none">
           {alertIcon || iconGlyph || (Icon && <Icon className="w-4 h-4" />)}

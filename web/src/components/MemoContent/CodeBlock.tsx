@@ -3,6 +3,7 @@ import hljs from "highlight.js";
 import { CheckIcon, CopyIcon } from "lucide-react";
 import { isValidElement, type ReactElement, type ReactNode, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { markdownStyles } from "@/lib/markdownStyles";
 import { cn } from "@/lib/utils";
 import { getThemeWithFallback, resolveTheme } from "@/utils/theme";
 import { CalendarBlock } from "./CalendarBlock";
@@ -85,7 +86,7 @@ export const CodeBlock = ({ children, className, node: _node, ...props }: CodeBl
   // If it's a mermaid block, render with MermaidBlock component
   if (language === "mermaid") {
     return (
-      <pre className="relative">
+      <pre className={cn("relative", markdownStyles.blockWrapper)}>
         <MermaidBlock className={cn(className)} {...props}>
           {children}
         </MermaidBlock>
@@ -96,7 +97,7 @@ export const CodeBlock = ({ children, className, node: _node, ...props }: CodeBl
   // If it's a calendar block, render with CalendarBlock component
   if (language === "calendar") {
     return (
-      <pre className="relative">
+      <pre className={cn("relative", markdownStyles.blockWrapper)}>
         <CalendarBlock className={cn(className)} {...props}>
           {children}
         </CalendarBlock>
@@ -107,7 +108,7 @@ export const CodeBlock = ({ children, className, node: _node, ...props }: CodeBl
   // If it's a grid block, render with GridBlock component
   if (language === "grid") {
     return (
-      <pre className="relative">
+      <pre className={cn("relative", markdownStyles.blockWrapper)}>
         <GridBlock className={cn(className)} {...props}>
           {children}
         </GridBlock>
@@ -122,7 +123,7 @@ export const CodeBlock = ({ children, className, node: _node, ...props }: CodeBl
   if (language === "sheets") {
     const blockId = (codeElement?.props as { "data-sheet-id"?: string } | undefined)?.["data-sheet-id"];
     return (
-      <pre className="relative">
+      <pre className={cn("relative", markdownStyles.blockWrapper)}>
         <SheetsBlock className={cn(className)} blockId={blockId} {...props}>
           {children}
         </SheetsBlock>
@@ -133,7 +134,7 @@ export const CodeBlock = ({ children, className, node: _node, ...props }: CodeBl
   // If it's a kanban block, render with KanbanBlock component
   if (language === "kanban") {
     return (
-      <pre className="relative">
+      <pre className={cn("relative", markdownStyles.blockWrapper)}>
         <KanbanBlock className={cn(className)} {...props}>
           {children}
         </KanbanBlock>
@@ -172,7 +173,7 @@ export const CodeBlock = ({ children, className, node: _node, ...props }: CodeBl
   };
 
   return (
-    <pre className="relative my-2 rounded-lg border border-border bg-muted/20 overflow-hidden">
+    <pre className={cn("relative rounded-lg border border-border bg-muted/20 overflow-hidden", markdownStyles.blockWrapper)}>
       {/* Header with language label and copy button */}
       <div className="flex items-center justify-between px-2 py-1 border-b border-border bg-muted/30">
         <span className="text-xs text-foreground select-none">{language || "text"}</span>

@@ -64,6 +64,7 @@ func (s *APIV1Service) convertMemoFromStoreWithCreators(ctx context.Context, mem
 		memoMessage.DocAnchor = convertDocAnchorFromStore(memo.Payload.DocAnchor)
 		memoMessage.EpubAnnotation = convertEpubAnnotationFromStore(memo.Payload.EpubAnnotation)
 		memoMessage.NodeOverlays = memo.Payload.NodeOverlays
+		memoMessage.DocConfig = convertDocConfigFromStore(memo.Payload.DocConfig)
 	}
 
 	if memo.ParentUID != nil {
@@ -456,6 +457,33 @@ func convertDocAnchorToStore(anchor *v1pb.DocAnchor) *storepb.MemoPayload_DocAnc
 		TextSuffix:  anchor.TextSuffix,
 		Color:       anchor.Color,
 		Underline:   anchor.Underline,
+	}
+}
+
+// Field presence is carried through verbatim in both directions: an unset field
+// means "not configured" and must stay unset, so the client can tell it apart
+// from an explicit false and fall back to the app default.
+func convertDocConfigFromStore(config *storepb.MemoPayload_DocConfig) *v1pb.DocConfig {
+	if config == nil {
+		return nil
+	}
+	return &v1pb.DocConfig{
+		FullWidth:      config.FullWidth,
+		DisplayOutline: config.DisplayOutline,
+		DisplayFilter:  config.DisplayFilter,
+		ShowProperties: config.ShowProperties,
+	}
+}
+
+func convertDocConfigToStore(config *v1pb.DocConfig) *storepb.MemoPayload_DocConfig {
+	if config == nil {
+		return nil
+	}
+	return &storepb.MemoPayload_DocConfig{
+		FullWidth:      config.FullWidth,
+		DisplayOutline: config.DisplayOutline,
+		DisplayFilter:  config.DisplayFilter,
+		ShowProperties: config.ShowProperties,
 	}
 }
 

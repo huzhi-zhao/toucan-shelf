@@ -418,6 +418,7 @@
     "restored-successfully": "恢复成功",
     "succeed-copy-content": "复制内容到剪贴板成功。",
     "succeed-copy-link": "复制链接到剪贴板成功。",
+    "update-failed": "更新失败",
     "update-succeed": "更新成功",
     "user-not-found": "未找到该用户"
   },
@@ -560,6 +561,8 @@
     "preference": {
       "appearance-description": "选择当前账号使用的界面语言和外观主题。",
       "appearance-title": "外观",
+      "compact-reading": "紧凑阅读",
+      "compact-reading-description": "在本设备上收紧文档的行距与段落间距；关闭则使用更适合长文阅读的宽松排版。",
       "default-memo-sort-option": "备忘录显示时间",
       "default-memo-visibility": "默认备忘录可见性",
       "default-memo-visibility-description": "创建新备忘录时默认使用的可见性，仍可在编辑器中调整。",
@@ -1039,6 +1042,11 @@
     "change-cover": "修改封面",
     "set-cover-color": "设置封面颜色",
     "set-cover-image": "设置封面图片",
+    "document-settings": "文档设置",
+    "full-width": "全宽显示",
+    "show-outline": "显示大纲",
+    "show-document-tree": "显示文档树",
+    "show-properties": "显示属性",
     "cover-image-url-placeholder": "图片链接"
   },
   "gallery": {

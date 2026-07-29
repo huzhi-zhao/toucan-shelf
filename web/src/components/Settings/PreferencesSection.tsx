@@ -15,6 +15,7 @@ import { Visibility } from "@/types/proto/api/v1/memo_service_pb";
 import { UserSetting_GeneralSetting, UserSetting_GeneralSettingSchema, UserSettingSchema } from "@/types/proto/api/v1/user_service_pb";
 import { loadLocale, useTranslate } from "@/utils/i18n";
 import { convertVisibilityFromString, convertVisibilityToString } from "@/utils/memo";
+import { setCompactReading, useReadingDensity } from "@/utils/readingDensity";
 import { setSidebarMode } from "@/utils/sidebarMode";
 import { loadTheme } from "@/utils/theme";
 import LocaleSelect from "../LocaleSelect";
@@ -29,6 +30,7 @@ const PreferencesSection = () => {
   const { currentUser, userGeneralSetting: generalSetting, refetchSettings } = useAuth();
   const { mutate: updateUserGeneralSetting } = useUpdateUserGeneralSetting(currentUser?.name);
   const sidebarMode = useSidebarMode();
+  const { compact: compactReading } = useReadingDensity();
 
   // RAG search preferences (per-user).
   const { data: userSettings } = useUserSettings(currentUser?.name);
@@ -137,6 +139,16 @@ const PreferencesSection = () => {
 
           <SettingListItem label={t("setting.preference.mini-menu")} description={t("setting.preference.mini-menu-description")}>
             <Switch checked={sidebarMode === "mini"} onCheckedChange={(checked) => setSidebarMode(checked ? "mini" : "default")} />
+          </SettingListItem>
+
+          {/* A reader preference, so it applies to every document — unlike the per-document
+              settings (width, outline, tree, properties) in a document's own ⋮ menu. Kept on
+              this device rather than synced: the right density depends on the screen. */}
+          <SettingListItem
+            label={t("setting.preference.compact-reading")}
+            description={t("setting.preference.compact-reading-description")}
+          >
+            <Switch checked={compactReading} onCheckedChange={setCompactReading} />
           </SettingListItem>
         </SettingList>
       </SettingGroup>

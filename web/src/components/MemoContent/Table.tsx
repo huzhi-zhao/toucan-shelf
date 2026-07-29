@@ -1,3 +1,4 @@
+import { markdownStyles } from "@/lib/markdownStyles";
 import { cn } from "@/lib/utils";
 import { NestedMarkdownRenderContext } from "./MarkdownRenderContext";
 import type { ReactMarkdownProps } from "./markdown/types";
@@ -8,7 +9,7 @@ interface TableProps extends React.HTMLAttributes<HTMLTableElement>, ReactMarkdo
 
 export const Table = ({ children, className, node: _node, ...props }: TableProps) => {
   return (
-    <div className="my-2 w-full overflow-x-auto rounded-lg border border-border bg-muted/20">
+    <div className={cn("w-full overflow-x-auto rounded-lg border border-border bg-muted/20", markdownStyles.blockWrapper)}>
       <table className={cn("w-full border-collapse text-sm", className)} {...props}>
         {children}
       </table>
@@ -58,7 +59,7 @@ interface TableHeaderCellProps extends React.ThHTMLAttributes<HTMLTableCellEleme
 
 export const TableHeaderCell = ({ children, className, node: _node, ...props }: TableHeaderCellProps) => {
   return (
-    <th className={cn("px-2 py-1 text-left align-middle text-sm font-medium text-muted-foreground", className)} {...props}>
+    <th className={cn(markdownStyles.tableCell, "text-left align-middle text-sm font-medium text-muted-foreground", className)} {...props}>
       <NestedMarkdownRenderContext>{children}</NestedMarkdownRenderContext>
     </th>
   );
@@ -70,7 +71,7 @@ interface TableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement>, R
 
 export const TableCell = ({ children, className, node: _node, ...props }: TableCellProps) => {
   return (
-    <td className={cn("px-2 py-1 text-left align-middle text-sm", className)} {...props}>
+    <td className={cn(markdownStyles.tableCell, "text-left align-middle text-sm", className)} {...props}>
       <NestedMarkdownRenderContext>{children}</NestedMarkdownRenderContext>
     </td>
   );
