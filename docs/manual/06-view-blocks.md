@@ -58,6 +58,12 @@ events: 瑜伽, 早睡, 喝水
   the month grid.
 - A line `showTaskDot: true` **enables the blue "has tasks" dot** drawn next to the
   day number on narrow screens. Omitted or `false` → no dot (the default).
+- A line `allowMaxUpdateDays: N` **limits editing** to the last `N` days (today
+  included) and the future; older cells render read-only.
+- A line `weekStartDay: N` **sets the first weekday of the grid** — `1` = Monday …
+  `6` = Saturday, `7` = Sunday. Omitted → the instance's week-start setting.
+- The leading/trailing cells from the neighbouring months are drawn (day number,
+  task previews, event dots) but **dimmed and not clickable**.
 - Blank lines and non-matching prose are ignored. Non-adjacent groups with the
   same date merge; an empty body shows a friendly empty state.
 

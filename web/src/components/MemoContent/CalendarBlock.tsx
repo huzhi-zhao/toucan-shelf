@@ -20,7 +20,7 @@ export const CalendarBlock = ({ children }: CalendarBlockProps) => {
   const t = useTranslate();
   const codeContent = extractCodeContent(children);
   const parsed = useMemo(() => parseCalendarBlock(codeContent), [codeContent]);
-  const { events, groups, allowMaxUpdateDays, showTaskDot } = parsed;
+  const { events, groups, allowMaxUpdateDays, weekStartDay, showTaskDot } = parsed;
 
   const datedGroups = useMemo(() => groups.filter((g) => g.date), [groups]);
   const ungroupedItems = (groups.find((g) => !g.date)?.items ?? []).filter((i) => !i.isEvent);
@@ -123,6 +123,7 @@ export const CalendarBlock = ({ children }: CalendarBlockProps) => {
             eventsByDate={eventsByDate}
             events={events}
             showTaskDot={showTaskDot ?? false}
+            weekStartDay={weekStartDay}
             selectedDate={selectedDate}
             onSelectDate={handleSelectDate}
           />

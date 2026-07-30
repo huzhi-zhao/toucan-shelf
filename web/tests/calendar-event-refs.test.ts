@@ -36,6 +36,13 @@ describe("calendar event refs", () => {
     expect(parseCalendarBlock("- 2026-07-19").allowMaxUpdateDays).toBeUndefined();
   });
 
+  it("parses weekStartDay", () => {
+    expect(parseCalendarBlock("weekStartDay: 1\n- 2026-07-19").weekStartDay).toBe(1);
+    expect(parseCalendarBlock("@weekStartDay: 7\n- 2026-07-19").weekStartDay).toBe(7);
+    expect(parseCalendarBlock("weekStartDay: 8\n- 2026-07-19").weekStartDay).toBeUndefined();
+    expect(parseCalendarBlock("- 2026-07-19").weekStartDay).toBeUndefined();
+  });
+
   it("parses showTaskDot", () => {
     expect(parseCalendarBlock("showTaskDot: true\n- 2026-07-19").showTaskDot).toBe(true);
     expect(parseCalendarBlock("@showTaskDot: false\n- 2026-07-19").showTaskDot).toBe(false);

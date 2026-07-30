@@ -20,6 +20,7 @@ interface CalendarMonthGridProps {
   eventsByDate: Record<string, string[]>;
   events: string[];
   showTaskDot: boolean;
+  weekStartDay?: number; // 1=周一 …… 6=周六、7=周日；省略时用实例设置
   selectedDate?: string;
   onSelectDate: (date: string) => void;
 }
@@ -39,6 +40,7 @@ export const CalendarMonthGrid = ({
   eventsByDate,
   events,
   showTaskDot,
+  weekStartDay,
   selectedDate,
   onSelectDate,
 }: CalendarMonthGridProps) => {
@@ -55,7 +57,8 @@ export const CalendarMonthGrid = ({
     month: monthString,
     data: itemCounts,
     weekDays,
-    weekStartDayOffset: generalSetting.weekStartDayOffset,
+    // weekStartDay 用 1~7 表示周一~周日，而 offset 是相对周日的位移（周日 = 0）。
+    weekStartDayOffset: weekStartDay ? weekStartDay % 7 : generalSetting.weekStartDayOffset,
     today,
     selectedDate: selectedDate ?? "",
   });

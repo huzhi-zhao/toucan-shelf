@@ -15,30 +15,25 @@ interface CalendarDayCellProps {
 const MAX_PREVIEW_ITEMS = 2;
 
 export const CalendarDayCell = ({ day, items, dayEvents, events, showTaskDot, onClick }: CalendarDayCellProps) => {
-  if (!day.isCurrentMonth) {
-    return <div className="aspect-square" aria-hidden="true" />;
-  }
-
   const taskItems = items.filter((item) => !item.isEvent);
   const hasTasks = taskItems.length > 0;
   const previewItems = taskItems.slice(0, MAX_PREVIEW_ITEMS);
   const hasEvents = dayEvents.length > 0;
-  const isInteractive = Boolean(onClick);
+  // 上/下月的格子照常画日期与打点，但整体置灰、不可点击，只作为上下文参考。
+  const isOutside = !day.isCurrentMonth;
+  const isInteractive = Boolean(onClick) && !isOutside;
 
-  return (
-    <button
-      type="button"
-      onClick={() => onClick?.(day.date)}
-      aria-current={day.isToday ? "date" : undefined}
-      aria-pressed={day.isSelected}
-      className={cn(
-        "relative flex aspect-square flex-col justify-between gap-0.5 overflow-hidden rounded-xl border border-border/30 bg-muted/10 p-1 transition-colors",
-        "md:justify-start md:gap-1 md:p-1.5",
-        isInteractive ? "cursor-pointer hover:bg-muted/40" : "cursor-default",
-        day.isToday && "ring-2 ring-inset ring-primary",
-      )}
-    >
-      {day.isSelected && (
+  const className = cn(
+    "relative flex aspect-square flex-col justify-between gap-0.5 overflow-hidden rounded-xl border border-border/30 bg-muted/10 p-1 transition-colors",
+    "md:justify-start md:gap-1 md:p-1.5",
+    isOutside && "border-border/15 bg-transparent opacity-50",
+    isInteractive ? "cursor-pointer hover:bg-muted/40" : "cursor-default",
+    day.isToday && !isOutside && "ring-2 ring-inset ring-primary",
+  );
+
+  const content = (
+    <>
+      {day.isSelected && !isOutside && (
         <span
           className="pointer-events-none absolute right-0 top-0 h-0 w-0 border-l-[14px] border-t-[14px] border-l-transparent border-t-primary"
           aria-hidden="true"
@@ -46,7 +41,9 @@ export const CalendarDayCell = ({ day, items, dayEvents, events, showTaskDot, on
       )}
       {/* 日期数字一行，右侧对齐当天有任务的蓝点（仅 showTaskDot: true 时显示） */}
       <div className="flex w-full items-center justify-between gap-1">
-        <span className="shrink-0 text-xs font-medium text-foreground md:text-sm">{day.label}</span>
+        <span className={cn("shrink-0 text-xs font-medium md:text-sm", isOutside ? "text-muted-foreground/50" : "text-foreground")}>
+          {day.label}
+        </span>
         {showTaskDot && hasTasks && <span className="h-1 w-1 shrink-0 rounded-full bg-primary/70 md:hidden" aria-hidden="true" />}
       </div>
       {/* 移动端：events 圆点横排一行 */}
@@ -64,7 +61,10 @@ export const CalendarDayCell = ({ day, items, dayEvents, events, showTaskDot, on
       {hasTasks && (
         <div className="hidden md:flex md:flex-col md:gap-0.5 md:overflow-hidden md:text-left">
           {previewItems.map((item, index) => (
-            <span key={index} className="truncate text-[10px] leading-tight text-muted-foreground">
+            <span
+              key={index}
+              className={cn("truncate text-[10px] leading-tight", isOutside ? "text-muted-foreground/50" : "text-muted-foreground")}
+            >
               {item.text}
             </span>
           ))}
@@ -77,11 +77,31 @@ export const CalendarDayCell = ({ day, items, dayEvents, events, showTaskDot, on
               key={name}
               className="h-1.5 w-1.5 shrink-0 rounded-full"
               style={{ backgroundColor: getEventColorByName(name, events) }}
-              title={name}
+              title={isOutside ? undefined : name}
             />
           ))}
         </div>
       )}
+    </>
+  );
+
+  if (isOutside) {
+    return (
+      <div className={className} aria-hidden="true">
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => onClick?.(day.date)}
+      aria-current={day.isToday ? "date" : undefined}
+      aria-pressed={day.isSelected}
+      className={className}
+    >
+      {content}
     </button>
   );
 };

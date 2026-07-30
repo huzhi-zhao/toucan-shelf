@@ -16,11 +16,13 @@ export interface ParsedCalendar {
   events: string[]; // 预定义的 event 名称列表，顺序即颜色下标
   groups: CalendarGroup[];
   allowMaxUpdateDays?: number; // 仅允许编辑最近 N 天内的日期，避免误点历史数据
+  weekStartDay?: number; // 一周从星期几开始：1=周一 …… 6=周六、7=周日；省略时用实例设置
   showTaskDot?: boolean; // true 时移动端日历格子才画"当天有任务"的蓝点
 }
 
 const EVENTS_LINE_RE = /^@?events:\s*(.*)$/i;
 const ALLOW_MAX_UPDATE_DAYS_RE = /^@?allowMaxUpdateDays:\s*(\d+)\s*$/i;
+const WEEK_START_DAY_RE = /^@?weekStartDay:\s*([1-7])\s*$/i;
 const SHOW_TASK_DOT_RE = /^@?showTaskDot:\s*(true|false)\s*$/i;
 const DATE_LINE_RE = /^-\s+(\d{4}-\d{2}-\d{2})\s*$/;
 const EVENT_ITEM_RE = /^-\s+@(.+)$/;
@@ -56,6 +58,7 @@ export function parseCalendarBlock(raw: string): ParsedCalendar {
   const groups: CalendarGroup[] = [];
   const events: string[] = [];
   let allowMaxUpdateDays: number | undefined;
+  let weekStartDay: number | undefined;
   let showTaskDot: boolean | undefined;
   let ungrouped: CalendarGroup | undefined;
   let current: CalendarGroup | undefined;
@@ -66,6 +69,12 @@ export function parseCalendarBlock(raw: string): ParsedCalendar {
     const daysMatch = ALLOW_MAX_UPDATE_DAYS_RE.exec(line.trim());
     if (daysMatch) {
       allowMaxUpdateDays = Number(daysMatch[1]);
+      continue;
+    }
+
+    const weekStartMatch = WEEK_START_DAY_RE.exec(line.trim());
+    if (weekStartMatch) {
+      weekStartDay = Number(weekStartMatch[1]);
       continue;
     }
 
@@ -134,5 +143,5 @@ export function parseCalendarBlock(raw: string): ParsedCalendar {
     groups.unshift(ungrouped);
   }
 
-  return { events, groups, allowMaxUpdateDays, showTaskDot };
+  return { events, groups, allowMaxUpdateDays, weekStartDay, showTaskDot };
 }
