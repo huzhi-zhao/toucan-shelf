@@ -621,6 +621,48 @@ func (s *ConnectServiceHandler) GetIndexStatus(ctx context.Context, req *connect
 	return connect.NewResponse(resp), nil
 }
 
+// SecretBlockService
+
+func (s *ConnectServiceHandler) ListSecretBlocks(ctx context.Context, req *connect.Request[v1pb.ListSecretBlocksRequest]) (*connect.Response[v1pb.ListSecretBlocksResponse], error) {
+	resp, err := s.APIV1Service.ListSecretBlocks(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) GetSecretBlock(ctx context.Context, req *connect.Request[v1pb.GetSecretBlockRequest]) (*connect.Response[v1pb.SecretBlock], error) {
+	resp, err := s.APIV1Service.GetSecretBlock(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) CreateSecretBlock(ctx context.Context, req *connect.Request[v1pb.CreateSecretBlockRequest]) (*connect.Response[v1pb.SecretBlock], error) {
+	resp, err := s.APIV1Service.CreateSecretBlock(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) UpdateSecretBlock(ctx context.Context, req *connect.Request[v1pb.UpdateSecretBlockRequest]) (*connect.Response[v1pb.SecretBlock], error) {
+	resp, err := s.APIV1Service.UpdateSecretBlock(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) DeleteSecretBlock(ctx context.Context, req *connect.Request[v1pb.DeleteSecretBlockRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := s.APIV1Service.DeleteSecretBlock(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 // ShortcutService
 
 func (s *ConnectServiceHandler) ListShortcuts(ctx context.Context, req *connect.Request[v1pb.ListShortcutsRequest]) (*connect.Response[v1pb.ListShortcutsResponse], error) {

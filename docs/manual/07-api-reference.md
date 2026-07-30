@@ -198,7 +198,36 @@ curl -s /api/v1/shares/<token>
 
 ---
 
-## 7.6 Other services
+## 7.6 SecretBlockService — encrypted blocks
+
+Storage for the ciphertext behind `toucan-secret` blocks (see
+[§6.5](./06-view-blocks.md)). The server is a dumb vault: it stores and returns
+opaque envelopes produced by the browser and holds neither plaintext nor passphrase.
+There is intentionally no RPC that could return plaintext.
+
+| Method | HTTP | Notes |
+|---|---|---|
+| `CreateSecretBlock` | `POST /api/v1/secretBlocks` | Stores a client-encrypted envelope; the server assigns the uid |
+| `GetSecretBlock` | `GET /api/v1/secretBlocks/{uid}` | Returns the envelope. Caller must own the record |
+| `UpdateSecretBlock` | `PATCH /api/v1/secretBlocks/{uid}` | Replaces hint + envelope wholesale. No field mask: a partially updated envelope would be permanently undecryptable |
+| `DeleteSecretBlock` | `DELETE /api/v1/secretBlocks/{uid}` | Permanent, no recovery |
+| `ListSecretBlocks` | `GET /api/v1/secretBlocks` | **Metadata only** — name, hint, timestamps, ciphertext size |
+
+Two constraints are load-bearing rather than incidental:
+
+- **No method is public.** All require authentication, and lookups are scoped to the
+  caller, so another user's uid simply finds nothing. This is why a publicly shared
+  document's secret blocks stay closed for anonymous readers.
+- **`ListSecretBlocks` never returns ciphertext.** It is a separate response message,
+  and the query does not select those columns, so a later edit cannot start leaking
+  them. Bulk-shipping ciphertext to a screen that only needs labels would hand out a
+  ready-made offline brute-force corpus.
+
+The server validates the envelope's suite (`pbkdf2-sha256` + `aes-256-gcm`) and
+rejects a KDF iteration count below the supported floor, so a weakened envelope is
+refused at write time rather than discovered when a user can no longer open it.
+
+## 7.7 Other services
 
 Unchanged from upstream Memos; see the proto files for details:
 

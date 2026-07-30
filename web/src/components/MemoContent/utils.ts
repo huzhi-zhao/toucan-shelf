@@ -20,6 +20,8 @@ export const extractCodeContent = (children: ReactNode): string => {
  * @returns The language identifier, or empty string if none found
  */
 export const extractLanguage = (className: string): string => {
-  const match = /language-(\w+)/.exec(className);
+  // Hyphens are part of the identifier: `toucan-secret` must not come back as
+  // `toucan`, and upstream names like `objective-c` were being truncated too.
+  const match = /language-([\w-]+)/.exec(className);
   return match ? match[1] : "";
 };

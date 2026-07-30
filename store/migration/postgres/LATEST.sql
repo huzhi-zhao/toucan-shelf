@@ -168,3 +168,22 @@ CREATE TABLE user_identity (
 );
 
 CREATE INDEX idx_user_identity_user_id ON user_identity(user_id);
+
+-- secret_block
+CREATE TABLE secret_block (
+  id             SERIAL  PRIMARY KEY,
+  uid            TEXT    NOT NULL UNIQUE,
+  creator_id     INTEGER NOT NULL,
+  hint           TEXT    NOT NULL DEFAULT '',
+  kdf            TEXT    NOT NULL,
+  kdf_iterations INTEGER NOT NULL,
+  cipher         TEXT    NOT NULL,
+  salt           TEXT    NOT NULL,
+  nonce          TEXT    NOT NULL,
+  verifier       TEXT    NOT NULL,
+  ciphertext     TEXT    NOT NULL,
+  created_ts     BIGINT  NOT NULL DEFAULT EXTRACT(EPOCH FROM NOW()),
+  updated_ts     BIGINT  NOT NULL DEFAULT EXTRACT(EPOCH FROM NOW())
+);
+
+CREATE INDEX idx_secret_block_creator_id ON secret_block(creator_id);

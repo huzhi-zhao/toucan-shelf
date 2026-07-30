@@ -210,3 +210,22 @@ CREATE TABLE memo_index_job (
 );
 
 CREATE INDEX idx_memo_index_job_status ON memo_index_job(status);
+
+-- secret_block
+CREATE TABLE secret_block (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  uid            TEXT    NOT NULL UNIQUE,
+  creator_id     INTEGER NOT NULL,
+  hint           TEXT    NOT NULL DEFAULT '',
+  kdf            TEXT    NOT NULL,
+  kdf_iterations INTEGER NOT NULL,
+  cipher         TEXT    NOT NULL,
+  salt           TEXT    NOT NULL,
+  nonce          TEXT    NOT NULL,
+  verifier       TEXT    NOT NULL,
+  ciphertext     TEXT    NOT NULL,
+  created_ts     BIGINT  NOT NULL DEFAULT (strftime('%s', 'now')),
+  updated_ts     BIGINT  NOT NULL DEFAULT (strftime('%s', 'now'))
+);
+
+CREATE INDEX idx_secret_block_creator_id ON secret_block(creator_id);

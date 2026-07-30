@@ -5,12 +5,14 @@ import { isValidElement, type ReactElement, type ReactNode, useEffect, useMemo, 
 import { useAuth } from "@/contexts/AuthContext";
 import { markdownStyles } from "@/lib/markdownStyles";
 import { cn } from "@/lib/utils";
+import { SECRET_BLOCK_LANGUAGE } from "@/utils/secret-block";
 import { getThemeWithFallback, resolveTheme } from "@/utils/theme";
 import { CalendarBlock } from "./CalendarBlock";
 import { GridBlock } from "./GridBlock";
 import { KanbanBlock } from "./KanbanBlock";
 import { MermaidBlock } from "./MermaidBlock";
 import type { ReactMarkdownProps } from "./markdown/types";
+import { SecretBlock } from "./SecretBlock";
 import { SheetsBlock } from "./SheetsBlock";
 
 import { extractCodeContent, extractLanguage } from "./utils";
@@ -91,6 +93,22 @@ export const CodeBlock = ({ children, className, node: _node, ...props }: CodeBl
           {children}
         </MermaidBlock>
       </pre>
+    );
+  }
+
+  // If it's a secret block, render with SecretBlock component. Unlike the view
+  // blocks, the fence body is only a reference — the ciphertext is fetched, and
+  // decrypted in the browser, once the reader supplies a passphrase.
+  if (language === SECRET_BLOCK_LANGUAGE) {
+    // A <div>, not the <pre> the other blocks use: a decrypted payload renders as
+    // ordinary markdown, and inside <pre> it would inherit `white-space: pre` and a
+    // monospace font — every source newline becoming a visible break.
+    return (
+      <div className={cn("relative", markdownStyles.blockWrapper)}>
+        <SecretBlock className={cn(className)} {...props}>
+          {children}
+        </SecretBlock>
+      </div>
     );
   }
 

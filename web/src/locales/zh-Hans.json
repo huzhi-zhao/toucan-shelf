@@ -183,6 +183,9 @@
       "collapse": "折叠",
       "popover": "悬浮提示"
     },
+    "secret": {
+      "block": "密文块"
+    },
     "view": {
       "trigger": "视图",
       "grid": "网格视图",
@@ -1207,5 +1210,38 @@
     "move-right": "右移",
     "empty-section": "该分区还没有内容，进入编辑添加卡片墙、日历或 Markdown 区块。",
     "loading": "加载中…"
+  },
+  "secret-block": {
+    "locked": "加密内容",
+    "uninitialized": "尚未初始化",
+    "unlock": "解锁",
+    "set-passphrase": "设置密码",
+    "relock": "重新锁定",
+    "copy": "复制",
+    "edit": "编辑内容",
+    "empty": "暂无内容，点铅笔按钮添加。",
+    "content-placeholder": "账号密码、token、.env 片段…… 支持 Markdown 渲染。",
+    "passphrase-placeholder": "密码",
+    "hint-placeholder": "标题 —— 例如：MinIO 安装过程",
+    "malformed": "此加密块格式有误，无法打开。",
+    "sign-in-required": "此文档包含加密内容，登录后可尝试打开。",
+    "create": {
+      "passphrase-confirm": "再次输入密码",
+      "passphrase-mismatch": "两次输入的密码不一致。",
+      "no-recovery": "在你的浏览器中加密，服务端不会看到密码，因此无法找回。忘记密码则内容永久丢失。"
+    },
+    "error": {
+      "wrong-passphrase": "密码错误。",
+      "corrupted": "存储的密文未通过校验，已被改动或截断。不是密码的问题，请从备份恢复。",
+      "unsupported": "该密文使用了当前版本不支持的加密套件。",
+      "not-found": "此加密块在当前实例中不存在。",
+      "readonly": "当前文档在此处不可编辑，无法初始化加密块。",
+      "write-back-failed": "密文已创建，但 id 没能写回文档。请复制该 id 手动填入，或删除此块重来。",
+      "create-failed": "创建加密块失败。",
+      "save-failed": "保存失败。内容目前仍处于解密状态，请先复制再离开本页。",
+      "rotate-failed": "修改密码失败，原密码仍然有效。"
+    },
+    "change-passphrase": "修改密码",
+    "new-passphrase": "新密码"
   }
 }

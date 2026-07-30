@@ -107,4 +107,11 @@ type Driver interface {
 	CreateUserIdentity(ctx context.Context, create *UserIdentity) (*UserIdentity, error)
 	ListUserIdentities(ctx context.Context, find *FindUserIdentity) ([]*UserIdentity, error)
 	DeleteUserIdentities(ctx context.Context, delete *DeleteUserIdentity) error
+
+	// SecretBlock model related methods.
+	CreateSecretBlock(ctx context.Context, create *SecretBlock) (*SecretBlock, error)
+	GetSecretBlock(ctx context.Context, find *FindSecretBlock) (*SecretBlock, error)
+	ListSecretBlockSummaries(ctx context.Context, find *FindSecretBlock) ([]*SecretBlockSummary, error)
+	UpdateSecretBlock(ctx context.Context, update *UpdateSecretBlock) (*SecretBlock, error)
+	DeleteSecretBlock(ctx context.Context, delete *DeleteSecretBlock) error
 }

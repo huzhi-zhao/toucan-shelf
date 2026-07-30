@@ -281,7 +281,90 @@ a single formula inserted into the cell.
 
 ---
 
-## 6.5 Roadmap (not in this release)
+## 6.5 Secret block (`toucan-secret`)
+
+A block that holds credentials — MinIO logins, API tokens, `.env` fragments —
+encrypted with a passphrase only you know. Unlike the four view blocks above, its
+fence body is **not** the data: it is a reference plus a label.
+
+````
+```toucan-secret
+v: 1
+id: 7Kq2vX9mNb
+hint: MinIO setup steps
+```
+````
+
+- `v` is the body's format version. A client that does not recognise it says so
+  instead of guessing — if a later format gave `id` a different meaning, silently
+  honouring it could open the wrong record.
+- `id` points at the stored ciphertext.
+- `hint` is plain text and doubles as the block's **title**. It is what tells a
+  reader — including you, months later, reading the raw file in a memogit checkout —
+  what this block is for. It describes the secret; it is not part of it.
+
+### Setting one up
+
+Everything happens in the preview; there is no separate dialog.
+
+1. In the editor, insert a block from **Collapsible → Secret block**. It arrives with
+   a local placeholder id and is not yet set up.
+2. Switch to preview. The card shows **Set passphrase** rather than *Unlock*, with
+   fields for the passphrase (twice) and the title.
+3. Setting the passphrase creates the record and writes its real id and title back
+   into the document. The card opens, empty.
+4. Use the **pencil** button to write the content, then save. The payload is
+   rendered with the same Markdown renderer as the rest of the document.
+5. The **key** button changes the passphrase: the content is re-encrypted and the
+   stored envelope is overwritten, so the old passphrase stops working — see below
+   for why that only works because the ciphertext lives outside the document.
+6. Reload the page — or anything else that remounts the block — and it is locked
+   again. Nothing is remembered.
+
+Encryption happens in your browser. The passphrase never leaves it and the server
+never sees the plaintext, so **there is no recovery**: forget the passphrase and the
+content is gone. That is why setup asks for it twice.
+
+### Why the ciphertext is not in the document
+
+Because a document body is append-only in practice: every edit is snapshotted into
+version history, and `memogit` pushes it into git. An inline envelope would mean that
+re-encrypting under a new passphrase leaves the **old** passphrase's ciphertext
+readable forever in history — making a passphrase change useless. Storing it
+separately lets a rotation actually overwrite.
+
+The consequence is deliberate: a document exported out of this instance keeps the
+reference and the title but not the ciphertext, so the block is inert elsewhere.
+
+### What to expect
+
+| Situation | What you see |
+|---|---|
+| Wrong passphrase | "Incorrect passphrase." |
+| Ciphertext altered or truncated | A distinct message telling you to restore from a backup — **not** a passphrase error, so you do not waste time retrying |
+| Document synced from another instance | "This secret block does not exist in the current instance." |
+| Document opened via a public share link, not signed in | "Sign in to open it" — the ciphertext is never served to anonymous readers, so no passphrase field is offered either |
+
+Secrets belong to **you**, not to the document. Deleting or duplicating a document
+never destroys a secret, and two documents may reference the same one.
+
+### Limits worth knowing
+
+- Once decrypted, the plaintext is in the page — any browser extension with page
+  access can read it. This is inherent to decrypting in a browser.
+- The app's own JavaScript is served by the instance, so you are ultimately trusting
+  whoever operates it.
+- Only the reference is indexable, so secret content never appears in search. The
+  title does appear in the raw markdown, so keep it descriptive, not sensitive.
+
+Good fits: passwords, tokens, certificates, recovery codes — things a human reads and
+pastes elsewhere. A poor fit is an SSH private key, which is better kept in a keychain
+or an `age`-encrypted file: it needs to be consumed by `ssh-agent`, rotated, and
+revoked, none of which copy-paste supports well.
+
+---
+
+## 6.6 Roadmap (not in this release)
 
 - **Kanban:** reorder within a column, inline field editing, delete cards, column
   management (add / rename / reorder via `statusOrder`).

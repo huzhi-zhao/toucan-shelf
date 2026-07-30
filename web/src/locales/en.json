@@ -235,6 +235,9 @@
       "collapse": "Collapse",
       "popover": "Popover"
     },
+    "secret": {
+      "block": "Secret block"
+    },
     "view": {
       "trigger": "View",
       "grid": "Grid view",
@@ -1288,5 +1291,38 @@
     "move-right": "Move right",
     "empty-section": "This section is empty. Edit it to add gallery, calendar or markdown blocks.",
     "loading": "Loading…"
+  },
+  "secret-block": {
+    "locked": "Encrypted content",
+    "uninitialized": "not set up yet",
+    "unlock": "Unlock",
+    "set-passphrase": "Set passphrase",
+    "relock": "Lock",
+    "copy": "Copy",
+    "edit": "Edit content",
+    "empty": "Empty. Use the pencil to add content.",
+    "content-placeholder": "Credentials, tokens, .env lines… Markdown is rendered.",
+    "passphrase-placeholder": "Passphrase",
+    "hint-placeholder": "Title — e.g. MinIO setup steps",
+    "malformed": "This secret block is malformed and cannot be opened.",
+    "sign-in-required": "This document contains encrypted content. Sign in to open it.",
+    "create": {
+      "passphrase-confirm": "Confirm passphrase",
+      "passphrase-mismatch": "The two passphrases do not match.",
+      "no-recovery": "Encrypted in your browser. The server never sees the passphrase, so it cannot be recovered — forget it and the content is lost."
+    },
+    "error": {
+      "wrong-passphrase": "Incorrect passphrase.",
+      "corrupted": "The stored ciphertext failed verification — it has been altered or truncated. The passphrase is not the problem; restore from a backup.",
+      "unsupported": "This secret was written with an encryption suite this version does not support.",
+      "not-found": "This secret block does not exist in the current instance.",
+      "readonly": "This document cannot be edited here, so a secret block cannot be set up.",
+      "write-back-failed": "The secret was created but its id could not be written into the document. Copy the id and set it manually, or delete the block and start over.",
+      "create-failed": "Could not create the secret block.",
+      "save-failed": "Could not save. The content is still decrypted here — copy it before leaving this page.",
+      "rotate-failed": "Could not change the passphrase. The old one still works."
+    },
+    "change-passphrase": "Change passphrase",
+    "new-passphrase": "New passphrase"
   }
 }

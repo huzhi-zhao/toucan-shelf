@@ -9,6 +9,7 @@ import { IdentityProviderService } from "./types/proto/api/v1/idp_service_pb";
 import { InstanceService } from "./types/proto/api/v1/instance_service_pb";
 import { MemoService } from "./types/proto/api/v1/memo_service_pb";
 import { RagService } from "./types/proto/api/v1/rag_service_pb";
+import { SecretBlockService } from "./types/proto/api/v1/secret_block_service_pb";
 import { ShortcutService } from "./types/proto/api/v1/shortcut_service_pb";
 import { UserService } from "./types/proto/api/v1/user_service_pb";
 import { WorkspaceService } from "./types/proto/api/v1/workspace_service_pb";
@@ -200,6 +201,7 @@ export const memoServiceClient = createClient(MemoService, transport);
 export const attachmentServiceClient = createClient(AttachmentService, transport);
 export const aiServiceClient = createClient(AIService, transport);
 export const ragServiceClient = createClient(RagService, transport);
+export const secretBlockServiceClient = createClient(SecretBlockService, transport);
 export const shortcutServiceClient = createClient(ShortcutService, transport);
 export const workspaceServiceClient = createClient(WorkspaceService, transport);
 

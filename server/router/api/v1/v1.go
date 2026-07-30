@@ -30,6 +30,7 @@ type APIV1Service struct {
 	v1pb.UnimplementedIdentityProviderServiceServer
 	v1pb.UnimplementedWorkspaceServiceServer
 	v1pb.UnimplementedRagServiceServer
+	v1pb.UnimplementedSecretBlockServiceServer
 
 	Secret                  string
 	Profile                 *profile.Profile
@@ -126,6 +127,9 @@ func (s *APIV1Service) RegisterGateway(ctx context.Context, echoServer *echo.Ech
 		return err
 	}
 	if err := v1pb.RegisterRagServiceHandlerServer(ctx, gwMux, s); err != nil {
+		return err
+	}
+	if err := v1pb.RegisterSecretBlockServiceHandlerServer(ctx, gwMux, s); err != nil {
 		return err
 	}
 	gwGroup := echoServer.Group("")

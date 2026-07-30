@@ -44,6 +44,7 @@ func (s *ConnectServiceHandler) RegisterConnectHandlers(mux *http.ServeMux, opts
 		wrap(apiv1connect.NewIdentityProviderServiceHandler(s, opts...)),
 		wrap(apiv1connect.NewWorkspaceServiceHandler(s, opts...)),
 		wrap(apiv1connect.NewRagServiceHandler(s, opts...)),
+		wrap(apiv1connect.NewSecretBlockServiceHandler(s, opts...)),
 	}
 
 	for _, h := range handlers {

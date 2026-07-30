@@ -12,6 +12,7 @@ import {
   LayoutGridIcon,
   ListCollapseIcon,
   ListIcon,
+  LockIcon,
   type LucideIcon,
   MessageSquareQuoteIcon,
   MessagesSquareIcon,
@@ -39,6 +40,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { Translations } from "@/utils/i18n";
 import { useTranslate } from "@/utils/i18n";
+import { newLocalSecretId, secretBlockFence } from "@/utils/secret-block";
 import {
   EDITOR_COMMANDS,
   type EditorCommand,
@@ -116,7 +118,9 @@ const COLLAPSIBLE_MENU_ITEMS: CollapsibleMenuItem[] = [
   {
     labelKey: "editor.collapsible.collapse",
     icon: PanelTopOpenIcon,
-    snippet: ["> [!Collapse]- Collapsible section title", "> Rich body content, collapsed by default.", "> Supports full markdown."].join("\n"),
+    snippet: ["> [!Collapse]- Collapsible section title", "> Rich body content, collapsed by default.", "> Supports full markdown."].join(
+      "\n",
+    ),
   },
   {
     labelKey: "editor.collapsible.popover",
@@ -331,6 +335,17 @@ export function FormattingToolbar({ controllerRef, onExit, className }: Formatti
               {t(item.labelKey)}
             </DropdownMenuItem>
           ))}
+          {/* Separated because a secret block is not a collapsible callout — it
+              shares this menu only as a place to reach block insertions from.
+              The inserted block carries a locally generated id: it is a placeholder
+              until the reader sets a passphrase in the preview, which creates the
+              record and writes the real uid back here. The plaintext therefore never
+              passes through the editor's own (autosaved) state. */}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => controllerRef.current?.insertMarkdown(`\n${secretBlockFence(newLocalSecretId())}\n`)}>
+            <LockIcon className="w-4 h-4" />
+            {t("editor.secret.block")}
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 

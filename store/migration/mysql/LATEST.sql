@@ -168,3 +168,21 @@ CREATE TABLE `user_identity` (
 );
 
 CREATE INDEX `idx_user_identity_user_id` ON `user_identity`(`user_id`);
+
+-- secret_block
+CREATE TABLE `secret_block` (
+  `id`             INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `uid`            VARCHAR(256) NOT NULL UNIQUE,
+  `creator_id`     INT          NOT NULL,
+  `hint`           VARCHAR(256) NOT NULL DEFAULT '',
+  `kdf`            VARCHAR(64)  NOT NULL,
+  `kdf_iterations` INT          NOT NULL,
+  `cipher`         VARCHAR(64)  NOT NULL,
+  `salt`           VARCHAR(256) NOT NULL,
+  `nonce`          VARCHAR(256) NOT NULL,
+  `verifier`       VARCHAR(256) NOT NULL,
+  `ciphertext`     TEXT         NOT NULL,
+  `created_ts`     BIGINT       NOT NULL DEFAULT (UNIX_TIMESTAMP()),
+  `updated_ts`     BIGINT       NOT NULL DEFAULT (UNIX_TIMESTAMP()),
+  INDEX `idx_secret_block_creator_id` (`creator_id`)
+);
