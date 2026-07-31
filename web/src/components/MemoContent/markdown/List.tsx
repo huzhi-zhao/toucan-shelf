@@ -1,4 +1,4 @@
-import { Children, cloneElement, isValidElement, type ReactElement, type ReactNode } from "react";
+import { Children, cloneElement, createContext, isValidElement, type ReactElement, type ReactNode, useContext } from "react";
 import { markdownStyles } from "@/lib/markdownStyles";
 import { cn } from "@/lib/utils";
 import { resolveTaskStatus } from "@/utils/task-status";
@@ -70,21 +70,39 @@ interface ListProps extends React.HTMLAttributes<HTMLUListElement | HTMLOListEle
 }
 
 /**
+ * How deeply the current bullet list is nested inside other bullet lists. Only
+ * plain bullet lists count — an ordered or task list in between passes the depth
+ * through untouched, since it draws its own markers anyway.
+ */
+const BulletDepthContext = createContext(0);
+
+/**
+ * Bullet glyph per nesting level, cycling like Notion's: filled disc, hollow
+ * circle, filled square. `markdownStyles.bulletList` already carries `list-disc`
+ * for level 0, so only the deeper levels need an override.
+ */
+const BULLET_MARKERS = ["list-disc", "list-[circle]", "list-[square]"] as const;
+
+/**
  * List component for both regular and task lists (GFM)
  * Detects task lists via the "contains-task-list" class added by remark-gfm
  */
 export const List = ({ ordered, children, className, node: _node, ...domProps }: ListProps) => {
   const Component = ordered ? "ol" : "ul";
   const isTaskList = className?.includes(TASK_LIST_CLASS);
+  const bulletDepth = useContext(BulletDepthContext);
+  const isBulletList = !ordered && !isTaskList;
   // Task list indentation is handled by task item grid columns; regular lists
   // use the shared token (padding + list style).
   const listClass = isTaskList ? "my-0 mb-2 list-outside list-none" : ordered ? markdownStyles.orderedList : markdownStyles.bulletList;
 
-  return (
-    <Component className={cn(listClass, className)} {...domProps}>
+  const list = (
+    <Component className={cn(listClass, isBulletList && BULLET_MARKERS[bulletDepth % BULLET_MARKERS.length], className)} {...domProps}>
       {children}
     </Component>
   );
+
+  return isBulletList ? <BulletDepthContext.Provider value={bulletDepth + 1}>{list}</BulletDepthContext.Provider> : list;
 };
 
 interface ListItemProps extends React.LiHTMLAttributes<HTMLLIElement>, ReactMarkdownProps {

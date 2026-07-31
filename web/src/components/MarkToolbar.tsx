@@ -1,4 +1,5 @@
 import { EraserIcon, MessageSquarePlusIcon, UnderlineIcon } from "lucide-react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTranslate } from "@/utils/i18n";
@@ -39,20 +40,44 @@ export const MARK_TOOLBAR_ATTR = "data-mark-toolbar";
 const TOOLBAR_HEIGHT = 36;
 /** How far below the mark's top edge the flipped toolbar sits — clear of a normal line of text. */
 const FLIPPED_OFFSET = 26;
+/** Gap kept between the toolbar and its container's left/right edge when the anchor is off to one side. */
+const EDGE_PADDING = 8;
 
 export const MarkToolbar = ({ x, y, activeColorKey, activeUnderline, onColor, onUnderline, onNote, onClear }: Props) => {
   const t = useTranslate();
   // The toolbar normally sits above the mark. Near the top of the document there is no room for
   // it there — it would be clipped by the scroll container — so it flips below instead.
   const flip = y < TOOLBAR_HEIGHT + 8;
+
+  // The toolbar is centred on the mark (-translate-x-1/2), so a selection near the container's
+  // left edge would push its first buttons outside — and out of sight, since the container clips.
+  // Measure once the toolbar is laid out and slide it back inside; the anchor `x` itself is left
+  // alone so nothing else has to know about the nudge.
+  const ref = useRef<HTMLDivElement>(null);
+  const [left, setLeft] = useState(x);
+  useLayoutEffect(() => {
+    const element = ref.current;
+    const container = element?.offsetParent as HTMLElement | null;
+    if (!element || !container) {
+      setLeft(x);
+      return;
+    }
+    const half = element.offsetWidth / 2;
+    const min = EDGE_PADDING + half;
+    const max = container.clientWidth - EDGE_PADDING - half;
+    // A container narrower than the toolbar has no valid range — centre it and let it overflow evenly.
+    setLeft(max < min ? container.clientWidth / 2 : Math.min(Math.max(x, min), max));
+  }, [x]);
+
   return (
     <div
+      ref={ref}
       {...{ [MARK_TOOLBAR_ATTR]: "" }}
       className={cn(
         "absolute z-20 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-border bg-popover p-1 shadow-md",
         !flip && "-translate-y-full",
       )}
-      style={{ left: x, top: flip ? y + FLIPPED_OFFSET : y - 6 }}
+      style={{ left, top: flip ? y + FLIPPED_OFFSET : y - 6 }}
       onMouseDown={(e) => e.preventDefault()}
     >
       <Button variant="ghost" size="icon" className="h-7 w-7" title={t("epub.add-annotation")} onClick={onNote}>

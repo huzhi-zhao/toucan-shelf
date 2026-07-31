@@ -20,14 +20,23 @@ interface SpecialCalloutProps {
 
 const CARD_BASE = "relative my-3 rounded-2xl border bg-card shadow-sm not-italic";
 
+// Cards whose label pill floats above the top border (`-top-3`) need clearance there: the
+// default `my-3` is exactly the pill's overhang, so the pill would sit on the preceding text.
+const FLOATING_PILL_GAP = "mt-8";
+
+// Body wrapper for the card families. The first/last block margin resets matter because every
+// paragraph carries `--md-block-gap` at the bottom; without them the card's own padding reads
+// as lopsided (too much room under the last line).
+const CARD_BODY = "min-w-0 leading-7 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0";
+
 /** note: a rounded card with a filled pill "tag" floating over the top-left border. */
 function NoteCard({ rawType, title, className, children }: SpecialCalloutProps) {
   return (
-    <blockquote className={cn(CARD_BASE, "border-l-4 border-l-primary border-border px-5 pt-6 pb-4", className)}>
+    <blockquote className={cn(CARD_BASE, FLOATING_PILL_GAP, "border-l-4 border-l-primary border-border px-5 pt-6 pb-4", className)}>
       <span className="absolute -top-3 left-4 rounded-full bg-primary px-3 py-1 text-sm font-bold tracking-wide text-primary-foreground">
         {(title || alertDisplayLabel(rawType)).toUpperCase()}
       </span>
-      <div className="min-w-0 leading-7">
+      <div className={CARD_BODY}>
         <NestedMarkdownRenderContext>{children}</NestedMarkdownRenderContext>
       </div>
     </blockquote>
@@ -40,6 +49,7 @@ function QuoteBox({ className, children }: SpecialCalloutProps) {
     <blockquote
       className={cn(
         "my-3 rounded-2xl border-l-4 border-l-indigo-500 bg-indigo-500/5 px-6 py-5 text-lg font-medium not-italic leading-relaxed text-foreground",
+        "[&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
         className,
       )}
     >
@@ -60,7 +70,7 @@ function WindowChromeCard({ rawType, title, className, children }: SpecialCallou
         </div>
         <span className="text-sm font-semibold text-muted-foreground">{title || alertDisplayLabel(rawType)}</span>
       </div>
-      <div className="min-w-0 px-5 py-4 leading-7">
+      <div className={cn(CARD_BODY, "px-5 py-4")}>
         <NestedMarkdownRenderContext>{children}</NestedMarkdownRenderContext>
       </div>
     </blockquote>
@@ -74,7 +84,7 @@ function RibbonCard({ rawType, title, className, children }: SpecialCalloutProps
       <span className="absolute top-4 right-4 rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-bold tracking-wide text-indigo-600 dark:text-indigo-300">
         {title || alertDisplayLabel(rawType)}
       </span>
-      <div className="min-w-0 pr-16 leading-7">
+      <div className={cn(CARD_BODY, "pr-16")}>
         <NestedMarkdownRenderContext>{children}</NestedMarkdownRenderContext>
       </div>
     </blockquote>
@@ -94,7 +104,7 @@ function ModernCalloutPill({ family, rawType, customIcon, title, className, chil
   // attention is the only family in this shared component allowed to show a custom title.
   const label = family === "attention" ? title || alertDisplayLabel(rawType) : alertDisplayLabel(rawType);
   return (
-    <blockquote className={cn(CARD_BASE, "border-l-4 border-border px-5 pt-6 pb-4", config.border, className)}>
+    <blockquote className={cn(CARD_BASE, FLOATING_PILL_GAP, "border-l-4 border-border px-5 pt-6 pb-4", config.border, className)}>
       <span
         className={cn(
           "absolute -top-3 left-4 inline-flex items-center gap-1 rounded-full border-2 bg-card px-3 py-0.5 text-xs font-bold",
@@ -104,7 +114,7 @@ function ModernCalloutPill({ family, rawType, customIcon, title, className, chil
         <span aria-hidden>{customIcon || config.emoji}</span>
         {label}
       </span>
-      <div className="min-w-0 leading-7">
+      <div className={CARD_BODY}>
         <NestedMarkdownRenderContext>{children}</NestedMarkdownRenderContext>
       </div>
     </blockquote>
@@ -199,7 +209,7 @@ function CollapseCard({ rawType, title, fold, className, children }: SpecialCall
         <span className="min-w-0 truncate">{title || alertDisplayLabel(rawType)}</span>
       </button>
       {open && (
-        <div className="min-w-0 px-5 py-4 leading-7">
+        <div className={cn(CARD_BODY, "px-5 py-4")}>
           <NestedMarkdownRenderContext>{children}</NestedMarkdownRenderContext>
         </div>
       )}
