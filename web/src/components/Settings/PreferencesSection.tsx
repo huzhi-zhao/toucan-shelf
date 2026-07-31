@@ -15,7 +15,7 @@ import { Visibility } from "@/types/proto/api/v1/memo_service_pb";
 import { UserSetting_GeneralSetting, UserSetting_GeneralSettingSchema, UserSettingSchema } from "@/types/proto/api/v1/user_service_pb";
 import { loadLocale, useTranslate } from "@/utils/i18n";
 import { convertVisibilityFromString, convertVisibilityToString } from "@/utils/memo";
-import { setCompactReading, useReadingDensity } from "@/utils/readingDensity";
+import { type SpacingChoice, setCompactReading, setLineSpacing, setParagraphSpacing, useReadingDensity } from "@/utils/readingDensity";
 import { setSidebarMode } from "@/utils/sidebarMode";
 import { loadTheme } from "@/utils/theme";
 import LocaleSelect from "../LocaleSelect";
@@ -25,12 +25,34 @@ import SettingGroup from "./SettingGroup";
 import { SettingList, SettingListItem } from "./SettingList";
 import SettingSection from "./SettingSection";
 
+const SPACING_OPTIONS: SpacingChoice[] = ["auto", "tight", "normal", "loose"];
+
+/** Shared picker for the two reading-rhythm overrides (line spacing, paragraph spacing). */
+const SpacingSelect = ({ value, onChange }: { value: SpacingChoice; onChange: (value: SpacingChoice) => void }) => {
+  const t = useTranslate();
+
+  return (
+    <Select value={value} onValueChange={(next) => onChange(next as SpacingChoice)}>
+      <SelectTrigger className="min-w-fit">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {SPACING_OPTIONS.map((option) => (
+          <SelectItem key={option} value={option}>
+            {t(`setting.preference.spacing-${option}`)}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+};
+
 const PreferencesSection = () => {
   const t = useTranslate();
   const { currentUser, userGeneralSetting: generalSetting, refetchSettings } = useAuth();
   const { mutate: updateUserGeneralSetting } = useUpdateUserGeneralSetting(currentUser?.name);
   const sidebarMode = useSidebarMode();
-  const { compact: compactReading } = useReadingDensity();
+  const { compact: compactReading, lineSpacing, paragraphSpacing } = useReadingDensity();
 
   // RAG search preferences (per-user).
   const { data: userSettings } = useUserSettings(currentUser?.name);
@@ -149,6 +171,19 @@ const PreferencesSection = () => {
             description={t("setting.preference.compact-reading-description")}
           >
             <Switch checked={compactReading} onCheckedChange={setCompactReading} />
+          </SettingListItem>
+
+          {/* Fine-tuning on top of the density preset above. "Auto" keeps whatever the preset
+              says, so a reader only opts into a fixed value if they actually want one. */}
+          <SettingListItem label={t("setting.preference.line-spacing")} description={t("setting.preference.line-spacing-description")}>
+            <SpacingSelect value={lineSpacing} onChange={setLineSpacing} />
+          </SettingListItem>
+
+          <SettingListItem
+            label={t("setting.preference.paragraph-spacing")}
+            description={t("setting.preference.paragraph-spacing-description")}
+          >
+            <SpacingSelect value={paragraphSpacing} onChange={setParagraphSpacing} />
           </SettingListItem>
         </SettingList>
       </SettingGroup>
