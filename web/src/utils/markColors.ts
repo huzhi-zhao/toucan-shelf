@@ -27,8 +27,9 @@ export function getMarkColor(key?: string): MarkColor {
 }
 
 /**
- * Applies an alpha to a palette color. Highlights are drawn *over* the text (so they can be
- * clicked), which only reads as a highlighter rather than a blindfold at a low alpha.
+ * Applies an alpha to a palette color. Highlights are drawn *behind* the text, so the alpha only
+ * has to keep the fill from fighting the page — it isn't holding the words legible, and doesn't
+ * have to stay as faint as it would if it were washed over the glyphs.
  */
 export function withAlpha(color: string, alpha: number): string {
   const hex = color.replace("#", "");

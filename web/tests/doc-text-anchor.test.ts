@@ -81,6 +81,29 @@ describe("doc text anchors", () => {
     expect(resolveTextQuote(container, quote!)?.toString()).toBe("herestarts");
   });
 
+  // react-markdown separates block elements with literal "\n" text nodes, so a paragraph's first
+  // character sits exactly at the end of the whitespace node before it. Resolving the start onto
+  // that whitespace node put `range.startContainer.parentElement` at the document wrapper rather
+  // than the paragraph — and scrolling "to the mark" then centred the entire document instead.
+  it("starts a mark inside its own block, not in the whitespace node before it", () => {
+    const container = setup('<h2 id="ch6">6 数据采集</h2>\n<p>Walmart 怀孕故事</p>\n<p>两条金句原则</p>');
+    const range = resolveTextQuote(container, { exact: "Walmart 怀孕故事", prefix: "6 数据采集\n", suffix: "\n两条金句原则" });
+
+    expect(range?.toString()).toBe("Walmart 怀孕故事");
+    expect(range?.startContainer.parentElement?.tagName).toBe("P");
+    expect(range?.endContainer.parentElement?.tagName).toBe("P");
+  });
+
+  it("keeps a whole-paragraph mark's ends inside that paragraph", () => {
+    const container = setup("<p>first</p>\n<p>the whole marked paragraph</p>\n<p>last</p>");
+    const quote = buildTextQuote(container, selectIn(container, "the whole marked paragraph", 2));
+    const range = resolveTextQuote(container, quote!);
+
+    expect(range?.toString()).toBe("the whole marked paragraph");
+    expect(range?.startContainer.parentElement?.textContent).toBe("the whole marked paragraph");
+    expect(range?.endContainer.parentElement?.textContent).toBe("the whole marked paragraph");
+  });
+
   it("reports no match once the marked text itself is rewritten", () => {
     const container = setup("<p>the original wording</p>");
     const quote = buildTextQuote(container, selectIn(container, "original wording"));

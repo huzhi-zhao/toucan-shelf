@@ -213,6 +213,31 @@ const DocumentView = ({
     () => docComments.filter((c) => c.content.trim() || anchorHealth.get(c.name) === "orphan"),
     [docComments, anchorHealth],
   );
+  // The panel reads top-to-bottom with the document rather than newest-first: a comment's place in
+  // the list is where the text it marks sits on the page, so scanning the margin matches scanning
+  // the prose. Positions come from the mark layer, which has already measured every mark to draw
+  // it (`markAnchors`), so ordering costs no extra measurement; legacy heading-anchored comments
+  // fall back to their heading's position, and comments about the document as a whole — which have
+  // no place in the text at all — head the list, newest last. Orphans are ordered here too but the
+  // panel groups them at the bottom regardless: they no longer point anywhere.
+  const orderedComments = useMemo(() => {
+    const container = markContainerRef.current;
+    const positionOf = (comment: Memo): number => {
+      const anchor = comment.docAnchor;
+      if (anchor?.textExact) return markAnchors[comment.name]?.y ?? Number.MAX_SAFE_INTEGER;
+      if (anchor?.headingSlug) {
+        // Both this and a mark's `y` are measured from the top of the same positioned container,
+        // so the two kinds of anchor sort against each other.
+        const heading = container?.querySelector<HTMLElement>(`#${CSS.escape(anchor.headingSlug)}`);
+        return heading ? heading.offsetTop : Number.MAX_SAFE_INTEGER;
+      }
+      return -1;
+    };
+    const createdAt = (comment: Memo) => Number(comment.createTime?.seconds ?? 0);
+    return [...listedComments].sort((a, b) => positionOf(a) - positionOf(b) || createdAt(a) - createdAt(b));
+    // `markAnchors` changes on every remeasure, which is exactly when positions can have moved.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listedComments, markAnchors, memo.content]);
   // The comment being re-anchored: while this is set, selecting text in the document offers
   // "anchor it here" instead of the usual new-mark toolbar.
   const [relinkTarget, setRelinkTarget] = useState<Memo>();
@@ -633,6 +658,11 @@ const DocumentView = ({
             setActiveMark(undefined);
             setEditingMarkComment(activeMarkComment);
           }}
+          // Re-pick the marked text. It runs the same repair an orphaned comment gets, so a mark
+          // that simply grabbed the wrong words is fixed the same way as one whose words are
+          // gone — and, as there, the anchor is only rewritten once a valid new selection is
+          // confirmed: cancelling (or selecting nothing markable) leaves the old text standing.
+          onRelink={() => startRelink(activeMarkComment)}
           onClear={() => clearMark(activeMarkComment)}
         />
       )}
@@ -883,15 +913,18 @@ const DocumentView = ({
                 {/* Only the memo name crosses over: the gallery's second argument is the matched
                     document, while callers of onOpenDocument take an anchor href there — passing
                     the callback straight through made every card click throw. */}
-                <GalleryViewRenderer
-                  memo={memo}
-                  onOpenDoc={(memoName) => onOpenDocument?.(memoName)}
-                  onPropertyChange={propertyChangeHandler}
-                  showProperties={docConfig.showProperties}
-                  readonly={false}
-                />
+                {/* Above the mark layer's paint, exactly like the markdown preview. */}
+                <div className="relative z-10">
+                  <GalleryViewRenderer
+                    memo={memo}
+                    onOpenDoc={(memoName) => onOpenDocument?.(memoName)}
+                    onPropertyChange={propertyChangeHandler}
+                    showProperties={docConfig.showProperties}
+                    readonly={false}
+                  />
+                </div>
                 {remainingAttachments.length > 0 && (
-                  <div id={ATTACHMENTS_ANCHOR_ID} className="mt-6 border-t border-border pt-4">
+                  <div id={ATTACHMENTS_ANCHOR_ID} className="relative z-10 mt-6 border-t border-border pt-4">
                     <AttachmentListView attachments={remainingAttachments} />
                   </div>
                 )}
@@ -921,17 +954,21 @@ const DocumentView = ({
             // Narrowing is a per-document choice, applied to the reading view only: the raw
             // editor is a different job and keeps the whole pane.
             <div ref={markContainerRef} className={cn("relative px-6 py-4", !docConfig.fullWidth && "mx-auto w-full max-w-3xl")}>
-              <MemoViewContext.Provider value={buildPreviewContext(memo)}>
-                <MemoContent
-                  content={memo.content}
-                  memoName={memo.name}
-                  density={density}
-                  showProperties={docConfig.showProperties}
-                  onPropertyChange={propertyChangeHandler}
-                />
-              </MemoViewContext.Provider>
+              {/* Raised above the mark layer's paint, which sits at z-0 so highlights go behind
+                  the words rather than over them. */}
+              <div className="relative z-10">
+                <MemoViewContext.Provider value={buildPreviewContext(memo)}>
+                  <MemoContent
+                    content={memo.content}
+                    memoName={memo.name}
+                    density={density}
+                    showProperties={docConfig.showProperties}
+                    onPropertyChange={propertyChangeHandler}
+                  />
+                </MemoViewContext.Provider>
+              </div>
               {remainingAttachments.length > 0 && (
-                <div id={ATTACHMENTS_ANCHOR_ID} className="mt-6 border-t border-border pt-4">
+                <div id={ATTACHMENTS_ANCHOR_ID} className="relative z-10 mt-6 border-t border-border pt-4">
                   <AttachmentListView attachments={remainingAttachments} />
                 </div>
               )}
@@ -972,7 +1009,7 @@ const DocumentView = ({
           <div className="w-72 shrink-0 min-h-0 border-l border-border">
             <DocCommentSidebar
               parentMemoName={memo.name}
-              comments={listedComments}
+              comments={orderedComments}
               onClose={() => setCommentsOpen(false)}
               onChanged={refetchComments}
               onJump={(anchor) => scrollToAnchor(previewRef.current, markContainerRef.current, anchor)}
@@ -996,7 +1033,7 @@ const DocumentView = ({
             <div className="h-[calc(100%-3.5rem)]">
               <DocCommentSidebar
                 parentMemoName={memo.name}
-                comments={listedComments}
+                comments={orderedComments}
                 onChanged={refetchComments}
                 onJump={(anchor) => {
                   setCommentsOpen(false);

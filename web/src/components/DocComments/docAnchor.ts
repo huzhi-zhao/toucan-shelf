@@ -62,7 +62,19 @@ export function scrollToAnchor(scrollContainer: HTMLElement | null, contentConta
   const quote = anchorTextQuote(anchor);
   const range = quote && contentContainer ? resolveTextQuote(contentContainer, quote) : undefined;
   if (range) {
-    // A Range has no scrollIntoView; its start element does, and is always on the same line.
+    // Scroll by the range's own rect rather than by calling scrollIntoView on the element that
+    // happens to contain its start. The element is the wrong unit twice over: a mark spanning
+    // several blocks would centre only its first one, and any element large enough to overflow
+    // the viewport centres *itself*, which puts the mark off screen entirely.
+    const rect = range.getBoundingClientRect();
+    if (scrollContainer && (rect.width > 0 || rect.height > 0)) {
+      const viewport = scrollContainer.getBoundingClientRect();
+      const centered = rect.top - viewport.top - Math.max(0, scrollContainer.clientHeight - rect.height) / 2;
+      scrollContainer.scrollTo({ top: Math.max(0, scrollContainer.scrollTop + centered), behavior: "smooth" });
+      return;
+    }
+    // No scroll container to measure against (the caller passed none): fall back to the start
+    // element, which is at least on the mark's first line.
     const target = range.startContainer.parentElement;
     if (target) {
       target.scrollIntoView({ behavior: "smooth", block: "center" });

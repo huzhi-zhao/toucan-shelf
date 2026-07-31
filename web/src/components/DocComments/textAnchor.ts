@@ -95,9 +95,19 @@ const offsetOfPosition = (map: TextMap, node: Node, offset: number): number => {
 };
 
 // Converts an offset in the flattened text back to a DOM position.
-const positionOfOffset = (map: TextMap, offset: number): { node: Text; offset: number } | undefined => {
+//
+// `edge` decides who owns a boundary that two text nodes share. It matters because the rendered
+// document is full of nodes that meet exactly: react-markdown emits a "\n" text node between
+// every pair of block elements, and that node's end is the first character of the next block. A
+// mark starting at the beginning of a paragraph would otherwise resolve its start to the "\n"
+// before it — whose parent is the whole document wrapper, not the paragraph — so anything reading
+// `range.startContainer.parentElement` (scrolling to the mark, say) would be pointing at the
+// entire document. A start therefore takes the node that genuinely contains the offset, while an
+// end takes the node that ends there, so both sit inside the marked text.
+const positionOfOffset = (map: TextMap, offset: number, edge: "start" | "end"): { node: Text; offset: number } | undefined => {
   for (const entry of map.nodes) {
-    if (offset <= entry.start + entry.node.data.length) return { node: entry.node, offset: Math.max(0, offset - entry.start) };
+    const end = entry.start + entry.node.data.length;
+    if (edge === "end" ? offset <= end : offset < end) return { node: entry.node, offset: Math.max(0, offset - entry.start) };
   }
   const last = map.nodes[map.nodes.length - 1];
   return last ? { node: last.node, offset: last.node.data.length } : undefined;
@@ -177,8 +187,8 @@ const resolveInMap = (map: TextMap, quote: TextQuote): Range | undefined => {
   // the requirement can never exceed what was stored for it.
   const required = Math.min(MIN_CONTEXT_SCORE, quote.prefix.length + quote.suffix.length);
   if (quote.exact.length < SHORT_QUOTE_LENGTH && bestScore < required) return undefined;
-  const start = positionOfOffset(map, best);
-  const end = positionOfOffset(map, best + quote.exact.length);
+  const start = positionOfOffset(map, best, "start");
+  const end = positionOfOffset(map, best + quote.exact.length, "end");
   if (!start || !end) return undefined;
   const range = document.createRange();
   range.setStart(start.node, start.offset);

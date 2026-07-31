@@ -191,10 +191,17 @@ export const MemoMarkdownRenderer = ({
     mark: ({ children, className, ...props }) => (
       <mark
         className={cn(
-          "rounded-sm px-0.5",
+          // `text-foreground` is not decoration: the UA stylesheet gives <mark> `color: MarkText`
+          // (near-black) and only the background was being overridden here, so in dark mode the
+          // highlight was black text on a dark fill. Inheriting the page's own colour also keeps
+          // bold text inside a highlight reading as bold, at the same weight it has outside one.
+          "rounded-sm px-0.5 text-foreground",
+          // A lighter wash than before. The fill's job is to point at the passage, not to compete
+          // with it — at the old strength it flattened the contrast between bold and plain text
+          // running through it.
           typeof className === "string" && className.includes("highlight-pink")
-            ? "bg-pink-200/70 dark:bg-pink-900/50"
-            : "bg-yellow-200/70 dark:bg-yellow-800/50",
+            ? "bg-pink-200/50 dark:bg-pink-500/25"
+            : "bg-yellow-200/50 dark:bg-yellow-500/25",
         )}
         {...props}
       >

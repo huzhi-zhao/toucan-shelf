@@ -1,4 +1,4 @@
-import { EraserIcon, MessageSquarePlusIcon, UnderlineIcon } from "lucide-react";
+import { EraserIcon, MessageSquarePlusIcon, TextSelectIcon, UnderlineIcon } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,13 @@ interface Props {
   onColor: (colorKey: string) => void;
   onUnderline: () => void;
   onNote: () => void;
+  /**
+   * Re-pick which text this mark covers. Omitted for a fresh selection, which is still being
+   * pointed at the text it wants. A mark's extent is otherwise fixed at the moment it is made —
+   * grabbing one word too few, or a trailing bracket too many, meant deleting the mark (and any
+   * note on it) and starting over.
+   */
+  onRelink?: () => void;
   /** Clear this mark's styling. Omitted for a fresh selection (nothing to clear yet). */
   onClear?: () => void;
 }
@@ -43,7 +50,7 @@ const FLIPPED_OFFSET = 26;
 /** Gap kept between the toolbar and its container's left/right edge when the anchor is off to one side. */
 const EDGE_PADDING = 8;
 
-export const MarkToolbar = ({ x, y, activeColorKey, activeUnderline, onColor, onUnderline, onNote, onClear }: Props) => {
+export const MarkToolbar = ({ x, y, activeColorKey, activeUnderline, onColor, onUnderline, onNote, onRelink, onClear }: Props) => {
   const t = useTranslate();
   // The toolbar normally sits above the mark. Near the top of the document there is no room for
   // it there — it would be clipped by the scroll container — so it flips below instead.
@@ -108,6 +115,11 @@ export const MarkToolbar = ({ x, y, activeColorKey, activeUnderline, onColor, on
       >
         <UnderlineIcon className="h-3.5 w-3.5" />
       </Button>
+      {onRelink && (
+        <Button variant="ghost" size="icon" className="h-7 w-7" title={t("mark.relink")} onClick={onRelink}>
+          <TextSelectIcon className="h-3.5 w-3.5" />
+        </Button>
+      )}
       {onClear && (
         <Button variant="ghost" size="icon" className="h-7 w-7" title={t("epub.clear-mark")} onClick={onClear}>
           <EraserIcon className="h-3.5 w-3.5" />
