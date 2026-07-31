@@ -17,13 +17,13 @@ const RESERVED_TOP_SEGMENTS = new Set([
 ]);
 
 /**
- * True on every route rendered by the Notebook page: "/" plus its workspace
+ * True on every route rendered by the Notebook page: its workspace
  * ("/:workspaceTitle") and document ("/:workspaceTitle/:docId") URLs. These own the
  * secondary sidebar (workspace tree), so both the layout chrome and the sidebar
- * toggle must agree on which paths they are.
+ * toggle must agree on which paths they are. "/" is not one of them — it redirects
+ * to the Home page.
  */
 export const isNotebookRoute = (pathname: string): boolean => {
-  if (pathname === ROUTES.HOME) return true;
   const match = matchPath(WORKSPACE_DOC_ROUTE, pathname) || matchPath(WORKSPACE_ROUTE, pathname);
   return !!match && !RESERVED_TOP_SEGMENTS.has(match.params.workspaceTitle ?? "");
 };

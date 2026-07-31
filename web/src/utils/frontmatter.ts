@@ -37,6 +37,16 @@ export const SELECT_PROPERTY_OPTIONS: Record<string, readonly string[]> = {
   priority: ["p0", "p1", "p2", "p3"],
 };
 
+// Keys the app itself consumes (gallery cover image, sidebar/gallery ordering) rather than
+// content the reader cares about. They stay in the frontmatter and keep driving behaviour —
+// they're simply never drawn as property rows.
+export const HIDDEN_PROPERTY_KEYS: ReadonlySet<string> = new Set(["cover", "order"]);
+
+/** Whether a frontmatter key is app plumbing that the properties panel must not display. */
+export function isHiddenProperty(key: string): boolean {
+  return HIDDEN_PROPERTY_KEYS.has(key);
+}
+
 /** The option list for a reserved single-select key, or undefined for any other key. */
 export function selectOptionsFor(key: string): readonly string[] | undefined {
   return Object.hasOwn(SELECT_PROPERTY_OPTIONS, key) ? SELECT_PROPERTY_OPTIONS[key] : undefined;

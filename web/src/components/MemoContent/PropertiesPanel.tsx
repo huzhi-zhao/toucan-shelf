@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { type MemoProperty, type PropertyType, selectOptionsFor } from "@/utils/frontmatter";
+import { isHiddenProperty, type MemoProperty, type PropertyType, selectOptionsFor } from "@/utils/frontmatter";
 import { useTranslate } from "@/utils/i18n";
 
 const TYPE_ICONS: Record<PropertyType, LucideIcon> = {
@@ -243,7 +243,10 @@ interface PropertiesPanelProps {
 export const PropertiesPanel = ({ properties, onChange, visible }: PropertiesPanelProps) => {
   const t = useTranslate();
   const [editing, setEditing] = useState(false);
-  if (properties.length === 0 || visible === false) {
+  // `cover`/`order` configure the app, not the document — hidden in both the read and edit states,
+  // so the panel never offers to edit a row it doesn't show.
+  const visibleProperties = properties.filter((property) => !isHiddenProperty(property.key));
+  if (visibleProperties.length === 0 || visible === false) {
     return null;
   }
 
@@ -251,7 +254,7 @@ export const PropertiesPanel = ({ properties, onChange, visible }: PropertiesPan
 
   return (
     <div className="relative w-full mb-3 pb-2 border-b border-border flex flex-col gap-0.5" data-memo-properties>
-      {properties.map((property) => {
+      {visibleProperties.map((property) => {
         const Icon = TYPE_ICONS[property.type];
         return (
           <div key={property.key} className="flex flex-row items-start gap-2 text-sm py-0.5">
