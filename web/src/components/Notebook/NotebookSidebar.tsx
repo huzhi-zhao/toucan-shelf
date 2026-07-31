@@ -24,6 +24,9 @@ interface Props {
   selectedMemo?: string;
   onSelectDocument: (memoName: string) => void;
   onOpenDocumentInNewTab?: (memoName: string) => void;
+  onMoveDocument?: (memoName: string) => void;
+  onCopyDocumentLink?: (memoName: string) => void;
+  onCopyDocumentContent?: (memoName: string) => void;
   archived: boolean;
   onArchivedChange: (archived: boolean) => void;
   onNewDocument: (folderPath: string) => void;
@@ -114,6 +117,9 @@ const NotebookSidebar = ({
   selectedMemo,
   onSelectDocument,
   onOpenDocumentInNewTab,
+  onMoveDocument,
+  onCopyDocumentLink,
+  onCopyDocumentContent,
   archived,
   onArchivedChange,
   onNewDocument,
@@ -292,6 +298,9 @@ const NotebookSidebar = ({
               freshness={freshness}
               onSelectDocument={onSelectDocument}
               onOpenDocumentInNewTab={onOpenDocumentInNewTab}
+              onMoveDocument={onMoveDocument}
+              onCopyDocumentLink={onCopyDocumentLink}
+              onCopyDocumentContent={onCopyDocumentContent}
               onRenameFolder={onRenameFolder}
               onMoveFolder={onMoveFolder}
               onDeleteFolder={onDeleteFolder}

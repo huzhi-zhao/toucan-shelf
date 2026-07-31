@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import {
   getAlertFold,
   getAlertIcon,
+  getAlertTags,
   getAlertTitle,
   getAlertType,
   isMentionElement,
@@ -150,6 +151,7 @@ export const MemoMarkdownRenderer = ({
             alertIcon={getAlertIcon(node)}
             alertTitle={getAlertTitle(node)}
             alertFold={getAlertFold(node)}
+            alertTags={getAlertTags(node)}
           >
             {children}
           </Alert>

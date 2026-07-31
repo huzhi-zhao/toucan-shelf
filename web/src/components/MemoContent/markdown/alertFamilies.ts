@@ -48,10 +48,23 @@ export const ALERT_FAMILY_ALIASES: Record<string, string> = {
   "chat:r": "chat-recv",
   "chat-r": "chat-recv",
   "chat:you": "chat-recv",
+  // Tag rows — a `>` block whose every line is one chip (see TagRow in
+  // SpecialCallouts.tsx). The suffix picks the skin for the whole row, since
+  // in practice a row is styled as a set, not chip by chip.
+  tags: "tags",
+  tag: "tags",
+  "tags:light": "tags",
+  "tags:bordered": "tags-bordered",
+  "tag:bordered": "tags-bordered",
+  "tags:filled": "tags-filled",
+  "tag:filled": "tags-filled",
 };
 
 /** The two chat-bubble families: rendered as a bare bubble instead of a card, one blockquote per bubble. */
 export const CHAT_FAMILIES = new Set(["chat-send", "chat-recv"]);
+
+/** Tag-row families: the blockquote's lines are parsed into chips by remark-alert, one chip per line. */
+export const TAG_FAMILIES = new Set(["tags", "tags-bordered", "tags-filled"]);
 
 /**
  * Families rendered as a bespoke "special card" (Note/Quote/Important/Summary/
@@ -71,6 +84,9 @@ export const SPECIAL_CARD_FAMILIES = new Set([
   "chat-recv",
   "collapse",
   "popover",
+  "tags",
+  "tags-bordered",
+  "tags-filled",
 ]);
 
 /** Resolve a raw `[!TYPE]` string (any case) to its canonical family. Unknown types fall back to "note". */

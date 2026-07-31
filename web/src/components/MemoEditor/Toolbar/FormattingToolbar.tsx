@@ -22,8 +22,10 @@ import {
   PanelTopOpenIcon,
   PencilIcon,
   QuoteIcon,
+  ScrollTextIcon,
   SquareKanbanIcon,
   TablePropertiesIcon,
+  TagsIcon,
   TriangleAlertIcon,
   TypeIcon,
   ZapIcon,
@@ -66,7 +68,7 @@ interface FormattingToolbarProps {
 // 1. status cards (info/check/success/warning/danger)
 // 2. accent pills (todo/tip)
 // 3. note (also the fallback look for any unrecognized type)
-// 4. status cards with a custom icon (question/example)
+// 4. status cards with a custom icon (question/example) + the ribbon-badge abstract
 // 5. bespoke designs (quote/important)
 interface CalloutMenuItem {
   type: string;
@@ -92,6 +94,13 @@ const CALLOUT_MENU_GROUPS: CalloutMenuItem[][] = [
   [
     { type: "question", labelKey: "editor.callout.question", icon: CircleHelpIcon },
     { type: "example", labelKey: "editor.callout.example", icon: ListIcon },
+    {
+      type: "abstract",
+      labelKey: "editor.callout.abstract",
+      icon: ScrollTextIcon,
+      // The summary family puts the title in a corner ribbon, so the seed needs a title *and* a body line to read right.
+      snippet: ["> [!ABSTRACT] Key points", "> One or two sentences summarizing the section below."].join("\n"),
+    },
   ],
   [
     { type: "quote", labelKey: "editor.callout.quote", icon: QuoteIcon },
@@ -101,6 +110,13 @@ const CALLOUT_MENU_GROUPS: CalloutMenuItem[][] = [
       labelKey: "editor.callout.chat",
       icon: MessagesSquareIcon,
       snippet: ["> [!CHAT:R(Lindsay, 08:52)] Hi! How's it going?", "> [!CHAT:S] All good — shipping it today."].join("\n"),
+    },
+    {
+      type: "tags",
+      labelKey: "editor.callout.tags",
+      icon: TagsIcon,
+      // One chip per line; `[!TAGS:bordered]` / `[!TAGS:filled]` swap the skin for the whole row.
+      snippet: ["> [!TAGS]", "> [arcoblue(🐦)] Twitter", "> [orange(🦊)] Gitlab", "> [gray] Github"].join("\n"),
     },
   ],
 ];

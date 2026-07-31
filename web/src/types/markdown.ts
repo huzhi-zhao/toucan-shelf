@@ -106,6 +106,12 @@ export function getAlertTitle(node: HastElement): string | undefined {
   return typeof dataAlertTitle === "string" && dataAlertTitle !== "" ? dataAlertTitle : undefined;
 }
 
+/** Chips of a `[!TAGS]` callout, serialized as JSON by remark-alert (the labels are plain text). */
+export function getAlertTags(node: HastElement): string | undefined {
+  const dataAlertTags = node.properties?.dataAlertTags;
+  return typeof dataAlertTags === "string" && dataAlertTags !== "" ? dataAlertTags : undefined;
+}
+
 /** Default open state for collapsible callouts, from the `+`/`-` fold marker: "collapsed" | "expanded". */
 export function getAlertFold(node: HastElement): string | undefined {
   const dataAlertFold = node.properties?.dataAlertFold;

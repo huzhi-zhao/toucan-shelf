@@ -1,15 +1,18 @@
 import { create } from "@bufbuild/protobuf";
 import { useQueryClient } from "@tanstack/react-query";
+import copy from "copy-to-clipboard";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { DocumentLinkProvider, resolveWorkspacePath } from "@/components/MemoContent/DocumentLinkContext";
 import DocumentView from "@/components/Notebook/DocumentView";
 import LibrarySearchResults from "@/components/Notebook/LibrarySearchResults";
+import MoveDocumentDialog from "@/components/Notebook/MoveDocumentDialog";
 import MoveFolderDialog from "@/components/Notebook/MoveFolderDialog";
 import NotebookSidebar from "@/components/Notebook/NotebookSidebar";
 import PromptDialog from "@/components/Notebook/PromptDialog";
-import { ragServiceClient } from "@/connect";
+import { memoServiceClient, ragServiceClient } from "@/connect";
+import { useInstance } from "@/contexts/InstanceContext";
 import { useCreateAttachment } from "@/hooks/useAttachmentQueries";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import { useLastOpened } from "@/hooks/useLastOpened";
@@ -68,6 +71,7 @@ const memoUid = (memoName: string) => memoName.replace(/^memos\//, "");
 const Notebook = () => {
   const t = useTranslate();
   const currentUser = useCurrentUser();
+  const { profile } = useInstance();
   const queryClient = useQueryClient();
   const location = useLocation();
   const navigate = useNavigate();
@@ -111,6 +115,10 @@ const Notebook = () => {
   } | null>(null);
   const [moveFolderDialog, setMoveFolderDialog] = useState<{
     path: string;
+  } | null>(null);
+  // Move targets whichever document's row menu was used, which is not necessarily the open one.
+  const [moveDocDialog, setMoveDocDialog] = useState<{
+    memoName: string;
   } | null>(null);
 
   const { data: tree = [] } = useWorkspaceTree(workspaceName, archived);
@@ -516,21 +524,43 @@ const Notebook = () => {
   );
 
   const handleMove = useCallback(
-    async (workspace: string, folderPath: string) => {
-      if (!memo) return;
+    async (memoName: string, workspace: string, folderPath: string) => {
       await updateMemo.mutateAsync({
-        update: { name: memo.name, workspace, folderPath },
+        update: { name: memoName, workspace, folderPath },
         updateMask: ["workspace", "folder_path"],
       });
       invalidateTree();
       if (workspace !== workspaceName) {
         queryClient.invalidateQueries({ queryKey: workspaceKeys.tree(workspace, false) });
         queryClient.invalidateQueries({ queryKey: workspaceKeys.tree(workspace, true) });
-        setSelectedMemo(undefined);
+        if (memoName === selectedMemo) setSelectedMemo(undefined);
       }
       toast.success(t("common.save"));
     },
-    [memo, updateMemo, invalidateTree, workspaceName, queryClient, t],
+    [updateMemo, invalidateTree, workspaceName, selectedMemo, queryClient, t],
+  );
+
+  const handleCopyDocumentLink = useCallback(
+    (memoName: string) => {
+      const host = profile.instanceUrl || window.location.origin;
+      copy(`${host}/${memoName}`);
+      toast.success(t("message.succeed-copy-link"));
+    },
+    [profile.instanceUrl, t],
+  );
+
+  // The tree only carries names, so the content is fetched on demand for the row that was clicked.
+  const handleCopyDocumentContent = useCallback(
+    async (memoName: string) => {
+      try {
+        const target = await memoServiceClient.getMemo({ name: memoName });
+        copy(target.content);
+        toast.success(t("message.succeed-copy-content"));
+      } catch (error) {
+        handleError(error, toast.error);
+      }
+    },
+    [t],
   );
 
   return (
@@ -545,6 +575,9 @@ const Notebook = () => {
             selectedMemo={selectedMemo}
             onSelectDocument={handleSelectDocument}
             onOpenDocumentInNewTab={handleOpenDocumentInNewTab}
+            onMoveDocument={(memoName) => setMoveDocDialog({ memoName })}
+            onCopyDocumentLink={handleCopyDocumentLink}
+            onCopyDocumentContent={handleCopyDocumentContent}
             onOpenInNewTab={handleOpenInNewTab}
             archived={archived}
             onArchivedChange={setArchived}
@@ -578,7 +611,6 @@ const Notebook = () => {
               onArchiveToggle={handleArchiveToggle}
               onDelete={handleDelete}
               onSaveHtml={handleSaveHtml}
-              onMove={handleMove}
               onAddAttachments={handleAddAttachments}
               onRemoveAttachment={handleRemoveAttachment}
               onOpenDocument={handleSelectDocument}
@@ -627,6 +659,14 @@ const Notebook = () => {
         defaultValue={renameFolderDialog?.path.split("/").pop()}
         onConfirm={(name) => handleRenameFolder(renameFolderDialog?.path ?? "", name)}
       />
+      {workspaceName && (
+        <MoveDocumentDialog
+          open={!!moveDocDialog}
+          onOpenChange={(open) => !open && setMoveDocDialog(null)}
+          currentWorkspace={workspaceName}
+          onConfirm={(workspace, folderPath) => handleMove(moveDocDialog?.memoName ?? "", workspace, folderPath)}
+        />
+      )}
       {workspaceName && (
         <MoveFolderDialog
           open={!!moveFolderDialog}

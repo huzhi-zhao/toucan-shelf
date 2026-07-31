@@ -1,14 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWorkspaces, useWorkspaceTree } from "@/hooks/useWorkspaceQueries";
-import { WorkspaceTreeNode_NodeType } from "@/types/proto/api/v1/workspace_service_pb";
 import { useTranslate } from "@/utils/i18n";
-
-// Radix Select forbids an empty-string item value (reserved to clear the selection), so the
-// workspace root is represented with this sentinel and translated back to "" on submit.
-const ROOT_VALUE = "__root__";
+import FolderTreePicker from "./FolderTreePicker";
 
 interface Props {
   open: boolean;
@@ -17,46 +13,32 @@ interface Props {
   onConfirm: (workspace: string, folderPath: string) => void | Promise<void>;
 }
 
-// Flattens the folder tree into a list of selectable folder paths, root first.
-function collectFolderPaths(nodes: import("@/types/proto/api/v1/workspace_service_pb").WorkspaceTreeNode[]): string[] {
-  const paths: string[] = [];
-  for (const node of nodes) {
-    if (node.type === WorkspaceTreeNode_NodeType.FOLDER) {
-      paths.push(node.path);
-      paths.push(...collectFolderPaths(node.children));
-    }
-  }
-  return paths;
-}
-
 // Lets the user pick a destination workspace + folder path for an existing document,
 // defaulting to the document's current workspace.
 const MoveDocumentDialog = ({ open, onOpenChange, currentWorkspace, onConfirm }: Props) => {
   const t = useTranslate();
   const { data: workspaces = [] } = useWorkspaces();
   const [workspace, setWorkspace] = useState(currentWorkspace);
-  const [folderPath, setFolderPath] = useState(ROOT_VALUE);
+  const [folderPath, setFolderPath] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const { data: tree = [] } = useWorkspaceTree(workspace, false);
 
   useEffect(() => {
     if (open) {
       setWorkspace(currentWorkspace);
-      setFolderPath(ROOT_VALUE);
+      setFolderPath("");
     }
   }, [open, currentWorkspace]);
 
-  const folderPaths = useMemo(() => collectFolderPaths(tree), [tree]);
-
   const handleWorkspaceChange = (name: string) => {
     setWorkspace(name);
-    setFolderPath(ROOT_VALUE);
+    setFolderPath("");
   };
 
   const handleConfirm = async () => {
     try {
       setSubmitting(true);
-      await onConfirm(workspace, folderPath === ROOT_VALUE ? "" : folderPath);
+      await onConfirm(workspace, folderPath);
       onOpenChange(false);
     } finally {
       setSubmitting(false);
@@ -87,19 +69,7 @@ const MoveDocumentDialog = ({ open, onOpenChange, currentWorkspace, onConfirm }:
           </div>
           <div className="space-y-1.5">
             <div className="text-xs font-medium text-muted-foreground">{t("notebook.destination-folder")}</div>
-            <Select value={folderPath} onValueChange={setFolderPath}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ROOT_VALUE}>{t("notebook.workspace-root")}</SelectItem>
-                {folderPaths.map((path) => (
-                  <SelectItem key={path} value={path}>
-                    {path}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FolderTreePicker nodes={tree} value={folderPath} onChange={setFolderPath} rootLabel={t("notebook.workspace-root")} />
           </div>
         </div>
         <DialogFooter>

@@ -69,6 +69,30 @@
 > [!TIP(💡)] this is a tip with a customized light bulb icon.
 
 ```
+
+### Inserting from the toolbar
+
+The editor toolbar's **Callout** button (the speech-bubble icon) drops a marker
+at the cursor. It lists one entry per *visual family* rather than all ~28
+aliases, grouped the way they look:
+
+| Group | Entries |
+| --- | --- |
+| Status cards | Info, Check, Success, Warning, Danger |
+| Accent pills | Todo, Tip |
+| Note | Note (also the fallback look for any unrecognized type) |
+| Custom-icon cards | Question, Example, **Abstract** |
+| Bespoke designs | Quote, Important, Chat, Tags |
+
+Most entries insert a bare `> [!TYPE] ` marker. **Abstract**, **Chat** and
+**Tags** insert a multi-line seed instead, because a single marker line does not
+show what they do: Abstract's title goes into a corner ribbon and needs a body
+under it, Chat needs two turns to read as a thread, and Tags needs several lines
+to read as a row.
+
+An unrecognized `[!TYPE]` never falls back to raw text — it renders with the
+**Note** look, matching Obsidian.
+
 ## 4.2 Keyboard Shortcuts
 
 The home-page editor (`MemoEditor`) is built on CodeMirror 6 and provides
@@ -386,3 +410,81 @@ Under the hood: `remark-counter.ts` lifts the `[N]` onto the `<li>` as
 `data-counter` (mirroring how `remark-task-status.ts` handles extended task
 markers), `List.tsx` renders the badge, and `incrementCounterAtIndex`
 (`markdown-manipulation.ts`) rewrites the matching line on click.
+
+---
+
+## 4.8 Tag rows
+
+A row of colored **chips** — labels, statuses, links to services, anything you
+would otherwise write as a bullet list of short words. Unlike every other
+callout this renders as **no card at all**: just the chips, wrapping in the flow
+of the document.
+
+Insert it from the toolbar's **Callout** button → **Tags**.
+
+### Syntax
+
+One chip per line inside a `> [!TAGS]` block, each line shaped
+`[color(icon)] label`:
+
+```markdown
+> [!TAGS]
+> [gray(⚙️)] Github
+> [orange(🦊)] Gitlab
+> [blue(🐦)] Twitter
+> [arcoblue(f)] Facebook
+```
+
+Both the color and the icon are optional, and a line with no marker at all
+still becomes a chip — so all four of these are valid:
+
+```markdown
+> [!TAGS] [blue] chip on the marker line
+> [green] color only
+> [(✨)] icon only
+> no marker at all
+```
+
+The icon slot is the same `(…)` slot every other callout uses for a custom
+icon; any emoji (or short text) fits.
+
+### Variants
+
+A suffix on the family name picks the skin for the **whole row** — in practice a
+row is styled as a set, not chip by chip:
+
+| Marker | Look |
+| --- | --- |
+| `> [!TAGS]` | Tinted background, colored text (default) |
+| `> [!TAGS:bordered]` | Transparent, colored 1px border |
+| `> [!TAGS:filled]` | Solid colored background, white text |
+
+`[!TAG]` (singular) is accepted everywhere `[!TAGS]` is.
+
+### Colors
+
+Twelve palette names, following the Arco Design tag palette:
+
+`default` · `orangered` · `orange` · `gold` · `lime` · `green` · `cyan` ·
+`blue` · `arcoblue` · `purple` · `pinkpurple` · `magenta` · `gray`
+
+Names are case-insensitive, and an unknown name falls back to `default` rather
+than breaking the row. Every color has a dark-theme variant.
+
+### Notes & limits
+
+- **Labels are plain text.** Inline Markdown inside a label (`**bold**`,
+  `` `code` ``, links) is flattened to its text. If you need a clickable tag,
+  put the link outside the tag row for now.
+- **Chips are block-level.** There is no inline form yet — a tag row occupies
+  its own block. (The palette lives in its own module, `tagPalette.ts`, so a
+  future inline syntax can reuse it unchanged.)
+- **Empty rows disappear.** `> [!TAGS]` with no chip lines renders nothing.
+- **Degrades cleanly elsewhere.** In a renderer that does not know this syntax
+  (GitHub, most Markdown viewers) the block shows as an ordinary quote with the
+  lines visible — readable, never broken.
+
+Under the hood: `remark-alert.ts` splits the blockquote into lines and emits the
+chips as JSON in `data-alert-tags`, `alertFamilies.ts` maps `tags` /
+`tags:bordered` / `tags:filled` to their family, `tagPalette.ts` holds the
+colors, and `TagRow` in `SpecialCallouts.tsx` renders the row.

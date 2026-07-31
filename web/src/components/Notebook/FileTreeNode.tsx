@@ -6,8 +6,10 @@ import {
   FileIcon,
   FileTextIcon,
   FolderIcon,
+  FolderInputIcon,
   FolderOpenIcon,
   LayoutGridIcon,
+  LinkIcon,
   MoreHorizontalIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -28,6 +30,9 @@ interface Props {
   freshness?: FreshnessMap;
   onSelectDocument: (memoName: string) => void;
   onOpenDocumentInNewTab?: (memoName: string) => void;
+  onMoveDocument?: (memoName: string) => void;
+  onCopyDocumentLink?: (memoName: string) => void;
+  onCopyDocumentContent?: (memoName: string) => void;
   onRenameFolder: (path: string) => void;
   onMoveFolder: (path: string) => void;
   onDeleteFolder: (path: string) => void;
@@ -52,6 +57,9 @@ const FileTreeNode = ({
   freshness,
   onSelectDocument,
   onOpenDocumentInNewTab,
+  onMoveDocument,
+  onCopyDocumentLink,
+  onCopyDocumentContent,
   onRenameFolder,
   onMoveFolder,
   onDeleteFolder,
@@ -137,6 +145,26 @@ const FileTreeNode = ({
                 <ExternalLinkIcon className="w-4 h-4 mr-2" />
                 {t("notebook.open-in-new-tab")}
               </DropdownMenuItem>
+              {/* Move and the two copy actions live here rather than behind a submenu: the row
+                  menu is the one place where they apply to the document you are pointing at. */}
+              {onMoveDocument && (
+                <DropdownMenuItem onClick={() => onMoveDocument(node.memo)}>
+                  <FolderInputIcon className="w-4 h-4 mr-2" />
+                  {t("notebook.move")}
+                </DropdownMenuItem>
+              )}
+              {onCopyDocumentLink && (
+                <DropdownMenuItem onClick={() => onCopyDocumentLink(node.memo)}>
+                  <LinkIcon className="w-4 h-4 mr-2" />
+                  {t("memo.copy-link")}
+                </DropdownMenuItem>
+              )}
+              {onCopyDocumentContent && (
+                <DropdownMenuItem onClick={() => onCopyDocumentContent(node.memo)}>
+                  <FileTextIcon className="w-4 h-4 mr-2" />
+                  {t("memo.copy-content")}
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )}
@@ -204,6 +232,9 @@ const FileTreeNode = ({
               freshness={freshness}
               onSelectDocument={onSelectDocument}
               onOpenDocumentInNewTab={onOpenDocumentInNewTab}
+              onMoveDocument={onMoveDocument}
+              onCopyDocumentLink={onCopyDocumentLink}
+              onCopyDocumentContent={onCopyDocumentContent}
               onRenameFolder={onRenameFolder}
               onMoveFolder={onMoveFolder}
               onDeleteFolder={onDeleteFolder}

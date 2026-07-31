@@ -1,6 +1,6 @@
 import type { Blockquote, Paragraph, Parent, PhrasingContent, Root, RootContent, Text } from "mdast";
 import { SKIP, visit } from "unist-util-visit";
-import { CHAT_FAMILIES, resolveAlertFamily } from "@/components/MemoContent/markdown/alertFamilies";
+import { CHAT_FAMILIES, resolveAlertFamily, TAG_FAMILIES } from "@/components/MemoContent/markdown/alertFamilies";
 
 // Families whose custom title behavior must not change: whatever follows the
 // `[!TYPE]` marker on the same line stays in the body, as before.
@@ -29,6 +29,12 @@ const ALERT_MARKER_RE = /^\[!([A-Za-z][\w:-]*)(?:\(([^)]+)\))?\]([+-]?)[ \t]*/;
 // continuation lines of the bubble above them.
 const CHAT_LINE_RE = /^\[!?(?:chat:)?([sr])(?:\(([^)]+)\))?\][ \t]*/i;
 
+// Inside a `[!TAGS]` blockquote every line is one chip: `[color(icon)] label`.
+// The color name and the icon are both optional — `[]`, `[blue]`, `[(🐦)]` and
+// `[blue(🐦)]` are all accepted, and a line with no marker at all becomes a
+// default-colored chip, so a bare list of words still renders as tags.
+const TAG_LINE_RE = /^\[([A-Za-z][\w-]*)?(?:\(([^)]+)\))?\][ \t]*/;
+
 /** One logical line of a blockquote: paragraph breaks, hard breaks and "\n" inside a text node all end a line. */
 type ChatLine = PhrasingContent[];
 
@@ -42,8 +48,9 @@ interface ChatBubble {
  * Flattens a blockquote's children into logical lines. Soft line breaks live as
  * "\n" *inside* a single text node (not as separate mdast nodes), so they have
  * to be cut out by hand; `break` nodes and paragraph boundaries end a line too.
+ * Shared by the two line-oriented families, chat and tags.
  */
-function splitChatLines(node: Blockquote): ChatLine[] {
+function splitBlockquoteLines(node: Blockquote): ChatLine[] {
   const lines: ChatLine[] = [];
   let current: ChatLine = [];
   const endLine = () => {
@@ -101,7 +108,7 @@ function collectChatBubbles(lines: ChatLine[], firstSide: "s" | "r", firstTime?:
 
 /** Replaces the transcript blockquote with one blockquote per bubble, and tells `visit` to resume past them. */
 function expandChatBubbles(node: Blockquote, parent: Parent, index: number, side: "s" | "r", caption?: string) {
-  const bubbles = collectChatBubbles(splitChatLines(node), side, caption);
+  const bubbles = collectChatBubbles(splitBlockquoteLines(node), side, caption);
   if (bubbles.length === 0) {
     return;
   }
@@ -131,6 +138,42 @@ function toChatNodes(bubbles: ChatBubble[]): RootContent[] {
       },
     } satisfies Blockquote;
   });
+}
+
+/** Flattens a line to plain text — tag labels are text-only by design, so any inline markup is unwrapped. */
+function lineToPlainText(line: ChatLine): string {
+  const walk = (nodes: PhrasingContent[]): string =>
+    nodes
+      .map((node) => {
+        if (node.type === "text" || node.type === "inlineCode") {
+          return node.value;
+        }
+        return "children" in node ? walk(node.children as PhrasingContent[]) : "";
+      })
+      .join("");
+  return walk(line).trim();
+}
+
+/**
+ * Parses a `[!TAGS]` blockquote into chips, one per line. The blockquote keeps
+ * its identity as a node (so the `data-alert` dispatch in Alert.tsx is
+ * unchanged) but loses its children: the chips travel as a JSON payload in
+ * `data-alert-tags`, since their labels are plain text and nothing downstream
+ * needs the original mdast.
+ */
+function collectTags(node: Blockquote): { label: string; color?: string; icon?: string }[] {
+  return splitBlockquoteLines(node)
+    .map((line) => {
+      const head = line[0];
+      const match = head.type === "text" ? TAG_LINE_RE.exec(head.value) : null;
+      if (!match) {
+        return { label: lineToPlainText(line) };
+      }
+      const remainder = (head as Text).value.slice(match[0].length);
+      const body = remainder ? [{ ...head, value: remainder } as PhrasingContent, ...line.slice(1)] : line.slice(1);
+      return { label: lineToPlainText(body), color: match[1], icon: match[2] };
+    })
+    .filter((tag) => tag.label !== "");
 }
 
 /**
@@ -174,6 +217,30 @@ export const remarkAlert = () => {
           paragraph.children.shift();
         }
         return expandChatBubbles(node, parent, index, family === "chat-send" ? "s" : "r", icon);
+      }
+
+      // Tag rows are line-oriented too, but collapse into a single node whose
+      // children are replaced by the parsed chip payload.
+      if (TAG_FAMILIES.has(family)) {
+        if (remainder) {
+          textNode.value = remainder;
+        } else {
+          paragraph.children.shift();
+        }
+        const tags = collectTags(node);
+        if (tags.length === 0) {
+          return;
+        }
+        node.children = [];
+        node.data = {
+          ...node.data,
+          hProperties: {
+            ...(node.data as { hProperties?: Record<string, unknown> })?.hProperties,
+            "data-alert": type.toLowerCase(),
+            "data-alert-tags": JSON.stringify(tags),
+          },
+        };
+        return SKIP;
       }
 
       const keepInBody = KEEP_BODY_ONLY_FAMILIES.has(family);

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { NestedMarkdownRenderContext } from "../MarkdownRenderContext";
 import { alertDisplayLabel } from "./alertFamilies";
+import { type TagVariant, tagColorClasses } from "./tagPalette";
 
 interface SpecialCalloutProps {
   family: string;
@@ -14,6 +15,8 @@ interface SpecialCalloutProps {
   title?: string;
   /** Default open state for collapsible families, from the `+`/`-` fold marker: "collapsed" | "expanded". */
   fold?: string;
+  /** JSON chip payload for the tag families, parsed out of the blockquote's lines by remark-alert. */
+  tags?: string;
   className?: string;
   children: React.ReactNode;
 }
@@ -217,6 +220,56 @@ function CollapseCard({ rawType, title, fold, className, children }: SpecialCall
   );
 }
 
+/**
+ * tags: a wrapping row of chips, one per line of the source blockquote. Unlike
+ * every other family this is not a card and carries no blockquote styling — the
+ * chips are the whole content, so the block reads as a row of labels sitting in
+ * the flow of the document. `[!TAGS:bordered]` / `[!TAGS:filled]` pick the skin
+ * for the whole row.
+ */
+interface ParsedTag {
+  label: string;
+  color?: string;
+  icon?: string;
+}
+
+const TAG_VARIANT_BY_FAMILY: Record<string, TagVariant> = {
+  tags: "light",
+  "tags-bordered": "bordered",
+  "tags-filled": "filled",
+};
+
+function TagRow({ family, tags, className }: SpecialCalloutProps) {
+  let parsed: ParsedTag[] = [];
+  try {
+    parsed = tags ? (JSON.parse(tags) as ParsedTag[]) : [];
+  } catch {
+    // A malformed payload can only come from a hand-edited DOM/HTML doc; render nothing rather than crash the memo.
+    parsed = [];
+  }
+  if (parsed.length === 0) {
+    return null;
+  }
+
+  const variant = TAG_VARIANT_BY_FAMILY[family] ?? "light";
+  return (
+    <div className={cn("my-3 flex flex-wrap items-center gap-2 not-italic", className)}>
+      {parsed.map((tag, index) => (
+        <span
+          key={`${tag.label}-${index}`}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm leading-5 font-medium",
+            tagColorClasses(tag.color, variant),
+          )}
+        >
+          {tag.icon && <span aria-hidden>{tag.icon}</span>}
+          {tag.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 const SPECIAL_CARD_COMPONENTS: Record<string, React.ComponentType<SpecialCalloutProps>> = {
   note: NoteCard,
   quote: QuoteBox,
@@ -229,6 +282,9 @@ const SPECIAL_CARD_COMPONENTS: Record<string, React.ComponentType<SpecialCallout
   "chat-recv": ChatBubble,
   collapse: CollapseCard,
   popover: PopoverCard,
+  tags: TagRow,
+  "tags-bordered": TagRow,
+  "tags-filled": TagRow,
 };
 
 /** Renders the bespoke card for a family in SPECIAL_CARD_FAMILIES; returns null if the family has no special card. */

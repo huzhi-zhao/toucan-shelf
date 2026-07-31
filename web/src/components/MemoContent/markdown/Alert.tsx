@@ -14,6 +14,8 @@ interface AlertProps extends React.BlockquoteHTMLAttributes<HTMLQuoteElement>, R
   alertTitle?: string;
   /** Default open state for collapsible families, from the `+`/`-` fold marker: "collapsed" | "expanded". */
   alertFold?: string;
+  /** JSON chip payload for the `[!TAGS]` families (see remark-alert). */
+  alertTags?: string;
 }
 
 /**
@@ -27,7 +29,17 @@ interface AlertProps extends React.BlockquoteHTMLAttributes<HTMLQuoteElement>, R
  * special tier, just without a bespoke layout. A family's default icon may be
  * a lucide component or a literal emoji (e.g. "example"'s 🌰).
  */
-export const Alert = ({ children, className, alertType, alertIcon, alertTitle, alertFold, node: _node, ...props }: AlertProps) => {
+export const Alert = ({
+  children,
+  className,
+  alertType,
+  alertIcon,
+  alertTitle,
+  alertFold,
+  alertTags,
+  node: _node,
+  ...props
+}: AlertProps) => {
   const family = resolveAlertFamily(alertType);
 
   if (SPECIAL_CARD_FAMILIES.has(family)) {
@@ -37,6 +49,7 @@ export const Alert = ({ children, className, alertType, alertIcon, alertTitle, a
       customIcon: alertIcon,
       title: alertTitle,
       fold: alertFold,
+      tags: alertTags,
       className,
       children,
     });

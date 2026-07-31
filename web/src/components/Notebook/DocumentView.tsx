@@ -1,13 +1,9 @@
 import { create } from "@bufbuild/protobuf";
 import { FieldMaskSchema, timestampDate } from "@bufbuild/protobuf/wkt";
-import copy from "copy-to-clipboard";
 import {
   ArchiveIcon,
   ArchiveRestoreIcon,
-  CopyIcon,
   ExpandIcon,
-  FileTextIcon,
-  FolderInputIcon,
   HistoryIcon,
   LinkIcon,
   MessageCircleIcon,
@@ -51,7 +47,6 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { memoServiceClient } from "@/connect";
-import { useInstance } from "@/contexts/InstanceContext";
 import useMediaQuery from "@/hooks/useMediaQuery";
 import { useCreateMemoHistory, useMemoHistories, useRestoreMemoHistory } from "@/hooks/useMemoHistoryQueries";
 import { useInfiniteMemoComments, useUpdateMemo } from "@/hooks/useMemoQueries";
@@ -74,7 +69,6 @@ import { attachmentUIDsOf, hashMemoState } from "@/utils/memoState";
 import { useReadingDensity } from "@/utils/readingDensity";
 import { getDocScrollPosition, restoreScrollTopWhenReady, saveDocScrollPosition } from "@/utils/scrollPositionCache";
 import DocumentOutline, { ATTACHMENTS_ANCHOR_ID } from "./DocumentOutline";
-import MoveDocumentDialog from "./MoveDocumentDialog";
 
 interface Props {
   memo: Memo;
@@ -83,7 +77,6 @@ interface Props {
   onArchiveToggle: () => void;
   onDelete: () => void;
   onSaveHtml: (content: string) => void;
-  onMove: (workspace: string, folderPath: string) => void | Promise<void>;
   onAddAttachments?: (files: File[]) => void | Promise<void>;
   onRemoveAttachment?: (name: string) => void | Promise<void>;
   onOpenDocument?: (memoName: string) => void;
@@ -115,13 +108,11 @@ const DocumentView = ({
   onArchiveToggle,
   onDelete,
   onSaveHtml,
-  onMove,
   onAddAttachments,
   onRemoveAttachment,
   onOpenDocument,
 }: Props) => {
   const t = useTranslate();
-  const { profile } = useInstance();
   const isDesktop = useMediaQuery("lg");
   const isHtml = memo.docType === Memo_DocType.HTML;
   const isPdf = memo.docType === Memo_DocType.PDF;
@@ -191,7 +182,6 @@ const DocumentView = ({
   );
   const [htmlDraft, setHtmlDraft] = useState(memo.content);
   const [titleDraft, setTitleDraft] = useState(memo.title);
-  const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [createVersionDialogOpen, setCreateVersionDialogOpen] = useState(false);
   // Lazily load versions only once the "view versions" submenu is opened.
   const [versionsMenuOpen, setVersionsMenuOpen] = useState(false);
@@ -325,19 +315,8 @@ const DocumentView = ({
   );
   const propertyChangeHandler = !isHtml && !isPdf && !isArchived && mode === "preview" ? handlePropertyChange : undefined;
 
-  const handleCopyLink = () => {
-    const host = profile.instanceUrl || window.location.origin;
-    copy(`${host}/${memo.name}`);
-    toast.success(t("message.succeed-copy-link"));
-  };
-
   const handleOpenReader = () => {
     window.open(`/${memo.name}/reader`, "_blank", "noopener");
-  };
-
-  const handleCopyContent = () => {
-    copy(memo.content);
-    toast.success(t("message.succeed-copy-content"));
   };
 
   useEffect(() => {
@@ -744,26 +723,6 @@ const DocumentView = ({
                 <ExpandIcon className="w-4 h-4 mr-2" />
                 {t("memo.fullscreen-view")}
               </DropdownMenuItem>
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  <CopyIcon className="w-4 h-4 mr-2" />
-                  {t("common.copy")}
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  <DropdownMenuItem onClick={handleCopyLink}>
-                    <LinkIcon className="w-4 h-4 mr-2" />
-                    {t("memo.copy-link")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleCopyContent}>
-                    <FileTextIcon className="w-4 h-4 mr-2" />
-                    {t("memo.copy-content")}
-                  </DropdownMenuItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-              <DropdownMenuItem onClick={() => setMoveDialogOpen(true)}>
-                <FolderInputIcon className="w-4 h-4 mr-2" />
-                {t("notebook.move")}
-              </DropdownMenuItem>
               {/* This document's own framing. Reading density is NOT here: it's a per-reader
                   preference and lives in the appearance settings, applied to every document. */}
               {!isPdf && !isHtml && (
@@ -862,8 +821,6 @@ const DocumentView = ({
           </DropdownMenu>
         </div>
       </div>
-
-      <MoveDocumentDialog open={moveDialogOpen} onOpenChange={setMoveDialogOpen} currentWorkspace={memo.workspace} onConfirm={onMove} />
 
       <CreateVersionDialog open={createVersionDialogOpen} onOpenChange={setCreateVersionDialogOpen} onConfirm={handleCreateVersion} />
 

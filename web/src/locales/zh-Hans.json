@@ -175,8 +175,10 @@
       "warning": "warning",
       "danger": "danger",
       "example": "example",
+      "abstract": "摘要",
       "quote": "quote",
-      "chat": "聊天气泡"
+      "chat": "聊天气泡",
+      "tags": "标签"
     },
     "collapsible": {
       "trigger": "折叠块",

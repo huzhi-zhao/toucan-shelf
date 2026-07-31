@@ -242,8 +242,10 @@
       "warning": "Warning",
       "danger": "Danger",
       "example": "Example",
+      "abstract": "Abstract",
       "quote": "Quote",
-      "chat": "Chat"
+      "chat": "Chat",
+      "tags": "Tags"
     },
     "collapsible": {
       "trigger": "Collapsible",
