@@ -612,14 +612,18 @@ func (s *APIV1Service) GetAttachmentBlob(attachment *store.Attachment) ([]byte, 
 		if s3Object == nil {
 			return nil, errors.New("S3 object payload is missing")
 		}
-		if s3Object.S3Config == nil {
-			return nil, errors.New("S3 config is missing")
-		}
 		if s3Object.Key == "" {
 			return nil, errors.New("S3 object key is missing")
 		}
 
-		s3Client, err := s3.NewClient(context.Background(), s3Object.S3Config)
+		// The instance's current S3 config wins over the snapshot stored at upload time, so
+		// attachments survive an endpoint/credential change (see Store.ResolveAttachmentS3Config).
+		s3Config, err := s.Store.ResolveAttachmentS3Config(context.Background(), s3Object.S3Config)
+		if err != nil {
+			return nil, err
+		}
+
+		s3Client, err := s3.NewClient(context.Background(), s3Config)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create S3 client")
 		}

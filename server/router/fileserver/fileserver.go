@@ -322,7 +322,7 @@ func (s *FileServerService) getAttachmentReader(ctx context.Context, attachment 
 		return file, nil
 
 	case storepb.AttachmentStorageType_S3:
-		s3Client, s3Object, err := s.createS3Client(attachment)
+		s3Client, s3Object, err := s.createS3Client(ctx, attachment)
 		if err != nil {
 			return nil, err
 		}
@@ -369,8 +369,10 @@ func (s *FileServerService) readLocalFile(reference string) ([]byte, error) {
 	return blob, nil
 }
 
-// createS3Client creates an S3 client from attachment payload.
-func (*FileServerService) createS3Client(attachment *store.Attachment) (*s3.Client, *storepb.AttachmentPayload_S3Object, error) {
+// createS3Client creates an S3 client for an attachment. The endpoint/credentials come from the
+// instance's current storage setting rather than the config snapshotted into the attachment
+// payload at upload time, so objects stay reachable after the S3/MinIO endpoint changes.
+func (s *FileServerService) createS3Client(ctx context.Context, attachment *store.Attachment) (*s3.Client, *storepb.AttachmentPayload_S3Object, error) {
 	if attachment.Payload == nil {
 		return nil, nil, errors.New("attachment payload is missing")
 	}
@@ -378,14 +380,15 @@ func (*FileServerService) createS3Client(attachment *store.Attachment) (*s3.Clie
 	if s3Object == nil {
 		return nil, nil, errors.New("S3 object payload is missing")
 	}
-	if s3Object.S3Config == nil {
-		return nil, nil, errors.New("S3 config is missing")
-	}
 	if s3Object.Key == "" {
 		return nil, nil, errors.New("S3 object key is missing")
 	}
+	s3Config, err := s.Store.ResolveAttachmentS3Config(ctx, s3Object.S3Config)
+	if err != nil {
+		return nil, nil, err
+	}
 
-	client, err := s3.NewClient(context.Background(), s3Object.S3Config)
+	client, err := s3.NewClient(ctx, s3Config)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to create S3 client")
 	}
@@ -394,7 +397,7 @@ func (*FileServerService) createS3Client(attachment *store.Attachment) (*s3.Clie
 
 // downloadFromS3 downloads the entire object from S3.
 func (s *FileServerService) downloadFromS3(ctx context.Context, attachment *store.Attachment) ([]byte, error) {
-	client, s3Object, err := s.createS3Client(attachment)
+	client, s3Object, err := s.createS3Client(ctx, attachment)
 	if err != nil {
 		return nil, err
 	}
