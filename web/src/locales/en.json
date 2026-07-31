@@ -187,6 +187,21 @@
       "run": "Rewrite",
       "loading": "Rewriting…",
       "error": "Rewrite failed",
+      "diff": {
+        "title": "Review rewrite",
+        "original": "Original",
+        "revised": "Rewritten",
+        "no-changes": "No changes",
+        "change-count": "{{count}} change",
+        "change-count_other": "{{count}} changes",
+        "accept-hunk": "Use this change",
+        "reject-hunk": "Keep the original here",
+        "accept-all": "Use all changes",
+        "reject-all": "Keep all original",
+        "side-by-side": "Side by side",
+        "inline": "Inline",
+        "apply": "Apply"
+      },
       "preset": {
         "polish": "Polish",
         "concise": "Make concise",

@@ -42,6 +42,19 @@ describe("reading density preferences", () => {
     expect(localStorage.getItem("memos-reading-line-spacing")).toBeNull();
   });
 
+  it("keeps the style object identity stable between changes", async () => {
+    // useSyncExternalStore compares snapshots by identity — a fresh object per read would
+    // re-render forever.
+    const { getReadingSpacingStyle, setLineSpacing } = await loadModule();
+
+    setLineSpacing(1.9);
+    const first = getReadingSpacingStyle();
+    expect(getReadingSpacingStyle()).toBe(first);
+
+    setLineSpacing(2);
+    expect(getReadingSpacingStyle()).not.toBe(first);
+  });
+
   it("clamps values dragged outside the slider range", async () => {
     const { setLineSpacing, setParagraphSpacing, getLineSpacing, getParagraphSpacing, LINE_SPACING_RANGE, PARAGRAPH_SPACING_RANGE } =
       await loadModule();

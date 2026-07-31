@@ -24,7 +24,7 @@ import "./memoReader.css";
 const MemoReader = () => {
   const t = useTranslate();
   const params = useParams();
-  const { density, spacingStyle } = useReadingDensity();
+  const { density } = useReadingDensity();
 
   const name = params.uid ? `${memoNamePrefix}${params.uid}` : "";
   const { data: memo, isLoading, error } = useMemoQuery(name, { enabled: !!name });
@@ -54,7 +54,7 @@ const MemoReader = () => {
   }
 
   return (
-    <div className="memo-reader-page mx-auto w-full max-w-3xl px-6 py-10" style={spacingStyle}>
+    <div className="memo-reader-page mx-auto w-full max-w-3xl px-6 py-10">
       <Button
         variant="outline"
         size="sm"

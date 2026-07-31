@@ -62,6 +62,13 @@ export function createController(view: EditorView, formatting: FormattingControl
       view.dispatch({ changes: { from, to, insert: replacement }, selection: { anchor: from + replacement.length } });
       view.focus();
     },
+    replaceRange: (from, to, replacement) => {
+      const max = view.state.doc.length;
+      const start = Math.max(0, Math.min(from, max));
+      const end = Math.max(start, Math.min(to, max));
+      view.dispatch({ changes: { from: start, to: end, insert: replacement }, selection: { anchor: start + replacement.length } });
+      view.focus();
+    },
     scrollToCursor: () => view.dispatch({ effects: EditorView.scrollIntoView(view.state.selection.main.head) }),
     scrollToLine: (line) => {
       const clamped = Math.min(Math.max(line, 1), view.state.doc.lines);

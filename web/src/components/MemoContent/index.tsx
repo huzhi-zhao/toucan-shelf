@@ -1,9 +1,10 @@
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo, useState, useSyncExternalStore } from "react";
 import { PdfDocCard } from "@/components/PdfViewer/PdfDocCard";
 import { PdfViewer } from "@/components/PdfViewer/PdfViewer";
 import { cn } from "@/lib/utils";
 import { useTranslate } from "@/utils/i18n";
+import { getReadingSpacingStyle, subscribeReadingPreferences } from "@/utils/readingDensity";
 import { extractMentionUsernames } from "@/utils/remark-plugins/remark-mention";
 import { COMPACT_MODE_CONFIG, getPreviewMaxHeightPx } from "./constants";
 import { HtmlPreviewFrame } from "./HtmlPreviewFrame";
@@ -40,6 +41,15 @@ const MemoContent = (props: MemoContentProps) => {
 
   const compactLabel = useCompactLabel(showCompactMode, t as (key: string) => string);
 
+  // The reader's spacing overrides must land on *this* element, not an ancestor: the density
+  // preset declares the same custom properties here via `md-density-reading`, and a declaration
+  // on the element always beats a value inherited from above.
+  const spacingOverride = useSyncExternalStore(subscribeReadingPreferences, getReadingSpacingStyle, () => undefined);
+  // Feed cards and comments render at the compact preset and are not what the reading
+  // preferences are about, so the overrides only apply to the long-form surfaces.
+  const readingSpacing = density === "reading" ? spacingOverride : undefined;
+  const containerStyle = showCompactMode === "ALL" ? { ...readingSpacing, maxHeight: `${getPreviewMaxHeightPx()}px` } : readingSpacing;
+
   return (
     <div className={`w-full flex flex-col justify-start items-start text-foreground ${className || ""}`}>
       <div
@@ -66,7 +76,7 @@ const MemoContent = (props: MemoContentProps) => {
           showCompactMode === "ALL" && "overflow-hidden",
           contentClassName,
         )}
-        style={showCompactMode === "ALL" ? { maxHeight: `${getPreviewMaxHeightPx()}px` } : undefined}
+        style={containerStyle}
         onMouseUp={onClick}
         onDoubleClick={onDoubleClick}
       >

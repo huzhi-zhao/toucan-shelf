@@ -295,7 +295,7 @@ const DocumentView = ({
   // how it looks. Reading density is deliberately absent too: that's a reader preference, kept
   // per-device in localStorage.
   const docConfig = useMemo(() => resolveMemoDocConfig(memo), [memo.docConfig]);
-  const { density, spacingStyle } = useReadingDensity();
+  const { density } = useReadingDensity();
   const { mutateAsync: updateMemoAsync } = useUpdateMemo();
 
   // Flipping a switch writes the payload only: no content revision, no `updatedTs` bump, no
@@ -922,13 +922,7 @@ const DocumentView = ({
               // Positioned for the mark overlay, exactly like the markdown preview. A VIEW doc's
               // markdown blocks are ordinary prose and get the same marking; its card walls are
               // live query results and are excluded from anchoring by the renderer.
-              <div
-                ref={markContainerRef}
-                className={cn("relative px-6 py-4", !docConfig.fullWidth && "mx-auto w-full max-w-3xl")}
-                // Reader spacing overrides ride as inherited custom properties, so they reach
-                // every rendered block without threading a prop through the renderer.
-                style={spacingStyle}
-              >
+              <div ref={markContainerRef} className={cn("relative px-6 py-4", !docConfig.fullWidth && "mx-auto w-full max-w-3xl")}>
                 {/* Only the memo name crosses over: the gallery's second argument is the matched
                     document, while callers of onOpenDocument take an anchor href there — passing
                     the callback straight through made every card click throw. */}
@@ -969,13 +963,7 @@ const DocumentView = ({
             // rendered document and scroll with it.
             // Narrowing is a per-document choice, applied to the reading view only: the raw
             // editor is a different job and keeps the whole pane.
-            <div
-              ref={markContainerRef}
-              className={cn("relative px-6 py-4", !docConfig.fullWidth && "mx-auto w-full max-w-3xl")}
-              // Reader spacing overrides ride as inherited custom properties, so they reach
-              // every rendered block without threading a prop through the renderer.
-              style={spacingStyle}
-            >
+            <div ref={markContainerRef} className={cn("relative px-6 py-4", !docConfig.fullWidth && "mx-auto w-full max-w-3xl")}>
               <MemoViewContext.Provider value={buildPreviewContext(memo)}>
                 <MemoContent
                   content={memo.content}

@@ -92,6 +92,7 @@ export const getLineSpacing = (): number | null => lineSpacing;
 export const setLineSpacing = (value: number | null): void => {
   lineSpacing = value === null ? null : clamp(value, LINE_SPACING_RANGE);
   writeStorage(LINE_SPACING_KEY, lineSpacing === null ? null : String(lineSpacing));
+  spacingStyle = buildSpacingStyle();
   notify();
 };
 
@@ -101,6 +102,7 @@ export const getParagraphSpacing = (): number | null => paragraphSpacing;
 export const setParagraphSpacing = (value: number | null): void => {
   paragraphSpacing = value === null ? null : clamp(value, PARAGRAPH_SPACING_RANGE);
   writeStorage(PARAGRAPH_SPACING_KEY, paragraphSpacing === null ? null : String(paragraphSpacing));
+  spacingStyle = buildSpacingStyle();
   notify();
 };
 
@@ -109,12 +111,7 @@ export const subscribeReadingPreferences = (listener: () => void): (() => void) 
   return () => listeners.delete(listener);
 };
 
-/**
- * The overrides as inline custom properties, or `undefined` when neither is set (the common
- * case — nothing is added to the DOM unless the reader asked for it). Inline vars beat the
- * preset's class-level ones, so this composes with either density.
- */
-export const getReadingSpacingStyle = (): CSSProperties | undefined => {
+const buildSpacingStyle = (): CSSProperties | undefined => {
   if (lineSpacing === null && paragraphSpacing === null) {
     return undefined;
   }
@@ -127,6 +124,18 @@ export const getReadingSpacingStyle = (): CSSProperties | undefined => {
   }
   return style as CSSProperties;
 };
+
+let spacingStyle = buildSpacingStyle();
+
+/**
+ * The overrides as inline custom properties, or `undefined` when neither is set (the common
+ * case — nothing is added to the DOM unless the reader asked for it). Inline vars beat the
+ * preset's class-level ones, so this composes with either density.
+ *
+ * The object is rebuilt only when a preference actually changes: `useSyncExternalStore`
+ * compares snapshots by identity, and a fresh object on every read would spin forever.
+ */
+export const getReadingSpacingStyle = (): CSSProperties | undefined => spacingStyle;
 
 const snapshot = () => ({ compact, lineSpacing, paragraphSpacing });
 let cachedSnapshot = snapshot();
@@ -173,6 +182,6 @@ export function useReadingDensity(): {
     paragraphSpacing: value.paragraphSpacing,
     effectiveLineSpacing: value.lineSpacing ?? preset.line,
     effectiveParagraphSpacing: value.paragraphSpacing ?? preset.paragraph,
-    spacingStyle: getReadingSpacingStyle(),
+    spacingStyle,
   };
 }

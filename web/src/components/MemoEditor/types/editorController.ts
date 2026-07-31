@@ -27,6 +27,12 @@ export interface EditorController {
   getSelectionCoords(): { left: number; right: number; top: number; bottom: number } | null;
   /** Replace the current selection with `replacement` and place the caret after it. */
   replaceSelection(replacement: string): void;
+  /**
+   * Replace the document range [from, to) and place the caret after it. Used
+   * when a replacement is decided asynchronously (e.g. reviewing an AI rewrite
+   * in a dialog) and the live selection may no longer be the intended target.
+   */
+  replaceRange(from: number, to: number, replacement: string): void;
   scrollToCursor(): void;
   /** Move the cursor to the start of a 1-indexed line and scroll it into view (e.g. outline navigation). */
   scrollToLine(line: number): void;
