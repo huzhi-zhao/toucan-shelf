@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import useNotebookSidebarCollapsed from "@/hooks/useNotebookSidebarCollapsed";
+import { useOpenLastDocument } from "@/hooks/useOpenLastDocument";
 import usePrimaryNavLinks from "@/hooks/usePrimaryNavLinks";
 import { cn } from "@/lib/utils";
 import { Routes } from "@/router";
@@ -13,9 +14,10 @@ const MobileNavBar = () => {
   const t = useTranslate();
   const currentUser = useCurrentUser();
   const location = useLocation();
-  // Every Notebook route (not just "/") owns the secondary sidebar, so the logo doubles as its
-  // toggle there — on a phone that button is the only way back to the tree once it starts closed.
+  // On a Notebook route the logo toggles the secondary sidebar — on a phone that button is the
+  // only way back to the tree once it starts closed. Elsewhere it reopens the last-read document.
   const isNotebook = isNotebookRoute(location.pathname);
+  const openLastDocument = useOpenLastDocument();
   const notebookSidebarCollapsed = useNotebookSidebarCollapsed();
   const { primaryNavLinks, inboxAriaLabel } = usePrimaryNavLinks("w-5 h-auto shrink-0", true);
 
@@ -30,11 +32,17 @@ const MobileNavBar = () => {
         >
           <MemosLogo collapsed mini />
         </button>
-      ) : (
-        <NavLink
+      ) : currentUser ? (
+        <button
+          type="button"
           className="rounded-lg flex items-center justify-center w-8 h-8 shrink-0 opacity-80"
-          to={currentUser ? Routes.HOME : Routes.EXPLORE}
+          onClick={openLastDocument}
+          title={t("notebook.open-last-document")}
         >
+          <MemosLogo collapsed mini />
+        </button>
+      ) : (
+        <NavLink className="rounded-lg flex items-center justify-center w-8 h-8 shrink-0 opacity-80" to={Routes.EXPLORE}>
           <MemosLogo collapsed mini />
         </NavLink>
       )}

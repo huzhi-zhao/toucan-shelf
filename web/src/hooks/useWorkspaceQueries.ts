@@ -11,13 +11,18 @@ export const workspaceKeys = {
   tree: (name?: string, archived?: boolean) => [...workspaceKeys.all, "tree", name, archived] as const,
 };
 
+// Exported so callers that only need the list *on demand* (e.g. the logo button resolving the
+// last-opened document) can go through queryClient.fetchQuery with the same key, reusing the
+// cache instead of mounting the query on every page.
+export async function fetchWorkspaces(): Promise<Workspace[]> {
+  const { workspaces } = await workspaceServiceClient.listWorkspaces({});
+  return workspaces;
+}
+
 export function useWorkspaces() {
   return useQuery({
     queryKey: workspaceKeys.lists(),
-    queryFn: async () => {
-      const { workspaces } = await workspaceServiceClient.listWorkspaces({});
-      return workspaces;
-    },
+    queryFn: fetchWorkspaces,
   });
 }
 

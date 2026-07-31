@@ -13,23 +13,44 @@ describe("reading density preferences", () => {
     const { getCompactReading, getLineSpacing, getParagraphSpacing, getReadingSpacingStyle } = await loadModule();
 
     expect(getCompactReading()).toBe(false);
-    expect(getLineSpacing()).toBe("auto");
-    expect(getParagraphSpacing()).toBe("auto");
-    // Nothing is written onto the DOM until the reader actually picks a value.
+    expect(getLineSpacing()).toBeNull();
+    expect(getParagraphSpacing()).toBeNull();
+    // Nothing is written onto the DOM until the reader actually drags something.
     expect(getReadingSpacingStyle()).toBeUndefined();
   });
 
   it("emits only the custom properties the reader set", async () => {
     const { setLineSpacing, getReadingSpacingStyle, setParagraphSpacing } = await loadModule();
 
-    setLineSpacing("loose");
-    expect(getReadingSpacingStyle()).toEqual({ "--md-leading": "2.05" });
+    setLineSpacing(2.1);
+    expect(getReadingSpacingStyle()).toEqual({ "--md-leading": "2.1" });
 
-    setParagraphSpacing("tight");
-    expect(getReadingSpacingStyle()).toEqual({ "--md-leading": "2.05", "--md-block-gap": "0.5rem" });
+    setParagraphSpacing(0.75);
+    expect(getReadingSpacingStyle()).toEqual({ "--md-leading": "2.1", "--md-block-gap": "0.75rem" });
+  });
 
-    setLineSpacing("auto");
-    expect(getReadingSpacingStyle()).toEqual({ "--md-block-gap": "0.5rem" });
+  it("clears an override back to the preset when reset with null", async () => {
+    const { setLineSpacing, setParagraphSpacing, getLineSpacing, getReadingSpacingStyle } = await loadModule();
+
+    setLineSpacing(2.1);
+    setParagraphSpacing(0.75);
+    setLineSpacing(null);
+
+    expect(getLineSpacing()).toBeNull();
+    expect(getReadingSpacingStyle()).toEqual({ "--md-block-gap": "0.75rem" });
+    // A cleared override leaves nothing behind to be picked up on the next load.
+    expect(localStorage.getItem("memos-reading-line-spacing")).toBeNull();
+  });
+
+  it("clamps values dragged outside the slider range", async () => {
+    const { setLineSpacing, setParagraphSpacing, getLineSpacing, getParagraphSpacing, LINE_SPACING_RANGE, PARAGRAPH_SPACING_RANGE } =
+      await loadModule();
+
+    setLineSpacing(99);
+    setParagraphSpacing(-5);
+
+    expect(getLineSpacing()).toBe(LINE_SPACING_RANGE.max);
+    expect(getParagraphSpacing()).toBe(PARAGRAPH_SPACING_RANGE.min);
   });
 
   it("persists each preference independently and notifies subscribers", async () => {
@@ -40,19 +61,20 @@ describe("reading density preferences", () => {
     });
 
     setCompactReading(true);
-    setLineSpacing("normal");
+    setLineSpacing(1.9);
     unsubscribe();
-    setLineSpacing("tight");
+    setLineSpacing(1.6);
 
     expect(notifications).toBe(2);
     expect(localStorage.getItem("memos-compact-reading")).toBe("1");
-    expect(localStorage.getItem("memos-reading-line-spacing")).toBe("tight");
+    expect(localStorage.getItem("memos-reading-line-spacing")).toBe("1.6");
   });
 
-  it("falls back to auto for an unrecognised stored value", async () => {
+  it("falls back to the preset for an unparsable stored value", async () => {
     localStorage.setItem("memos-reading-line-spacing", "enormous");
-    const { getLineSpacing } = await loadModule();
+    const { getLineSpacing, getReadingSpacingStyle } = await loadModule();
 
-    expect(getLineSpacing()).toBe("auto");
+    expect(getLineSpacing()).toBeNull();
+    expect(getReadingSpacingStyle()).toBeUndefined();
   });
 });

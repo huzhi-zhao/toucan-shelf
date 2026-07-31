@@ -2,6 +2,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import useNotebookSidebarCollapsed from "@/hooks/useNotebookSidebarCollapsed";
+import { useOpenLastDocument } from "@/hooks/useOpenLastDocument";
 import usePrimaryNavLinks from "@/hooks/usePrimaryNavLinks";
 import useSidebarMode from "@/hooks/useSidebarMode";
 import { cn } from "@/lib/utils";
@@ -22,8 +23,10 @@ const Navigation = (props: Props) => {
   const t = useTranslate();
   const currentUser = useCurrentUser();
   const location = useLocation();
-  // Every Notebook route (not just "/") owns the secondary sidebar, so the logo doubles as its toggle there.
+  // On a Notebook route the logo doubles as the secondary sidebar's collapse/expand toggle;
+  // everywhere else it takes the user back into the document they were last reading.
   const isNotebook = isNotebookRoute(location.pathname);
+  const openLastDocument = useOpenLastDocument();
   const notebookSidebarCollapsed = useNotebookSidebarCollapsed();
   const sidebarMode = useSidebarMode();
   const isMini = sidebarMode === "mini";
@@ -42,8 +45,12 @@ const Navigation = (props: Props) => {
           >
             <MemosLogo collapsed={collapsed} mini={isMini} />
           </button>
+        ) : currentUser ? (
+          <button type="button" className="mb-3 cursor-pointer" onClick={openLastDocument} title={t("notebook.open-last-document")}>
+            <MemosLogo collapsed={collapsed} mini={isMini} />
+          </button>
         ) : (
-          <NavLink className="mb-3 cursor-default" to={currentUser ? Routes.HOME : Routes.EXPLORE}>
+          <NavLink className="mb-3 cursor-default" to={Routes.EXPLORE}>
             <MemosLogo collapsed={collapsed} mini={isMini} />
           </NavLink>
         )}

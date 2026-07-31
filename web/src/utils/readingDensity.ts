@@ -13,8 +13,9 @@ import { useSyncExternalStore } from "react";
  * Two layers:
  *  - `compactReading` picks the *preset* (the `--md-*` token sets in index.css: the dense
  *    feed rhythm vs. the roomy long-form one).
- *  - `lineSpacing` / `paragraphSpacing` are optional overrides on top of that preset, for
- *    readers who want to fine-tune. `"auto"` (the default) leaves the preset's value alone.
+ *  - `lineSpacing` / `paragraphSpacing` are free numeric overrides on top of that preset.
+ *    `null` means "no override" — the preset's own value applies, and resetting a slider
+ *    returns it to exactly that.
  */
 
 const COMPACT_KEY = "memos-compact-reading";
@@ -36,39 +37,46 @@ const readStorage = (key: string): string | null => {
   }
 };
 
-const writeStorage = (key: string, value: string): void => {
+const writeStorage = (key: string, value: string | null): void => {
   try {
-    localStorage.setItem(key, value);
+    if (value === null) {
+      localStorage.removeItem(key);
+    } else {
+      localStorage.setItem(key, value);
+    }
   } catch {
     // Preference is still applied for this session; it just won't survive a reload.
   }
 };
 
-/** Fine-tuning steps. `auto` defers to whichever density preset is active. */
-export type SpacingChoice = "auto" | "tight" | "normal" | "loose";
+/** Slider bounds. Kept wide enough to be useful, narrow enough that no setting is unreadable. */
+export const LINE_SPACING_RANGE = { min: 1.3, max: 2.4, step: 0.05 } as const;
+/** In rem — the gap below paragraphs, lists, quotes, tables… */
+export const PARAGRAPH_SPACING_RANGE = { min: 0, max: 2, step: 0.05 } as const;
 
-const SPACING_CHOICES: SpacingChoice[] = ["auto", "tight", "normal", "loose"];
+/**
+ * What each density preset resolves to, mirroring the `--md-leading` / `--md-block-gap` values
+ * in index.css. The sliders show these while no override is set, so the handle always starts
+ * where the text actually is, and "reset" is visibly a return to the suggested value.
+ */
+export const PRESET_SPACING = {
+  compact: { line: 1.5, paragraph: 0.5 },
+  reading: { line: 1.75, paragraph: 1 },
+} as const;
 
-/** `--md-leading` (unitless line-height) per explicit choice. */
-const lineSpacingValues: Record<Exclude<SpacingChoice, "auto">, string> = {
-  tight: "1.5",
-  normal: "1.75",
-  loose: "2.05",
+const clamp = (value: number, { min, max }: { min: number; max: number }): number => Math.min(max, Math.max(min, value));
+
+const parseSpacing = (raw: string | null, range: { min: number; max: number }): number | null => {
+  if (raw === null) {
+    return null;
+  }
+  const parsed = Number.parseFloat(raw);
+  return Number.isFinite(parsed) ? clamp(parsed, range) : null;
 };
-
-/** `--md-block-gap` (the gap below paragraphs, lists, quotes, tables…) per explicit choice. */
-const paragraphSpacingValues: Record<Exclude<SpacingChoice, "auto">, string> = {
-  tight: "0.5rem",
-  normal: "1rem",
-  loose: "1.5rem",
-};
-
-const parseSpacing = (raw: string | null): SpacingChoice =>
-  SPACING_CHOICES.includes(raw as SpacingChoice) ? (raw as SpacingChoice) : "auto";
 
 let compact = readStorage(COMPACT_KEY) === "1";
-let lineSpacing = parseSpacing(readStorage(LINE_SPACING_KEY));
-let paragraphSpacing = parseSpacing(readStorage(PARAGRAPH_SPACING_KEY));
+let lineSpacing = parseSpacing(readStorage(LINE_SPACING_KEY), LINE_SPACING_RANGE);
+let paragraphSpacing = parseSpacing(readStorage(PARAGRAPH_SPACING_KEY), PARAGRAPH_SPACING_RANGE);
 
 export const getCompactReading = (): boolean => compact;
 
@@ -78,19 +86,21 @@ export const setCompactReading = (value: boolean): void => {
   notify();
 };
 
-export const getLineSpacing = (): SpacingChoice => lineSpacing;
+export const getLineSpacing = (): number | null => lineSpacing;
 
-export const setLineSpacing = (value: SpacingChoice): void => {
-  lineSpacing = value;
-  writeStorage(LINE_SPACING_KEY, value);
+/** Pass `null` to clear the override and fall back to the active preset. */
+export const setLineSpacing = (value: number | null): void => {
+  lineSpacing = value === null ? null : clamp(value, LINE_SPACING_RANGE);
+  writeStorage(LINE_SPACING_KEY, lineSpacing === null ? null : String(lineSpacing));
   notify();
 };
 
-export const getParagraphSpacing = (): SpacingChoice => paragraphSpacing;
+export const getParagraphSpacing = (): number | null => paragraphSpacing;
 
-export const setParagraphSpacing = (value: SpacingChoice): void => {
-  paragraphSpacing = value;
-  writeStorage(PARAGRAPH_SPACING_KEY, value);
+/** Pass `null` to clear the override and fall back to the active preset. */
+export const setParagraphSpacing = (value: number | null): void => {
+  paragraphSpacing = value === null ? null : clamp(value, PARAGRAPH_SPACING_RANGE);
+  writeStorage(PARAGRAPH_SPACING_KEY, paragraphSpacing === null ? null : String(paragraphSpacing));
   notify();
 };
 
@@ -99,24 +109,21 @@ export const subscribeReadingPreferences = (listener: () => void): (() => void) 
   return () => listeners.delete(listener);
 };
 
-/** @deprecated Kept as the old name of {@link subscribeReadingPreferences}. */
-export const subscribeCompactReading = subscribeReadingPreferences;
-
 /**
- * The spacing overrides as inline custom properties, or `undefined` when both are `auto`
- * (the common case — nothing is added to the DOM unless the reader asked for it).
- * Inline vars beat the preset's class-level ones, so this composes with either density.
+ * The overrides as inline custom properties, or `undefined` when neither is set (the common
+ * case — nothing is added to the DOM unless the reader asked for it). Inline vars beat the
+ * preset's class-level ones, so this composes with either density.
  */
 export const getReadingSpacingStyle = (): CSSProperties | undefined => {
-  if (lineSpacing === "auto" && paragraphSpacing === "auto") {
+  if (lineSpacing === null && paragraphSpacing === null) {
     return undefined;
   }
   const style: Record<string, string> = {};
-  if (lineSpacing !== "auto") {
-    style["--md-leading"] = lineSpacingValues[lineSpacing];
+  if (lineSpacing !== null) {
+    style["--md-leading"] = String(lineSpacing);
   }
-  if (paragraphSpacing !== "auto") {
-    style["--md-block-gap"] = paragraphSpacingValues[paragraphSpacing];
+  if (paragraphSpacing !== null) {
+    style["--md-block-gap"] = `${paragraphSpacing}rem`;
   }
   return style as CSSProperties;
 };
@@ -125,14 +132,19 @@ const snapshot = () => ({ compact, lineSpacing, paragraphSpacing });
 let cachedSnapshot = snapshot();
 
 /**
- * All reading preferences as a live value: the `density` prop MemoContent expects, the two
- * spacing choices (for the settings UI), and the inline style that applies the overrides.
+ * All reading preferences as a live value: the `density` prop MemoContent expects, the raw
+ * overrides plus the values the sliders should display (`effective*`), and the inline style
+ * that applies them.
  */
 export function useReadingDensity(): {
   compact: boolean;
   density: "compact" | "reading";
-  lineSpacing: SpacingChoice;
-  paragraphSpacing: SpacingChoice;
+  lineSpacing: number | null;
+  paragraphSpacing: number | null;
+  /** The line height in force, override or preset — what the slider handle sits on. */
+  effectiveLineSpacing: number;
+  /** The paragraph gap (rem) in force, override or preset. */
+  effectiveParagraphSpacing: number;
   spacingStyle: CSSProperties | undefined;
 } {
   const value = useSyncExternalStore(
@@ -152,11 +164,15 @@ export function useReadingDensity(): {
     () => cachedSnapshot,
   );
 
+  const preset = value.compact ? PRESET_SPACING.compact : PRESET_SPACING.reading;
+
   return {
     compact: value.compact,
     density: value.compact ? "compact" : "reading",
     lineSpacing: value.lineSpacing,
     paragraphSpacing: value.paragraphSpacing,
+    effectiveLineSpacing: value.lineSpacing ?? preset.line,
+    effectiveParagraphSpacing: value.paragraphSpacing ?? preset.paragraph,
     spacingStyle: getReadingSpacingStyle(),
   };
 }

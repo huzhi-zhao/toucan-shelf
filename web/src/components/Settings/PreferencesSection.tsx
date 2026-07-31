@@ -1,5 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { useQuery } from "@tanstack/react-query";
+import { RotateCcwIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,14 @@ import { Visibility } from "@/types/proto/api/v1/memo_service_pb";
 import { UserSetting_GeneralSetting, UserSetting_GeneralSettingSchema, UserSettingSchema } from "@/types/proto/api/v1/user_service_pb";
 import { loadLocale, useTranslate } from "@/utils/i18n";
 import { convertVisibilityFromString, convertVisibilityToString } from "@/utils/memo";
-import { type SpacingChoice, setCompactReading, setLineSpacing, setParagraphSpacing, useReadingDensity } from "@/utils/readingDensity";
+import {
+  LINE_SPACING_RANGE,
+  PARAGRAPH_SPACING_RANGE,
+  setCompactReading,
+  setLineSpacing,
+  setParagraphSpacing,
+  useReadingDensity,
+} from "@/utils/readingDensity";
 import { setSidebarMode } from "@/utils/sidebarMode";
 import { loadTheme } from "@/utils/theme";
 import LocaleSelect from "../LocaleSelect";
@@ -25,25 +33,60 @@ import SettingGroup from "./SettingGroup";
 import { SettingList, SettingListItem } from "./SettingList";
 import SettingSection from "./SettingSection";
 
-const SPACING_OPTIONS: SpacingChoice[] = ["auto", "tight", "normal", "loose"];
-
-/** Shared picker for the two reading-rhythm overrides (line spacing, paragraph spacing). */
-const SpacingSelect = ({ value, onChange }: { value: SpacingChoice; onChange: (value: SpacingChoice) => void }) => {
+/**
+ * Shared slider for the two reading-rhythm overrides. While no override is set the handle
+ * still sits on the active preset's value, so the control never lies about the current text —
+ * it just reports it as "auto" until the reader drags it. The reset button clears the
+ * override, returning to whatever the preset suggests rather than to a hard-coded number.
+ */
+const SpacingSlider = ({
+  label,
+  value,
+  effectiveValue,
+  range,
+  format,
+  onChange,
+}: {
+  label: string;
+  value: number | null;
+  effectiveValue: number;
+  range: { min: number; max: number; step: number };
+  format: (value: number) => string;
+  onChange: (value: number | null) => void;
+}) => {
   const t = useTranslate();
+  const isAuto = value === null;
 
   return (
-    <Select value={value} onValueChange={(next) => onChange(next as SpacingChoice)}>
-      <SelectTrigger className="min-w-fit">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {SPACING_OPTIONS.map((option) => (
-          <SelectItem key={option} value={option}>
-            {t(`setting.preference.spacing-${option}`)}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div className="flex w-48 flex-col gap-1 sm:w-56">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs tabular-nums text-muted-foreground">
+          {format(effectiveValue)}
+          {isAuto && ` · ${t("setting.preference.spacing-auto")}`}
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 px-2 text-xs"
+          disabled={isAuto}
+          title={t("setting.preference.spacing-reset")}
+          onClick={() => onChange(null)}
+        >
+          <RotateCcwIcon className="w-3 h-3" />
+          {t("setting.preference.spacing-reset")}
+        </Button>
+      </div>
+      <input
+        type="range"
+        min={range.min}
+        max={range.max}
+        step={range.step}
+        value={effectiveValue}
+        aria-label={label}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full accent-primary"
+      />
+    </div>
   );
 };
 
@@ -52,7 +95,7 @@ const PreferencesSection = () => {
   const { currentUser, userGeneralSetting: generalSetting, refetchSettings } = useAuth();
   const { mutate: updateUserGeneralSetting } = useUpdateUserGeneralSetting(currentUser?.name);
   const sidebarMode = useSidebarMode();
-  const { compact: compactReading, lineSpacing, paragraphSpacing } = useReadingDensity();
+  const { compact: compactReading, lineSpacing, paragraphSpacing, effectiveLineSpacing, effectiveParagraphSpacing } = useReadingDensity();
 
   // RAG search preferences (per-user).
   const { data: userSettings } = useUserSettings(currentUser?.name);
@@ -176,14 +219,28 @@ const PreferencesSection = () => {
           {/* Fine-tuning on top of the density preset above. "Auto" keeps whatever the preset
               says, so a reader only opts into a fixed value if they actually want one. */}
           <SettingListItem label={t("setting.preference.line-spacing")} description={t("setting.preference.line-spacing-description")}>
-            <SpacingSelect value={lineSpacing} onChange={setLineSpacing} />
+            <SpacingSlider
+              label={t("setting.preference.line-spacing")}
+              value={lineSpacing}
+              effectiveValue={effectiveLineSpacing}
+              range={LINE_SPACING_RANGE}
+              format={(v) => v.toFixed(2)}
+              onChange={setLineSpacing}
+            />
           </SettingListItem>
 
           <SettingListItem
             label={t("setting.preference.paragraph-spacing")}
             description={t("setting.preference.paragraph-spacing-description")}
           >
-            <SpacingSelect value={paragraphSpacing} onChange={setParagraphSpacing} />
+            <SpacingSlider
+              label={t("setting.preference.paragraph-spacing")}
+              value={paragraphSpacing}
+              effectiveValue={effectiveParagraphSpacing}
+              range={PARAGRAPH_SPACING_RANGE}
+              format={(v) => `${Math.round(v * 16)}px`}
+              onChange={setParagraphSpacing}
+            />
           </SettingListItem>
         </SettingList>
       </SettingGroup>
