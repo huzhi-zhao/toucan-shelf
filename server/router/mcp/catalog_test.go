@@ -8,9 +8,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCuratedOperationIDsStayMemoFocused(t *testing.T) {
-	require.Len(t, curatedOperationIDs, 20)
+func TestCuratedOperationIDsAreTheKnowledgeBaseSet(t *testing.T) {
+	// Pinned exactly: the allowlist is resident model context, and both growing
+	// it casually and losing an entry to a bad merge are silent regressions.
+	require.Equal(t, []string{
+		"WorkspaceService_ListWorkspaces",
+		"WorkspaceService_GetWorkspaceTree",
+		"RagService_Search",
+		"MemoService_ListMemos",
+		"MemoService_GetMemo",
+		"MemoService_CreateMemo",
+		"MemoService_UpdateMemo",
+		"AuthService_GetCurrentUser",
+	}, curatedOperationIDs)
 
+	// Deliberately excluded: deleting documents, and the social/scratch-note
+	// surface inherited from upstream memos.
+	require.NotContains(t, curatedOperationIDs, "MemoService_DeleteMemo")
+}
+
+func TestCuratedOperationIDsStayMemoFocused(t *testing.T) {
 	for _, operationID := range curatedOperationIDs {
 		require.NotContains(t, operationID, "Admin")
 		// AuthService_GetCurrentUser is the single allowed auth op (read-only
@@ -104,40 +121,45 @@ func TestBuildToolFromOperationIncludesRequestBodySchema(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestBuildToolFromOperationExposesCreateAttachment(t *testing.T) {
+func TestBuildToolFromOperationExposesWorkspaceNavigation(t *testing.T) {
 	spec, err := loadOpenAPISpec("../../../proto/gen/openapi.yaml")
 	require.NoError(t, err)
 	registry, err := buildOperationRegistry(spec)
 	require.NoError(t, err)
 
-	tool, operation := buildToolFromOperation(registry["AttachmentService_CreateAttachment"])
-	require.Equal(t, "attachment_create_attachment", tool.Name)
+	listTool, listOperation := buildToolFromOperation(registry["WorkspaceService_ListWorkspaces"])
+	require.Equal(t, "workspace_list_workspaces", listTool.Name)
+	require.Equal(t, "GET", listOperation.Method)
+	require.True(t, listTool.Annotations.ReadOnlyHint)
+
+	treeTool, treeOperation := buildToolFromOperation(registry["WorkspaceService_GetWorkspaceTree"])
+	require.Equal(t, "workspace_get_workspace_tree", treeTool.Name)
+	require.Equal(t, "GET", treeOperation.Method)
+	require.True(t, treeTool.Annotations.ReadOnlyHint)
+
+	input, ok := treeTool.InputSchema.(jsonSchema)
+	require.True(t, ok)
+	require.Contains(t, input["required"], "workspace")
+}
+
+// RagService_Search is POST but mutates nothing, so the method heuristic has to
+// be overridden — otherwise clients treat every search as a write.
+func TestBuildToolFromOperationMarksRagSearchReadOnly(t *testing.T) {
+	spec, err := loadOpenAPISpec("../../../proto/gen/openapi.yaml")
+	require.NoError(t, err)
+	registry, err := buildOperationRegistry(spec)
+	require.NoError(t, err)
+
+	tool, operation := buildToolFromOperation(registry["RagService_Search"])
+	require.Equal(t, "rag_search", tool.Name)
 	require.Equal(t, "POST", operation.Method)
-	require.False(t, tool.Annotations.ReadOnlyHint)
+	require.True(t, tool.Annotations.ReadOnlyHint)
+	require.True(t, tool.Annotations.IdempotentHint)
 	require.False(t, *tool.Annotations.DestructiveHint)
-	require.False(t, tool.Annotations.IdempotentHint)
 
 	input, ok := tool.InputSchema.(jsonSchema)
 	require.True(t, ok)
 	require.Contains(t, input["required"], "body")
-	properties, ok := input["properties"].(map[string]any)
-	require.True(t, ok)
-	// attachmentId is an optional query parameter; the file itself is the body.
-	require.Contains(t, properties, "attachmentId")
-	require.Contains(t, properties, "body")
-	body, ok := properties["body"].(jsonSchema)
-	require.True(t, ok)
-	require.Contains(t, body["properties"], "filename")
-	require.Contains(t, body["properties"], "content")
-
-	err = validateToolArguments(input, map[string]any{
-		"body": map[string]any{
-			"filename": "screenshot.png",
-			"type":     "image/png",
-			"content":  "aGVsbG8=",
-		},
-	})
-	require.NoError(t, err)
 }
 
 func TestBuildToolFromOperationExposesCurrentUser(t *testing.T) {
@@ -150,41 +172,6 @@ func TestBuildToolFromOperationExposesCurrentUser(t *testing.T) {
 	require.Equal(t, "auth_get_current_user", tool.Name)
 	require.Equal(t, "GET", operation.Method)
 	require.True(t, tool.Annotations.ReadOnlyHint)
-}
-
-func TestBuildToolFromOperationExposesListShortcuts(t *testing.T) {
-	spec, err := loadOpenAPISpec("../../../proto/gen/openapi.yaml")
-	require.NoError(t, err)
-	registry, err := buildOperationRegistry(spec)
-	require.NoError(t, err)
-
-	tool, operation := buildToolFromOperation(registry["ShortcutService_ListShortcuts"])
-	require.Equal(t, "shortcut_list_shortcuts", tool.Name)
-	require.Equal(t, "GET", operation.Method)
-	require.True(t, tool.Annotations.ReadOnlyHint)
-
-	input, ok := tool.InputSchema.(jsonSchema)
-	require.True(t, ok)
-	properties, ok := input["properties"].(map[string]any)
-	require.True(t, ok)
-	require.Contains(t, properties, "user")
-}
-
-func TestBuildToolFromOperationMarksSetOperationsIdempotent(t *testing.T) {
-	spec, err := loadOpenAPISpec("../../../proto/gen/openapi.yaml")
-	require.NoError(t, err)
-	registry, err := buildOperationRegistry(spec)
-	require.NoError(t, err)
-
-	for _, operationID := range []string{"MemoService_SetMemoAttachments", "MemoService_SetMemoRelations"} {
-		tool, operation := buildToolFromOperation(registry[operationID])
-		require.Equal(t, "PATCH", operation.Method, operationID)
-		// PATCH is non-idempotent by the method heuristic, but the per-operation
-		// override restores the declarative "set" semantics.
-		require.True(t, tool.Annotations.IdempotentHint, operationID)
-		require.False(t, tool.Annotations.ReadOnlyHint, operationID)
-		require.False(t, *tool.Annotations.DestructiveHint, operationID)
-	}
 }
 
 func TestBuildCuratedToolsHasUniqueNames(t *testing.T) {

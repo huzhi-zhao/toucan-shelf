@@ -140,10 +140,52 @@ func TestMCPProtocolListsCuratedToolsOnly(t *testing.T) {
 		require.Contains(t, tool, "inputSchema")
 		require.Contains(t, tool, "outputSchema")
 	}
+	require.Contains(t, names, "workspace_list_workspaces")
+	require.Contains(t, names, "workspace_get_workspace_tree")
+	require.Contains(t, names, "rag_search")
 	require.Contains(t, names, "memo_list_memos")
+	require.Contains(t, names, "memo_get_memo")
 	require.Contains(t, names, "memo_create_memo")
+	require.Contains(t, names, "memo_update_memo")
+	require.Contains(t, names, "auth_get_current_user")
+	require.NotContains(t, names, "memo_delete_memo")
 	require.NotContains(t, names, "auth_sign_in")
 	require.NotContains(t, names, "user_create_user")
+}
+
+// The instructions are how a client learns that "memo" means "document" and
+// that an update replaces the whole content. Losing them is silent, so pin the
+// load-bearing parts to the wire format.
+func TestMCPInitializeReturnsServerInstructions(t *testing.T) {
+	echoServer := echo.New()
+	service, err := NewMCPService(&profile.Profile{Version: "test-version"}, echoServer)
+	require.NoError(t, err)
+	service.RegisterRoutes(echoServer)
+
+	response := postMCP(t, echoServer, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "initialize",
+		"params": map[string]any{
+			"protocolVersion": "2025-06-18",
+			"capabilities":    map[string]any{},
+			"clientInfo":      map[string]any{"name": "memos-test", "version": "1.0.0"},
+		},
+	})
+
+	result, ok := response["result"].(map[string]any)
+	require.True(t, ok)
+	instructions, ok := result["instructions"].(string)
+	require.True(t, ok, "initialize result must carry instructions")
+	require.Contains(t, instructions, "hierarchical knowledge base")
+	require.Contains(t, instructions, "replaces the whole content field")
+	require.Contains(t, instructions, "no concurrency check")
+	// Addressing rules the user should not have to repeat in every prompt.
+	require.Contains(t, instructions, "resolve it to workspaces/{uid}")
+	require.Contains(t, instructions, "NO file extension")
+
+	// Resident context: keep it a briefing, not a manual (see tech-design P0).
+	require.Less(t, len(instructions), 1600)
 }
 
 func TestMCPToolCallReturnsObjectStructuredContent(t *testing.T) {

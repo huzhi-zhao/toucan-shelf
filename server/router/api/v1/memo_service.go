@@ -5,6 +5,7 @@ import (
 	stderrors "errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/usememos/memos/internal/base"
 	"github.com/usememos/memos/internal/httpgetter"
 	"github.com/usememos/memos/internal/webhook"
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
@@ -158,6 +160,11 @@ func (s *APIV1Service) CreateMemo(ctx context.Context, request *v1pb.CreateMemoR
 	if request.Memo.DocConfig != nil {
 		create.Payload.DocConfig = convertDocConfigToStore(request.Memo.DocConfig)
 	}
+	// A brand-new document has no human content to protect, so an agent-created
+	// one starts with the session already open: the agent's subsequent passes
+	// over its own draft produce no snapshots. It closes the first time a human
+	// edits the content.
+	create.Payload.AgentSessionOpen = base.ActorKindFromContext(ctx).IsAgent()
 
 	memo, err := s.Store.CreateMemo(ctx, create)
 	if err != nil {
@@ -535,6 +542,28 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
 	}
 
+	actorIsAgent := base.ActorKindFromContext(ctx).IsAgent()
+	if actorIsAgent {
+		if err := checkAgentWritableFields(request.UpdateMask.Paths); err != nil {
+			return nil, err
+		}
+	}
+
+	// The agent_session_open bit tracks who authored what is stored now, so only
+	// an authorship write moves it. A human pinning a document or toggling a view
+	// knob is not authorship: clearing the bit there would make the next agent
+	// write snapshot the agent's own output as if it were a human baseline.
+	authorshipWrite := slices.ContainsFunc(request.UpdateMask.Paths, isAuthorshipField)
+
+	// Snapshot before anything below mutates `memo`: the baseline is the state as
+	// it stands on the server right now, which is exactly what CreateMemoHistory
+	// captures. See snapshotHumanBaselineIfNeeded for the rule.
+	if authorshipWrite && actorIsAgent {
+		if _, err := s.snapshotHumanBaselineIfNeeded(ctx, memo, user.ID); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to snapshot memo baseline: %v", err)
+		}
+	}
+
 	update := &store.UpdateMemo{
 		ID: memo.ID,
 	}
@@ -633,6 +662,16 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 			}
 			update.WorkspaceID = &workspace.ID
 		}
+	}
+
+	// Record who authored what is now stored. The payload is the one loaded with
+	// the memo and mutated in place by the mask loop above, so this rides along
+	// with whatever else changed; it is assigned to update.Payload unconditionally
+	// because an authorship write with no other payload-touching path would
+	// otherwise leave the bit unpersisted.
+	if authorshipWrite {
+		memo.Payload.AgentSessionOpen = actorIsAgent
+		update.Payload = memo.Payload
 	}
 
 	// Structural changes (move / rename / doc type) must bump updated_ts even

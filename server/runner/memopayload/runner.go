@@ -75,6 +75,16 @@ func (r *Runner) RunOnce(ctx context.Context) {
 	}
 }
 
+// RebuildMemoPayload recomputes the payload fields derived from the memo's
+// content, in place.
+//
+// It must keep modifying the loaded payload rather than building a fresh one.
+// Callers — including RunOnce above — write back the whole Payload column, so
+// replacing the object (`memo.Payload = &storepb.MemoPayload{...}`) would wipe
+// every field this function does not set. That includes agent_session_open,
+// whose loss is silent and only shows up much later as an agent overwriting
+// human content without first saving the baseline version. Same for
+// doc_config, node_overlays, and the annotation anchors.
 func RebuildMemoPayload(_ context.Context, memo *store.Memo, markdownService markdown.Service) error {
 	if memo.Payload == nil {
 		memo.Payload = &storepb.MemoPayload{}

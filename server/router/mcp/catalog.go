@@ -8,28 +8,27 @@ import (
 	"github.com/pkg/errors"
 )
 
+// curatedOperationIDs is the MCP tool allowlist, scoped to knowledge-base
+// authoring: navigate the workspace tree, search, read a document, write one.
+//
+// Keep it small on purpose. The `tools/list` result is injected into the model's
+// context when the connection is established and stays resident there, and these
+// schemas are derived from OpenAPI, so they are verbose (the Memo component
+// alone is ~7 KB before its nested $defs). Do not add secret-block, IDP or
+// instance-management operations "while you are in here".
+//
+// MemoService_DeleteMemo is deliberately absent: letting an agent delete
+// documents has near-zero upside and real downside.
 var curatedOperationIDs = []string{
+	"WorkspaceService_ListWorkspaces",
+	"WorkspaceService_GetWorkspaceTree",
+	"RagService_Search",
 	"MemoService_ListMemos",
-	"MemoService_CreateMemo",
 	"MemoService_GetMemo",
+	"MemoService_CreateMemo",
 	"MemoService_UpdateMemo",
-	"MemoService_DeleteMemo",
-	"MemoService_ListMemoComments",
-	"MemoService_CreateMemoComment",
-	"MemoService_ListMemoAttachments",
-	"MemoService_SetMemoAttachments",
-	"MemoService_ListMemoReactions",
-	"MemoService_UpsertMemoReaction",
-	"MemoService_DeleteMemoReaction",
-	"MemoService_ListMemoRelations",
-	"MemoService_SetMemoRelations",
-	"AttachmentService_ListAttachments",
-	"AttachmentService_CreateAttachment",
-	"AttachmentService_GetAttachment",
-	"AttachmentService_DeleteAttachment",
-	"ShortcutService_ListShortcuts",
 	// The only allowed auth/identity operation: a read-only "whoami" so agents
-	// can resolve the current user (e.g. for ShortcutService_ListShortcuts).
+	// can resolve the current user.
 	"AuthService_GetCurrentUser",
 }
 
@@ -187,21 +186,21 @@ func extractSchemaDefs(schema jsonSchema) map[string]any {
 	return defs
 }
 
-// idempotentOperationIDs lists operations whose idempotency the HTTP-method
-// heuristic gets wrong. The "Set*" operations declaratively replace the full
-// set on a memo, so repeating an identical call converges to the same state —
-// idempotent — even though they are served over PATCH (which the heuristic
-// treats as non-idempotent).
-var idempotentOperationIDs = map[string]bool{
-	"MemoService_SetMemoAttachments": true,
-	"MemoService_SetMemoRelations":   true,
+// readOnlyOperationIDs lists operations that mutate nothing but are served over
+// a non-GET method, which the HTTP-method heuristic reads as a write.
+// RagService_Search is POST only because its query is too large for a query
+// string; it is a pure read, and clients should be free to run it without a
+// write confirmation.
+var readOnlyOperationIDs = map[string]bool{
+	"RagService_Search": true,
 }
 
 // annotationsForOperation derives the method-based annotations and then applies
 // per-operation overrides that the HTTP method alone cannot express.
 func annotationsForOperation(operation *openAPIOperation, title string) *sdkmcp.ToolAnnotations {
 	annotations := annotationsForMethod(operation.Method, title)
-	if idempotentOperationIDs[operation.OperationID] {
+	if readOnlyOperationIDs[operation.OperationID] {
+		annotations.ReadOnlyHint = true
 		annotations.IdempotentHint = true
 	}
 	return annotations

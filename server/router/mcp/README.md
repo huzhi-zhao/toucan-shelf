@@ -2,7 +2,7 @@
 
 This package serves an [OpenAPI](https://www.openapis.org/)-driven
 [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) endpoint at
-`/mcp`. It exposes a curated, memo-focused toolset over the **Streamable HTTP**
+`/mcp`. It exposes a curated, knowledge-base-focused toolset over the **Streamable HTTP**
 transport using the official `github.com/modelcontextprotocol/go-sdk`.
 
 The core design principle: **tool calls execute in-process against the existing
@@ -131,34 +131,33 @@ a personal access token as a bearer credential. Example client config:
 
 ## Tool surface
 
-The server exposes a curated allowlist (`curatedOperationIDs` in `catalog.go`),
-centered on memos and attachments, plus two read-only orientation tools:
-`shortcut_list_shortcuts` (surfaces a user's saved CEL filters for reuse with
-`memo_list_memos`) and `auth_get_current_user` (a "whoami" so an agent can
-resolve its own user — the single allowed auth/identity operation):
+The server exposes a curated allowlist of **8** operations
+(`curatedOperationIDs` in `catalog.go`), scoped to knowledge-base authoring:
+navigate the workspace tree, search, read a document, write one.
 
-| OpenAPI operation | MCP tool |
-| --- | --- |
-| `MemoService_ListMemos` | `memo_list_memos` |
-| `MemoService_CreateMemo` | `memo_create_memo` |
-| `MemoService_GetMemo` | `memo_get_memo` |
-| `MemoService_UpdateMemo` | `memo_update_memo` |
-| `MemoService_DeleteMemo` | `memo_delete_memo` |
-| `MemoService_ListMemoComments` | `memo_list_memo_comments` |
-| `MemoService_CreateMemoComment` | `memo_create_memo_comment` |
-| `MemoService_ListMemoAttachments` | `memo_list_memo_attachments` |
-| `MemoService_SetMemoAttachments` | `memo_set_memo_attachments` |
-| `MemoService_ListMemoReactions` | `memo_list_memo_reactions` |
-| `MemoService_UpsertMemoReaction` | `memo_upsert_memo_reaction` |
-| `MemoService_DeleteMemoReaction` | `memo_delete_memo_reaction` |
-| `MemoService_ListMemoRelations` | `memo_list_memo_relations` |
-| `MemoService_SetMemoRelations` | `memo_set_memo_relations` |
-| `AttachmentService_ListAttachments` | `attachment_list_attachments` |
-| `AttachmentService_CreateAttachment` | `attachment_create_attachment` |
-| `AttachmentService_GetAttachment` | `attachment_get_attachment` |
-| `AttachmentService_DeleteAttachment` | `attachment_delete_attachment` |
-| `ShortcutService_ListShortcuts` | `shortcut_list_shortcuts` |
-| `AuthService_GetCurrentUser` | `auth_get_current_user` |
+| OpenAPI operation | MCP tool | Purpose |
+| --- | --- | --- |
+| `WorkspaceService_ListWorkspaces` | `workspace_list_workspaces` | Which knowledge bases exist |
+| `WorkspaceService_GetWorkspaceTree` | `workspace_get_workspace_tree` | Folder/document hierarchy |
+| `RagService_Search` | `rag_search` | Hybrid full-text + semantic search |
+| `MemoService_ListMemos` | `memo_list_memos` | Filtered bulk listing |
+| `MemoService_GetMemo` | `memo_get_memo` | Read full content |
+| `MemoService_CreateMemo` | `memo_create_memo` | Create a document |
+| `MemoService_UpdateMemo` | `memo_update_memo` | Replace a document's content |
+| `AuthService_GetCurrentUser` | `auth_get_current_user` | Read-only "whoami" — the single allowed auth/identity operation |
+
+**Why so few.** The `tools/list` result is injected into the model's context when
+the connection is established and stays resident there; it is not fetched per
+call. These schemas are OpenAPI-derived and verbose (the `Memo` component alone
+is ~7 KB in `proto/gen/openapi.yaml`, before the nested `Attachment` /
+`Reaction` / `Relation` `$defs` are expanded into each tool's input schema).
+Comments, reactions, shortcuts and the attachment surface were removed because
+they cost resident context and serve the upstream "social scratch-note" model,
+not this one. Do not add secret-block, IDP or instance-management operations
+while you are in here.
+
+**`MemoService_DeleteMemo` is deliberately excluded**, not an oversight: giving
+an agent the ability to delete documents has near-zero upside and real downside.
 
 **Naming rule** (`toolNameFromOperationID`): drop the `Service` suffix from the
 subject and convert both subject and method from camelCase to snake_case, joined
@@ -172,10 +171,28 @@ by `_`. So `MemoService_ListMemos → memo_list_memos`.
 | DELETE | false | true | true |
 | other (POST, PATCH, …) | false | false | false |
 
-A per-operation override (`idempotentOperationIDs`) then corrects cases the
-method heuristic gets wrong: `MemoService_SetMemoAttachments` and
-`MemoService_SetMemoRelations` are PATCH but declaratively replace the full set
-on a memo, so they report `IdempotentHint: true`.
+A per-operation override (`readOnlyOperationIDs`) then corrects cases the method
+heuristic gets wrong: `RagService_Search` is POST only because its query is too
+large for a query string, so it reports `ReadOnlyHint: true` and
+`IdempotentHint: true` and clients need not gate it behind a write confirmation.
+
+## Server instructions
+
+`serverInstructions` (`service.go`) is passed as `ServerOptions.Instructions` and
+returned in the `initialize` response; clients that support the field inject it
+into the model's system prompt.
+
+It exists because the tool names and descriptions come from the OpenAPI spec,
+which still speaks the upstream dialect — a "memo" is really a document in a
+`workspace → folder tree → document` hierarchy — and says nothing about the write
+semantics. The load-bearing line is that **`memo_update_memo` replaces the entire
+content field**; an agent that treats it as an incremental patch silently
+destroys the rest of the document.
+
+Like `tools/list`, this text is resident context for the whole session, so keep
+it a briefing rather than a manual: only what the model cannot infer from tool
+names and schemas. `service_test.go` asserts both its presence and an upper
+bound on its length.
 
 `OpenWorldHint` is `false` for all tools. Annotations are client hints; they do
 not replace API authorization.
@@ -210,7 +227,7 @@ the handler returns `(result, nil)`:
 
 | File | Responsibility |
 | --- | --- |
-| `service.go` | Constructs the MCP server, registers tools, builds the streamable HTTP handler, and binds the `/mcp` route. |
+| `service.go` | Constructs the MCP server, carries the server instructions, registers tools, builds the streamable HTTP handler, and binds the `/mcp` route. |
 | `catalog.go` | The curated operation allowlist, tool naming, input/output schema assembly, and method-derived annotations. |
 | `adapter.go` | Translates a tool call into an `/api/v1/...` request and runs it in-process against the Echo server. |
 | `openapi.go` | Parses the OpenAPI spec, builds the operation registry, and resolves `$ref` schemas into self-contained JSON Schema. |
@@ -244,9 +261,9 @@ go test ./server/router/mcp/...
 - `catalog_test.go` — tool selection, naming, schema and annotation building.
 - `adapter_test.go` — request construction and in-process execution (`adapter.go`), plus result normalization and error shaping (`result.go`).
 - `validation_test.go` — argument validation against input schemas.
-- `service_test.go` — the origin-header check, plus the end-to-end MCP protocol
-  (`initialize`, `tools/list`, `tools/call`) confirming object-shaped
-  `structuredContent`.
+- `service_test.go` — the origin-header check, the `initialize` instructions,
+  plus the end-to-end MCP protocol (`initialize`, `tools/list`, `tools/call`)
+  confirming object-shaped `structuredContent`.
 
 ## Design notes
 

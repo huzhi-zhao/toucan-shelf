@@ -45,9 +45,27 @@ type MemoPayload struct {
 	// travelling with the exported markdown. Storing it here also keeps toggling
 	// a view knob from rewriting the content: no new revision, no updated_ts
 	// bump, no memogit diff, and no re-embedding (see updateAffectsIndex).
-	DocConfig     *MemoPayload_DocConfig `protobuf:"bytes,8,opt,name=doc_config,json=docConfig,proto3" json:"doc_config,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	DocConfig *MemoPayload_DocConfig `protobuf:"bytes,8,opt,name=doc_config,json=docConfig,proto3" json:"doc_config,omitempty"`
+	// Whether the current content was written by an agent over the MCP channel.
+	// Cleared on every human write.
+	//
+	// Decides whether an agent write must first snapshot the human baseline: if
+	// the content it is about to overwrite is human-authored, that state is
+	// captured as a version first; if the agent is overwriting its own earlier
+	// output, it is not. Snapshot count therefore tracks human editing sessions,
+	// not agent iterations.
+	//
+	// The false zero value is the safe direction: an old memo without the field,
+	// or one whose payload lost it, degrades to "take a snapshot on the next
+	// agent write" — one redundant version, never lost content.
+	//
+	// NOT a lock. Do not reuse it for concurrency control: its lifetime is "true
+	// until a human edits", which as a lock means an agent holds it forever and
+	// the only thing that can release it is the very action it blocks. See
+	// docs/plans/2026-07-31-mcp-agent-authoring/requirement.md ADR-6.
+	AgentSessionOpen bool `protobuf:"varint,9,opt,name=agent_session_open,json=agentSessionOpen,proto3" json:"agent_session_open,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *MemoPayload) Reset() {
@@ -134,6 +152,13 @@ func (x *MemoPayload) GetDocConfig() *MemoPayload_DocConfig {
 		return x.DocConfig
 	}
 	return nil
+}
+
+func (x *MemoPayload) GetAgentSessionOpen() bool {
+	if x != nil {
+		return x.AgentSessionOpen
+	}
+	return false
 }
 
 // The calculated properties from the memo content.
@@ -686,7 +711,7 @@ var File_store_memo_proto protoreflect.FileDescriptor
 
 const file_store_memo_proto_rawDesc = "" +
 	"\n" +
-	"\x10store/memo.proto\x12\vmemos.store\"\xdd\x0e\n" +
+	"\x10store/memo.proto\x12\vmemos.store\"\x8b\x0f\n" +
 	"\vMemoPayload\x12=\n" +
 	"\bproperty\x18\x01 \x01(\v2!.memos.store.MemoPayload.PropertyR\bproperty\x12=\n" +
 	"\blocation\x18\x02 \x01(\v2!.memos.store.MemoPayload.LocationR\blocation\x12\x12\n" +
@@ -697,7 +722,8 @@ const file_store_memo_proto_rawDesc = "" +
 	"\rnode_overlays\x18\x06 \x03(\v2*.memos.store.MemoPayload.NodeOverlaysEntryR\fnodeOverlays\x12P\n" +
 	"\x0fepub_annotation\x18\a \x01(\v2'.memos.store.MemoPayload.EpubAnnotationR\x0eepubAnnotation\x12A\n" +
 	"\n" +
-	"doc_config\x18\b \x01(\v2\".memos.store.MemoPayload.DocConfigR\tdocConfig\x1a?\n" +
+	"doc_config\x18\b \x01(\v2\".memos.store.MemoPayload.DocConfigR\tdocConfig\x12,\n" +
+	"\x12agent_session_open\x18\t \x01(\bR\x10agentSessionOpen\x1a?\n" +
 	"\x11NodeOverlaysEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a\xac\x01\n" +

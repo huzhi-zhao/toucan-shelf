@@ -20,11 +20,21 @@ one.
 | 7 | [HTTP API Reference](./07-api-reference.md) | The JSON/HTTP API for the knowledge-base features: `WorkspaceService`, `RagService` (hybrid search), `AIService` (writing assistants), `SecretBlockService` (encrypted blocks), and the workspace / folder / doc-type / share-link additions to `MemoService`. |
 | 8 | [Text Marks & Comments](./08-document-comments.md) | Highlighting / underlining text and attaching comment threads across **Markdown / View documents, PDF, and EPUB**: the shared six-color palette and floating toolbar, bare marks vs. noted comments, text-quote anchoring and graceful degradation, heading anchoring, and the `DocAnchor` / `PdfAnnotation` / `EpubAnnotation` data model. |
 | 9 | [EPUB Reader](./09-epub-reader.md) | The in-app `.epub` reader: EPUB as a previewable **attachment** (not a doc type), page-flip vs. continuous-scroll flow, typography and background presets, per-book server-persisted appearance, the table of contents, and in-book marks/comments. |
+| 10 | [MCP Agent Access](./10-mcp-agent-access.md) | Letting Claude Code read and write the knowledge base **over HTTP with nothing on disk**: PAT setup and registration, the curated knowledge-base tool set, addressing documents by workspace / folder path / title, prompts that actually work, the permission allowlist, automatic human-baseline snapshots — and the one rule you must follow yourself (don't edit in the web UI while an agent writes). |
 
 ## For AI coding agents
 
+An agent can reach the knowledge base through **two channels**, and they are
+documented separately because their failure modes differ:
+
+- **Files** — a [memogit](./05-memogit-cli.md) checkout. Best for bulk edits,
+  `grep`, and cross-referencing.
+- **HTTP** — the [MCP server](./10-mcp-agent-access.md). Best for reaching into
+  the knowledge base from a *different* project, with nothing written to disk and
+  no interference with that project's git.
+
 [`pumpkin_book_for_llms.md`](./pumpkin_book_for_llms.md) is the condensed,
-agent-facing version of the nine manuals above (in Chinese): the non-standard
+agent-facing version of the manuals above (in Chinese): the non-standard
 syntax and sync contract an agent must know before editing a checked-out
 knowledge base. It is embedded in the `memogit` binary and dropped into every
 checkout as `.memogit/toucanshelf-guide.md`, so agents get it without this
@@ -35,7 +45,13 @@ embedded copy:
 cp docs/manual/pumpkin_book_for_llms.md internal/memogit/assets/
 ```
 
-`TestEmbeddedGuideMatchesManual` fails if the two drift apart.
+Nothing checks this automatically, so remember to run it.
+
+The pumpkin book covers the **checkout** channel only. Agents on the MCP channel
+never see a file tree, so they are briefed by the server's own `initialize`
+instructions instead — maintained next to the tool list in
+[`server/router/mcp/`](../../server/router/mcp/), see
+[§10.4](./10-mcp-agent-access.md).
 
 ## Core concepts at a glance
 

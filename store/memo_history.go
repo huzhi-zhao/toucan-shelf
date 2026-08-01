@@ -56,6 +56,12 @@ type FindMemoHistory struct {
 	ID     *int32
 	UID    *string
 	MemoID *int32
+	// ContentHash asks "does this memo already have a version holding exactly
+	// this state?" — see HashMemoState. It exists so the agent-baseline path can
+	// answer that in the database instead of loading every version's full content
+	// to compare hashes in Go; combined with Limit=1 the common answer ("no, take
+	// a snapshot") reads no rows at all.
+	ContentHash *string
 
 	Limit  *int
 	Offset *int

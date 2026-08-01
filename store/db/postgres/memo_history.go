@@ -57,6 +57,9 @@ func (d *DB) ListMemoHistories(ctx context.Context, find *store.FindMemoHistory)
 	if find.MemoID != nil {
 		where, args = append(where, "memo_id = "+placeholder(len(args)+1)), append(args, *find.MemoID)
 	}
+	if find.ContentHash != nil {
+		where, args = append(where, "content_hash = "+placeholder(len(args)+1)), append(args, *find.ContentHash)
+	}
 
 	query := `
 		SELECT

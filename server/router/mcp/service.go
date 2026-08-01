@@ -14,6 +14,46 @@ import (
 	memosproto "github.com/usememos/memos/proto"
 )
 
+// serverInstructions is returned in the `initialize` response and injected into
+// the model's system prompt by clients that support it. It exists because the
+// tool names and descriptions are derived from the OpenAPI spec, which still
+// speaks the upstream "scratch-note app" dialect ("memo") and says nothing about
+// the knowledge-base structure or about the write semantics that can silently
+// destroy content.
+//
+// Keep it short. Like `tools/list`, this text is resident context for the whole
+// session, so it must only carry what the model cannot infer from the tool names
+// and schemas: the hierarchy, the order to chain calls in, and the fact that an
+// update is a full-content replacement.
+const serverInstructions = `ToucanShelf is a hierarchical knowledge base
+(workspace -> folder tree -> document), not a scratch-note app. Tool names keep
+the underlying CRUD naming: a "memo" is a document.
+
+Locating a document:
+1. workspace_list_workspaces - which knowledge bases exist. A name the user
+   types is a display name; resolve it to workspaces/{uid} before use.
+2. workspace_get_workspace_tree - folder structure; prefer this when addressing
+   a document by its path
+3. rag_search - semantic/keyword search when you only know the topic
+4. memo_get_memo - read the full content
+
+Creating:
+- memo_create_memo takes workspace, folder_path ("folder a/folder b", relative
+  to the workspace root; empty means root), title and content.
+- Folders are path prefixes: writing to a path that does not exist yet makes it
+  appear. There is no folder-creation step.
+- title is the document's display name and takes NO file extension. Pass
+  "plan", not "plan.md".
+
+Updating:
+- memo_update_memo replaces the whole content field; it is not an incremental
+  patch. Always memo_get_memo first, edit the full text, then write it back.
+- There is no concurrency check: edits made in the web UI between your read and
+  your write are silently overwritten.
+- Writable fields: content, title, folder_path, workspace, state, pinned. Any
+  other update_mask path is rejected. There is no delete tool; archiving through
+  state is the closest thing, and it is reversible.`
+
 // MCPService serves the OpenAPI-driven MCP endpoint.
 type MCPService struct {
 	profile *profile.Profile
@@ -44,7 +84,9 @@ func NewMCPService(profile *profile.Profile, echoServer *echo.Echo) (*MCPService
 	server := sdkmcp.NewServer(&sdkmcp.Implementation{
 		Name:    "memos",
 		Version: version,
-	}, nil)
+	}, &sdkmcp.ServerOptions{
+		Instructions: serverInstructions,
+	})
 
 	adapter := newAPIAdapter(echoServer)
 	for _, tool := range tools {

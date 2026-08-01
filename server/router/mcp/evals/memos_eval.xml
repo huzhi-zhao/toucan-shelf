@@ -3,10 +3,14 @@
   Task-level evaluation for the memos MCP server.
 
   These questions test whether an LLM can accomplish realistic tasks by
-  composing the curated MCP tools (memo_list_memos with CEL filters,
-  memo_list_memo_comments, memo_list_memo_reactions, shortcut_list_shortcuts,
-  auth_get_current_user, ...). They are NOT unit tests of the server plumbing —
-  see *_test.go for that.
+  composing the curated MCP tools (workspace_get_workspace_tree, rag_search,
+  memo_list_memos with CEL filters, memo_get_memo, auth_get_current_user, ...).
+  They are NOT unit tests of the server plumbing — see *_test.go for that.
+
+  Note on reactions/comments: the dedicated tools for those were removed from
+  the allowlist, but the questions below remain answerable — the Memo resource
+  itself carries `reactions` and `relations` (comments are MemoRelations of
+  type COMMENT), so memo_list_memos / memo_get_memo still cover them.
 
   Answers are pinned to the deterministic seed in
   store/seed/sqlite/01__dump.sql and were verified by querying a fresh

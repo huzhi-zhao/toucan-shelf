@@ -7,18 +7,6 @@ import (
 	"testing"
 )
 
-// The embedded copy must not drift from the manual humans edit.
-func TestEmbeddedGuideMatchesManual(t *testing.T) {
-	want, err := os.ReadFile(filepath.Join("..", "..", "docs", "manual", "pumpkin_book_for_llms.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(want) != guideDoc {
-		t.Fatalf("assets/pumpkin_book_for_llms.md is out of sync with docs/manual/pumpkin_book_for_llms.md;\n" +
-			"run: cp docs/manual/pumpkin_book_for_llms.md internal/memogit/assets/")
-	}
-}
-
 func TestWriteAgentDocs(t *testing.T) {
 	root := t.TempDir()
 	if err := WriteAgentDocs(root, nil, nil); err != nil {

@@ -14,6 +14,8 @@ import (
 	"github.com/labstack/echo/v5"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/pkg/errors"
+
+	"github.com/usememos/memos/internal/base"
 )
 
 type apiAdapter struct {
@@ -80,6 +82,18 @@ func buildAPIRequest(ctx context.Context, operation *openAPIOperation, arguments
 		}
 		body = bytes.NewReader(data)
 	}
+
+	// Mark the request as arriving over the MCP channel. An MCP call carries the
+	// user's own PAT, so the creator ID is identical to their web session; the
+	// channel is the only thing that separates agent writes from human ones, and
+	// the API layer uses it to decide whether to snapshot the human baseline
+	// before an agent overwrites it (see requirement.md ADR-4).
+	//
+	// Carried on the context, not a header: this request is served by the same
+	// Echo server that serves public traffic, so a header marker would be
+	// indistinguishable from one a remote client set on itself. A context value
+	// can only be set in-process.
+	ctx = base.WithActorKind(ctx, base.ActorKindAgent)
 
 	req := httptest.NewRequest(operation.Method, path, body).WithContext(ctx)
 	if body != nil {

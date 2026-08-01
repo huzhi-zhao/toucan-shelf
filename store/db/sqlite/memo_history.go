@@ -59,6 +59,9 @@ func (d *DB) ListMemoHistories(ctx context.Context, find *store.FindMemoHistory)
 	if find.MemoID != nil {
 		where, args = append(where, "`memo_id` = ?"), append(args, *find.MemoID)
 	}
+	if find.ContentHash != nil {
+		where, args = append(where, "`content_hash` = ?"), append(args, *find.ContentHash)
+	}
 
 	query := "SELECT `id`, `uid`, `memo_id`, `name`, `title`, `content`, `payload`, `content_hash`, `attachments`, `creator_id`, `created_ts` FROM `memo_history` WHERE " +
 		strings.Join(where, " AND ") + " ORDER BY `created_ts` DESC, `id` DESC"

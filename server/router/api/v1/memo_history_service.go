@@ -191,8 +191,24 @@ func (s *APIV1Service) RestoreMemoHistory(ctx context.Context, request *v1pb.Res
 	}
 
 	// Restore content.
+	//
+	// Rolling back is a human edit, so it closes any open agent session: the
+	// content that ends up stored is one a human chose, and the next agent write
+	// must snapshot it before overwriting. This has to be written explicitly —
+	// restoring only ever wrote Content, so the bit would otherwise stay true and
+	// the agent's next write would overwrite the restored version with no
+	// snapshot at all. Only the flag is carried over from the live payload; the
+	// rest of the payload is deliberately left as-is, as before.
+	restore := &store.UpdateMemo{ID: memo.ID}
 	if target.Content != memo.Content {
-		if err := s.Store.UpdateMemo(ctx, &store.UpdateMemo{ID: memo.ID, Content: &target.Content}); err != nil {
+		restore.Content = &target.Content
+	}
+	if memo.Payload.GetAgentSessionOpen() {
+		memo.Payload.AgentSessionOpen = false
+		restore.Payload = memo.Payload
+	}
+	if restore.Content != nil || restore.Payload != nil {
+		if err := s.Store.UpdateMemo(ctx, restore); err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to restore memo content")
 		}
 	}

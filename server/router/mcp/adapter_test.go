@@ -6,11 +6,14 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/labstack/echo/v5"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/usememos/memos/internal/base"
 )
 
 func TestNormalizeStructuredContentKeepsObjects(t *testing.T) {
@@ -116,6 +119,57 @@ func TestBuildAPIRequestMapsPathQueryAndBody(t *testing.T) {
 	body, err := io.ReadAll(req.Body)
 	require.NoError(t, err)
 	require.JSONEq(t, `{"memo":{"name":"memos/abc123","content":"updated"}}`, string(body))
+}
+
+// Every request the adapter builds must be marked as an agent write; the API
+// layer relies on that marker to snapshot the human baseline before an
+// overwrite. Losing it fails safe (agent writes look human, so snapshots become
+// redundant rather than missing) but defeats the whole mechanism.
+func TestBuildAPIRequestMarksContextAsAgent(t *testing.T) {
+	operation := &openAPIOperation{
+		Method: "GET",
+		Path:   "/api/v1/memos",
+	}
+
+	req, err := buildAPIRequest(context.Background(), operation, map[string]any{}, "")
+	require.NoError(t, err)
+	require.Equal(t, base.ActorKindAgent, base.ActorKindFromContext(req.Context()))
+}
+
+// The marker has to survive the trip through Echo, since that is how it reaches
+// the API handlers.
+func TestExecuteOperationCarriesAgentMarkerToHandler(t *testing.T) {
+	echoServer := echo.New()
+	var observed base.ActorKind
+	echoServer.GET("/api/v1/memos", func(c *echo.Context) error {
+		observed = base.ActorKindFromContext(c.Request().Context())
+		return c.JSON(http.StatusOK, map[string]any{"memos": []any{}})
+	})
+
+	adapter := newAPIAdapter(echoServer)
+	_, err := adapter.execute(context.Background(), &openAPIOperation{
+		Method: "GET",
+		Path:   "/api/v1/memos",
+	}, map[string]any{}, "")
+	require.NoError(t, err)
+	require.Equal(t, base.ActorKindAgent, observed)
+}
+
+// A remote client cannot forge the marker: it lives on the Go context, which
+// does not cross the network. An inbound request that names itself "mcp" in a
+// header is still a human write.
+func TestInboundHeadersCannotForgeAgentMarker(t *testing.T) {
+	echoServer := echo.New()
+	var observed base.ActorKind
+	echoServer.GET("/api/v1/memos", func(c *echo.Context) error {
+		observed = base.ActorKindFromContext(c.Request().Context())
+		return c.JSON(http.StatusOK, map[string]any{"memos": []any{}})
+	})
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/memos", nil)
+	request.Header.Set("X-Memos-Client", "mcp")
+	echoServer.ServeHTTP(httptest.NewRecorder(), request)
+	require.Equal(t, base.ActorKindHuman, observed)
 }
 
 func TestBuildAPIRequestRequiresPathParameters(t *testing.T) {
