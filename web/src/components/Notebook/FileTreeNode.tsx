@@ -1,3 +1,4 @@
+import copy from "copy-to-clipboard";
 import dayjs from "dayjs";
 import {
   ChevronRightIcon,
@@ -12,9 +13,18 @@ import {
   LinkIcon,
   MoreHorizontalIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "react-hot-toast";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { WorkspaceTreeNode } from "@/types/proto/api/v1/workspace_service_pb";
 import { WorkspaceTreeNode_NodeType } from "@/types/proto/api/v1/workspace_service_pb";
@@ -87,6 +97,19 @@ const FileTreeNode = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const isSelected = !isFolder && node.memo === selectedMemo;
+  // node.path is already workspace-relative ("foldera/folderb"), which is exactly what a
+  // reader needs to address the folder elsewhere.
+  const handleCopyFolderPath = useCallback(() => {
+    copy(node.path);
+    toast.success(t("message.succeed-copy-path"));
+  }, [node.path, t]);
+  // A document node's own path ends in its UID; the title is what identifies it everywhere a
+  // path is typed (folder_path + title, the local memogit mirror), so swap the last segment.
+  const handleCopyDocumentPath = useCallback(() => {
+    const folderPath = node.path.includes("/") ? node.path.slice(0, node.path.lastIndexOf("/")) : "";
+    copy(folderPath ? `${folderPath}/${node.name}` : node.name);
+    toast.success(t("message.succeed-copy-path"));
+  }, [node.path, node.name, t]);
   // The selected row already stands out through its background, so let it keep the accent
   // foreground rather than fighting the tint.
   const freshClass = isSelected ? undefined : freshnessClass(freshness?.get(freshnessKey(node)));
@@ -145,26 +168,31 @@ const FileTreeNode = ({
                 <ExternalLinkIcon className="w-4 h-4 mr-2" />
                 {t("notebook.open-in-new-tab")}
               </DropdownMenuItem>
-              {/* Move and the two copy actions live here rather than behind a submenu: the row
-                  menu is the one place where they apply to the document you are pointing at. */}
               {onMoveDocument && (
                 <DropdownMenuItem onClick={() => onMoveDocument(node.memo)}>
                   <FolderInputIcon className="w-4 h-4 mr-2" />
                   {t("notebook.move")}
                 </DropdownMenuItem>
               )}
-              {onCopyDocumentLink && (
-                <DropdownMenuItem onClick={() => onCopyDocumentLink(node.memo)}>
-                  <LinkIcon className="w-4 h-4 mr-2" />
-                  {t("memo.copy-link")}
-                </DropdownMenuItem>
-              )}
-              {onCopyDocumentContent && (
-                <DropdownMenuItem onClick={() => onCopyDocumentContent(node.memo)}>
-                  <FileTextIcon className="w-4 h-4 mr-2" />
-                  {t("memo.copy-content")}
-                </DropdownMenuItem>
-              )}
+              {/* Every copy variant lives behind one submenu so the row menu stays short. */}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>{t("common.copy")}</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {onCopyDocumentLink && (
+                    <DropdownMenuItem onClick={() => onCopyDocumentLink(node.memo)}>
+                      <LinkIcon className="w-4 h-4 mr-2" />
+                      {t("memo.copy-link")}
+                    </DropdownMenuItem>
+                  )}
+                  {onCopyDocumentContent && (
+                    <DropdownMenuItem onClick={() => onCopyDocumentContent(node.memo)}>
+                      <FileTextIcon className="w-4 h-4 mr-2" />
+                      {t("memo.copy-content")}
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={handleCopyDocumentPath}>{t("notebook.copy-path")}</DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
             </DropdownMenuContent>
           </DropdownMenu>
         )}
@@ -181,16 +209,37 @@ const FileTreeNode = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-              <DropdownMenuItem onClick={() => onNewDocumentIn(node.path)}>{t("notebook.new-document")}</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onNewViewIn(node.path)}>{t("notebook.new-view")}</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onNewFolderIn(node.path)}>{t("notebook.new-folder")}</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>{t("notebook.upload-file")}</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => pdfInputRef.current?.click()}>{t("notebook.upload-pdf")}</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onMoveFolder(node.path)}>{t("notebook.move")}</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onRenameFolder(node.path)}>{t("common.rename")}</DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onClick={() => onDeleteFolder(node.path)}>
-                {t("common.delete")}
-              </DropdownMenuItem>
+              {/* Every action is grouped into a submenu by verb so the folder row menu stays short. */}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>{t("common.new")}</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={() => onNewDocumentIn(node.path)}>{t("notebook.new-document")}</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onNewViewIn(node.path)}>{t("notebook.new-view")}</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onNewFolderIn(node.path)}>{t("notebook.new-folder")}</DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>{t("notebook.upload")}</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>{t("notebook.upload-file")}</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => pdfInputRef.current?.click()}>{t("notebook.upload-pdf")}</DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>{t("common.update")}</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={() => onMoveFolder(node.path)}>{t("notebook.move")}</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onRenameFolder(node.path)}>{t("common.rename")}</DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>{t("common.copy")}</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={handleCopyFolderPath}>{t("notebook.copy-path")}</DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              {/* 删除文件夹会连同其中的文档内容与挂载的附件一起彻底删除，没有恢复渠道，所以暂不提供
+                  delete 入口（onDeleteFolder 仍然保留在 props 上）。后面再设计更隐蔽的 UI 入口。 */}
             </DropdownMenuContent>
           </DropdownMenu>
         )}

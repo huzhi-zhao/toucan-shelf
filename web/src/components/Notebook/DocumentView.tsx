@@ -13,7 +13,6 @@ import {
   PencilIcon,
   SaveIcon,
   Settings2Icon,
-  TrashIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
@@ -75,6 +74,7 @@ interface Props {
   onSaved: () => void;
   onRenamed: (title: string) => void;
   onArchiveToggle: () => void;
+  // 暂时没有 UI 入口调用它，见下方菜单里关于 delete 的说明。
   onDelete: () => void;
   onSaveHtml: (content: string) => void;
   onAddAttachments?: (files: File[]) => void | Promise<void>;
@@ -106,7 +106,6 @@ const DocumentView = ({
   onSaved,
   onRenamed,
   onArchiveToggle,
-  onDelete,
   onSaveHtml,
   onAddAttachments,
   onRemoveAttachment,
@@ -843,10 +842,9 @@ const DocumentView = ({
                 {isArchived ? <ArchiveRestoreIcon className="w-4 h-4 mr-2" /> : <ArchiveIcon className="w-4 h-4 mr-2" />}
                 {isArchived ? t("notebook.unarchive") : t("common.archive")}
               </DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onClick={onDelete}>
-                <TrashIcon className="w-4 h-4 mr-2" />
-                {t("common.delete")}
-              </DropdownMenuItem>
+              {/* 删除文档会彻底删除其内容以及挂载在其上的附件，没有恢复渠道，所以暂不提供 delete
+                  入口（onDelete 仍然保留在 props 上）。后面再设计更隐蔽的 UI 入口。归档是可逆的，
+                  留在上面作为常规出口。 */}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

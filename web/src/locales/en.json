@@ -513,6 +513,7 @@
     "restored-successfully": "Restored successfully",
     "succeed-copy-content": "Content copied successfully.",
     "succeed-copy-link": "Link copied successfully.",
+    "succeed-copy-path": "Path copied successfully.",
     "update-failed": "Update failed",
     "update-succeed": "Update succeeded",
     "user-not-found": "User not found"
@@ -1100,6 +1101,7 @@
     "new-document": "New document",
     "new-view": "New view",
     "new-folder": "New folder",
+    "upload": "Upload",
     "upload-file": "Upload doc",
     "upload-pdf": "Upload file",
     "no-documents": "No documents",
@@ -1119,6 +1121,7 @@
     "attachments": "Attachments",
     "move-document": "Move document",
     "move": "Move",
+    "copy-path": "Copy path",
     "destination-workspace": "Destination workspace",
     "destination-folder": "Destination folder",
     "workspace-root": "(workspace root)",
