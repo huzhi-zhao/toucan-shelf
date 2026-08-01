@@ -167,6 +167,113 @@ func TestBuildOperationRegistryResolvesRequestBodySchema(t *testing.T) {
 	require.Contains(t, requestSchema["properties"], "content")
 }
 
+func TestBuildOperationRegistryStripsUnknownSchemaFormats(t *testing.T) {
+	spec := &openAPISpec{
+		Paths: map[string]map[string]*openAPIOperation{
+			"/memos/{memo}": {
+				"patch": {
+					OperationID: "MemoService_UpdateMemo",
+					Parameters: []openAPIParameter{
+						{Name: "updateMask", In: "query", Schema: jsonSchema{"type": "string", "format": "field-mask"}},
+					},
+					RequestBody: &openAPIRequestBody{
+						Content: map[string]openAPIMediaType{
+							"application/json": {Schema: jsonSchema{"$ref": "#/components/schemas/Memo"}},
+						},
+					},
+					Responses: map[string]openAPIResponse{
+						"200": {
+							Content: map[string]openAPIMediaType{
+								"application/json": {Schema: jsonSchema{"$ref": "#/components/schemas/Memo"}},
+							},
+						},
+					},
+				},
+			},
+		},
+		Components: openAPIComponents{
+			Schemas: map[string]jsonSchema{
+				"Memo": {
+					"type": "object",
+					"properties": map[string]any{
+						"visibility": map[string]any{"type": "string", "format": "enum"},
+						"createTime": map[string]any{"type": "string", "format": "date-time"},
+						"size":       map[string]any{"type": "integer", "format": "int32"},
+						// A property literally named "format" must survive: only a
+						// string-valued "format" is the JSON Schema keyword.
+						"format": map[string]any{"type": "string"},
+						"attachments": map[string]any{
+							"type":  "array",
+							"items": map[string]any{"$ref": "#/components/schemas/Attachment"},
+						},
+					},
+				},
+				"Attachment": {
+					"type": "object",
+					"properties": map[string]any{
+						"content": map[string]any{"type": "string", "format": "bytes"},
+					},
+				},
+			},
+		},
+	}
+
+	registry, err := buildOperationRegistry(spec)
+	require.NoError(t, err)
+	operation := registry["MemoService_UpdateMemo"]
+
+	require.NotContains(t, operation.Parameters[0].Schema, "format")
+
+	properties := operation.RequestBodySchema["properties"].(map[string]any)
+	require.NotContains(t, properties["visibility"], "format")
+	require.Equal(t, "date-time", properties["createTime"].(map[string]any)["format"])
+	require.Equal(t, "int32", properties["size"].(map[string]any)["format"])
+	require.Equal(t, "string", properties["format"].(map[string]any)["type"])
+
+	// Nested $defs are reachable through the generic walk too.
+	defs := operation.RequestBodySchema["$defs"].(map[string]any)
+	attachment := defs["Attachment"].(map[string]any)["properties"].(map[string]any)
+	require.NotContains(t, attachment["content"], "format")
+}
+
+func TestCuratedToolSchemasHaveNoUnknownFormats(t *testing.T) {
+	spec, err := loadOpenAPISpec("../../../proto/gen/openapi.yaml")
+	require.NoError(t, err)
+	registry, err := buildOperationRegistry(spec)
+	require.NoError(t, err)
+	tools, _, err := buildCuratedTools(registry)
+	require.NoError(t, err)
+
+	encoded, err := json.Marshal(tools)
+	require.NoError(t, err)
+	var decoded any
+	require.NoError(t, json.Unmarshal(encoded, &decoded))
+
+	formats := collectSchemaFormats(decoded)
+	require.NotEmpty(t, formats, "collector found no formats at all; the assertion below would be vacuous")
+	for _, format := range formats {
+		require.True(t, knownSchemaFormats[format], "shipped tool schema carries unknown format %q", format)
+	}
+}
+
+func collectSchemaFormats(value any) []string {
+	formats := []string{}
+	switch typed := value.(type) {
+	case map[string]any:
+		if format, ok := typed["format"].(string); ok {
+			formats = append(formats, format)
+		}
+		for _, child := range typed {
+			formats = append(formats, collectSchemaFormats(child)...)
+		}
+	case []any:
+		for _, item := range typed {
+			formats = append(formats, collectSchemaFormats(item)...)
+		}
+	}
+	return formats
+}
+
 func TestBuildOperationRegistryUsesOKSchemaForEmptySuccessResponse(t *testing.T) {
 	spec := &openAPISpec{
 		Paths: map[string]map[string]*openAPIOperation{

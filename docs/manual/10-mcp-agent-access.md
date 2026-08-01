@@ -34,6 +34,9 @@ server with Claude Code:
 
 ```bash
 claude mcp add --transport http toucanshelf https://<your-instance>/mcp --header "Authorization: Bearer ${TOUCANSHELF_PAT}"
+
+# Globally
+claude mcp add --scope user --transport http toucanshelf https://<your-instance>/mcp --header "Authorization: Bearer ${TOUCANSHELF_PAT}"
 ```
 
 Verify:

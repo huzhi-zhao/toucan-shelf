@@ -96,10 +96,69 @@ func buildOperationRegistry(spec *openAPISpec) (map[string]*openAPIOperation, er
 			}
 			operation.RequestBodySchema = requestBodySchema
 
+			for i := range operation.Parameters {
+				stripUnknownFormats(operation.Parameters[i].Schema)
+			}
+			stripUnknownFormats(operation.ResponseSchema)
+			stripUnknownFormats(operation.RequestBodySchema)
+
 			registry[operation.OperationID] = operation
 		}
 	}
 	return registry, nil
+}
+
+// knownSchemaFormats lists the `format` values a JSON Schema validator can be
+// expected to understand: the draft 2020-12 vocabulary plus the OpenAPI numeric
+// and binary formats that ajv-formats implements.
+//
+// protoc-gen-openapi also emits formats that only make sense to an OpenAPI
+// consumer -- `enum` for proto enums, `bytes` for proto bytes fields,
+// `field-mask` for FieldMask query parameters. They carry no validation meaning
+// for MCP clients, and every one of them makes a client-side validator log an
+// "unknown format ... ignored" warning per tool, twice over, which buries the
+// output of things like `claude mcp list`.
+var knownSchemaFormats = map[string]bool{
+	"date-time": true, "date": true, "time": true, "duration": true,
+	"email": true, "idn-email": true, "hostname": true, "idn-hostname": true,
+	"ipv4": true, "ipv6": true,
+	"uri": true, "uri-reference": true, "uri-template": true,
+	"iri": true, "iri-reference": true,
+	"uuid": true, "regex": true,
+	"json-pointer": true, "relative-json-pointer": true,
+	"int32": true, "int64": true, "float": true, "double": true,
+	"byte": true, "binary": true, "password": true,
+}
+
+// stripUnknownFormats recursively drops `format` keywords that are not in
+// knownSchemaFormats. Everything else, including the `enum` keyword itself, is
+// left alone.
+//
+// This is deliberately done here rather than in proto/gen/openapi.yaml: that
+// file is generated, and `format: enum` is informative to an OpenAPI consumer.
+// It is only the MCP projection of the spec that has no use for it.
+func stripUnknownFormats(value any) {
+	switch typed := value.(type) {
+	case jsonSchema:
+		stripUnknownFormatsInMap(typed)
+	case map[string]any:
+		stripUnknownFormatsInMap(typed)
+	case []any:
+		for _, item := range typed {
+			stripUnknownFormats(item)
+		}
+	}
+}
+
+func stripUnknownFormatsInMap(schema map[string]any) {
+	// Only a string-valued "format" is the keyword; a property *named* "format"
+	// maps to a schema object and must survive.
+	if format, ok := schema["format"].(string); ok && !knownSchemaFormats[format] {
+		delete(schema, "format")
+	}
+	for _, child := range schema {
+		stripUnknownFormats(child)
+	}
 }
 
 func operationSuccessResponseSchema(spec *openAPISpec, operation *openAPIOperation) (jsonSchema, error) {
