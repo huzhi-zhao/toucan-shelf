@@ -514,6 +514,7 @@
     "succeed-copy-content": "Content copied successfully.",
     "succeed-copy-link": "Link copied successfully.",
     "succeed-copy-path": "Path copied successfully.",
+    "succeed-copy-info": "Info copied successfully.",
     "update-failed": "Update failed",
     "update-succeed": "Update succeeded",
     "user-not-found": "User not found"
@@ -1122,6 +1123,7 @@
     "move-document": "Move document",
     "move": "Move",
     "copy-path": "Copy path",
+    "copy-info": "Copy info",
     "destination-workspace": "Destination workspace",
     "destination-folder": "Destination folder",
     "workspace-root": "(workspace root)",

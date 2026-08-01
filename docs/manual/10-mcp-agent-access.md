@@ -161,6 +161,21 @@ path, and leaves the title extensionless on its own. Spelling out the call
 sequence in the prompt is redundant — and worse, it goes stale the moment the
 tool set changes.
 
+**When the document already exists, paste its address instead of describing it.**
+The **⋯ menu** on any folder or document in the sidebar has **Copy → Copy info**,
+which puts exactly these fields on the clipboard:
+
+```
+ToucanShelf document location
+workspace: "Research notes" (workspaces/ws-abc123)
+folder_path: "folder a/folder b"
+title: "plan"
+memo: memos/uid789
+```
+
+Drop that block into your prompt and the agent can call `memo_get_memo` straight
+away.
+
 Two habits worth keeping:
 
 - **Ask to see the content first.** Write tools prompt for confirmation anyway

@@ -35,6 +35,10 @@ import { freshnessClass, freshnessKey } from "./notebookFreshness";
 interface Props {
   node: WorkspaceTreeNode;
   depth: number;
+  // The workspace this tree belongs to: resource name ("workspaces/{uid}") and display title.
+  // Only the copy-info action needs them.
+  workspaceName?: string;
+  workspaceTitle?: string;
   selectedMemo?: string;
   // Recency tints keyed by node; absent when the workspace has nothing recent to highlight.
   freshness?: FreshnessMap;
@@ -53,6 +57,9 @@ interface Props {
   onUploadPdfIn: (path: string, file: File) => void;
 }
 
+// Everything before the last segment of a workspace-relative path; "" for a top-level node.
+const parentFolderPath = (path: string): string => (path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "");
+
 const containsSelectedMemo = (node: WorkspaceTreeNode, selectedMemo: string): boolean => {
   if (node.type !== WorkspaceTreeNode_NodeType.FOLDER) {
     return node.memo === selectedMemo;
@@ -63,6 +70,8 @@ const containsSelectedMemo = (node: WorkspaceTreeNode, selectedMemo: string): bo
 const FileTreeNode = ({
   node,
   depth,
+  workspaceName,
+  workspaceTitle,
   selectedMemo,
   freshness,
   onSelectDocument,
@@ -106,10 +115,29 @@ const FileTreeNode = ({
   // A document node's own path ends in its UID; the title is what identifies it everywhere a
   // path is typed (folder_path + title, the local memogit mirror), so swap the last segment.
   const handleCopyDocumentPath = useCallback(() => {
-    const folderPath = node.path.includes("/") ? node.path.slice(0, node.path.lastIndexOf("/")) : "";
+    const folderPath = parentFolderPath(node.path);
     copy(folderPath ? `${folderPath}/${node.name}` : node.name);
     toast.success(t("message.succeed-copy-path"));
   }, [node.path, node.name, t]);
+  // Where this node lives, in the exact vocabulary the ToucanShelf MCP addresses documents with
+  // (workspace resource name, folder_path, title, memo resource name) so an agent handed this
+  // block can go straight to get_memo/update_memo instead of re-walking list_workspaces + tree.
+  // Kept in English, and pairing every id with its human label so a stale id can be spotted.
+  const handleCopyInfo = useCallback(() => {
+    const folderPath = isFolder ? node.path : parentFolderPath(node.path);
+    const lines = [
+      `ToucanShelf ${isFolder ? "folder" : "document"} location`,
+      `workspace: "${workspaceTitle ?? ""}" (${workspaceName ?? ""})`,
+      `folder_path: "${folderPath}"${folderPath ? "" : " (workspace root)"}`,
+    ];
+    if (!isFolder) {
+      lines.push(`title: "${node.name}"`, `memo: ${node.memo}`);
+    } else {
+      lines.push(`folder name: "${node.name}"`);
+    }
+    copy(lines.join("\n"));
+    toast.success(t("message.succeed-copy-info"));
+  }, [workspaceName, workspaceTitle, isFolder, node.path, node.name, node.memo, t]);
   // The selected row already stands out through its background, so let it keep the accent
   // foreground rather than fighting the tint.
   const freshClass = isSelected ? undefined : freshnessClass(freshness?.get(freshnessKey(node)));
@@ -191,6 +219,7 @@ const FileTreeNode = ({
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem onClick={handleCopyDocumentPath}>{t("notebook.copy-path")}</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleCopyInfo}>{t("notebook.copy-info")}</DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
             </DropdownMenuContent>
@@ -236,6 +265,7 @@ const FileTreeNode = ({
                 <DropdownMenuSubTrigger>{t("common.copy")}</DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
                   <DropdownMenuItem onClick={handleCopyFolderPath}>{t("notebook.copy-path")}</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleCopyInfo}>{t("notebook.copy-info")}</DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
               {/* 删除文件夹会连同其中的文档内容与挂载的附件一起彻底删除，没有恢复渠道，所以暂不提供
@@ -277,6 +307,8 @@ const FileTreeNode = ({
               key={child.memo ? `document-${child.memo}` : `${child.type}-${child.path}`}
               node={child}
               depth={depth + 1}
+              workspaceName={workspaceName}
+              workspaceTitle={workspaceTitle}
               selectedMemo={selectedMemo}
               freshness={freshness}
               onSelectDocument={onSelectDocument}

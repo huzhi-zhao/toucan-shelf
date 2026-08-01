@@ -424,6 +424,7 @@
     "succeed-copy-content": "复制内容到剪贴板成功。",
     "succeed-copy-link": "复制链接到剪贴板成功。",
     "succeed-copy-path": "路径复制成功。",
+    "succeed-copy-info": "信息复制成功。",
     "update-failed": "更新失败",
     "update-succeed": "更新成功",
     "user-not-found": "未找到该用户"
@@ -1041,6 +1042,7 @@
     "move-document": "移动文档",
     "move": "移动",
     "copy-path": "复制路径",
+    "copy-info": "复制信息",
     "destination-workspace": "目标知识库",
     "destination-folder": "目标文件夹",
     "workspace-root": "（知识库根目录）",
