@@ -163,18 +163,24 @@ tool set changes.
 
 **When the document already exists, paste its address instead of describing it.**
 The **⋯ menu** on any folder or document in the sidebar has **Copy → Copy info**,
-which puts exactly these fields on the clipboard:
+which puts this on the clipboard:
 
 ```
+Use the toucanshelf MCP to work on the document at the location below.
+
 ToucanShelf document location
 workspace: "Research notes" (workspaces/ws-abc123)
 folder_path: "folder a/folder b"
 title: "plan"
 memo: memos/uid789
+
+Read other related documents in this knowledge base when necessary.
 ```
 
 Drop that block into your prompt and the agent can call `memo_get_memo` straight
-away.
+away. It carries the address and nothing else — what to *do* with the document is
+still yours to write above it. A folder copies the same block without the `title`
+and `memo` lines.
 
 Two habits worth keeping:
 

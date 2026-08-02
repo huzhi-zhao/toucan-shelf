@@ -126,6 +126,10 @@ const FileTreeNode = ({
   const handleCopyInfo = useCallback(() => {
     const folderPath = isFolder ? node.path : parentFolderPath(node.path);
     const lines = [
+      isFolder
+        ? "Use the toucanshelf MCP to work in the online knowledge base at the location below."
+        : "Use the toucanshelf MCP to work on the document at the location below.",
+      "",
       `ToucanShelf ${isFolder ? "folder" : "document"} location`,
       `workspace: "${workspaceTitle ?? ""}" (${workspaceName ?? ""})`,
       `folder_path: "${folderPath}"${folderPath ? "" : " (workspace root)"}`,
@@ -135,6 +139,7 @@ const FileTreeNode = ({
     } else {
       lines.push(`folder name: "${node.name}"`);
     }
+    lines.push("", "Read other related documents in this knowledge base when necessary.");
     copy(lines.join("\n"));
     toast.success(t("message.succeed-copy-info"));
   }, [workspaceName, workspaceTitle, isFolder, node.path, node.name, node.memo, t]);
@@ -268,8 +273,12 @@ const FileTreeNode = ({
                   <DropdownMenuItem onClick={handleCopyInfo}>{t("notebook.copy-info")}</DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
-              {/* 删除文件夹会连同其中的文档内容与挂载的附件一起彻底删除，没有恢复渠道，所以暂不提供
-                  delete 入口（onDeleteFolder 仍然保留在 props 上）。后面再设计更隐蔽的 UI 入口。 */}
+              {/* 文件夹的 delete 保留在这里：服务端只允许删除空文件夹（非空会以 FailedPrecondition
+                  拒绝），所以它不会带走任何文档内容或附件；而且文件夹没有归档这条退路，删除是清理
+                  空目录的唯一手段。文档的 delete 则是不可恢复的，已经从菜单里去掉，见 DocumentView。 */}
+              <DropdownMenuItem variant="destructive" onClick={() => onDeleteFolder(node.path)}>
+                {t("common.delete")}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )}
