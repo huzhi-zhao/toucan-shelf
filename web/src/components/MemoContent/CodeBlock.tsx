@@ -1,6 +1,6 @@
 import copy from "copy-to-clipboard";
 import hljs from "highlight.js";
-import { CheckIcon, CopyIcon } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, CopyIcon } from "lucide-react";
 import { isValidElement, type ReactElement, type ReactNode, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { markdownStyles } from "@/lib/markdownStyles";
@@ -30,6 +30,16 @@ export const CodeBlock = ({ children, className, node: _node, ...props }: CodeBl
   const codeClassName = codeElement?.props.className || "";
   const codeContent = extractCodeContent(children);
   const language = extractLanguage(codeClassName).toLowerCase();
+
+  // Collapse state comes from the fence info string (```ts fold / fold=open /
+  // title="xxx"), promoted to real attributes by remark-code-fold. Only plain
+  // code blocks honour it — the special blocks below (mermaid/sheets/…) return
+  // early and render their own chrome.
+  const foldProps = codeElement?.props as { "data-fold"?: string; "data-fold-title"?: string } | undefined;
+  const foldMode = foldProps?.["data-fold"];
+  const foldTitle = foldProps?.["data-fold-title"];
+  // Must be declared with the other hooks, above the early returns — see the note below.
+  const [collapsed, setCollapsed] = useState(foldMode === "closed");
 
   const theme = getThemeWithFallback(userGeneralSetting?.theme);
   const resolvedTheme = resolveTheme(theme);
@@ -194,7 +204,19 @@ export const CodeBlock = ({ children, className, node: _node, ...props }: CodeBl
     <pre className={cn("relative rounded-lg border border-border bg-muted/20 overflow-hidden", markdownStyles.blockWrapper)}>
       {/* Header with language label and copy button */}
       <div className="flex items-center justify-between px-2 py-1 border-b border-border bg-muted/30">
-        <span className="text-xs text-foreground select-none">{language || "text"}</span>
+        {foldMode ? (
+          <button
+            onClick={() => setCollapsed((value) => !value)}
+            aria-expanded={!collapsed}
+            className="inline-flex items-center gap-1 text-xs text-foreground select-none hover:text-primary transition-colors duration-200"
+            title={collapsed ? "Expand code" : "Collapse code"}
+          >
+            <ChevronRightIcon className={cn("w-3.5 h-3.5 transition-transform duration-200", !collapsed && "rotate-90")} />
+            <span>{foldTitle || language || "text"}</span>
+          </button>
+        ) : (
+          <span className="text-xs text-foreground select-none">{language || "text"}</span>
+        )}
         <button
           onClick={handleCopy}
           className={cn(
@@ -220,8 +242,9 @@ export const CodeBlock = ({ children, className, node: _node, ...props }: CodeBl
         </button>
       </div>
 
-      {/* Code content */}
-      <div className="overflow-x-auto">
+      {/* Code content. Hidden rather than unmounted when collapsed, so toggling
+          doesn't re-run highlighting and the copy button keeps working. */}
+      <div className={cn("overflow-x-auto", collapsed && "hidden")}>
         <code
           className={cn("block px-3 py-2 text-sm leading-relaxed", `language-${language}`)}
           dangerouslySetInnerHTML={{ __html: highlightedCode }}

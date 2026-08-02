@@ -24,6 +24,7 @@ import {
 import { type MemoProperty, parseFrontmatter } from "@/utils/frontmatter";
 import { rehypeHeadingId } from "@/utils/rehype-plugins/rehype-heading-id";
 import { remarkAlert } from "@/utils/remark-plugins/remark-alert";
+import { remarkCodeFold } from "@/utils/remark-plugins/remark-code-fold";
 import { remarkCounter } from "@/utils/remark-plugins/remark-counter";
 import { remarkDisableSetext } from "@/utils/remark-plugins/remark-disable-setext";
 import { remarkHighlight } from "@/utils/remark-plugins/remark-highlight";
@@ -238,6 +239,7 @@ export const MemoMarkdownRenderer = ({
           remarkHighlight,
           remarkAlert,
           remarkSheetsId,
+          remarkCodeFold,
           remarkPreserveType,
         ]}
         rehypePlugins={[
