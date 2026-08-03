@@ -942,6 +942,43 @@
       "refresh": "刷新",
       "title": "资源统计",
       "unknown": "未知"
+    },
+    "secret-key": {
+      "title": "加密块主口令",
+      "description": "一个主口令即可打开你所有的 `toucan-secret` 加密块。它只在浏览器里参与运算，从不上传服务端；服务端保存的只是被它加密过的密钥副本。",
+      "status": "状态",
+      "status-unconfigured": "尚未设置。设置主口令后才能创建加密块。",
+      "status-locked": "已设置，当前标签页处于锁定状态。第一次打开加密块时会向你索要。",
+      "status-unlocked": "当前标签页已解锁。闲置 30 分钟、退出登录或刷新页面后会自动重新锁定。",
+      "set-up": "设置主口令",
+      "unlock": "解锁",
+      "lock-now": "立即锁定",
+      "change": "修改",
+      "reset": "忘记了？",
+      "panel": {
+        "unlock": "解锁本次会话",
+        "setup": "设置主口令",
+        "change": "修改主口令",
+        "reset": "重新生成密钥"
+      },
+      "current-passphrase": "当前主口令",
+      "new-passphrase": "新主口令",
+      "confirm-passphrase": "再次输入新主口令",
+      "mismatch": "两次输入的口令不一致。",
+      "min-length": "至少 {{count}} 个字符",
+      "strength-weak": "偏弱",
+      "strength-fair": "尚可",
+      "strength-strong": "够强",
+      "no-recovery": "没有找回途径。服务端无法为你重置，没有它谁也读不出你的加密块。",
+      "reset-warning": "这会丢弃现有加密块所使用的密钥，它们将永久无法读取。只有在当前主口令确已丢失时才这么做。",
+      "unlocked": "本次会话已解锁。",
+      "configured": "主口令已设置。",
+      "changed": "主口令已修改，没有任何加密块需要重新加密。",
+      "reset-done": "已生成新密钥。用旧密钥写入的加密块不再能打开。",
+      "error": {
+        "wrong-passphrase": "主口令错误。",
+        "corrupted": "存储的密钥未通过校验，已被改动或截断。不是口令的问题。"
+      }
     }
   },
   "tag": {
@@ -1229,20 +1266,18 @@
     "locked": "加密内容",
     "uninitialized": "尚未初始化",
     "unlock": "解锁",
-    "set-passphrase": "设置密码",
     "relock": "重新锁定",
     "copy": "复制",
     "edit": "编辑内容",
     "empty": "暂无内容，点铅笔按钮添加。",
     "content-placeholder": "账号密码、token、.env 片段…… 支持 Markdown 渲染。",
-    "passphrase-placeholder": "密码",
     "hint-placeholder": "标题 —— 例如：MinIO 安装过程",
     "malformed": "此加密块格式有误，无法打开。",
     "sign-in-required": "此文档包含加密内容，登录后可尝试打开。",
     "create": {
       "passphrase-confirm": "再次输入密码",
       "passphrase-mismatch": "两次输入的密码不一致。",
-      "no-recovery": "在你的浏览器中加密，服务端不会看到密码，因此无法找回。忘记密码则内容永久丢失。"
+      "no-recovery": "在你的浏览器中加密，服务端不会看到主口令，因此无法找回。忘记则内容永久丢失。"
     },
     "error": {
       "wrong-passphrase": "密码错误。",
@@ -1253,9 +1288,19 @@
       "write-back-failed": "密文已创建，但 id 没能写回文档。请复制该 id 手动填入，或删除此块重来。",
       "create-failed": "创建加密块失败。",
       "save-failed": "保存失败。内容目前仍处于解密状态，请先复制再离开本页。",
-      "rotate-failed": "修改密码失败，原密码仍然有效。"
+      "rotate-failed": "修改密码失败，原密码仍然有效。",
+      "locked-session": "本次会话已锁定，请先用主口令解锁。",
+      "migrate-failed": "未能把此块切换到主口令，它自己的口令仍然有效。"
     },
-    "change-passphrase": "修改密码",
-    "new-passphrase": "新密码"
+    "change-passphrase": "修改此块的独立口令",
+    "new-passphrase": "新的独立口令",
+    "create-block": "创建",
+    "master-passphrase-placeholder": "主口令",
+    "legacy-passphrase-placeholder": "此块的独立口令",
+    "legacy-notice": "此块仍在使用独立口令。",
+    "migrate": "改用主口令",
+    "set-up-master": "去设置主口令",
+    "no-master-key": "请先设置主口令，然后才能创建加密块。",
+    "unlock-first": "输入主口令解锁本次会话，然后创建此块。"
   }
 }

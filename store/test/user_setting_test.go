@@ -61,6 +61,42 @@ func TestUserSettingRagSearch(t *testing.T) {
 	ts.Close()
 }
 
+// Same trap as RAG_SEARCH above: a new key needs a case in both store switches,
+// or saving the wrapped master key fails with "unsupported user setting key".
+func TestUserSettingSecretKey(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	ts := NewTestingStore(ctx, t)
+	user, err := createTestingHostUser(ctx, ts)
+	require.NoError(t, err)
+
+	_, err = ts.UpsertUserSetting(ctx, &storepb.UserSetting{
+		UserId: user.ID,
+		Key:    storepb.UserSetting_SECRET_KEY,
+		Value: &storepb.UserSetting_SecretKey{SecretKey: &storepb.SecretKeyUserSetting{
+			Kdf:           "pbkdf2-sha256",
+			KdfIterations: 600000,
+			Cipher:        "aes-256-gcm",
+			Salt:          "c2FsdA==",
+			Nonce:         "bm9uY2U=",
+			Verifier:      "dmVyaWZpZXI=",
+			WrappedKey:    "d3JhcHBlZA==",
+		}},
+	})
+	require.NoError(t, err)
+
+	setting, err := ts.GetUserSetting(ctx, &store.FindUserSetting{
+		UserID: &user.ID,
+		Key:    storepb.UserSetting_SECRET_KEY,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, setting)
+	require.Equal(t, "pbkdf2-sha256", setting.GetSecretKey().GetKdf())
+	require.Equal(t, int32(600000), setting.GetSecretKey().GetKdfIterations())
+	require.Equal(t, "d3JhcHBlZA==", setting.GetSecretKey().GetWrappedKey())
+	ts.Close()
+}
+
 func TestUserSettingGetByUserID(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

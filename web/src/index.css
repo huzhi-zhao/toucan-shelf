@@ -196,3 +196,20 @@
   stroke: #000 !important;
   stroke-width: 1 !important;
 }
+
+/* Passphrase fields for `toucan-secret`. These are text inputs rather than
+   password inputs, because a password input makes Chrome offer to save the value
+   as a site credential and no autocomplete value can suppress that. Masking
+   therefore has to happen here.
+
+   -webkit-text-security is supported by Chrome, Safari and Edge. Firefox does not
+   implement it at all, and there is no equivalent property; in that browser the
+   text stays visible, which is why MaskedInput offers a reveal toggle rather than
+   relying on the mask being universal. */
+.masked-input[data-masked] {
+  -webkit-text-security: disc;
+  font-family: inherit;
+  /* Real password inputs widen their bullet spacing slightly. Matching it keeps a
+     masked field from looking cramped next to one. */
+  letter-spacing: 0.08em;
+}

@@ -721,6 +721,23 @@ func (s *APIV1Service) UpdateUserSetting(ctx context.Context, request *v1pb.Upda
 				RagSearchSetting: incomingRagSearch,
 			},
 		}
+	case storepb.UserSetting_SECRET_KEY:
+		incomingSecretKey := request.Setting.GetSecretKeySetting()
+		if incomingSecretKey == nil {
+			return nil, status.Errorf(codes.InvalidArgument, "secret_key setting is required")
+		}
+		if err := validateSecretKeySetting(incomingSecretKey); err != nil {
+			return nil, err
+		}
+		// Replaced wholesale, never field by field: a wrapper assembled from the
+		// salt of one write and the ciphertext of another would leave the user's
+		// entire set of secret blocks permanently unopenable.
+		updatedSetting = &v1pb.UserSetting{
+			Name: request.Setting.Name,
+			Value: &v1pb.UserSetting_SecretKeySetting_{
+				SecretKeySetting: incomingSecretKey,
+			},
+		}
 	default:
 		return nil, status.Errorf(codes.InvalidArgument, "setting type %s should not be updated via UpdateUserSetting", storeKey.String())
 	}
@@ -1442,6 +1459,8 @@ func convertSettingKeyToStore(key string) (storepb.UserSetting_Key, error) {
 		return storepb.UserSetting_LAST_OPENED, nil
 	case v1pb.UserSetting_Key_name[int32(v1pb.UserSetting_RAG_SEARCH)]:
 		return storepb.UserSetting_RAG_SEARCH, nil
+	case v1pb.UserSetting_Key_name[int32(v1pb.UserSetting_SECRET_KEY)]:
+		return storepb.UserSetting_SECRET_KEY, nil
 	default:
 		return storepb.UserSetting_KEY_UNSPECIFIED, errors.Errorf("unknown setting key: %s", key)
 	}
@@ -1490,6 +1509,8 @@ func convertSettingKeyFromStore(key storepb.UserSetting_Key) string {
 		return v1pb.UserSetting_Key_name[int32(v1pb.UserSetting_LAST_OPENED)]
 	case storepb.UserSetting_RAG_SEARCH:
 		return v1pb.UserSetting_Key_name[int32(v1pb.UserSetting_RAG_SEARCH)]
+	case storepb.UserSetting_SECRET_KEY:
+		return v1pb.UserSetting_Key_name[int32(v1pb.UserSetting_SECRET_KEY)]
 	default:
 		return "unknown"
 	}
@@ -1563,6 +1584,12 @@ func convertUserSettingFromStore(storeSetting *storepb.UserSetting, user *store.
 			setting.Value = &v1pb.UserSetting_RagSearchSetting_{
 				RagSearchSetting: &v1pb.UserSetting_RagSearchSetting{Mode: "MIXED"},
 			}
+		case storepb.UserSetting_SECRET_KEY:
+			// An empty wrapper is how "no master passphrase set yet" is expressed.
+			// The client reads it as a prompt to set one, not as an error.
+			setting.Value = &v1pb.UserSetting_SecretKeySetting_{
+				SecretKeySetting: &v1pb.UserSetting_SecretKeySetting{},
+			}
 		default:
 			return nil
 		}
@@ -1628,6 +1655,19 @@ func convertUserSettingFromStore(storeSetting *storepb.UserSetting, user *store.
 			RagSearchSetting: &v1pb.UserSetting_RagSearchSetting{
 				MaxResultDocs: ragSearch.GetMaxResultDocs(),
 				Mode:          ragStoreModeToString(ragSearch.GetMode()),
+			},
+		}
+	case storepb.UserSetting_SECRET_KEY:
+		secretKey := storeSetting.GetSecretKey()
+		setting.Value = &v1pb.UserSetting_SecretKeySetting_{
+			SecretKeySetting: &v1pb.UserSetting_SecretKeySetting{
+				Kdf:           secretKey.GetKdf(),
+				KdfIterations: secretKey.GetKdfIterations(),
+				Cipher:        secretKey.GetCipher(),
+				Salt:          secretKey.GetSalt(),
+				Nonce:         secretKey.GetNonce(),
+				Verifier:      secretKey.GetVerifier(),
+				WrappedKey:    secretKey.GetWrappedKey(),
 			},
 		}
 	default:
@@ -1706,6 +1746,22 @@ func convertUserSettingToStore(apiSetting *v1pb.UserSetting, userID int32, key s
 			}
 		} else {
 			return nil, errors.Errorf("rag_search setting is required")
+		}
+	case storepb.UserSetting_SECRET_KEY:
+		if secretKey := apiSetting.GetSecretKeySetting(); secretKey != nil {
+			storeSetting.Value = &storepb.UserSetting_SecretKey{
+				SecretKey: &storepb.SecretKeyUserSetting{
+					Kdf:           secretKey.Kdf,
+					KdfIterations: secretKey.KdfIterations,
+					Cipher:        secretKey.Cipher,
+					Salt:          secretKey.Salt,
+					Nonce:         secretKey.Nonce,
+					Verifier:      secretKey.Verifier,
+					WrappedKey:    secretKey.WrappedKey,
+				},
+			}
+		} else {
+			return nil, errors.Errorf("secret_key setting is required")
 		}
 	default:
 		return nil, errors.Errorf("unsupported setting key: %v", key)

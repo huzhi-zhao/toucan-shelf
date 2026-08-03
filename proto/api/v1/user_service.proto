@@ -435,6 +435,7 @@ message UserSetting {
     TagsSetting tags_setting = 6;
     LastOpenedSetting last_opened_setting = 7;
     RagSearchSetting rag_search_setting = 8;
+    SecretKeySetting secret_key_setting = 9;
   }
 
   // Enumeration of user setting keys.
@@ -450,6 +451,8 @@ message UserSetting {
     LAST_OPENED = 6;
     // RAG_SEARCH is the key for per-user RAG search preferences.
     RAG_SEARCH = 7;
+    // SECRET_KEY is the key for the user's wrapped `toucan-secret` master key.
+    SECRET_KEY = 8;
   }
 
   // General user settings configuration.
@@ -492,6 +495,33 @@ message UserSetting {
     int32 max_result_docs = 1 [(google.api.field_behavior) = OPTIONAL];
     // Retrieval mode: one of "MIXED", "KEYWORD", "SEMANTIC". Empty falls back to "MIXED".
     string mode = 2 [(google.api.field_behavior) = OPTIONAL];
+  }
+
+  // The user's `toucan-secret` master key, wrapped under a passphrase in the
+  // browser. Every field is opaque to the server, which holds neither the master
+  // key nor the passphrase and cannot recover either.
+  //
+  // Blocks encrypt against the master key, not the passphrase, so changing the
+  // passphrase replaces only this record — no block is touched. Conversely,
+  // clearing this record renders every `toucan-secret` block permanently
+  // unreadable, which is why there is no way to unset it by accident.
+  message SecretKeySetting {
+    // Key derivation for the wrapping key. Always "pbkdf2-sha256" today.
+    string kdf = 1 [(google.api.field_behavior) = OPTIONAL];
+    // Iteration count for the KDF.
+    int32 kdf_iterations = 2 [(google.api.field_behavior) = OPTIONAL];
+    // The AEAD cipher. Always "aes-256-gcm" today.
+    string cipher = 3 [(google.api.field_behavior) = OPTIONAL];
+    // Base64 KDF salt.
+    string salt = 4 [(google.api.field_behavior) = OPTIONAL];
+    // Base64 AEAD nonce.
+    string nonce = 5 [(google.api.field_behavior) = OPTIONAL];
+    // Base64 HMAC over the canonical parameter header, letting the client tell a
+    // wrong passphrase from a damaged wrapper.
+    string verifier = 6 [(google.api.field_behavior) = OPTIONAL];
+    // Base64 AEAD ciphertext of the master key, tag appended. Empty when the user
+    // has not set a master passphrase yet.
+    string wrapped_key = 7 [(google.api.field_behavior) = OPTIONAL];
   }
 
   // The last workspace/document the user had open in the Notebook home page.

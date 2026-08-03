@@ -1,3 +1,5 @@
+import { lockSecretSession } from "@/utils/secret-session";
+
 // Access token storage using localStorage for persistence across tabs and sessions.
 // Tokens are cleared on logout or expiry.
 let accessToken: string | null = null;
@@ -118,6 +120,11 @@ export const hasStoredToken = (): boolean => {
 export const clearAccessToken = (): void => {
   accessToken = null;
   tokenExpiresAt = null;
+
+  // Losing the session drops the `toucan-secret` master key with it. This runs on
+  // logout and on confirmed auth failure alike — both are moments where leaving a
+  // decryption key live in the tab would outlive the identity that earned it.
+  lockSecretSession();
 
   try {
     localStorage.removeItem(TOKEN_KEY);

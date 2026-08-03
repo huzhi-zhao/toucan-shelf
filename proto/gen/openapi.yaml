@@ -5422,6 +5422,8 @@ components:
                     $ref: '#/components/schemas/UserSetting_LastOpenedSetting'
                 ragSearchSetting:
                     $ref: '#/components/schemas/UserSetting_RagSearchSetting'
+                secretKeySetting:
+                    $ref: '#/components/schemas/UserSetting_SecretKeySetting'
             description: User settings message
         UserSetting_GeneralSetting:
             type: object
@@ -5467,6 +5469,44 @@ components:
                     type: string
                     description: 'Retrieval mode: one of "MIXED", "KEYWORD", "SEMANTIC". Empty falls back to "MIXED".'
             description: Per-user RAG search preferences.
+        UserSetting_SecretKeySetting:
+            type: object
+            properties:
+                kdf:
+                    type: string
+                    description: Key derivation for the wrapping key. Always "pbkdf2-sha256" today.
+                kdfIterations:
+                    type: integer
+                    description: Iteration count for the KDF.
+                    format: int32
+                cipher:
+                    type: string
+                    description: The AEAD cipher. Always "aes-256-gcm" today.
+                salt:
+                    type: string
+                    description: Base64 KDF salt.
+                nonce:
+                    type: string
+                    description: Base64 AEAD nonce.
+                verifier:
+                    type: string
+                    description: |-
+                        Base64 HMAC over the canonical parameter header, letting the client tell a
+                         wrong passphrase from a damaged wrapper.
+                wrappedKey:
+                    type: string
+                    description: |-
+                        Base64 AEAD ciphertext of the master key, tag appended. Empty when the user
+                         has not set a master passphrase yet.
+            description: |-
+                The user's `toucan-secret` master key, wrapped under a passphrase in the
+                 browser. Every field is opaque to the server, which holds neither the master
+                 key nor the passphrase and cannot recover either.
+
+                 Blocks encrypt against the master key, not the passphrase, so changing the
+                 passphrase replaces only this record — no block is touched. Conversely,
+                 clearing this record renders every `toucan-secret` block permanently
+                 unreadable, which is why there is no way to unset it by accident.
         UserSetting_TagMetadata:
             type: object
             properties:

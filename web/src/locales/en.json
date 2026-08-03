@@ -1061,6 +1061,43 @@
       "last-updated": "Last updated {{ago}}",
       "refresh": "Refresh",
       "load-error": "Failed to load statistics"
+    },
+    "secret-key": {
+      "title": "Encrypted block passphrase",
+      "description": "One master passphrase unlocks every `toucan-secret` block you own. It is derived in your browser and never reaches the server, which holds only an encrypted copy of the key it protects.",
+      "status": "Status",
+      "status-unconfigured": "Not set up. Encrypted blocks cannot be created until you set a master passphrase.",
+      "status-locked": "Set up, and locked in this tab. You will be asked for it the first time you open a block.",
+      "status-unlocked": "Unlocked in this tab. It locks itself after 30 minutes of inactivity, when you sign out, and whenever this page reloads.",
+      "set-up": "Set master passphrase",
+      "unlock": "Unlock",
+      "lock-now": "Lock now",
+      "change": "Change",
+      "reset": "Forgot it?",
+      "panel": {
+        "unlock": "Unlock for this session",
+        "setup": "Set your master passphrase",
+        "change": "Change your master passphrase",
+        "reset": "Start over with a new key"
+      },
+      "current-passphrase": "Current master passphrase",
+      "new-passphrase": "New master passphrase",
+      "confirm-passphrase": "Confirm new master passphrase",
+      "mismatch": "The two passphrases do not match.",
+      "min-length": "at least {{count}} characters",
+      "strength-weak": "Weak",
+      "strength-fair": "Reasonable",
+      "strength-strong": "Strong",
+      "no-recovery": "There is no recovery. The server cannot reset this for you, and nobody can read your blocks without it.",
+      "reset-warning": "This discards the key your existing encrypted blocks were written with. Every one of them becomes permanently unreadable. Only do this if the current passphrase is already lost.",
+      "unlocked": "Unlocked for this session.",
+      "configured": "Master passphrase set.",
+      "changed": "Master passphrase changed. No block needed re-encrypting.",
+      "reset-done": "A new key was generated. Blocks written with the old one can no longer be opened.",
+      "error": {
+        "wrong-passphrase": "Incorrect master passphrase.",
+        "corrupted": "The stored key failed verification — it has been altered or truncated. The passphrase is not the problem."
+      }
     }
   },
   "tag": {
@@ -1325,20 +1362,18 @@
     "locked": "Encrypted content",
     "uninitialized": "not set up yet",
     "unlock": "Unlock",
-    "set-passphrase": "Set passphrase",
     "relock": "Lock",
     "copy": "Copy",
     "edit": "Edit content",
     "empty": "Empty. Use the pencil to add content.",
     "content-placeholder": "Credentials, tokens, .env lines… Markdown is rendered.",
-    "passphrase-placeholder": "Passphrase",
     "hint-placeholder": "Title — e.g. MinIO setup steps",
     "malformed": "This secret block is malformed and cannot be opened.",
     "sign-in-required": "This document contains encrypted content. Sign in to open it.",
     "create": {
       "passphrase-confirm": "Confirm passphrase",
       "passphrase-mismatch": "The two passphrases do not match.",
-      "no-recovery": "Encrypted in your browser. The server never sees the passphrase, so it cannot be recovered — forget it and the content is lost."
+      "no-recovery": "Encrypted in your browser. The server never sees your master passphrase, so it cannot be recovered — forget it and the content is lost."
     },
     "error": {
       "wrong-passphrase": "Incorrect passphrase.",
@@ -1349,9 +1384,19 @@
       "write-back-failed": "The secret was created but its id could not be written into the document. Copy the id and set it manually, or delete the block and start over.",
       "create-failed": "Could not create the secret block.",
       "save-failed": "Could not save. The content is still decrypted here — copy it before leaving this page.",
-      "rotate-failed": "Could not change the passphrase. The old one still works."
+      "rotate-failed": "Could not change the passphrase. The old one still works.",
+      "locked-session": "This session is locked. Unlock it with your master passphrase first.",
+      "migrate-failed": "Could not switch this block to the master passphrase. Its own passphrase still works."
     },
-    "change-passphrase": "Change passphrase",
-    "new-passphrase": "New passphrase"
+    "change-passphrase": "Change this block’s passphrase",
+    "new-passphrase": "New passphrase",
+    "create-block": "Create",
+    "master-passphrase-placeholder": "Master passphrase",
+    "legacy-passphrase-placeholder": "This block's own passphrase",
+    "legacy-notice": "This block still uses its own passphrase.",
+    "migrate": "Use master passphrase",
+    "set-up-master": "Set up a master passphrase",
+    "no-master-key": "Set a master passphrase before creating encrypted blocks.",
+    "unlock-first": "Enter your master passphrase to unlock this session, then create the block."
   }
 }

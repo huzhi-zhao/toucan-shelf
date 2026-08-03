@@ -26,6 +26,9 @@ message UserSetting {
     LAST_OPENED = 9;
     // Per-user RAG search preferences.
     RAG_SEARCH = 10;
+    // The user's master key for `toucan-secret` blocks, wrapped under their
+    // passphrase. Opaque to the server, which cannot unwrap it.
+    SECRET_KEY = 11;
   }
 
   int32 user_id = 1;
@@ -40,7 +43,37 @@ message UserSetting {
     TagsUserSetting tags = 10;
     LastOpenedUserSetting last_opened = 11;
     RagSearchUserSetting rag_search = 12;
+    SecretKeyUserSetting secret_key = 13;
   }
+}
+
+// SecretKeyUserSetting holds the user's `toucan-secret` master key, sealed under
+// their passphrase in the browser.
+//
+// Every field is opaque to the server, exactly as in SecretBlock: this is the
+// same envelope format, and its plaintext is the base64 master key. Storing it
+// here rather than in its own table is deliberate — it is one record per user
+// whose whole lifecycle is "set it, replace it when the passphrase changes",
+// which is what a user setting already is.
+//
+// The server can neither unwrap this nor help a user who forgets the passphrase.
+message SecretKeyUserSetting {
+  // Key derivation for the wrapping key. Always "pbkdf2-sha256" today.
+  string kdf = 1;
+  // Iteration count for the KDF. Higher than the per-block figure, because this
+  // derivation runs once per session rather than once per block.
+  int32 kdf_iterations = 2;
+  // The AEAD cipher. Always "aes-256-gcm" today.
+  string cipher = 3;
+  // Base64 KDF salt.
+  string salt = 4;
+  // Base64 AEAD nonce.
+  string nonce = 5;
+  // Base64 HMAC over the canonical parameter header, so the client can tell a
+  // wrong passphrase from a damaged wrapper.
+  string verifier = 6;
+  // Base64 AEAD ciphertext of the master key, tag appended.
+  string wrapped_key = 7;
 }
 
 // RagSearchMode selects how hybrid search combines keyword and semantic retrieval.

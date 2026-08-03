@@ -29,6 +29,7 @@ import { loadTheme } from "@/utils/theme";
 import LocaleSelect from "../LocaleSelect";
 import ThemeSelect from "../ThemeSelect";
 import VisibilityIcon from "../VisibilityIcon";
+import SecretKeySection from "./SecretKeySection";
 import SettingGroup from "./SettingGroup";
 import { SettingList, SettingListItem } from "./SettingList";
 import SettingSection from "./SettingSection";
@@ -275,6 +276,8 @@ const PreferencesSection = () => {
           </SettingListItem>
         </SettingList>
       </SettingGroup>
+
+      <SecretKeySection />
 
       <SettingGroup title={t("setting.preference.search-title")} description={t("setting.preference.search-description")} showSeparator>
         <SettingList>
