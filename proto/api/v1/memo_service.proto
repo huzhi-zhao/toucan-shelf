@@ -477,6 +477,18 @@ message DocConfig {
 
   // Whether the frontmatter properties panel renders above the body. Default true.
   optional bool show_properties = 4 [(google.api.field_behavior) = OPTIONAL];
+
+  // Whether a single newline inside a paragraph is a soft wrap, as CommonMark
+  // specifies, rather than a hard line break.
+  //
+  // The app has always rendered single newlines as hard breaks — the right call for
+  // hand-typed notes, and wrong for markdown written anywhere else, where paragraphs
+  // are routinely wrapped at some column and the wrapping is not meant to be seen.
+  // Since a workspace holds both kinds of document, this is per-document rather than
+  // a single global mode. Unset falls back to the author's global default (see
+  // GeneralSetting.soft_break_default), which preserves the historical hard-break
+  // behaviour.
+  optional bool soft_break = 5 [(google.api.field_behavior) = OPTIONAL];
 }
 
 message EpubAnnotation {

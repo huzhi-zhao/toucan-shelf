@@ -10,6 +10,7 @@ import remarkBreaks from "remark-breaks";
 import remarkCjkFriendly from "remark-cjk-friendly/parseOnly";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import { useSoftBreakDefault } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import {
   getAlertFold,
@@ -58,6 +59,11 @@ interface MemoMarkdownRendererProps {
   onPropertyChange?: (key: string, value: MemoProperty["value"]) => void;
   /** Whether the properties panel renders; omitted, it falls back to the deprecated `hidden` key. */
   showProperties?: boolean;
+  /**
+   * Whether a single newline is a soft wrap (CommonMark) rather than a hard line break.
+   * Omitted, it follows the author's global default — see `DocConfig.softBreak`.
+   */
+  softBreak?: boolean;
 }
 
 function getMentionUsername(node: Element, children?: React.ReactNode): string {
@@ -87,11 +93,38 @@ export const MemoMarkdownRenderer = ({
   headingIdPrefix,
   onPropertyChange,
   showProperties,
+  softBreak,
 }: MemoMarkdownRendererProps) => {
   // Split off any leading Obsidian-style frontmatter: compliant properties render
   // as a read-only panel above the body, and the raw `---` block never reaches
   // the markdown pipeline (where it would otherwise show as horizontal rules).
   const { properties, body } = useMemo(() => parseFrontmatter(content), [content]);
+  const softBreakDefault = useSoftBreakDefault();
+  // remark-breaks turns every newline into a `<br>`. That is what someone typing a
+  // note expects and the opposite of what CommonMark says, so it is the one plugin
+  // in this pipeline a document can switch off.
+  const hardBreaks = !(softBreak ?? softBreakDefault);
+  const remarkPlugins = useMemo(
+    () => [
+      remarkDisableSetext,
+      remarkMath,
+      remarkGfm,
+      // 让 **加粗：**中文 这类紧贴中文标点的强调也能识别（CommonMark 原规则会失败）
+      remarkCjkFriendly,
+      remarkTaskStatus,
+      remarkSplitMixedTaskLists,
+      ...(hardBreaks ? [remarkBreaks] : []),
+      remarkMention,
+      remarkTag,
+      remarkCounter,
+      remarkHighlight,
+      remarkAlert,
+      remarkSheetsId,
+      remarkCodeFold,
+      remarkPreserveType,
+    ],
+    [hardBreaks],
+  );
 
   const markdownComponents: Components = {
     input: ({ node, ...inputProps }) => {
@@ -224,24 +257,7 @@ export const MemoMarkdownRenderer = ({
     <MarkdownRenderContext.Provider value={rootMarkdownRenderContext}>
       <PropertiesPanel properties={properties} onChange={onPropertyChange} visible={showProperties} />
       <ReactMarkdown
-        remarkPlugins={[
-          remarkDisableSetext,
-          remarkMath,
-          remarkGfm,
-          // 让 **加粗：**中文 这类紧贴中文标点的强调也能识别（CommonMark 原规则会失败）
-          remarkCjkFriendly,
-          remarkTaskStatus,
-          remarkSplitMixedTaskLists,
-          remarkBreaks,
-          remarkMention,
-          remarkTag,
-          remarkCounter,
-          remarkHighlight,
-          remarkAlert,
-          remarkSheetsId,
-          remarkCodeFold,
-          remarkPreserveType,
-        ]}
+        remarkPlugins={remarkPlugins}
         rehypePlugins={[
           rehypeRaw,
           [rehypeSanitize, SANITIZE_SCHEMA],

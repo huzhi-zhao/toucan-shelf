@@ -31,7 +31,7 @@ import {
 import { handleError } from "@/lib/error";
 import { AttachmentOrigin, AttachmentSchema } from "@/types/proto/api/v1/attachment_service_pb";
 import { State } from "@/types/proto/api/v1/common_pb";
-import { Memo_DocType, MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
+import { type DocConfig, DocConfigSchema, Memo_DocType, MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
 import { type SearchHit, SearchMode } from "@/types/proto/api/v1/rag_service_pb";
 import type { WorkspaceTreeNode } from "@/types/proto/api/v1/workspace_service_pb";
 import { WorkspaceTreeNode_NodeType } from "@/types/proto/api/v1/workspace_service_pb";
@@ -305,7 +305,7 @@ const Notebook = () => {
   }, [queryClient, workspaceName]);
 
   const handleCreateDocument = useCallback(
-    async (folderPath: string, title: string, docType: Memo_DocType = Memo_DocType.MARKDOWN, content?: string) => {
+    async (folderPath: string, title: string, docType: Memo_DocType = Memo_DocType.MARKDOWN, content?: string, docConfig?: DocConfig) => {
       if (!workspaceName) return;
       try {
         const created = await createMemo.mutateAsync(
@@ -314,6 +314,7 @@ const Notebook = () => {
             folderPath,
             title,
             docType,
+            docConfig,
             content:
               content ??
               (docType === Memo_DocType.HTML ? `<!doctype html>\n<html>\n<body>\n<h1>${title}</h1>\n</body>\n</html>\n` : `# ${title}\n`),
@@ -334,7 +335,12 @@ const Notebook = () => {
     async (folderPath: string, file: File) => {
       const content = await file.text();
       const docType = detectDocType(file.name);
-      await handleCreateDocument(folderPath, stripExtension(file.name), docType, content);
+      // Markdown written outside this app follows CommonMark, where a newline inside
+      // a paragraph is a soft wrap. Importing such a file with the app's hard-break
+      // default would shred every wrapped paragraph, so pin the document to soft
+      // breaks up front — the author can still flip it back per document.
+      const docConfig = docType === Memo_DocType.MARKDOWN ? create(DocConfigSchema, { softBreak: true }) : undefined;
+      await handleCreateDocument(folderPath, stripExtension(file.name), docType, content, docConfig);
     },
     [handleCreateDocument],
   );

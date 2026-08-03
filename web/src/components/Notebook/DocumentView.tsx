@@ -46,6 +46,7 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { memoServiceClient } from "@/connect";
+import { useSoftBreakDefault } from "@/contexts/AuthContext";
 import useMediaQuery from "@/hooks/useMediaQuery";
 import { useCreateMemoHistory, useMemoHistories, useRestoreMemoHistory } from "@/hooks/useMemoHistoryQueries";
 import { useInfiniteMemoComments, useUpdateMemo } from "@/hooks/useMemoQueries";
@@ -308,7 +309,8 @@ const DocumentView = ({
   // memo; frontmatter has no say in it — properties are for what the document says, never for
   // how it looks. Reading density is deliberately absent too: that's a reader preference, kept
   // per-device in localStorage.
-  const docConfig = useMemo(() => resolveMemoDocConfig(memo), [memo.docConfig]);
+  const softBreakDefault = useSoftBreakDefault();
+  const docConfig = useMemo(() => resolveMemoDocConfig(memo, softBreakDefault), [memo.docConfig, softBreakDefault]);
   const { density } = useReadingDensity();
   const { mutateAsync: updateMemoAsync } = useUpdateMemo();
 
@@ -793,6 +795,14 @@ const DocumentView = ({
                     >
                       {t("notebook.show-properties")}
                     </DropdownMenuCheckboxItem>
+                    {!isView && (
+                      <DropdownMenuCheckboxItem
+                        checked={docConfig.softBreak}
+                        onCheckedChange={(checked) => updateDocConfig({ softBreak: checked })}
+                      >
+                        {t("notebook.soft-line-breaks")}
+                      </DropdownMenuCheckboxItem>
+                    )}
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
               )}
@@ -961,6 +971,7 @@ const DocumentView = ({
                     memoName={memo.name}
                     density={density}
                     showProperties={docConfig.showProperties}
+                    softBreak={docConfig.softBreak}
                     onPropertyChange={propertyChangeHandler}
                   />
                 </MemoViewContext.Provider>

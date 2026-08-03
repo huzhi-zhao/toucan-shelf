@@ -3057,9 +3057,13 @@ type UserSetting_GeneralSetting struct {
 	// The preferred theme of the user.
 	// This references a CSS file in the web/public/themes/ directory.
 	// If not set, the default theme will be used.
-	Theme         string `protobuf:"bytes,4,opt,name=theme,proto3" json:"theme,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Theme string `protobuf:"bytes,4,opt,name=theme,proto3" json:"theme,omitempty"`
+	// Whether a single newline is a soft wrap (CommonMark) rather than a hard line
+	// break, for documents that have not set `DocConfig.soft_break` themselves.
+	// False — hard breaks — is the historical behaviour and stays the default.
+	SoftBreakDefault bool `protobuf:"varint,5,opt,name=soft_break_default,json=softBreakDefault,proto3" json:"soft_break_default,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *UserSetting_GeneralSetting) Reset() {
@@ -3111,6 +3115,13 @@ func (x *UserSetting_GeneralSetting) GetTheme() string {
 		return x.Theme
 	}
 	return ""
+}
+
+func (x *UserSetting_GeneralSetting) GetSoftBreakDefault() bool {
+	if x != nil {
+		return x.SoftBreakDefault
+	}
+	return false
 }
 
 // Tag metadata for user-specific display rules.
@@ -3725,7 +3736,7 @@ const file_api_v1_user_service_proto_rawDesc = "" +
 	"\x05state\x18\x01 \x01(\x0e2\x13.memos.api.v1.StateB\x03\xe0A\x01R\x05state\x12\x1b\n" +
 	"\x06filter\x18\x02 \x01(\tB\x03\xe0A\x01R\x06filter\"I\n" +
 	"\x18ListAllUserStatsResponse\x12-\n" +
-	"\x05stats\x18\x01 \x03(\v2\x17.memos.api.v1.UserStatsR\x05stats\"\xd5\x0e\n" +
+	"\x05stats\x18\x01 \x03(\v2\x17.memos.api.v1.UserStatsR\x05stats\"\x89\x0f\n" +
 	"\vUserSetting\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12S\n" +
 	"\x0fgeneral_setting\x18\x02 \x01(\v2(.memos.api.v1.UserSetting.GeneralSettingH\x00R\x0egeneralSetting\x12V\n" +
@@ -3733,11 +3744,12 @@ const file_api_v1_user_service_proto_rawDesc = "" +
 	"\ftags_setting\x18\x06 \x01(\v2%.memos.api.v1.UserSetting.TagsSettingH\x00R\vtagsSetting\x12]\n" +
 	"\x13last_opened_setting\x18\a \x01(\v2+.memos.api.v1.UserSetting.LastOpenedSettingH\x00R\x11lastOpenedSetting\x12Z\n" +
 	"\x12rag_search_setting\x18\b \x01(\v2*.memos.api.v1.UserSetting.RagSearchSettingH\x00R\x10ragSearchSetting\x12Z\n" +
-	"\x12secret_key_setting\x18\t \x01(\v2*.memos.api.v1.UserSetting.SecretKeySettingH\x00R\x10secretKeySetting\x1av\n" +
+	"\x12secret_key_setting\x18\t \x01(\v2*.memos.api.v1.UserSetting.SecretKeySettingH\x00R\x10secretKeySetting\x1a\xa9\x01\n" +
 	"\x0eGeneralSetting\x12\x1b\n" +
 	"\x06locale\x18\x01 \x01(\tB\x03\xe0A\x01R\x06locale\x12,\n" +
 	"\x0fmemo_visibility\x18\x03 \x01(\tB\x03\xe0A\x01R\x0ememoVisibility\x12\x19\n" +
-	"\x05theme\x18\x04 \x01(\tB\x03\xe0A\x01R\x05theme\x1ay\n" +
+	"\x05theme\x18\x04 \x01(\tB\x03\xe0A\x01R\x05theme\x121\n" +
+	"\x12soft_break_default\x18\x05 \x01(\bB\x03\xe0A\x01R\x10softBreakDefault\x1ay\n" +
 	"\vTagMetadata\x12B\n" +
 	"\x10background_color\x18\x01 \x01(\v2\x12.google.type.ColorB\x03\xe0A\x01R\x0fbackgroundColor\x12&\n" +
 	"\fblur_content\x18\x02 \x01(\bB\x03\xe0A\x01R\vblurContent\x1a\xb7\x01\n" +

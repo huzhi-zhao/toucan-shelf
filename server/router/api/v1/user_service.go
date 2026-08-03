@@ -644,9 +644,10 @@ func (s *APIV1Service) UpdateUserSetting(ctx context.Context, request *v1pb.Upda
 		}
 
 		updatedGeneral := &v1pb.UserSetting_GeneralSetting{
-			MemoVisibility: generalSetting.GetMemoVisibility(),
-			Locale:         generalSetting.GetLocale(),
-			Theme:          generalSetting.GetTheme(),
+			MemoVisibility:   generalSetting.GetMemoVisibility(),
+			Locale:           generalSetting.GetLocale(),
+			Theme:            generalSetting.GetTheme(),
+			SoftBreakDefault: generalSetting.GetSoftBreakDefault(),
 		}
 
 		incomingGeneral := request.Setting.GetGeneralSetting()
@@ -661,6 +662,8 @@ func (s *APIV1Service) UpdateUserSetting(ctx context.Context, request *v1pb.Upda
 				updatedGeneral.Theme = incomingGeneral.Theme
 			case "locale":
 				updatedGeneral.Locale = incomingGeneral.Locale
+			case "soft_break_default":
+				updatedGeneral.SoftBreakDefault = incomingGeneral.SoftBreakDefault
 			default:
 				// Ignore unsupported fields.
 			}
@@ -1606,9 +1609,10 @@ func convertUserSettingFromStore(storeSetting *storepb.UserSetting, user *store.
 		if general := storeSetting.GetGeneral(); general != nil {
 			setting.Value = &v1pb.UserSetting_GeneralSetting_{
 				GeneralSetting: &v1pb.UserSetting_GeneralSetting{
-					Locale:         general.Locale,
-					MemoVisibility: general.MemoVisibility,
-					Theme:          general.Theme,
+					Locale:           general.Locale,
+					MemoVisibility:   general.MemoVisibility,
+					Theme:            general.Theme,
+					SoftBreakDefault: general.SoftBreakDefault,
 				},
 			}
 		} else {
@@ -1689,9 +1693,10 @@ func convertUserSettingToStore(apiSetting *v1pb.UserSetting, userID int32, key s
 		if general := apiSetting.GetGeneralSetting(); general != nil {
 			storeSetting.Value = &storepb.UserSetting_General{
 				General: &storepb.GeneralUserSetting{
-					Locale:         general.Locale,
-					MemoVisibility: general.MemoVisibility,
-					Theme:          general.Theme,
+					Locale:           general.Locale,
+					MemoVisibility:   general.MemoVisibility,
+					Theme:            general.Theme,
+					SoftBreakDefault: general.SoftBreakDefault,
 				},
 			}
 		} else {

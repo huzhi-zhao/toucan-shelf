@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
@@ -472,6 +473,7 @@ func convertDocConfigFromStore(config *storepb.MemoPayload_DocConfig) *v1pb.DocC
 		DisplayOutline: config.DisplayOutline,
 		DisplayFilter:  config.DisplayFilter,
 		ShowProperties: config.ShowProperties,
+		SoftBreak:      config.SoftBreak,
 	}
 }
 
@@ -484,6 +486,31 @@ func convertDocConfigToStore(config *v1pb.DocConfig) *storepb.MemoPayload_DocCon
 		DisplayOutline: config.DisplayOutline,
 		DisplayFilter:  config.DisplayFilter,
 		ShowProperties: config.ShowProperties,
+		SoftBreak:      config.SoftBreak,
+	}
+}
+
+// applySoftBreakCreationDefault pins agent-authored markdown to CommonMark soft
+// wrapping, unless the caller said otherwise.
+//
+// The app renders a lone newline as a hard break, which is right for a note someone
+// typed and wrong for markdown produced anywhere else: models — like most tooling —
+// break lines for the source's sake, not the reader's, so their documents come out
+// full of breaks nobody asked for. Deciding this at creation beats asking every
+// producer to write differently, since the app cannot police what it is handed.
+//
+// Only an unset field is filled in: an agent that explicitly asked for hard breaks
+// keeps them, and human-authored documents stay unset so they follow the author's
+// global default.
+func applySoftBreakCreationDefault(create *store.Memo, isAgent bool) {
+	if !isAgent || create.DocType != convertDocTypeToStore(v1pb.Memo_MARKDOWN) {
+		return
+	}
+	if create.Payload.DocConfig == nil {
+		create.Payload.DocConfig = &storepb.MemoPayload_DocConfig{}
+	}
+	if create.Payload.DocConfig.SoftBreak == nil {
+		create.Payload.DocConfig.SoftBreak = proto.Bool(true)
 	}
 }
 

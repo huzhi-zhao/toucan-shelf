@@ -164,7 +164,9 @@ func (s *APIV1Service) CreateMemo(ctx context.Context, request *v1pb.CreateMemoR
 	// one starts with the session already open: the agent's subsequent passes
 	// over its own draft produce no snapshots. It closes the first time a human
 	// edits the content.
-	create.Payload.AgentSessionOpen = base.ActorKindFromContext(ctx).IsAgent()
+	isAgent := base.ActorKindFromContext(ctx).IsAgent()
+	create.Payload.AgentSessionOpen = isAgent
+	applySoftBreakCreationDefault(create, isAgent)
 
 	memo, err := s.Store.CreateMemo(ctx, create)
 	if err != nil {

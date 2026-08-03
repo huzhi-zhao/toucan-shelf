@@ -13,7 +13,7 @@ vi.mock("@/utils/i18n", () => ({
 }));
 
 const mockAuth = vi.hoisted(() => ({ currentUser: undefined as unknown }));
-vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => mockAuth }));
+vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => mockAuth, useSoftBreakDefault: () => false }));
 
 // Nothing here should reach the network unless a test says so: every other case is
 // decided before a fetch would happen.

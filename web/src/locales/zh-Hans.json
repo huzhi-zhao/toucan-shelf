@@ -573,6 +573,8 @@
       "default-memo-sort-option": "备忘录显示时间",
       "default-memo-visibility": "默认备忘录可见性",
       "default-memo-visibility-description": "创建新备忘录时默认使用的可见性，仍可在编辑器中调整。",
+      "soft-line-breaks": "单换行不断行",
+      "soft-line-breaks-description": "按 CommonMark 的规则把段落内的单个换行当作软折行，而不是真的断行。仅对未单独设置过的文档生效。",
       "language-description": "立即更新界面语言，并保存到当前账号。",
       "line-spacing": "行距",
       "line-spacing-description": "本设备上文档正文的行高。拖动调整；点击恢复默认可回到当前阅读密度建议的值。",
@@ -1100,6 +1102,7 @@
     "show-outline": "显示大纲",
     "show-document-tree": "显示文档树",
     "show-properties": "显示属性",
+    "soft-line-breaks": "单换行不断行",
     "cover-image-url-placeholder": "图片链接",
     "open-last-document": "打开上次浏览的文档"
   },

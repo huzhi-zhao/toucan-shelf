@@ -6,6 +6,7 @@ vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({
     userGeneralSetting: { theme: "default" },
   }),
+  useSoftBreakDefault: () => false,
 }));
 
 const renderMermaid = vi.fn(async () => ({ svg: '<svg data-testid="diagram"></svg>' }));

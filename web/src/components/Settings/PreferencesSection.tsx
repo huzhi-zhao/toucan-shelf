@@ -168,6 +168,17 @@ const PreferencesSection = () => {
     );
   };
 
+  const handleSoftBreakDefaultChange = (softBreakDefault: boolean) => {
+    updateUserGeneralSetting(
+      { generalSetting: { softBreakDefault }, updateMask: ["soft_break_default"] },
+      {
+        onSuccess: () => {
+          refetchSettings();
+        },
+      },
+    );
+  };
+
   const handleThemeChange = (theme: string) => {
     // Apply theme immediately for instant UI feedback
     loadTheme(theme);
@@ -273,6 +284,17 @@ const PreferencesSection = () => {
                   ))}
               </SelectContent>
             </Select>
+          </SettingListItem>
+
+          {/* Not a reader preference: it decides what the markdown *means*, so it is synced and
+              applies to every reader of the document. A document that sets `softBreak` for itself
+              (imported files and agent-written ones do, from the moment they are created) ignores
+              this — see the same switch in a document's ⋮ menu. */}
+          <SettingListItem
+            label={t("setting.preference.soft-line-breaks")}
+            description={t("setting.preference.soft-line-breaks-description")}
+          >
+            <Switch checked={setting.softBreakDefault} onCheckedChange={handleSoftBreakDefaultChange} />
           </SettingListItem>
         </SettingList>
       </SettingGroup>

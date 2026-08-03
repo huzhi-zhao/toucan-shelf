@@ -86,6 +86,10 @@ message MemoPayload {
     optional bool display_filter = 3;
     // Whether the frontmatter properties panel renders above the body. Default true.
     optional bool show_properties = 4;
+    // Whether a single newline inside a paragraph is a soft wrap (CommonMark) rather
+    // than a hard line break. Unset falls back to the author's global default, which
+    // itself defaults to hard breaks — see GeneralSetting.soft_break_default.
+    optional bool soft_break = 5;
   }
 
   message PdfAnnotation {

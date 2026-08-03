@@ -65,7 +65,13 @@ const MemoReader = () => {
         <PrinterIcon className="w-4 h-auto" />
         {t("memo.print")}
       </Button>
-      <MemoContent memoName={memo.name} content={body} density={density} isHtml={memo.docType === Memo_DocType.HTML} />
+      <MemoContent
+        memoName={memo.name}
+        content={body}
+        density={density}
+        isHtml={memo.docType === Memo_DocType.HTML}
+        softBreak={memo.docConfig?.softBreak}
+      />
     </div>
   );
 };

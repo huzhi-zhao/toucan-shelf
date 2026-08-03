@@ -912,8 +912,19 @@ type DocConfig struct {
 	DisplayFilter *bool `protobuf:"varint,3,opt,name=display_filter,json=displayFilter,proto3,oneof" json:"display_filter,omitempty"`
 	// Whether the frontmatter properties panel renders above the body. Default true.
 	ShowProperties *bool `protobuf:"varint,4,opt,name=show_properties,json=showProperties,proto3,oneof" json:"show_properties,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Whether a single newline inside a paragraph is a soft wrap, as CommonMark
+	// specifies, rather than a hard line break.
+	//
+	// The app has always rendered single newlines as hard breaks — the right call for
+	// hand-typed notes, and wrong for markdown written anywhere else, where paragraphs
+	// are routinely wrapped at some column and the wrapping is not meant to be seen.
+	// Since a workspace holds both kinds of document, this is per-document rather than
+	// a single global mode. Unset falls back to the author's global default (see
+	// GeneralSetting.soft_break_default), which preserves the historical hard-break
+	// behaviour.
+	SoftBreak     *bool `protobuf:"varint,5,opt,name=soft_break,json=softBreak,proto3,oneof" json:"soft_break,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *DocConfig) Reset() {
@@ -970,6 +981,13 @@ func (x *DocConfig) GetDisplayFilter() bool {
 func (x *DocConfig) GetShowProperties() bool {
 	if x != nil && x.ShowProperties != nil {
 		return *x.ShowProperties
+	}
+	return false
+}
+
+func (x *DocConfig) GetSoftBreak() bool {
+	if x != nil && x.SoftBreak != nil {
+		return *x.SoftBreak
 	}
 	return false
 }
@@ -3374,17 +3392,20 @@ const file_api_v1_memo_service_proto_rawDesc = "" +
 	"\vtext_suffix\x18\x05 \x01(\tB\x03\xe0A\x01R\n" +
 	"textSuffix\x12\x19\n" +
 	"\x05color\x18\x06 \x01(\tB\x03\xe0A\x01R\x05color\x12!\n" +
-	"\tunderline\x18\a \x01(\bB\x03\xe0A\x01R\tunderline\"\x95\x02\n" +
+	"\tunderline\x18\a \x01(\bB\x03\xe0A\x01R\tunderline\"\xcd\x02\n" +
 	"\tDocConfig\x12'\n" +
 	"\n" +
 	"full_width\x18\x01 \x01(\bB\x03\xe0A\x01H\x00R\tfullWidth\x88\x01\x01\x121\n" +
 	"\x0fdisplay_outline\x18\x02 \x01(\bB\x03\xe0A\x01H\x01R\x0edisplayOutline\x88\x01\x01\x12/\n" +
 	"\x0edisplay_filter\x18\x03 \x01(\bB\x03\xe0A\x01H\x02R\rdisplayFilter\x88\x01\x01\x121\n" +
-	"\x0fshow_properties\x18\x04 \x01(\bB\x03\xe0A\x01H\x03R\x0eshowProperties\x88\x01\x01B\r\n" +
+	"\x0fshow_properties\x18\x04 \x01(\bB\x03\xe0A\x01H\x03R\x0eshowProperties\x88\x01\x01\x12'\n" +
+	"\n" +
+	"soft_break\x18\x05 \x01(\bB\x03\xe0A\x01H\x04R\tsoftBreak\x88\x01\x01B\r\n" +
 	"\v_full_widthB\x12\n" +
 	"\x10_display_outlineB\x11\n" +
 	"\x0f_display_filterB\x12\n" +
-	"\x10_show_properties\"\xc6\x01\n" +
+	"\x10_show_propertiesB\r\n" +
+	"\v_soft_break\"\xc6\x01\n" +
 	"\x0eEpubAnnotation\x12,\n" +
 	"\x0fattachment_name\x18\x01 \x01(\tB\x03\xe0A\x02R\x0eattachmentName\x12 \n" +
 	"\tcfi_range\x18\x02 \x01(\tB\x03\xe0A\x02R\bcfiRange\x12&\n" +

@@ -97,6 +97,7 @@ const MemoContent = (props: MemoContentProps) => {
             headingIdPrefix={props.headingIdPrefix}
             onPropertyChange={props.onPropertyChange}
             showProperties={props.showProperties}
+            softBreak={props.softBreak}
           />
         )}
         {showCompactMode === "ALL" && (

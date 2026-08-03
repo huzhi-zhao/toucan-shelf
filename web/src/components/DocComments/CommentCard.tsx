@@ -114,7 +114,14 @@ export const CommentCard = forwardRef<HTMLDivElement, Props>(
         )}
         {text ? (
           <div className="break-words [&_*]:!text-xs">
-            <MemoContent content={text} memoName={memo.name} compact contentClassName="!p-0" actions={editButton} />
+            <MemoContent
+              content={text}
+              memoName={memo.name}
+              compact
+              contentClassName="!p-0"
+              actions={editButton}
+              softBreak={memo.docConfig?.softBreak}
+            />
           </div>
         ) : (
           // A mark with no note of its own only reaches the list once it has lost its text: with

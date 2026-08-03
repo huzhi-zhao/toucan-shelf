@@ -315,8 +315,12 @@ type MemoPayload_DocConfig struct {
 	DisplayFilter *bool `protobuf:"varint,3,opt,name=display_filter,json=displayFilter,proto3,oneof" json:"display_filter,omitempty"`
 	// Whether the frontmatter properties panel renders above the body. Default true.
 	ShowProperties *bool `protobuf:"varint,4,opt,name=show_properties,json=showProperties,proto3,oneof" json:"show_properties,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Whether a single newline inside a paragraph is a soft wrap (CommonMark) rather
+	// than a hard line break. Unset falls back to the author's global default, which
+	// itself defaults to hard breaks — see GeneralSetting.soft_break_default.
+	SoftBreak     *bool `protobuf:"varint,5,opt,name=soft_break,json=softBreak,proto3,oneof" json:"soft_break,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MemoPayload_DocConfig) Reset() {
@@ -373,6 +377,13 @@ func (x *MemoPayload_DocConfig) GetDisplayFilter() bool {
 func (x *MemoPayload_DocConfig) GetShowProperties() bool {
 	if x != nil && x.ShowProperties != nil {
 		return *x.ShowProperties
+	}
+	return false
+}
+
+func (x *MemoPayload_DocConfig) GetSoftBreak() bool {
+	if x != nil && x.SoftBreak != nil {
+		return *x.SoftBreak
 	}
 	return false
 }
@@ -711,7 +722,7 @@ var File_store_memo_proto protoreflect.FileDescriptor
 
 const file_store_memo_proto_rawDesc = "" +
 	"\n" +
-	"\x10store/memo.proto\x12\vmemos.store\"\x8b\x0f\n" +
+	"\x10store/memo.proto\x12\vmemos.store\"\xbe\x0f\n" +
 	"\vMemoPayload\x12=\n" +
 	"\bproperty\x18\x01 \x01(\v2!.memos.store.MemoPayload.PropertyR\bproperty\x12=\n" +
 	"\blocation\x18\x02 \x01(\v2!.memos.store.MemoPayload.LocationR\blocation\x12\x12\n" +
@@ -736,17 +747,20 @@ const file_store_memo_proto_rawDesc = "" +
 	"\bLocation\x12 \n" +
 	"\vplaceholder\x18\x01 \x01(\tR\vplaceholder\x12\x1a\n" +
 	"\blatitude\x18\x02 \x01(\x01R\blatitude\x12\x1c\n" +
-	"\tlongitude\x18\x03 \x01(\x01R\tlongitude\x1a\x81\x02\n" +
+	"\tlongitude\x18\x03 \x01(\x01R\tlongitude\x1a\xb4\x02\n" +
 	"\tDocConfig\x12\"\n" +
 	"\n" +
 	"full_width\x18\x01 \x01(\bH\x00R\tfullWidth\x88\x01\x01\x12,\n" +
 	"\x0fdisplay_outline\x18\x02 \x01(\bH\x01R\x0edisplayOutline\x88\x01\x01\x12*\n" +
 	"\x0edisplay_filter\x18\x03 \x01(\bH\x02R\rdisplayFilter\x88\x01\x01\x12,\n" +
-	"\x0fshow_properties\x18\x04 \x01(\bH\x03R\x0eshowProperties\x88\x01\x01B\r\n" +
+	"\x0fshow_properties\x18\x04 \x01(\bH\x03R\x0eshowProperties\x88\x01\x01\x12\"\n" +
+	"\n" +
+	"soft_break\x18\x05 \x01(\bH\x04R\tsoftBreak\x88\x01\x01B\r\n" +
 	"\v_full_widthB\x12\n" +
 	"\x10_display_outlineB\x11\n" +
 	"\x0f_display_filterB\x12\n" +
-	"\x10_show_properties\x1a\xce\x02\n" +
+	"\x10_show_propertiesB\r\n" +
+	"\v_soft_break\x1a\xce\x02\n" +
 	"\rPdfAnnotation\x12'\n" +
 	"\x0fattachment_name\x18\x01 \x01(\tR\x0eattachmentName\x12\x12\n" +
 	"\x04page\x18\x02 \x01(\x05R\x04page\x12\f\n" +

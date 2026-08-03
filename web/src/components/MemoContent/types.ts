@@ -49,6 +49,12 @@ export interface MemoContentProps {
    * deprecated `hidden: true` frontmatter key.
    */
   showProperties?: boolean;
+  /**
+   * Whether a single newline is a soft wrap (CommonMark) rather than a hard line break. Comes
+   * from the document's view configuration (`docConfig.softBreak`); omitted — as it is wherever
+   * the surrounding memo isn't at hand — it follows the reader's global default.
+   */
+  softBreak?: boolean;
   onClick?: (e: React.MouseEvent) => void;
   onDoubleClick?: (e: React.MouseEvent) => void;
 }

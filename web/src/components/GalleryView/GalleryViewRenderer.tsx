@@ -268,7 +268,7 @@ const ReferencedDocBlockView = ({
         <span className="truncate">{doc.title || doc.name}</span>
       </button>
       <BlockSourceProvider value={source}>
-        <MemoContent content={doc.content} memoName={doc.name} headingIdPrefix={`vb${blockIndex}`} />
+        <MemoContent content={doc.content} memoName={doc.name} headingIdPrefix={`vb${blockIndex}`} softBreak={doc.docConfig?.softBreak} />
       </BlockSourceProvider>
     </div>
   );
@@ -302,7 +302,7 @@ const MarkdownBlockView = ({ block, blockIndex, memo, readonly }: Omit<BlockProp
 
   return (
     <BlockSourceProvider value={source}>
-      <MemoContent content={block.content} memoName={memo.name} headingIdPrefix={`vb${blockIndex}`} />
+      <MemoContent content={block.content} memoName={memo.name} headingIdPrefix={`vb${blockIndex}`} softBreak={memo.docConfig?.softBreak} />
     </BlockSourceProvider>
   );
 };

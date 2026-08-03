@@ -26,6 +26,16 @@ export interface ResolvedDocConfig {
   displayFilter: boolean;
   /** The frontmatter properties panel renders above the body. */
   showProperties: boolean;
+  /**
+   * A single newline inside a paragraph is a soft wrap, as CommonMark specifies, rather than a
+   * hard line break.
+   *
+   * Unlike its neighbours this one has no fixed app default: unset means "follow the author's
+   * global preference" (`GeneralSetting.softBreakDefault`), which is what `softBreakDefault`
+   * supplies to the resolvers below. The app-level fallback is hard breaks — the historical
+   * behaviour, and the right one for a note somebody typed by hand.
+   */
+  softBreak: boolean;
 }
 
 export const DEFAULT_DOC_CONFIG: ResolvedDocConfig = {
@@ -33,6 +43,7 @@ export const DEFAULT_DOC_CONFIG: ResolvedDocConfig = {
   displayOutline: true,
   displayFilter: true,
   showProperties: true,
+  softBreak: false,
 };
 
 /**
@@ -40,16 +51,20 @@ export const DEFAULT_DOC_CONFIG: ResolvedDocConfig = {
  * stored field uses explicit presence, so a document whose author turned full width *off* is
  * distinguishable from one that was never configured.
  */
-export function resolveDocConfig(config: DocConfig | undefined): ResolvedDocConfig {
+export function resolveDocConfig(config: DocConfig | undefined, softBreakDefault = DEFAULT_DOC_CONFIG.softBreak): ResolvedDocConfig {
   return {
     fullWidth: config?.fullWidth ?? DEFAULT_DOC_CONFIG.fullWidth,
     displayOutline: config?.displayOutline ?? DEFAULT_DOC_CONFIG.displayOutline,
     displayFilter: config?.displayFilter ?? DEFAULT_DOC_CONFIG.displayFilter,
     showProperties: config?.showProperties ?? DEFAULT_DOC_CONFIG.showProperties,
+    softBreak: config?.softBreak ?? softBreakDefault,
   };
 }
 
 /** Convenience wrapper for the common case of resolving straight off a memo. */
-export function resolveMemoDocConfig(memo: Pick<Memo, "docConfig"> | undefined): ResolvedDocConfig {
-  return resolveDocConfig(memo?.docConfig);
+export function resolveMemoDocConfig(
+  memo: Pick<Memo, "docConfig"> | undefined,
+  softBreakDefault = DEFAULT_DOC_CONFIG.softBreak,
+): ResolvedDocConfig {
+  return resolveDocConfig(memo?.docConfig, softBreakDefault);
 }

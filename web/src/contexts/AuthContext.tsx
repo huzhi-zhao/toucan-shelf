@@ -189,6 +189,13 @@ export function useAuth() {
   return context;
 }
 
+// Read the author's soft-break default from deep inside the markdown renderer,
+// which can render outside an AuthProvider (shared pages, tests). Falls back to
+// hard breaks, the app's historical behavior, when no provider is present.
+export function useSoftBreakDefault() {
+  return useContext(AuthContext)?.userGeneralSetting?.softBreakDefault ?? false;
+}
+
 // Convenience hook for just the current user
 export function useCurrentUserFromAuth() {
   const { currentUser } = useAuth();

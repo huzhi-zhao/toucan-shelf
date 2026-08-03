@@ -18,13 +18,29 @@ describe("resolveDocConfig", () => {
   });
 
   it("carries every configured field through", () => {
-    const config = create(DocConfigSchema, { fullWidth: false, displayOutline: false, displayFilter: false, showProperties: false });
+    const config = create(DocConfigSchema, {
+      fullWidth: false,
+      displayOutline: false,
+      displayFilter: false,
+      showProperties: false,
+      softBreak: true,
+    });
     expect(resolveDocConfig(config)).toEqual({
       fullWidth: false,
       displayOutline: false,
       displayFilter: false,
       showProperties: false,
+      softBreak: true,
     });
+  });
+
+  // Unlike its neighbours, soft break has no fixed app default: unset means "follow the
+  // author's global preference", and only an explicit value on the document overrides it.
+  it("takes soft break from the global default until the document sets its own", () => {
+    expect(resolveDocConfig(undefined, true).softBreak).toBe(true);
+    expect(resolveDocConfig(undefined, false).softBreak).toBe(false);
+    expect(resolveDocConfig(create(DocConfigSchema, { softBreak: false }), true).softBreak).toBe(false);
+    expect(resolveDocConfig(create(DocConfigSchema, { softBreak: true }), false).softBreak).toBe(true);
   });
 
   it("ignores frontmatter entirely — a document's text never decides its styling", () => {

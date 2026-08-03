@@ -783,6 +783,8 @@
       "default-memo-sort-option": "Memo display time",
       "default-memo-visibility": "Default memo visibility",
       "default-memo-visibility-description": "Visibility applied to newly created memos unless changed in the editor.",
+      "soft-line-breaks": "Soft line breaks",
+      "soft-line-breaks-description": "Treat a single newline as a soft wrap, the way CommonMark does, instead of a line break. Applies to documents that have not set this themselves.",
       "label": "Preferences",
       "language-description": "Updates the interface language immediately and saves it to your account.",
       "line-spacing": "Line spacing",
@@ -1181,6 +1183,7 @@
     "show-outline": "Show outline",
     "show-document-tree": "Show document tree",
     "show-properties": "Show properties",
+    "soft-line-breaks": "Soft line breaks",
     "cover-image-url-placeholder": "Image URL"
   },
   "gallery": {

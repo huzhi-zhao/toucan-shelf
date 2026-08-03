@@ -465,6 +465,10 @@ message UserSetting {
     // This references a CSS file in the web/public/themes/ directory.
     // If not set, the default theme will be used.
     string theme = 4 [(google.api.field_behavior) = OPTIONAL];
+    // Whether a single newline is a soft wrap (CommonMark) rather than a hard line
+    // break, for documents that have not set `DocConfig.soft_break` themselves.
+    // False — hard breaks — is the historical behaviour and stays the default.
+    bool soft_break_default = 5 [(google.api.field_behavior) = OPTIONAL];
   }
 
   // Tag metadata for user-specific display rules.

@@ -613,9 +613,13 @@ type GeneralUserSetting struct {
 	MemoVisibility string `protobuf:"bytes,2,opt,name=memo_visibility,json=memoVisibility,proto3" json:"memo_visibility,omitempty"`
 	// The user's theme preference.
 	// This references a CSS file in the web/public/themes/ directory.
-	Theme         string `protobuf:"bytes,3,opt,name=theme,proto3" json:"theme,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Theme string `protobuf:"bytes,3,opt,name=theme,proto3" json:"theme,omitempty"`
+	// Whether documents that have not been configured individually treat a single
+	// newline as a soft wrap (CommonMark) rather than a hard line break. False —
+	// hard breaks — is the historical behaviour and stays the default.
+	SoftBreakDefault bool `protobuf:"varint,4,opt,name=soft_break_default,json=softBreakDefault,proto3" json:"soft_break_default,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *GeneralUserSetting) Reset() {
@@ -667,6 +671,13 @@ func (x *GeneralUserSetting) GetTheme() string {
 		return x.Theme
 	}
 	return ""
+}
+
+func (x *GeneralUserSetting) GetSoftBreakDefault() bool {
+	if x != nil {
+		return x.SoftBreakDefault
+	}
+	return false
 }
 
 type UserTagMetadata struct {
@@ -1386,11 +1397,12 @@ const file_store_user_setting_proto_rawDesc = "" +
 	"\x0fworkspace_memos\x18\x03 \x03(\v26.memos.store.LastOpenedUserSetting.WorkspaceMemosEntryR\x0eworkspaceMemos\x1aA\n" +
 	"\x13WorkspaceMemosEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"k\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x99\x01\n" +
 	"\x12GeneralUserSetting\x12\x16\n" +
 	"\x06locale\x18\x01 \x01(\tR\x06locale\x12'\n" +
 	"\x0fmemo_visibility\x18\x02 \x01(\tR\x0ememoVisibility\x12\x14\n" +
-	"\x05theme\x18\x03 \x01(\tR\x05theme\"s\n" +
+	"\x05theme\x18\x03 \x01(\tR\x05theme\x12,\n" +
+	"\x12soft_break_default\x18\x04 \x01(\bR\x10softBreakDefault\"s\n" +
 	"\x0fUserTagMetadata\x12=\n" +
 	"\x10background_color\x18\x01 \x01(\v2\x12.google.type.ColorR\x0fbackgroundColor\x12!\n" +
 	"\fblur_content\x18\x02 \x01(\bR\vblurContent\"\xa4\x01\n" +

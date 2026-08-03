@@ -117,6 +117,10 @@ message GeneralUserSetting {
   // The user's theme preference.
   // This references a CSS file in the web/public/themes/ directory.
   string theme = 3;
+  // Whether documents that have not been configured individually treat a single
+  // newline as a soft wrap (CommonMark) rather than a hard line break. False —
+  // hard breaks — is the historical behaviour and stays the default.
+  bool soft_break_default = 4;
 }
 
 message UserTagMetadata {
