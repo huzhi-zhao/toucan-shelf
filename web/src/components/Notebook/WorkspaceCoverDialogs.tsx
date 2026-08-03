@@ -112,6 +112,7 @@ export const WorkspaceCoverImageDialog = ({ workspace, open, onOpenChange }: Pro
           content: buffer,
           origin: AttachmentOrigin.MOUNTED,
         }),
+        workspace: workspace.name,
       });
       await updateWorkspace.mutateAsync({
         workspace: { ...workspace, coverImage: getAttachmentUrl(attachment) },

@@ -657,7 +657,7 @@
       "endpoint": "端點（Endpoint）",
       "endpoint-description": "服務端點，例如 AWS S3、Cloudflare R2、MinIO 或其他相容的 URL。",
       "filepath-template": "檔案路徑範本",
-      "filepath-template-description": "供本機和 S3 儲存使用。支援 {timestamp}、{uuid} 和 {filename}。預設：assets/{timestamp}_{uuid}_{filename}。",
+      "filepath-template-description": "供本機和 S3 儲存使用。支援 {timestamp}、{uuid}、{filename} 和 {workspace}。{workspace} 是所屬知識庫的儲存目錄，僅對 S3 生效；本機儲存下會展開為空。預設：assets/{workspace}/{timestamp}_{uuid}_{filename}。",
       "label": "儲存空間",
       "local-description": "將新附件儲存在伺服器檔案系統上。這是新實例的預設選項。",
       "local-note-backup": "請持續備份附件目錄，特別是在 Docker 或容器部署環境中。",

@@ -10,9 +10,9 @@ import (
 )
 
 func (d *DB) CreateWorkspace(ctx context.Context, create *store.Workspace) (*store.Workspace, error) {
-	fields := []string{"`uid`", "`creator_id`", "`title`"}
-	placeholders := []string{"?", "?", "?"}
-	args := []any{create.UID, create.CreatorID, create.Title}
+	fields := []string{"`uid`", "`creator_id`", "`title`", "`storage_slug`"}
+	placeholders := []string{"?", "?", "?", "?"}
+	args := []any{create.UID, create.CreatorID, create.Title, create.StorageSlug}
 
 	stmt := "INSERT INTO `workspace` (" + strings.Join(fields, ", ") + ") VALUES (" + strings.Join(placeholders, ", ") + ")"
 	result, err := d.db.ExecContext(ctx, stmt, args...)
@@ -59,13 +59,16 @@ func (d *DB) ListWorkspaces(ctx context.Context, find *store.FindWorkspace) ([]*
 	if v := find.Title; v != nil {
 		where, args = append(where, "`title` = ?"), append(args, *v)
 	}
+	if v := find.StorageSlug; v != nil {
+		where, args = append(where, "`storage_slug` = ?"), append(args, *v)
+	}
 
 	rows, err := d.db.QueryContext(ctx, `
 		SELECT
 			id, uid, creator_id, title,
 			UNIX_TIMESTAMP(created_ts) AS created_ts,
 			UNIX_TIMESTAMP(updated_ts) AS updated_ts,
-			sort_field, sort_order, cover_color, cover_image, folders_first
+			sort_field, sort_order, cover_color, cover_image, folders_first, storage_slug
 		FROM `+"`workspace`"+`
 		WHERE `+strings.Join(where, " AND ")+` ORDER BY created_ts ASC`,
 		args...,
@@ -78,7 +81,7 @@ func (d *DB) ListWorkspaces(ctx context.Context, find *store.FindWorkspace) ([]*
 	var list []*store.Workspace
 	for rows.Next() {
 		w := &store.Workspace{}
-		if err := rows.Scan(&w.ID, &w.UID, &w.CreatorID, &w.Title, &w.CreatedTs, &w.UpdatedTs, &w.SortField, &w.SortOrder, &w.CoverColor, &w.CoverImage, &w.FoldersFirst); err != nil {
+		if err := rows.Scan(&w.ID, &w.UID, &w.CreatorID, &w.Title, &w.CreatedTs, &w.UpdatedTs, &w.SortField, &w.SortOrder, &w.CoverColor, &w.CoverImage, &w.FoldersFirst, &w.StorageSlug); err != nil {
 			return nil, err
 		}
 		list = append(list, w)
@@ -108,6 +111,9 @@ func (d *DB) UpdateWorkspace(ctx context.Context, update *store.UpdateWorkspace)
 	}
 	if v := update.FoldersFirst; v != nil {
 		set, args = append(set, "`folders_first` = ?"), append(args, *v)
+	}
+	if v := update.StorageSlug; v != nil {
+		set, args = append(set, "`storage_slug` = ?"), append(args, *v)
 	}
 	set = append(set, "`updated_ts` = NOW()")
 	args = append(args, update.ID)

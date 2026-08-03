@@ -8,7 +8,7 @@ import Editor from "../Editor";
 import { useBlobUrls, useDragAndDrop } from "../hooks";
 import { buildMediaMarkdown, splitMediaFiles } from "../services/mediaInsertService";
 import { uploadService } from "../services/uploadService";
-import { useEditorContext, useEditorSelector } from "../state";
+import { useEditorContext, useEditorSelector, useUploadWorkspace } from "../state";
 import type { EditorContentProps } from "../types";
 import type { EditorController } from "../types/editorController";
 import { AISelectionToolbar } from "./AISelectionToolbar";
@@ -26,6 +26,7 @@ import { AISelectionToolbar } from "./AISelectionToolbar";
 export const EditorContent = forwardRef<EditorController, EditorContentProps>(({ placeholder, expand }, ref) => {
   const t = useTranslate();
   const { actions, dispatch, getState } = useEditorContext();
+  const uploadWorkspace = useUploadWorkspace();
   const { createBlobUrl } = useBlobUrls();
   const content = useEditorSelector((s) => s.content);
   const isFocusMode = useEditorSelector((s) => s.ui.isFocusMode);
@@ -51,9 +52,10 @@ export const EditorContent = forwardRef<EditorController, EditorContentProps>(({
       dispatch(actions.setLoading("uploading", true));
       editor?.insertMarkdown(placeholder);
       try {
-        const [attachment] = await uploadService.uploadFiles([
-          { file, previewUrl: createBlobUrl(file), origin: "upload", attachmentOrigin: AttachmentOrigin.INLINE },
-        ]);
+        const [attachment] = await uploadService.uploadFiles(
+          [{ file, previewUrl: createBlobUrl(file), origin: "upload", attachmentOrigin: AttachmentOrigin.INLINE }],
+          uploadWorkspace,
+        );
         dispatch(actions.setMetadata({ attachments: [...getState().metadata.attachments, attachment] }));
         editor?.replaceText(placeholder, buildMediaMarkdown(attachment));
       } catch {

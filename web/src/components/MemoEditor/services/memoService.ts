@@ -82,10 +82,12 @@ export const memoService = {
       pdfAnnotation?: PdfAnnotation;
       epubAnnotation?: EpubAnnotation;
       docAnchor?: DocAnchor;
+      /** Workspace ("workspaces/{uid}") the uploaded attachments belong to. */
+      workspace?: string;
     },
   ): Promise<{ memoName: string; hasChanges: boolean }> {
     // 1. Upload local files first
-    const newAttachments = await uploadService.uploadFiles(state.localFiles);
+    const newAttachments = await uploadService.uploadFiles(state.localFiles, options.workspace);
     const allAttachments = [...state.metadata.attachments, ...newAttachments];
 
     // 2. Update existing memo

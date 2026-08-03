@@ -7,7 +7,8 @@ import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { describe, expect, it } from "vitest";
-import { SANITIZE_SCHEMA, isTrustedIframeSrc } from "@/components/MemoContent/constants";
+import { isTrustedIframeSrc, SANITIZE_SCHEMA } from "@/components/MemoContent/constants";
+import { rehypeInlineStyle } from "@/utils/rehype-plugins/rehype-inline-style";
 
 type IframeProps = React.ComponentProps<"iframe">;
 
@@ -22,7 +23,12 @@ const renderMemoContent = (content: string): string =>
   renderToStaticMarkup(
     <ReactMarkdown
       remarkPlugins={[remarkMath]}
-      rehypePlugins={[rehypeRaw, [rehypeSanitize, SANITIZE_SCHEMA], [rehypeKatex, { throwOnError: false, strict: false }]]}
+      rehypePlugins={[
+        rehypeRaw,
+        rehypeInlineStyle,
+        [rehypeSanitize, SANITIZE_SCHEMA],
+        [rehypeKatex, { throwOnError: false, strict: false }],
+      ]}
       components={{ iframe: TrustedIframe }}
     >
       {content}
@@ -43,6 +49,13 @@ describe("memo content sanitization", () => {
     expect(html).toMatch(/<span>overlay<\/span>/);
     expect(html).not.toMatch(/style=/);
     expect(html).not.toMatch(/position:fixed/);
+  });
+
+  it("keeps whitelisted inline styles on raw HTML headings", () => {
+    const html = renderMemoContent('<h1 style="text-align: center; color: #2c3e50">NLP</h1>');
+
+    expect(html).toMatch(/text-align:center/);
+    expect(html).toMatch(/color:#2c3e50/);
   });
 
   it("still renders KaTeX output after sanitizing math marker classes", () => {

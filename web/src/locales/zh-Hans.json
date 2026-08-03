@@ -693,7 +693,7 @@
       "endpoint": "端点（Endpoint）",
       "endpoint-description": "服务端点，例如 AWS S3、Cloudflare R2、MinIO 或其它兼容服务链接。",
       "filepath-template": "文件路径模板",
-      "filepath-template-description": "本地文件系统和 S3 都会使用该模板。支持 {timestamp}、{uuid} 和 {filename}。默认值：assets/{timestamp}_{uuid}_{filename}。",
+      "filepath-template-description": "本地文件系统和 S3 都会使用该模板。支持 {timestamp}、{uuid}、{filename} 和 {workspace}。{workspace} 是所属知识库的存储目录，仅对 S3 生效；本地存储下它会被展开为空。默认值：assets/{workspace}/{timestamp}_{uuid}_{filename}。",
       "insecure-skip-tls-verify": "跳过 TLS 验证",
       "insecure-skip-tls-verify-description": "停用 S3 端点的 TLS 证书验证。仅应为使用自签名证书的可信端点启用；启用后将失去对中间人攻击的防护。",
       "local-storage-path": "本地存储路径",

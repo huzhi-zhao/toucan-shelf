@@ -46,7 +46,62 @@ const SPAN_CLASS_NAMES = ["mention", "tag"] as const;
 const MARK_CLASS_NAMES = ["highlight", "highlight-yellow", "highlight-pink"] as const;
 const INPUT_ATTRIBUTES = [...(defaultSchema.attributes?.input || []), ["checked", true]] as const;
 
+/**
+ * Tags whose inline `style` survives sanitization. Common typographic and layout elements
+ * only — enough to render the inline formatting that documents imported from other tools
+ * carry, without opening `style` up wholesale.
+ *
+ * Allowing the attribute here is only safe because `rehypeInlineStyle` runs first and has
+ * already reduced every value to a whitelist of CSS properties; a raw `style` would be a
+ * UI-redressing and external-request vector. Keep the two in step.
+ */
+const STYLEABLE_TAG_NAMES = [
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "p",
+  "div",
+  "span",
+  "blockquote",
+  "ul",
+  "ol",
+  "li",
+  "table",
+  "thead",
+  "tbody",
+  "tr",
+  "th",
+  "td",
+  "img",
+  "a",
+  "strong",
+  "em",
+  // Deprecated but still common in documents authored elsewhere; rendered as a span.
+  "font",
+  "code",
+  "pre",
+  "hr",
+  "br",
+] as const;
+
 export const isTrustedIframeSrc = (src: string): boolean => TRUSTED_IFRAME_SRC_PATTERNS.some((pattern) => pattern.test(src));
+
+/**
+ * Appends `style` to each styleable tag's attribute allow-list, preserving whatever that tag
+ * was already allowed. Applied to the fully-merged attribute map rather than to
+ * `defaultSchema.attributes`, so tags this file overrides (li, code, span, …) keep both their
+ * custom attributes and `style`.
+ */
+const withStyleAttribute = (attributes: Record<string, readonly unknown[]>): Record<string, unknown[]> => {
+  const merged: Record<string, unknown[]> = Object.fromEntries(Object.entries(attributes).map(([tag, list]) => [tag, [...list]]));
+  for (const tagName of STYLEABLE_TAG_NAMES) {
+    merged[tagName] = [...(merged[tagName] || []), "style"];
+  }
+  return merged;
+};
 
 /**
  * Sanitization schema for markdown HTML content.
@@ -64,7 +119,7 @@ export const SANITIZE_SCHEMA = {
   // would prepend a *second* `user-content-` to the ids only (not the hrefs), breaking in-page
   // navigation. Leaving ids untouched keeps footnote (and heading) anchors pointing at real targets.
   clobber: [],
-  attributes: {
+  attributes: withStyleAttribute({
     ...defaultSchema.attributes,
     img: [...(defaultSchema.attributes?.img || []), "height", "width"],
     input: INPUT_ATTRIBUTES,
@@ -97,8 +152,8 @@ export const SANITIZE_SCHEMA = {
       "referrerpolicy",
       "loading",
     ],
-  },
-  tagNames: [...(defaultSchema.tagNames || []), "iframe", "mark"],
+  }),
+  tagNames: [...(defaultSchema.tagNames || []), "iframe", "mark", "font"],
   protocols: {
     ...defaultSchema.protocols,
     src: ["https"],

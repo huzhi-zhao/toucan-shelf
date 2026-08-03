@@ -178,6 +178,16 @@ paths:
                      If empty, a unique ID will be generated.
                   schema:
                     type: string
+                - name: workspace
+                  in: query
+                  description: |-
+                    Optional. The workspace this attachment belongs to, as "workspaces/{uid}".
+                     It decides the workspace directory the blob is stored under in S3 (the
+                     `{workspace}` placeholder of the instance filepath template), so it must be
+                     supplied at upload time — the attachment is usually not linked to a memo yet.
+                     When omitted the blob lands under a shared fallback prefix.
+                  schema:
+                    type: string
             requestBody:
                 content:
                     application/json:

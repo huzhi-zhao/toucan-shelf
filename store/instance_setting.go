@@ -259,7 +259,10 @@ func (s *Store) GetInstanceAISetting(ctx context.Context) (*storepb.InstanceAISe
 const (
 	defaultInstanceStorageType       = storepb.InstanceStorageSetting_LOCAL
 	defaultInstanceUploadSizeLimitMb = 100
-	defaultInstanceFilepathTemplate  = "assets/{timestamp}_{uuid}_{filename}"
+	// {workspace} expands to the owning workspace's storage slug on S3, so each knowledge
+	// base gets its own prefix and can carry its own lifecycle/backup rules. On local
+	// storage it expands to nothing, leaving the historical layout untouched.
+	defaultInstanceFilepathTemplate = "assets/{workspace}/{timestamp}_{uuid}_{filename}"
 )
 
 func (s *Store) GetInstanceStorageSetting(ctx context.Context) (*storepb.InstanceStorageSetting, error) {

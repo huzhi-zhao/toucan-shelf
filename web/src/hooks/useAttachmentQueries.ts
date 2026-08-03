@@ -62,8 +62,11 @@ export function useCreateAttachment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (attachment: Attachment) => {
-      const result = await attachmentServiceClient.createAttachment({ attachment });
+    // `workspace` ("workspaces/{uid}") decides which workspace directory the blob lands in
+    // on S3. Pass it whenever the upload belongs to a known knowledge base — the server can't
+    // infer it, since the attachment usually predates the memo that will reference it.
+    mutationFn: async ({ attachment, workspace }: { attachment: Attachment; workspace?: string }) => {
+      const result = await attachmentServiceClient.createAttachment({ attachment, workspace });
       return result;
     },
     onSuccess: () => {

@@ -8,8 +8,8 @@ import (
 )
 
 func (d *DB) CreateWorkspace(ctx context.Context, create *store.Workspace) (*store.Workspace, error) {
-	fields := []string{"uid", "creator_id", "title"}
-	args := []any{create.UID, create.CreatorID, create.Title}
+	fields := []string{"uid", "creator_id", "title", "storage_slug"}
+	args := []any{create.UID, create.CreatorID, create.Title, create.StorageSlug}
 	stmt := "INSERT INTO workspace (" + strings.Join(fields, ", ") + ") VALUES (" + placeholders(len(args)) + ") RETURNING id, created_ts, updated_ts, sort_field, sort_order, cover_color, cover_image, folders_first"
 	if err := d.db.QueryRowContext(ctx, stmt, args...).Scan(&create.ID, &create.CreatedTs, &create.UpdatedTs, &create.SortField, &create.SortOrder, &create.CoverColor, &create.CoverImage, &create.FoldersFirst); err != nil {
 		return nil, err
@@ -31,9 +31,12 @@ func (d *DB) ListWorkspaces(ctx context.Context, find *store.FindWorkspace) ([]*
 	if v := find.Title; v != nil {
 		where, args = append(where, "title = "+placeholder(len(args)+1)), append(args, *v)
 	}
+	if v := find.StorageSlug; v != nil {
+		where, args = append(where, "storage_slug = "+placeholder(len(args)+1)), append(args, *v)
+	}
 
 	rows, err := d.db.QueryContext(ctx, `
-		SELECT id, uid, creator_id, title, created_ts, updated_ts, sort_field, sort_order, cover_color, cover_image, folders_first
+		SELECT id, uid, creator_id, title, created_ts, updated_ts, sort_field, sort_order, cover_color, cover_image, folders_first, storage_slug
 		FROM workspace
 		WHERE `+strings.Join(where, " AND ")+` ORDER BY created_ts ASC`,
 		args...,
@@ -46,7 +49,7 @@ func (d *DB) ListWorkspaces(ctx context.Context, find *store.FindWorkspace) ([]*
 	var list []*store.Workspace
 	for rows.Next() {
 		w := &store.Workspace{}
-		if err := rows.Scan(&w.ID, &w.UID, &w.CreatorID, &w.Title, &w.CreatedTs, &w.UpdatedTs, &w.SortField, &w.SortOrder, &w.CoverColor, &w.CoverImage, &w.FoldersFirst); err != nil {
+		if err := rows.Scan(&w.ID, &w.UID, &w.CreatorID, &w.Title, &w.CreatedTs, &w.UpdatedTs, &w.SortField, &w.SortOrder, &w.CoverColor, &w.CoverImage, &w.FoldersFirst, &w.StorageSlug); err != nil {
 			return nil, err
 		}
 		list = append(list, w)
@@ -77,18 +80,21 @@ func (d *DB) UpdateWorkspace(ctx context.Context, update *store.UpdateWorkspace)
 	if v := update.FoldersFirst; v != nil {
 		set, args = append(set, "folders_first = "+placeholder(len(args)+1)), append(args, *v)
 	}
+	if v := update.StorageSlug; v != nil {
+		set, args = append(set, "storage_slug = "+placeholder(len(args)+1)), append(args, *v)
+	}
 	set = append(set, "updated_ts = EXTRACT(EPOCH FROM NOW())")
 
 	stmt := `
 		UPDATE workspace
 		SET ` + strings.Join(set, ", ") + `
 		WHERE id = ` + placeholder(len(args)+1) + `
-		RETURNING id, uid, creator_id, title, created_ts, updated_ts, sort_field, sort_order, cover_color, cover_image, folders_first
+		RETURNING id, uid, creator_id, title, created_ts, updated_ts, sort_field, sort_order, cover_color, cover_image, folders_first, storage_slug
 	`
 	args = append(args, update.ID)
 
 	w := &store.Workspace{}
-	if err := d.db.QueryRowContext(ctx, stmt, args...).Scan(&w.ID, &w.UID, &w.CreatorID, &w.Title, &w.CreatedTs, &w.UpdatedTs, &w.SortField, &w.SortOrder, &w.CoverColor, &w.CoverImage, &w.FoldersFirst); err != nil {
+	if err := d.db.QueryRowContext(ctx, stmt, args...).Scan(&w.ID, &w.UID, &w.CreatorID, &w.Title, &w.CreatedTs, &w.UpdatedTs, &w.SortField, &w.SortOrder, &w.CoverColor, &w.CoverImage, &w.FoldersFirst, &w.StorageSlug); err != nil {
 		return nil, err
 	}
 	return w, nil

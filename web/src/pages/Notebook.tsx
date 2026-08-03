@@ -350,15 +350,16 @@ const Notebook = () => {
       if (!workspaceName) return;
       try {
         const buffer = new Uint8Array(await file.arrayBuffer());
-        const attachment = await createAttachment.mutateAsync(
-          create(AttachmentSchema, {
+        const attachment = await createAttachment.mutateAsync({
+          attachment: create(AttachmentSchema, {
             filename: file.name,
             size: BigInt(file.size),
             type: file.type || "application/pdf",
             content: buffer,
             origin: AttachmentOrigin.MOUNTED,
           }),
-        );
+          workspace: workspaceName,
+        });
         const created = await createMemo.mutateAsync(
           create(MemoSchema, {
             workspace: workspaceName,
@@ -492,15 +493,16 @@ const Notebook = () => {
       try {
         const created = await Promise.all(
           files.map(async (file) =>
-            createAttachment.mutateAsync(
-              create(AttachmentSchema, {
+            createAttachment.mutateAsync({
+              attachment: create(AttachmentSchema, {
                 filename: file.name,
                 size: BigInt(file.size),
                 type: file.type || "application/octet-stream",
                 content: new Uint8Array(await file.arrayBuffer()),
                 origin: AttachmentOrigin.MOUNTED,
               }),
-            ),
+              workspace: memo.workspace,
+            }),
           ),
         );
         const attachments = [...memo.attachments, ...created].map((a) => create(AttachmentSchema, { name: a.name }));

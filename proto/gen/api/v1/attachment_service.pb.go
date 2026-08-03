@@ -399,7 +399,13 @@ type CreateAttachmentRequest struct {
 	Attachment *Attachment `protobuf:"bytes,1,opt,name=attachment,proto3" json:"attachment,omitempty"`
 	// Optional. The attachment ID to use for this attachment.
 	// If empty, a unique ID will be generated.
-	AttachmentId  string `protobuf:"bytes,2,opt,name=attachment_id,json=attachmentId,proto3" json:"attachment_id,omitempty"`
+	AttachmentId string `protobuf:"bytes,2,opt,name=attachment_id,json=attachmentId,proto3" json:"attachment_id,omitempty"`
+	// Optional. The workspace this attachment belongs to, as "workspaces/{uid}".
+	// It decides the workspace directory the blob is stored under in S3 (the
+	// `{workspace}` placeholder of the instance filepath template), so it must be
+	// supplied at upload time — the attachment is usually not linked to a memo yet.
+	// When omitted the blob lands under a shared fallback prefix.
+	Workspace     string `protobuf:"bytes,3,opt,name=workspace,proto3" json:"workspace,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -444,6 +450,13 @@ func (x *CreateAttachmentRequest) GetAttachment() *Attachment {
 func (x *CreateAttachmentRequest) GetAttachmentId() string {
 	if x != nil {
 		return x.AttachmentId
+	}
+	return ""
+}
+
+func (x *CreateAttachmentRequest) GetWorkspace() string {
+	if x != nil {
+		return x.Workspace
 	}
 	return ""
 }
@@ -847,12 +860,13 @@ const file_api_v1_attachment_service_proto_rawDesc = "" +
 	"\x0freader_settings\x18\v \x01(\tB\x03\xe0A\x01R\x0ereaderSettings:O\xeaAL\n" +
 	"\x17memos.api.v1/Attachment\x12\x18attachments/{attachment}*\vattachments2\n" +
 	"attachmentB\a\n" +
-	"\x05_memo\"\x82\x01\n" +
+	"\x05_memo\"\xa5\x01\n" +
 	"\x17CreateAttachmentRequest\x12=\n" +
 	"\n" +
 	"attachment\x18\x01 \x01(\v2\x18.memos.api.v1.AttachmentB\x03\xe0A\x02R\n" +
 	"attachment\x12(\n" +
-	"\rattachment_id\x18\x02 \x01(\tB\x03\xe0A\x01R\fattachmentId\"\x9b\x01\n" +
+	"\rattachment_id\x18\x02 \x01(\tB\x03\xe0A\x01R\fattachmentId\x12!\n" +
+	"\tworkspace\x18\x03 \x01(\tB\x03\xe0A\x01R\tworkspace\"\x9b\x01\n" +
 	"\x16ListAttachmentsRequest\x12 \n" +
 	"\tpage_size\x18\x01 \x01(\x05B\x03\xe0A\x01R\bpageSize\x12\"\n" +
 	"\n" +

@@ -18,7 +18,7 @@ import { AudioRecorderPanel, EditorContent, EditorMetadata, FocusModeOverlay, Ti
 import { FOCUS_MODE_STYLES, FORMATTING_TOOLBAR_STORAGE_KEY } from "./constants";
 import { useAudioRecorder, useAutoSave, useFocusMode, useKeyboard, useMemoInit } from "./hooks";
 import { errorService, memoService, transcriptionService, validationService } from "./services";
-import { EditorProvider, useEditorContext, useEditorSelector } from "./state";
+import { EditorProvider, UploadWorkspaceProvider, useEditorContext, useEditorSelector, useUploadWorkspace } from "./state";
 import { CommentToolbar, EditorToolbar, FormattingToolbar } from "./Toolbar";
 import type { MemoEditorProps } from "./types";
 import type { LocalFile } from "./types/attachment";
@@ -26,8 +26,10 @@ import type { EditorController } from "./types/editorController";
 
 const MemoEditor = forwardRef<EditorController, MemoEditorProps>((props, ref) => (
   <EditorProvider>
-    <MemoEditorImpl {...props} ref={ref} />
-    {props.onContentChange && <ContentChangeBridge onContentChange={props.onContentChange} />}
+    <UploadWorkspaceProvider memo={props.memo}>
+      <MemoEditorImpl {...props} ref={ref} />
+      {props.onContentChange && <ContentChangeBridge onContentChange={props.onContentChange} />}
+    </UploadWorkspaceProvider>
   </EditorProvider>
 ));
 MemoEditor.displayName = "MemoEditor";
@@ -77,6 +79,7 @@ const MemoEditorImpl = forwardRef<EditorController, MemoEditorProps>(
     const { userGeneralSetting } = useAuth();
     const { aiSetting, fetchSetting } = useInstance();
     const { markNewMemo } = useNewMemo();
+    const uploadWorkspace = useUploadWorkspace();
     const [isAudioRecorderOpen, setIsAudioRecorderOpen] = useState(false);
     const [isTranscribingAudio, setIsTranscribingAudio] = useState(false);
     // Persisted preference: also show the formatting toolbar in normal mode. Focus
@@ -298,7 +301,14 @@ const MemoEditorImpl = forwardRef<EditorController, MemoEditorProps>(
       dispatch(actions.setLoading("saving", true));
 
       try {
-        const result = await memoService.save(state, { memoName, parentMemoName, pdfAnnotation, epubAnnotation, docAnchor });
+        const result = await memoService.save(state, {
+          memoName,
+          parentMemoName,
+          pdfAnnotation,
+          epubAnnotation,
+          docAnchor,
+          workspace: uploadWorkspace,
+        });
 
         if (!result.hasChanges) {
           toast.error(t("editor.no-changes-detected"));

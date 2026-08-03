@@ -83,7 +83,10 @@ CREATE TABLE `workspace` (
   `sort_order` VARCHAR(16) NOT NULL DEFAULT 'desc',
   `cover_color` VARCHAR(32) NOT NULL DEFAULT '',
   `cover_image` VARCHAR(255) NOT NULL DEFAULT '',
-  `folders_first` TINYINT(1) NOT NULL DEFAULT 0
+  `folders_first` TINYINT(1) NOT NULL DEFAULT 0,
+  -- Stable directory name for this workspace in attachment storage. Derived from the
+  -- title once, then frozen: object keys already written must keep resolving.
+  `storage_slug` VARCHAR(256) NOT NULL DEFAULT ''
 );
 
 -- workspace_folder

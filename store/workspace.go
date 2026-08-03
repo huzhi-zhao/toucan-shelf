@@ -17,14 +17,18 @@ type Workspace struct {
 	CoverColor   string
 	CoverImage   string
 	FoldersFirst bool
+	// StorageSlug is this workspace's directory name in attachment storage. It is derived
+	// from Title once and then frozen — see EnsureWorkspaceStorageSlug.
+	StorageSlug string
 }
 
 // FindWorkspace specifies filter criteria for querying workspaces.
 type FindWorkspace struct {
-	ID        *int32
-	UID       *string
-	CreatorID *int32
-	Title     *string
+	ID          *int32
+	UID         *string
+	CreatorID   *int32
+	Title       *string
+	StorageSlug *string
 }
 
 // UpdateWorkspace contains fields that can be updated for a workspace.
@@ -36,6 +40,9 @@ type UpdateWorkspace struct {
 	CoverColor   *string
 	CoverImage   *string
 	FoldersFirst *bool
+	// StorageSlug is only ever set to backfill a workspace that has none yet. Renaming a
+	// workspace must NOT touch it: object keys already written point at the old name.
+	StorageSlug *string
 }
 
 // DeleteWorkspace specifies which workspace to delete.

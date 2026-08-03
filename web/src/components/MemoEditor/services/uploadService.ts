@@ -5,7 +5,12 @@ import { AttachmentOrigin, AttachmentSchema, MotionMediaSchema } from "@/types/p
 import type { LocalFile } from "../types/attachment";
 
 export const uploadService = {
-  async uploadFiles(localFiles: LocalFile[]): Promise<Attachment[]> {
+  /**
+   * `workspace` ("workspaces/{uid}") decides which workspace directory the blobs land in
+   * on S3. It has to be passed explicitly: uploads happen before the memo exists, so the
+   * server has nothing to infer the workspace from.
+   */
+  async uploadFiles(localFiles: LocalFile[], workspace?: string): Promise<Attachment[]> {
     if (localFiles.length === 0) return [];
 
     const attachments: Attachment[] = [];
@@ -22,6 +27,7 @@ export const uploadService = {
           motionMedia: motionMedia ? create(MotionMediaSchema, motionMedia) : undefined,
           origin: attachmentOrigin ?? AttachmentOrigin.MOUNTED,
         }),
+        workspace,
       });
       attachments.push(attachment);
     }

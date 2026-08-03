@@ -158,6 +158,9 @@ func (s *APIV1Service) CreateAttachment(ctx context.Context, request *v1pb.Creat
 	create.Size = int64(size)
 	create.Blob = request.Attachment.Content
 
+	// Set when the upload names a memo, so the blob can inherit that memo's workspace
+	// directory even if the caller didn't pass `workspace` explicitly.
+	var memoWorkspaceID *int32
 	if request.Attachment.Memo != nil {
 		memoUID, err := ExtractMemoUIDFromName(*request.Attachment.Memo)
 		if err != nil {
@@ -174,6 +177,12 @@ func (s *APIV1Service) CreateAttachment(ctx context.Context, request *v1pb.Creat
 			return nil, status.Errorf(codes.PermissionDenied, "permission denied")
 		}
 		create.MemoID = &memo.ID
+		memoWorkspaceID = &memo.WorkspaceID
+	}
+
+	workspaceSlug, err := s.resolveAttachmentWorkspaceSlug(ctx, user.ID, request.Workspace, memoWorkspaceID)
+	if err != nil {
+		return nil, err
 	}
 
 	if create.Payload == nil || create.Payload.MotionMedia == nil {
@@ -204,7 +213,7 @@ func (s *APIV1Service) CreateAttachment(ctx context.Context, request *v1pb.Creat
 		}
 	}
 
-	if err := SaveAttachmentBlob(ctx, s.Profile, s.Store, create); err != nil {
+	if err := SaveAttachmentBlob(ctx, s.Profile, s.Store, create, workspaceSlug); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to save attachment blob: %v", err)
 	}
 
@@ -214,6 +223,51 @@ func (s *APIV1Service) CreateAttachment(ctx context.Context, request *v1pb.Creat
 	}
 
 	return convertAttachmentFromStore(attachment), nil
+}
+
+// resolveAttachmentWorkspaceSlug decides which workspace directory an upload is stored under.
+//
+// An explicitly named workspace wins and is validated: a name that doesn't resolve, or that
+// belongs to someone else, is an error rather than a silent fallback — writing a blob into the
+// wrong knowledge base's directory would quietly defeat the isolation the directory is for.
+// Failing that, the memo the upload is attached to supplies the workspace. With neither, the
+// caller genuinely has no workspace and the blob goes to the shared fallback prefix.
+func (s *APIV1Service) resolveAttachmentWorkspaceSlug(ctx context.Context, userID int32, workspaceName string, memoWorkspaceID *int32) (string, error) {
+	find := &store.FindWorkspace{}
+	switch {
+	case strings.TrimSpace(workspaceName) != "":
+		uid, err := ExtractWorkspaceUIDFromName(workspaceName)
+		if err != nil {
+			return "", status.Errorf(codes.InvalidArgument, "invalid workspace name: %v", err)
+		}
+		find.UID = &uid
+	case memoWorkspaceID != nil:
+		find.ID = memoWorkspaceID
+	default:
+		return "", nil
+	}
+
+	workspace, err := s.Store.GetWorkspace(ctx, find)
+	if err != nil {
+		return "", status.Errorf(codes.Internal, "failed to get workspace: %v", err)
+	}
+	if workspace == nil {
+		// A memo whose workspace vanished shouldn't fail the upload; only an explicitly
+		// named workspace is held to existing.
+		if find.UID == nil {
+			return "", nil
+		}
+		return "", status.Errorf(codes.NotFound, "workspace not found: %s", workspaceName)
+	}
+	if find.UID != nil && workspace.CreatorID != userID {
+		return "", status.Errorf(codes.PermissionDenied, "permission denied")
+	}
+
+	slug, err := s.Store.EnsureWorkspaceStorageSlug(ctx, workspace)
+	if err != nil {
+		return "", status.Errorf(codes.Internal, "failed to resolve workspace storage slug: %v", err)
+	}
+	return slug, nil
 }
 
 func (s *APIV1Service) ListAttachments(ctx context.Context, request *v1pb.ListAttachmentsRequest) (*v1pb.ListAttachmentsResponse, error) {
@@ -496,7 +550,11 @@ func convertAttachmentFromStore(attachment *store.Attachment) *v1pb.Attachment {
 }
 
 // SaveAttachmentBlob saves the blob of attachment based on the storage config.
-func SaveAttachmentBlob(ctx context.Context, profile *profile.Profile, stores *store.Store, create *store.Attachment) error {
+//
+// workspaceSlug is the storage slug of the workspace the attachment belongs to; it fills the
+// `{workspace}` placeholder of the S3 filepath template. It has to be passed in rather than
+// derived from create.MemoID, because web uploads happen before the memo exists.
+func SaveAttachmentBlob(ctx context.Context, profile *profile.Profile, stores *store.Store, create *store.Attachment, workspaceSlug string) error {
 	instanceStorageSetting, err := stores.GetInstanceStorageSetting(ctx)
 	if err != nil {
 		return errors.Wrap(err, "Failed to find instance storage setting")
@@ -512,7 +570,7 @@ func SaveAttachmentBlob(ctx context.Context, profile *profile.Profile, stores *s
 		if !strings.Contains(internalPath, "{filename}") {
 			internalPath = filepath.Join(internalPath, "{filename}")
 		}
-		internalPath = replaceFilenameWithPathTemplate(internalPath, create.Filename)
+		internalPath = replaceFilenameWithPathTemplate(internalPath, attachmentPathContext{filename: create.Filename, dropWorkspace: true})
 		internalPath = filepath.ToSlash(internalPath)
 
 		// Ensure the directory exists.
@@ -555,7 +613,7 @@ func SaveAttachmentBlob(ctx context.Context, profile *profile.Profile, stores *s
 		if !strings.Contains(filepathTemplate, "{filename}") {
 			filepathTemplate = filepath.Join(filepathTemplate, "{filename}")
 		}
-		filepathTemplate = replaceFilenameWithPathTemplate(filepathTemplate, create.Filename)
+		filepathTemplate = replaceFilenameWithPathTemplate(filepathTemplate, attachmentPathContext{filename: create.Filename, workspaceSlug: workspaceSlug})
 		key, err := s3Client.UploadObject(ctx, filepathTemplate, create.Type, bytes.NewReader(create.Blob))
 		if err != nil {
 			return errors.Wrap(err, "Failed to upload via s3 client")
@@ -640,12 +698,41 @@ func (s *APIV1Service) GetAttachmentBlob(attachment *store.Attachment) ([]byte, 
 
 var fileKeyPattern = regexp.MustCompile(`\{[a-z]{1,9}\}`)
 
-func replaceFilenameWithPathTemplate(path, filename string) string {
+// attachmentPathContext carries the per-upload values that the filepath template can
+// interpolate beyond the filename.
+type attachmentPathContext struct {
+	filename string
+	// workspaceSlug is the storage slug of the owning workspace, or "" when the caller
+	// did not supply a workspace (see unassignedWorkspaceSlug).
+	workspaceSlug string
+	// dropWorkspace expands `{workspace}` to nothing instead of a directory name. Set for
+	// local storage: per-workspace directories are an S3-only concern (they exist so S3
+	// lifecycle/backup rules can be scoped per knowledge base), and silently reorganizing
+	// an existing local data directory is not worth it.
+	dropWorkspace bool
+}
+
+// unassignedWorkspaceSlug is the directory used when an upload arrives with no workspace.
+// Uploads that legitimately have no workspace (and any caller not yet updated) still
+// succeed; they just don't get their own directory.
+const unassignedWorkspaceSlug = "_unassigned"
+
+func replaceFilenameWithPathTemplate(path string, pathCtx attachmentPathContext) string {
+	filename := pathCtx.filename
+	workspaceSlug := pathCtx.workspaceSlug
+	if workspaceSlug == "" {
+		workspaceSlug = unassignedWorkspaceSlug
+	}
+	if pathCtx.dropWorkspace {
+		workspaceSlug = ""
+	}
 	t := time.Now()
 	path = fileKeyPattern.ReplaceAllStringFunc(path, func(s string) string {
 		switch s {
 		case "{filename}":
 			return filename
+		case "{workspace}":
+			return workspaceSlug
 		case "{timestamp}":
 			return fmt.Sprintf("%d", t.Unix())
 		case "{year}":
@@ -666,6 +753,17 @@ func replaceFilenameWithPathTemplate(path, filename string) string {
 			return s
 		}
 	})
+	// A placeholder that expanded to nothing (`{workspace}` on local storage) leaves an
+	// empty path segment behind; collapse it so the result stays a well-formed path.
+	// The leading separator of an absolute template is preserved.
+	absolute := strings.HasPrefix(path, "/")
+	for strings.Contains(path, "//") {
+		path = strings.ReplaceAll(path, "//", "/")
+	}
+	path = strings.TrimPrefix(path, "/")
+	if absolute {
+		path = "/" + path
+	}
 	return path
 }
 

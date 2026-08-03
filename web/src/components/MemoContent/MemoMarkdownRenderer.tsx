@@ -24,6 +24,7 @@ import {
 } from "@/types/markdown";
 import { type MemoProperty, parseFrontmatter } from "@/utils/frontmatter";
 import { rehypeHeadingId } from "@/utils/rehype-plugins/rehype-heading-id";
+import { rehypeInlineStyle } from "@/utils/rehype-plugins/rehype-inline-style";
 import { remarkAlert } from "@/utils/remark-plugins/remark-alert";
 import { remarkCodeFold } from "@/utils/remark-plugins/remark-code-fold";
 import { remarkCounter } from "@/utils/remark-plugins/remark-counter";
@@ -126,7 +127,16 @@ export const MemoMarkdownRenderer = ({
     [hardBreaks],
   );
 
+  // `<font>` is deprecated HTML but common in documents authored elsewhere. It is rendered as
+  // a span so only its (already sanitized) inline style survives — the legacy presentational
+  // attributes (color/size/face) are not on the allow-list and never reach here. react-markdown's
+  // `Components` type only covers current HTML elements, hence the cast.
+  const legacyComponents = {
+    font: ({ children, ...props }: React.ComponentProps<"span">) => <span {...props}>{children}</span>,
+  } as Components;
+
   const markdownComponents: Components = {
+    ...legacyComponents,
     input: ({ node, ...inputProps }) => {
       if (node && isTaskListItemElement(node)) {
         return <TaskListItem {...inputProps} node={node} />;
@@ -260,6 +270,10 @@ export const MemoMarkdownRenderer = ({
         remarkPlugins={remarkPlugins}
         rehypePlugins={[
           rehypeRaw,
+          // Runs between raw-HTML expansion and sanitization: it reduces every authored
+          // `style` to a whitelist of CSS properties, which is what makes allowing the
+          // attribute in SANITIZE_SCHEMA safe.
+          rehypeInlineStyle,
           [rehypeSanitize, SANITIZE_SCHEMA],
           [rehypeHeadingId, { prefix: headingIdPrefix ?? "" }],
           [rehypeKatex, { throwOnError: false, strict: false }],

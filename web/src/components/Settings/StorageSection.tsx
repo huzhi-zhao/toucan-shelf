@@ -26,7 +26,7 @@ import SettingRow from "./SettingRow";
 import SettingSection from "./SettingSection";
 import useInstanceSettingUpdater, { buildInstanceSettingName } from "./useInstanceSettingUpdater";
 
-const DEFAULT_FILEPATH_TEMPLATE = "assets/{timestamp}_{uuid}_{filename}";
+const DEFAULT_FILEPATH_TEMPLATE = "assets/{workspace}/{timestamp}_{uuid}_{filename}";
 
 const activeStorageOptions = [
   { storageType: InstanceSetting_StorageSetting_StorageType.LOCAL, labelKey: "setting.storage.type-local" as const },
