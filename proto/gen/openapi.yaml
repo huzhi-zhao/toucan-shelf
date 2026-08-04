@@ -3047,6 +3047,40 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/v1/workspaces/{workspace}/folders:move:
+        post:
+            tags:
+                - WorkspaceService
+            description: |-
+                MoveWorkspaceFolder moves a folder (and everything under it) into another
+                 workspace. Moving within a single workspace is RenameWorkspaceFolder's job.
+            operationId: WorkspaceService_MoveWorkspaceFolder
+            parameters:
+                - name: workspace
+                  in: path
+                  description: The workspace id.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/MoveWorkspaceFolderRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/MoveWorkspaceFolderResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/workspaces/{workspace}/folders:rename:
         post:
             tags:
@@ -4585,6 +4619,42 @@ components:
                     type: string
                 hasEmbeddedVideo:
                     type: boolean
+        MoveWorkspaceFolderRequest:
+            required:
+                - parent
+                - path
+                - destinationWorkspace
+            type: object
+            properties:
+                parent:
+                    type: string
+                    description: |-
+                        Required. The workspace the folder currently lives in.
+                         Format: workspaces/{workspace}
+                path:
+                    type: string
+                    description: Required. The folder path to move, relative to the source workspace root.
+                destinationWorkspace:
+                    type: string
+                    description: |-
+                        Required. The workspace to move the folder into.
+                         Format: workspaces/{workspace}
+                destinationFolderPath:
+                    type: string
+                    description: |-
+                        Optional. The destination parent folder within destination_workspace. Empty
+                         means the destination workspace's root. The moved folder keeps its own name,
+                         so it ends up at "{destination_folder_path}/{name}".
+        MoveWorkspaceFolderResponse:
+            type: object
+            properties:
+                newPath:
+                    type: string
+                    description: The folder's new path within the destination workspace.
+                movedDocumentCount:
+                    type: integer
+                    description: How many documents were moved.
+                    format: int32
         NotificationSetting_EmailSetting:
             type: object
             properties:

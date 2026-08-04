@@ -23,8 +23,6 @@ hierarchy** combined with **Notion's views**, without either one's weight.
   browser, with a visual Bookshelf to manage many knowledge bases — lightweight
   and instantly reachable, no desktop app to install or sync.
 
-![knowledgebase](docs/images/Yuque-like-knowledgebase.png)
-
 ---
 
 ## What this fork adds

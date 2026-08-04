@@ -23,6 +23,7 @@ import usePageTitle from "@/hooks/usePageTitle";
 import {
   useCreateWorkspaceFolder,
   useDeleteWorkspaceFolder,
+  useMoveWorkspaceFolder,
   useRenameWorkspaceFolder,
   useWorkspaces,
   useWorkspaceTree,
@@ -174,6 +175,7 @@ const Notebook = () => {
   const createAttachment = useCreateAttachment();
   const createFolder = useCreateWorkspaceFolder();
   const renameFolder = useRenameWorkspaceFolder();
+  const moveFolder = useMoveWorkspaceFolder();
   const deleteFolder = useDeleteWorkspaceFolder();
 
   // Restore last-opened workspace once workspaces are available. A workspace requested via
@@ -412,22 +414,29 @@ const Notebook = () => {
   );
 
   const handleMoveFolder = useCallback(
-    async (oldPath: string, destinationFolderPath: string) => {
+    async (oldPath: string, destinationWorkspace: string, destinationFolderPath: string) => {
       if (!workspaceName) return;
-      const name = oldPath.split("/").pop() ?? oldPath;
-      const newPath = destinationFolderPath ? `${destinationFolderPath}/${name}` : name;
       try {
-        await renameFolder.mutateAsync({
-          parent: workspaceName,
-          oldPath,
-          newPath,
-        });
+        // Within one workspace a move is just a path rewrite; across workspaces the
+        // documents have to change owner too, which is a separate RPC.
+        if (destinationWorkspace === workspaceName) {
+          const name = oldPath.split("/").pop() ?? oldPath;
+          const newPath = destinationFolderPath ? `${destinationFolderPath}/${name}` : name;
+          await renameFolder.mutateAsync({ parent: workspaceName, oldPath, newPath });
+        } else {
+          await moveFolder.mutateAsync({
+            parent: workspaceName,
+            path: oldPath,
+            destinationWorkspace,
+            destinationFolderPath,
+          });
+        }
         invalidateTree();
       } catch (error) {
         handleError(error, toast.error, { context: t("notebook.move") });
       }
     },
-    [workspaceName, renameFolder, invalidateTree, t],
+    [workspaceName, renameFolder, moveFolder, invalidateTree, t],
   );
 
   const handleDeleteFolder = useCallback(
@@ -681,7 +690,7 @@ const Notebook = () => {
           onOpenChange={(open) => !open && setMoveFolderDialog(null)}
           workspaceName={workspaceName}
           path={moveFolderDialog?.path ?? ""}
-          onConfirm={(destinationFolderPath) => handleMoveFolder(moveFolderDialog?.path ?? "", destinationFolderPath)}
+          onConfirm={(workspace, destinationFolderPath) => handleMoveFolder(moveFolderDialog?.path ?? "", workspace, destinationFolderPath)}
         />
       )}
     </div>

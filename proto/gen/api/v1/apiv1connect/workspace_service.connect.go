@@ -58,6 +58,9 @@ const (
 	// WorkspaceServiceRenameWorkspaceFolderProcedure is the fully-qualified name of the
 	// WorkspaceService's RenameWorkspaceFolder RPC.
 	WorkspaceServiceRenameWorkspaceFolderProcedure = "/memos.api.v1.WorkspaceService/RenameWorkspaceFolder"
+	// WorkspaceServiceMoveWorkspaceFolderProcedure is the fully-qualified name of the
+	// WorkspaceService's MoveWorkspaceFolder RPC.
+	WorkspaceServiceMoveWorkspaceFolderProcedure = "/memos.api.v1.WorkspaceService/MoveWorkspaceFolder"
 	// WorkspaceServiceDeleteWorkspaceFolderProcedure is the fully-qualified name of the
 	// WorkspaceService's DeleteWorkspaceFolder RPC.
 	WorkspaceServiceDeleteWorkspaceFolderProcedure = "/memos.api.v1.WorkspaceService/DeleteWorkspaceFolder"
@@ -81,6 +84,9 @@ type WorkspaceServiceClient interface {
 	CreateWorkspaceFolder(context.Context, *connect.Request[v1.CreateWorkspaceFolderRequest]) (*connect.Response[v1.WorkspaceFolder], error)
 	// RenameWorkspaceFolder renames a folder and moves all memos/subfolders under it.
 	RenameWorkspaceFolder(context.Context, *connect.Request[v1.RenameWorkspaceFolderRequest]) (*connect.Response[emptypb.Empty], error)
+	// MoveWorkspaceFolder moves a folder (and everything under it) into another
+	// workspace. Moving within a single workspace is RenameWorkspaceFolder's job.
+	MoveWorkspaceFolder(context.Context, *connect.Request[v1.MoveWorkspaceFolderRequest]) (*connect.Response[v1.MoveWorkspaceFolderResponse], error)
 	// DeleteWorkspaceFolder deletes an empty folder.
 	DeleteWorkspaceFolder(context.Context, *connect.Request[v1.DeleteWorkspaceFolderRequest]) (*connect.Response[emptypb.Empty], error)
 }
@@ -144,6 +150,12 @@ func NewWorkspaceServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(workspaceServiceMethods.ByName("RenameWorkspaceFolder")),
 			connect.WithClientOptions(opts...),
 		),
+		moveWorkspaceFolder: connect.NewClient[v1.MoveWorkspaceFolderRequest, v1.MoveWorkspaceFolderResponse](
+			httpClient,
+			baseURL+WorkspaceServiceMoveWorkspaceFolderProcedure,
+			connect.WithSchema(workspaceServiceMethods.ByName("MoveWorkspaceFolder")),
+			connect.WithClientOptions(opts...),
+		),
 		deleteWorkspaceFolder: connect.NewClient[v1.DeleteWorkspaceFolderRequest, emptypb.Empty](
 			httpClient,
 			baseURL+WorkspaceServiceDeleteWorkspaceFolderProcedure,
@@ -163,6 +175,7 @@ type workspaceServiceClient struct {
 	getWorkspaceTree      *connect.Client[v1.GetWorkspaceTreeRequest, v1.GetWorkspaceTreeResponse]
 	createWorkspaceFolder *connect.Client[v1.CreateWorkspaceFolderRequest, v1.WorkspaceFolder]
 	renameWorkspaceFolder *connect.Client[v1.RenameWorkspaceFolderRequest, emptypb.Empty]
+	moveWorkspaceFolder   *connect.Client[v1.MoveWorkspaceFolderRequest, v1.MoveWorkspaceFolderResponse]
 	deleteWorkspaceFolder *connect.Client[v1.DeleteWorkspaceFolderRequest, emptypb.Empty]
 }
 
@@ -206,6 +219,11 @@ func (c *workspaceServiceClient) RenameWorkspaceFolder(ctx context.Context, req 
 	return c.renameWorkspaceFolder.CallUnary(ctx, req)
 }
 
+// MoveWorkspaceFolder calls memos.api.v1.WorkspaceService.MoveWorkspaceFolder.
+func (c *workspaceServiceClient) MoveWorkspaceFolder(ctx context.Context, req *connect.Request[v1.MoveWorkspaceFolderRequest]) (*connect.Response[v1.MoveWorkspaceFolderResponse], error) {
+	return c.moveWorkspaceFolder.CallUnary(ctx, req)
+}
+
 // DeleteWorkspaceFolder calls memos.api.v1.WorkspaceService.DeleteWorkspaceFolder.
 func (c *workspaceServiceClient) DeleteWorkspaceFolder(ctx context.Context, req *connect.Request[v1.DeleteWorkspaceFolderRequest]) (*connect.Response[emptypb.Empty], error) {
 	return c.deleteWorkspaceFolder.CallUnary(ctx, req)
@@ -229,6 +247,9 @@ type WorkspaceServiceHandler interface {
 	CreateWorkspaceFolder(context.Context, *connect.Request[v1.CreateWorkspaceFolderRequest]) (*connect.Response[v1.WorkspaceFolder], error)
 	// RenameWorkspaceFolder renames a folder and moves all memos/subfolders under it.
 	RenameWorkspaceFolder(context.Context, *connect.Request[v1.RenameWorkspaceFolderRequest]) (*connect.Response[emptypb.Empty], error)
+	// MoveWorkspaceFolder moves a folder (and everything under it) into another
+	// workspace. Moving within a single workspace is RenameWorkspaceFolder's job.
+	MoveWorkspaceFolder(context.Context, *connect.Request[v1.MoveWorkspaceFolderRequest]) (*connect.Response[v1.MoveWorkspaceFolderResponse], error)
 	// DeleteWorkspaceFolder deletes an empty folder.
 	DeleteWorkspaceFolder(context.Context, *connect.Request[v1.DeleteWorkspaceFolderRequest]) (*connect.Response[emptypb.Empty], error)
 }
@@ -288,6 +309,12 @@ func NewWorkspaceServiceHandler(svc WorkspaceServiceHandler, opts ...connect.Han
 		connect.WithSchema(workspaceServiceMethods.ByName("RenameWorkspaceFolder")),
 		connect.WithHandlerOptions(opts...),
 	)
+	workspaceServiceMoveWorkspaceFolderHandler := connect.NewUnaryHandler(
+		WorkspaceServiceMoveWorkspaceFolderProcedure,
+		svc.MoveWorkspaceFolder,
+		connect.WithSchema(workspaceServiceMethods.ByName("MoveWorkspaceFolder")),
+		connect.WithHandlerOptions(opts...),
+	)
 	workspaceServiceDeleteWorkspaceFolderHandler := connect.NewUnaryHandler(
 		WorkspaceServiceDeleteWorkspaceFolderProcedure,
 		svc.DeleteWorkspaceFolder,
@@ -312,6 +339,8 @@ func NewWorkspaceServiceHandler(svc WorkspaceServiceHandler, opts ...connect.Han
 			workspaceServiceCreateWorkspaceFolderHandler.ServeHTTP(w, r)
 		case WorkspaceServiceRenameWorkspaceFolderProcedure:
 			workspaceServiceRenameWorkspaceFolderHandler.ServeHTTP(w, r)
+		case WorkspaceServiceMoveWorkspaceFolderProcedure:
+			workspaceServiceMoveWorkspaceFolderHandler.ServeHTTP(w, r)
 		case WorkspaceServiceDeleteWorkspaceFolderProcedure:
 			workspaceServiceDeleteWorkspaceFolderHandler.ServeHTTP(w, r)
 		default:
@@ -353,6 +382,10 @@ func (UnimplementedWorkspaceServiceHandler) CreateWorkspaceFolder(context.Contex
 
 func (UnimplementedWorkspaceServiceHandler) RenameWorkspaceFolder(context.Context, *connect.Request[v1.RenameWorkspaceFolderRequest]) (*connect.Response[emptypb.Empty], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.WorkspaceService.RenameWorkspaceFolder is not implemented"))
+}
+
+func (UnimplementedWorkspaceServiceHandler) MoveWorkspaceFolder(context.Context, *connect.Request[v1.MoveWorkspaceFolderRequest]) (*connect.Response[v1.MoveWorkspaceFolderResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.WorkspaceService.MoveWorkspaceFolder is not implemented"))
 }
 
 func (UnimplementedWorkspaceServiceHandler) DeleteWorkspaceFolder(context.Context, *connect.Request[v1.DeleteWorkspaceFolderRequest]) (*connect.Response[emptypb.Empty], error) {

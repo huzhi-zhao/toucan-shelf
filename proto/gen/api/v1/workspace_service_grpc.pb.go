@@ -28,6 +28,7 @@ const (
 	WorkspaceService_GetWorkspaceTree_FullMethodName      = "/memos.api.v1.WorkspaceService/GetWorkspaceTree"
 	WorkspaceService_CreateWorkspaceFolder_FullMethodName = "/memos.api.v1.WorkspaceService/CreateWorkspaceFolder"
 	WorkspaceService_RenameWorkspaceFolder_FullMethodName = "/memos.api.v1.WorkspaceService/RenameWorkspaceFolder"
+	WorkspaceService_MoveWorkspaceFolder_FullMethodName   = "/memos.api.v1.WorkspaceService/MoveWorkspaceFolder"
 	WorkspaceService_DeleteWorkspaceFolder_FullMethodName = "/memos.api.v1.WorkspaceService/DeleteWorkspaceFolder"
 )
 
@@ -51,6 +52,9 @@ type WorkspaceServiceClient interface {
 	CreateWorkspaceFolder(ctx context.Context, in *CreateWorkspaceFolderRequest, opts ...grpc.CallOption) (*WorkspaceFolder, error)
 	// RenameWorkspaceFolder renames a folder and moves all memos/subfolders under it.
 	RenameWorkspaceFolder(ctx context.Context, in *RenameWorkspaceFolderRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// MoveWorkspaceFolder moves a folder (and everything under it) into another
+	// workspace. Moving within a single workspace is RenameWorkspaceFolder's job.
+	MoveWorkspaceFolder(ctx context.Context, in *MoveWorkspaceFolderRequest, opts ...grpc.CallOption) (*MoveWorkspaceFolderResponse, error)
 	// DeleteWorkspaceFolder deletes an empty folder.
 	DeleteWorkspaceFolder(ctx context.Context, in *DeleteWorkspaceFolderRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
@@ -143,6 +147,16 @@ func (c *workspaceServiceClient) RenameWorkspaceFolder(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *workspaceServiceClient) MoveWorkspaceFolder(ctx context.Context, in *MoveWorkspaceFolderRequest, opts ...grpc.CallOption) (*MoveWorkspaceFolderResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MoveWorkspaceFolderResponse)
+	err := c.cc.Invoke(ctx, WorkspaceService_MoveWorkspaceFolder_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *workspaceServiceClient) DeleteWorkspaceFolder(ctx context.Context, in *DeleteWorkspaceFolderRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -173,6 +187,9 @@ type WorkspaceServiceServer interface {
 	CreateWorkspaceFolder(context.Context, *CreateWorkspaceFolderRequest) (*WorkspaceFolder, error)
 	// RenameWorkspaceFolder renames a folder and moves all memos/subfolders under it.
 	RenameWorkspaceFolder(context.Context, *RenameWorkspaceFolderRequest) (*emptypb.Empty, error)
+	// MoveWorkspaceFolder moves a folder (and everything under it) into another
+	// workspace. Moving within a single workspace is RenameWorkspaceFolder's job.
+	MoveWorkspaceFolder(context.Context, *MoveWorkspaceFolderRequest) (*MoveWorkspaceFolderResponse, error)
 	// DeleteWorkspaceFolder deletes an empty folder.
 	DeleteWorkspaceFolder(context.Context, *DeleteWorkspaceFolderRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedWorkspaceServiceServer()
@@ -208,6 +225,9 @@ func (UnimplementedWorkspaceServiceServer) CreateWorkspaceFolder(context.Context
 }
 func (UnimplementedWorkspaceServiceServer) RenameWorkspaceFolder(context.Context, *RenameWorkspaceFolderRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method RenameWorkspaceFolder not implemented")
+}
+func (UnimplementedWorkspaceServiceServer) MoveWorkspaceFolder(context.Context, *MoveWorkspaceFolderRequest) (*MoveWorkspaceFolderResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method MoveWorkspaceFolder not implemented")
 }
 func (UnimplementedWorkspaceServiceServer) DeleteWorkspaceFolder(context.Context, *DeleteWorkspaceFolderRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteWorkspaceFolder not implemented")
@@ -377,6 +397,24 @@ func _WorkspaceService_RenameWorkspaceFolder_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkspaceService_MoveWorkspaceFolder_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MoveWorkspaceFolderRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkspaceServiceServer).MoveWorkspaceFolder(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkspaceService_MoveWorkspaceFolder_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkspaceServiceServer).MoveWorkspaceFolder(ctx, req.(*MoveWorkspaceFolderRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _WorkspaceService_DeleteWorkspaceFolder_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeleteWorkspaceFolderRequest)
 	if err := dec(in); err != nil {
@@ -433,6 +471,10 @@ var WorkspaceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RenameWorkspaceFolder",
 			Handler:    _WorkspaceService_RenameWorkspaceFolder_Handler,
+		},
+		{
+			MethodName: "MoveWorkspaceFolder",
+			Handler:    _WorkspaceService_MoveWorkspaceFolder_Handler,
 		},
 		{
 			MethodName: "DeleteWorkspaceFolder",

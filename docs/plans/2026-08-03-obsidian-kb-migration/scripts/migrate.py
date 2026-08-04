@@ -23,6 +23,7 @@ import os
 import re
 import shutil
 import sys
+import time
 import unicodedata
 import urllib.error
 import urllib.parse
@@ -523,15 +524,40 @@ class ToucanClient:
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {self.token}",
                 "Connect-Protocol-Version": "1",
+                # 目标站在 Cloudflare 后面，urllib 默认的 Python-urllib/x.y 会被
+                # 浏览器完整性检查拒掉（HTTP 403, error code: 1010）。
+                "User-Agent": "kb-migration/1.0",
             },
         )
-        try:
-            with urllib.request.urlopen(req, timeout=180) as resp:
-                body = resp.read()
-        except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", "replace")
-            raise ApiError(exc.code, detail) from None
-        return json.loads(body) if body else {}
+        # 目标站在 Cloudflare 后面，观测到约 15% 的连接会在写请求体的中途被重置
+        # （BrokenPipe / URLError），与请求大小无关。这是传输层抖动，重试即可；
+        # 上层的确定性 attachment_id + get_attachment 兜住「其实已经建好了」的情形。
+        last: Exception | None = None
+        for attempt in range(5):
+            if attempt:
+                time.sleep(2**attempt)
+            try:
+                with urllib.request.urlopen(req, timeout=180) as resp:
+                    body = resp.read()
+                return json.loads(body) if body else {}
+            except urllib.error.HTTPError as exc:
+                detail = exc.read().decode("utf-8", "replace")
+                # 唯一约束冲突是确定性的（附件已存在），重试只会重复失败。
+                retryable = exc.code in (429, 500, 502, 503, 504, 520, 521, 522, 523, 524)
+                if "UNIQUE constraint" in detail:
+                    retryable = False
+                if retryable:
+                    last = ApiError(exc.code, detail)
+                    print(
+                        f"  重试（HTTP {exc.code}，第 {attempt + 1} 次）：{detail[:500]}",
+                        file=sys.stderr,
+                    )
+                    continue
+                raise ApiError(exc.code, detail) from None
+            except (urllib.error.URLError, OSError) as exc:
+                last = exc
+                print(f"  重试（{exc.__class__.__name__}，第 {attempt + 1} 次）", file=sys.stderr)
+        raise ApiError(0, f"重试 5 次仍失败：{last}") from None
 
     def create_attachment(
         self, *, attachment_id: str, filename: str, mime: str, content: bytes, memo_name: str

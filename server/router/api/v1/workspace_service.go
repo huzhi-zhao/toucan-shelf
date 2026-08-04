@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"log/slog"
 	"sort"
 	"strings"
 	"time"
@@ -243,7 +244,208 @@ func (s *APIV1Service) RenameWorkspaceFolder(ctx context.Context, request *v1pb.
 	if err := s.Store.RenameWorkspaceFolder(ctx, workspace.ID, oldPath, newPath); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to rename folder: %v", err)
 	}
+	s.reindexFolder(ctx, workspace.ID, newPath)
 	return &emptypb.Empty{}, nil
+}
+
+// reindexFolder re-enqueues every document under path for indexing.
+//
+// RenameWorkspaceFolder rewrites memo.folder_path with bulk SQL in the store
+// layer, which is much cheaper than a per-document update but bypasses
+// store.UpdateMemo — the only write path that enqueues an index job. memo_chunk
+// denormalizes folder_path, so without this the chunks keep pointing at the old
+// path forever. (MoveWorkspaceFolder does not need this: it moves document by
+// document precisely so it inherits the enqueue.)
+//
+// Best-effort by design, matching store.enqueueMemoIndex: the rename itself has
+// already committed, and a search index that is briefly stale must never turn a
+// successful rename into an error. Re-indexing is cheap here because embeddings
+// are reused by chunk content, so a pure path change costs no provider calls.
+func (s *APIV1Service) reindexFolder(ctx context.Context, workspaceID int32, path string) {
+	memos, err := s.Store.ListMemos(ctx, &store.FindMemo{
+		WorkspaceID:      &workspaceID,
+		FolderPathPrefix: &path,
+		ExcludeContent:   true,
+	})
+	if err != nil {
+		slog.Warn("failed to list memos for reindex after folder rename",
+			slog.Int("workspaceID", int(workspaceID)), slog.String("path", path), slog.Any("err", err))
+		return
+	}
+	for _, memo := range memos {
+		if err := s.Store.UpsertMemoIndexJob(ctx, memo.ID, store.IndexJobReasonUpdated); err != nil {
+			slog.Warn("failed to enqueue memo index job after folder rename",
+				slog.Int("memoID", int(memo.ID)), slog.Any("err", err))
+		}
+	}
+}
+
+// MoveWorkspaceFolder moves a folder subtree into a different workspace.
+//
+// It deliberately does NOT reuse the bulk-SQL path RenameWorkspaceFolder takes.
+// That path rewrites folder_path directly and so bypasses store.UpdateMemo,
+// which is what re-enqueues a memo for indexing; memo_chunk carries a
+// denormalized workspace_id, so a bulk rewrite across workspaces would leave
+// chunks pointing at the old workspace and workspace-scoped search would return
+// documents that no longer live there. Moving document by document is slower but
+// inherits the index refresh, the duplicate-title check and the updated_ts bump
+// that memo updates already get right.
+func (s *APIV1Service) MoveWorkspaceFolder(ctx context.Context, request *v1pb.MoveWorkspaceFolderRequest) (*v1pb.MoveWorkspaceFolderResponse, error) {
+	source, _, err := s.getWorkspaceAndCheckOwnership(ctx, request.Parent)
+	if err != nil {
+		return nil, err
+	}
+	destination, _, err := s.getWorkspaceAndCheckOwnership(ctx, request.DestinationWorkspace)
+	if err != nil {
+		return nil, err
+	}
+
+	path := normalizeFolderPath(request.Path)
+	if path == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "path is required")
+	}
+	if isHomeFolder(path) {
+		return nil, status.Errorf(codes.InvalidArgument, "the home folder cannot be moved")
+	}
+	destinationParent := normalizeFolderPath(request.DestinationFolderPath)
+	if isHomeFolder(destinationParent) {
+		return nil, status.Errorf(codes.InvalidArgument, "the home folder cannot be a destination")
+	}
+
+	newPath := movedFolderDestination(path, destinationParent)
+
+	if source.ID == destination.ID {
+		// Same workspace: this is a rename, and the rename path already guards its
+		// own edge cases. Bounce it rather than growing a second implementation.
+		return nil, status.Errorf(codes.InvalidArgument, "source and destination workspaces are the same; use RenameWorkspaceFolder")
+	}
+
+	memos, err := s.Store.ListMemos(ctx, &store.FindMemo{
+		WorkspaceID:      &source.ID,
+		FolderPathPrefix: &path,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list folder contents: %v", err)
+	}
+
+	// (workspace_id, folder_path, title) is unique, so a colliding title anywhere in
+	// the subtree would fail mid-move. Collect every conflict up front: a user told
+	// "3 documents already exist at the destination: a, b, c" can act on it, whereas
+	// a constraint error surfacing on document 47 of 60 leaves the move half applied
+	// with no clue which document stopped it.
+	existing, err := s.Store.ListMemos(ctx, &store.FindMemo{WorkspaceID: &destination.ID})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to inspect destination workspace: %v", err)
+	}
+	if conflicts := folderMoveConflicts(memos, existing, path, newPath); len(conflicts) > 0 {
+		return nil, status.Errorf(codes.AlreadyExists,
+			"%d document(s) already exist at the destination: %s", len(conflicts), strings.Join(conflicts, ", "))
+	}
+
+	// Folder rows first, so an interrupted move leaves the destination folders in
+	// place (harmless, and empty folders are user-deletable) rather than documents
+	// sitting in a folder the destination workspace has no row for.
+	folders, err := s.Store.ListWorkspaceFolders(ctx, &store.FindWorkspaceFolder{WorkspaceID: &source.ID})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list folders: %v", err)
+	}
+	destinationFolders, err := s.Store.ListWorkspaceFolders(ctx, &store.FindWorkspaceFolder{WorkspaceID: &destination.ID})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list destination folders: %v", err)
+	}
+	existingFolders := make(map[string]struct{}, len(destinationFolders))
+	for _, f := range destinationFolders {
+		existingFolders[f.Path] = struct{}{}
+	}
+	moved := []*store.WorkspaceFolder{}
+	for _, f := range folders {
+		if f.Path != path && !strings.HasPrefix(f.Path, path+"/") {
+			continue
+		}
+		moved = append(moved, f)
+		target := movedFolderPath(f.Path, path, newPath)
+		// A folder that already exists at the destination is merged into, not
+		// duplicated; (workspace_id, path) is unique so inserting would fail.
+		if _, ok := existingFolders[target]; ok {
+			continue
+		}
+		if _, err := s.Store.CreateWorkspaceFolder(ctx, &store.WorkspaceFolder{
+			WorkspaceID: destination.ID,
+			Path:        target,
+		}); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to create destination folder: %v", err)
+		}
+	}
+
+	now := time.Now().Unix()
+	for i, m := range memos {
+		target := movedFolderPath(m.FolderPath, path, newPath)
+		if err := s.Store.UpdateMemo(ctx, &store.UpdateMemo{
+			ID:          m.ID,
+			WorkspaceID: &destination.ID,
+			FolderPath:  &target,
+			UpdatedTs:   &now,
+		}); err != nil {
+			// Partial moves are recoverable: the operation is idempotent, so the user
+			// can retry and the documents already moved are simply skipped next time.
+			return nil, status.Errorf(codes.Internal,
+				"failed to move document %q (%d of %d moved, retry to finish): %v", m.Title, i, len(memos), err)
+		}
+	}
+
+	for _, f := range moved {
+		if err := s.Store.DeleteWorkspaceFolder(ctx, &store.DeleteWorkspaceFolder{WorkspaceID: source.ID, Path: f.Path}); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to clean up source folder: %v", err)
+		}
+	}
+
+	return &v1pb.MoveWorkspaceFolderResponse{
+		NewPath:            newPath,
+		MovedDocumentCount: int32(len(memos)),
+	}, nil
+}
+
+// movedFolderDestination is where a folder ends up when dropped into
+// destinationParent: it keeps its own name and becomes a child of the target.
+func movedFolderDestination(path, destinationParent string) string {
+	name := path
+	if index := strings.LastIndex(path, "/"); index >= 0 {
+		name = path[index+1:]
+	}
+	if destinationParent == "" {
+		return name
+	}
+	return destinationParent + "/" + name
+}
+
+// folderMoveConflicts returns the titles of documents in the moved subtree that
+// would land on a (folder_path, title) pair the destination workspace already
+// uses. That pair is unique per workspace in the schema, so each of these would
+// fail the write; they are collected rather than hit one at a time.
+func folderMoveConflicts(moving, destination []*store.Memo, oldRoot, newRoot string) []string {
+	taken := make(map[string]struct{}, len(destination))
+	for _, m := range destination {
+		taken[normalizeFolderPath(m.FolderPath)+"\x00"+m.Title] = struct{}{}
+	}
+	conflicts := []string{}
+	for _, m := range moving {
+		if _, ok := taken[movedFolderPath(m.FolderPath, oldRoot, newRoot)+"\x00"+m.Title]; ok {
+			conflicts = append(conflicts, m.Title)
+		}
+	}
+	return conflicts
+}
+
+// movedFolderPath rebases a path that sits at or under oldRoot onto newRoot.
+func movedFolderPath(path, oldRoot, newRoot string) string {
+	path = normalizeFolderPath(path)
+	if path == oldRoot {
+		return newRoot
+	}
+	if strings.HasPrefix(path, oldRoot+"/") {
+		return newRoot + path[len(oldRoot):]
+	}
+	return path
 }
 
 func (s *APIV1Service) DeleteWorkspaceFolder(ctx context.Context, request *v1pb.DeleteWorkspaceFolderRequest) (*emptypb.Empty, error) {

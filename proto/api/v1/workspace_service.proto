@@ -61,6 +61,14 @@ service WorkspaceService {
       body: "*"
     };
   }
+  // MoveWorkspaceFolder moves a folder (and everything under it) into another
+  // workspace. Moving within a single workspace is RenameWorkspaceFolder's job.
+  rpc MoveWorkspaceFolder(MoveWorkspaceFolderRequest) returns (MoveWorkspaceFolderResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/{parent=workspaces/*}/folders:move"
+      body: "*"
+    };
+  }
   // DeleteWorkspaceFolder deletes an empty folder.
   rpc DeleteWorkspaceFolder(DeleteWorkspaceFolderRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
@@ -225,6 +233,32 @@ message RenameWorkspaceFolderRequest {
 
   // Required. The new folder path.
   string new_path = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message MoveWorkspaceFolderRequest {
+  // Required. The workspace the folder currently lives in.
+  // Format: workspaces/{workspace}
+  string parent = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Required. The folder path to move, relative to the source workspace root.
+  string path = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // Required. The workspace to move the folder into.
+  // Format: workspaces/{workspace}
+  string destination_workspace = 3 [(google.api.field_behavior) = REQUIRED];
+
+  // Optional. The destination parent folder within destination_workspace. Empty
+  // means the destination workspace's root. The moved folder keeps its own name,
+  // so it ends up at "{destination_folder_path}/{name}".
+  string destination_folder_path = 4 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message MoveWorkspaceFolderResponse {
+  // The folder's new path within the destination workspace.
+  string new_path = 1;
+
+  // How many documents were moved.
+  int32 moved_document_count = 2;
 }
 
 message DeleteWorkspaceFolderRequest {

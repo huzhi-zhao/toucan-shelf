@@ -813,6 +813,14 @@ func (s *ConnectServiceHandler) RenameWorkspaceFolder(ctx context.Context, req *
 	return connect.NewResponse(resp), nil
 }
 
+func (s *ConnectServiceHandler) MoveWorkspaceFolder(ctx context.Context, req *connect.Request[v1pb.MoveWorkspaceFolderRequest]) (*connect.Response[v1pb.MoveWorkspaceFolderResponse], error) {
+	resp, err := s.APIV1Service.MoveWorkspaceFolder(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (s *ConnectServiceHandler) DeleteWorkspaceFolder(ctx context.Context, req *connect.Request[v1pb.DeleteWorkspaceFolderRequest]) (*connect.Response[emptypb.Empty], error) {
 	resp, err := s.APIV1Service.DeleteWorkspaceFolder(ctx, req.Msg)
 	if err != nil {

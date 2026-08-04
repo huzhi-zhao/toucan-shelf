@@ -122,6 +122,38 @@ export function useRenameWorkspaceFolder() {
   });
 }
 
+export function useMoveWorkspaceFolder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      parent,
+      path,
+      destinationWorkspace,
+      destinationFolderPath,
+    }: {
+      parent: string;
+      path: string;
+      destinationWorkspace: string;
+      destinationFolderPath: string;
+    }) => {
+      return workspaceServiceClient.moveWorkspaceFolder({
+        parent,
+        path,
+        destinationWorkspace,
+        destinationFolderPath,
+      });
+    },
+    // Both ends of the move change, so the destination workspace's tree has to be
+    // dropped too — it is a different query key from the source's.
+    onSuccess: (_data, variables) => {
+      for (const workspace of [variables.parent, variables.destinationWorkspace]) {
+        queryClient.invalidateQueries({ queryKey: workspaceKeys.tree(workspace, false) });
+        queryClient.invalidateQueries({ queryKey: workspaceKeys.tree(workspace, true) });
+      }
+    },
+  });
+}
+
 export function useDeleteWorkspaceFolder() {
   const queryClient = useQueryClient();
   return useMutation({
