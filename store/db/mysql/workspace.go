@@ -62,15 +62,18 @@ func (d *DB) ListWorkspaces(ctx context.Context, find *store.FindWorkspace) ([]*
 	if v := find.StorageSlug; v != nil {
 		where, args = append(where, "`storage_slug` = ?"), append(args, *v)
 	}
+	if v := find.Hidden; v != nil {
+		where, args = append(where, "`hidden` = ?"), append(args, *v)
+	}
 
 	rows, err := d.db.QueryContext(ctx, `
 		SELECT
 			id, uid, creator_id, title,
 			UNIX_TIMESTAMP(created_ts) AS created_ts,
 			UNIX_TIMESTAMP(updated_ts) AS updated_ts,
-			sort_field, sort_order, cover_color, cover_image, folders_first, storage_slug
+			sort_field, sort_order, cover_color, cover_image, folders_first, storage_slug, display_order, hidden
 		FROM `+"`workspace`"+`
-		WHERE `+strings.Join(where, " AND ")+` ORDER BY created_ts ASC`,
+		WHERE `+strings.Join(where, " AND ")+` ORDER BY display_order ASC, created_ts ASC`,
 		args...,
 	)
 	if err != nil {
@@ -81,7 +84,7 @@ func (d *DB) ListWorkspaces(ctx context.Context, find *store.FindWorkspace) ([]*
 	var list []*store.Workspace
 	for rows.Next() {
 		w := &store.Workspace{}
-		if err := rows.Scan(&w.ID, &w.UID, &w.CreatorID, &w.Title, &w.CreatedTs, &w.UpdatedTs, &w.SortField, &w.SortOrder, &w.CoverColor, &w.CoverImage, &w.FoldersFirst, &w.StorageSlug); err != nil {
+		if err := rows.Scan(&w.ID, &w.UID, &w.CreatorID, &w.Title, &w.CreatedTs, &w.UpdatedTs, &w.SortField, &w.SortOrder, &w.CoverColor, &w.CoverImage, &w.FoldersFirst, &w.StorageSlug, &w.DisplayOrder, &w.Hidden); err != nil {
 			return nil, err
 		}
 		list = append(list, w)
@@ -114,6 +117,12 @@ func (d *DB) UpdateWorkspace(ctx context.Context, update *store.UpdateWorkspace)
 	}
 	if v := update.StorageSlug; v != nil {
 		set, args = append(set, "`storage_slug` = ?"), append(args, *v)
+	}
+	if v := update.DisplayOrder; v != nil {
+		set, args = append(set, "`display_order` = ?"), append(args, *v)
+	}
+	if v := update.Hidden; v != nil {
+		set, args = append(set, "`hidden` = ?"), append(args, *v)
 	}
 	set = append(set, "`updated_ts` = NOW()")
 	args = append(args, update.ID)

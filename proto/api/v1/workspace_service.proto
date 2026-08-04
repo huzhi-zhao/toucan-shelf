@@ -38,7 +38,10 @@ service WorkspaceService {
     };
     option (google.api.method_signature) = "workspace,update_mask";
   }
-  // DeleteWorkspace deletes a workspace. The workspace must contain no memos.
+  // DeleteWorkspace permanently deletes a workspace. The workspace must contain no
+  // memos. NOT exposed in the UI: the product-level "delete" is the reversible
+  // `hidden` flag instead. Kept for API compatibility — do not wire it back up
+  // without a deliberate decision.
   rpc DeleteWorkspace(DeleteWorkspaceRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {delete: "/api/v1/{name=workspaces/*}"};
     option (google.api.method_signature) = "name";
@@ -120,6 +123,14 @@ message Workspace {
 
   // Whether folders are always sorted before documents at the same level.
   bool folders_first = 10;
+
+  // Manual position on the bookshelf. Smaller sorts first. Neither unique nor
+  // contiguous — ties fall back to create_time.
+  int32 display_order = 11;
+
+  // Whether the workspace is hidden (a soft delete). Hidden workspaces are left
+  // out of list responses unless show_hidden is set, but stay readable by name.
+  bool hidden = 12;
 }
 
 message WorkspaceFolder {
@@ -170,7 +181,11 @@ message CreateWorkspaceRequest {
   Workspace workspace = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
-message ListWorkspacesRequest {}
+message ListWorkspacesRequest {
+  // Whether to include hidden workspaces. Defaults to false, which returns only
+  // visible ones. The bookshelf's "show hidden" toggle is what sets it.
+  bool show_hidden = 1;
+}
 
 message ListWorkspacesResponse {
   repeated Workspace workspaces = 1;

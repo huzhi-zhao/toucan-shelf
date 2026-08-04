@@ -1,32 +1,26 @@
-import { PlusIcon } from "lucide-react";
+import { EyeIcon, InfoIcon, PlusIcon } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import BookSpine from "@/components/Bookshelf/BookSpine";
 import PromptDialog from "@/components/Notebook/PromptDialog";
+import { Button } from "@/components/ui/button";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import { useLastOpened } from "@/hooks/useLastOpened";
 import usePageTitle from "@/hooks/usePageTitle";
-import { useCreateWorkspace, useWorkspaces } from "@/hooks/useWorkspaceQueries";
+import { useCreateWorkspace, useSetWorkspaceHidden, useWorkspaces } from "@/hooks/useWorkspaceQueries";
+import { cn } from "@/lib/utils";
+import { workspaceDetailPath } from "@/router/routes";
 import { useTranslate } from "@/utils/i18n";
-
-// A small fixed palette to visually tell book spines apart. Not user-configurable
-// (cover color customization is explicitly out of scope for this pass) — just a
-// deterministic pick based on the workspace's position on the shelf.
-const SPINE_COLORS = [
-  "from-sky-700 to-sky-900 dark:from-sky-800 dark:to-sky-950",
-  "from-rose-700 to-rose-900 dark:from-rose-800 dark:to-rose-950",
-  "from-emerald-700 to-emerald-900 dark:from-emerald-800 dark:to-emerald-950",
-  "from-amber-600 to-amber-800 dark:from-amber-700 dark:to-amber-900",
-  "from-violet-700 to-violet-900 dark:from-violet-800 dark:to-violet-950",
-  "from-teal-700 to-teal-900 dark:from-teal-800 dark:to-teal-950",
-];
 
 const Bookshelf = () => {
   const t = useTranslate();
   usePageTitle(t("bookshelf.title"));
   const navigate = useNavigate();
   const currentUser = useCurrentUser();
-  const { data: workspaces = [] } = useWorkspaces();
+  const [showHidden, setShowHidden] = useState(false);
+  const { data: workspaces = [] } = useWorkspaces(showHidden);
   const createWorkspace = useCreateWorkspace();
+  const setHidden = useSetWorkspaceHidden();
   const { setLastOpened } = useLastOpened(currentUser?.name);
   const [createOpen, setCreateOpen] = useState(false);
 
@@ -37,60 +31,50 @@ const Bookshelf = () => {
 
   return (
     <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6">
-      <h1 className="text-3xl font-medium mb-6 flex items-center gap-3">
-        <img src="/logo.svg" alt="" className="w-12 h-12" />
-        <span>{t("bookshelf.title")}</span>
-      </h1>
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <h1 className="text-3xl font-medium flex items-center gap-3 min-w-0">
+          <img src="/logo.svg" alt="" className="w-12 h-12 shrink-0" />
+          <span className="truncate">{t("bookshelf.title")}</span>
+        </h1>
+        {/*
+         * The only way back to a hidden workspace. It has to exist before hiding is
+         * usable at all, otherwise hiding the last entry point strands the data.
+         */}
+        <Button variant={showHidden ? "secondary" : "ghost"} size="sm" className="shrink-0" onClick={() => setShowHidden((v) => !v)}>
+          <EyeIcon className="w-4 h-4 mr-1.5" />
+          {t("bookshelf.show-hidden")}
+        </Button>
+      </div>
       <div className="rounded-lg bg-gradient-to-b from-amber-950/5 to-amber-950/10 dark:from-black/20 dark:to-black/30 p-5 sm:p-8 pb-0">
         <div className="grid items-start gap-x-2 gap-y-6 sm:gap-x-3 sm:gap-y-8 [--col-min:5.2rem] grid-cols-[repeat(auto-fit,minmax(var(--col-min),1fr))] sm:grid-cols-[repeat(auto-fill,7.2rem)]">
           {workspaces.map((workspace, index) => (
-            <div key={workspace.name} className="relative">
+            <div key={workspace.name} className="relative group/book">
               <button
                 onClick={() => openWorkspace(workspace.name, workspace.title)}
-                className="group relative flex w-full aspect-[2/3] sm:w-[7.2rem] sm:aspect-auto sm:h-[10.8rem] drop-shadow-md hover:-translate-y-2.5 hover:drop-shadow-xl transition-all duration-200 ease-out cursor-pointer"
+                className={cn(
+                  "block w-full cursor-pointer transition-all duration-200 ease-out hover:-translate-y-2.5 hover:drop-shadow-xl",
+                  // Hidden books stay on the shelf while the toggle is on, but read as
+                  // set aside rather than as ordinary entries.
+                  workspace.hidden && "opacity-40 grayscale",
+                )}
               >
-                {/* Spine */}
-                <div
-                  className="relative flex-1 flex flex-col justify-between rounded-t-[3px] rounded-b-[2px] border border-black/25 shadow-[inset_2px_0_0_rgba(255,255,255,0.12),inset_-2px_0_0_rgba(0,0,0,0.25)]"
-                  style={
-                    workspace.coverColor
-                      ? { backgroundColor: workspace.coverColor }
-                      : undefined
-                  }
-                >
-                  <div
-                    className={`absolute inset-0 rounded-t-[3px] rounded-b-[2px] bg-gradient-to-b ${SPINE_COLORS[index % SPINE_COLORS.length]} ${
-                      workspace.coverColor ? "hidden" : ""
-                    }`}
-                  />
-                  {/* Spine ribbing (raised bands like a hardcover binding) */}
-                  <div className="absolute inset-x-1.5 top-3.5 h-[3px] rounded-full bg-black/20 shadow-[0_1px_0_rgba(255,255,255,0.15)]" />
-                  {/* Gold foil title bar */}
-                  <div className="relative px-1.5 pt-4.5 pb-1 text-center shrink-0">
-                    <span className="text-amber-50/95 text-xs sm:text-sm font-semibold tracking-wide line-clamp-1 drop-shadow-[0_1px_1px_rgba(0,0,0,0.4)]">
-                      {workspace.title}
-                    </span>
-                  </div>
-                  {/* Cover image */}
-                  <div className="relative flex-1 flex items-center justify-center px-2 min-h-0">
-                    <div className="w-[65%] aspect-square translate-x-[6%] rounded-[2px] overflow-hidden">
-                      {workspace.coverImage && (
-                        <img src={workspace.coverImage} alt="" className="w-full h-full object-cover opacity-60" />
-                      )}
-                    </div>
-                  </div>
-                  <div className="relative px-1  pb-0.5 text-center shrink-0">
-                    <div className="absolute inset-x-1.5 top-1.5 h-[3px] rounded-full bg-black/20 shadow-[0_1px_0_rgba(255,255,255,0.15)]" />
-                    <span className="text-[8px]  text-white/60">
-                      {workspace.createTime ? new Date(Number(workspace.createTime.seconds) * 1000).toLocaleDateString() : ""}
-                    </span>
-                  </div>
-                  {/* Sheen highlight */}
-                  <div className="pointer-events-none absolute inset-y-0 left-1 w-1.5 bg-white/25 rounded-full blur-[1px]" />
-                </div>
-                {/* Page edges (fanned pages peeking from behind the spine) */}
-                <div className="w-2 shrink-0 self-stretch mt-[2px] mb-0 bg-gradient-to-b from-stone-50 to-stone-300 dark:from-stone-200 dark:to-stone-400 rounded-r-[2px] border-y border-r border-black/10 shadow-[inset_-1px_0_0_rgba(0,0,0,0.08)]" />
+                <BookSpine workspace={workspace} index={index} />
               </button>
+              <button
+                title={t("bookshelf.details")}
+                onClick={() => navigate(workspaceDetailPath(workspace.name))}
+                className="absolute top-1 right-1 p-1 rounded-full bg-black/40 text-white/90 opacity-0 group-hover/book:opacity-100 focus-visible:opacity-100 hover:bg-black/60 transition-opacity cursor-pointer"
+              >
+                <InfoIcon className="w-3.5 h-3.5" />
+              </button>
+              {workspace.hidden && (
+                <button
+                  onClick={() => setHidden.mutateAsync({ workspace, hidden: false })}
+                  className="absolute inset-x-1 bottom-1 py-0.5 text-[10px] rounded bg-black/60 text-white/90 hover:bg-black/80 cursor-pointer"
+                >
+                  {t("bookshelf.unhide")}
+                </button>
+              )}
               {/* Per-row shelf plank, anchored to this book so it stays aligned regardless of row count */}
               <div className="pointer-events-none absolute -left-1 -right-1 sm:-left-1.5 sm:-right-1.5 top-full h-1.5 sm:h-2 rounded-[1px] bg-gradient-to-b from-amber-800 via-amber-900 to-amber-950 dark:from-zinc-700 dark:via-zinc-800 dark:to-zinc-900 shadow-[0_2px_4px_rgba(0,0,0,0.3)]" />
             </div>

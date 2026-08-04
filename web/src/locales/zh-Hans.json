@@ -1053,6 +1053,7 @@
     "select-workspace": "选择知识库",
     "new-workspace": "新建知识库",
     "rename-workspace": "重命名知识库",
+    "workspace-details": "知识库详情",
     "open-in-new-tab": "在新标签页打开",
     "delete-workspace-confirm": "确定删除该知识库吗？知识库必须为空。",
     "workspace-title-placeholder": "知识库名称",
@@ -1206,7 +1207,22 @@
   "bookshelf": {
     "title": "ToucanShelf",
     "new-workspace": "新建知识库",
-    "created-at": "创建于 {{date}}"
+    "created-at": "创建于 {{date}}",
+    "details": "知识库详情",
+    "back-to-shelf": "返回书架",
+    "workspace-not-found": "该知识库已不存在。",
+    "show-hidden": "显示已隐藏",
+    "hide": "隐藏知识库",
+    "unhide": "取消隐藏",
+    "hide-confirm": "确定隐藏该知识库吗？隐藏后它不再出现在书架和知识库列表中，但数据不会丢失——打开「显示已隐藏」即可恢复。",
+    "hidden-notice": "该知识库已隐藏。它不会出现在列表和搜索中，但数据没有被删除。",
+    "created-time": "创建时间",
+    "updated-time": "更新时间",
+    "creator": "创建者",
+    "document-count": "文档数",
+    "folder-count": "文件夹数",
+    "display-order": "排序下标",
+    "display-order-hint": "固定书本在书架上的位置，数字越小越靠前。下标相同的按创建时间排序。"
   },
   "search": {
     "no-results": "未找到匹配的文档。",

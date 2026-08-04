@@ -1133,6 +1133,7 @@
     "select-workspace": "Select workspace",
     "new-workspace": "New workspace",
     "rename-workspace": "Rename workspace",
+    "workspace-details": "Workspace details",
     "open-in-new-tab": "Open in new tab",
     "delete-workspace-confirm": "Delete this workspace? It must be empty.",
     "workspace-title-placeholder": "Workspace name",
@@ -1333,7 +1334,22 @@
   "bookshelf": {
     "title": "ToucanShelf",
     "new-workspace": "New workspace",
-    "created-at": "Created {{date}}"
+    "created-at": "Created {{date}}",
+    "details": "Workspace details",
+    "back-to-shelf": "Back to bookshelf",
+    "workspace-not-found": "This workspace no longer exists.",
+    "show-hidden": "Show hidden",
+    "hide": "Hide workspace",
+    "unhide": "Unhide",
+    "hide-confirm": "Hide this workspace? It disappears from the bookshelf and the workspace list, but nothing is deleted — turn on \"Show hidden\" to bring it back.",
+    "hidden-notice": "This workspace is hidden. It is left out of lists and search, but nothing has been deleted.",
+    "created-time": "Created",
+    "updated-time": "Last updated",
+    "creator": "Created by",
+    "document-count": "Documents",
+    "folder-count": "Folders",
+    "display-order": "Order",
+    "display-order-hint": "Fixes the book's place on the shelf — smaller numbers come first. Books sharing a number fall back to creation time."
   },
   "search": {
     "no-results": "No matching documents found.",

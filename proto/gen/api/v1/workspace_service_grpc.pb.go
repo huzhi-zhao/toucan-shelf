@@ -44,7 +44,10 @@ type WorkspaceServiceClient interface {
 	GetWorkspace(ctx context.Context, in *GetWorkspaceRequest, opts ...grpc.CallOption) (*Workspace, error)
 	// UpdateWorkspace updates a workspace.
 	UpdateWorkspace(ctx context.Context, in *UpdateWorkspaceRequest, opts ...grpc.CallOption) (*Workspace, error)
-	// DeleteWorkspace deletes a workspace. The workspace must contain no memos.
+	// DeleteWorkspace permanently deletes a workspace. The workspace must contain no
+	// memos. NOT exposed in the UI: the product-level "delete" is the reversible
+	// `hidden` flag instead. Kept for API compatibility — do not wire it back up
+	// without a deliberate decision.
 	DeleteWorkspace(ctx context.Context, in *DeleteWorkspaceRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// GetWorkspaceTree returns the folder/document hierarchy for a workspace.
 	GetWorkspaceTree(ctx context.Context, in *GetWorkspaceTreeRequest, opts ...grpc.CallOption) (*GetWorkspaceTreeResponse, error)
@@ -179,7 +182,10 @@ type WorkspaceServiceServer interface {
 	GetWorkspace(context.Context, *GetWorkspaceRequest) (*Workspace, error)
 	// UpdateWorkspace updates a workspace.
 	UpdateWorkspace(context.Context, *UpdateWorkspaceRequest) (*Workspace, error)
-	// DeleteWorkspace deletes a workspace. The workspace must contain no memos.
+	// DeleteWorkspace permanently deletes a workspace. The workspace must contain no
+	// memos. NOT exposed in the UI: the product-level "delete" is the reversible
+	// `hidden` flag instead. Kept for API compatibility — do not wire it back up
+	// without a deliberate decision.
 	DeleteWorkspace(context.Context, *DeleteWorkspaceRequest) (*emptypb.Empty, error)
 	// GetWorkspaceTree returns the folder/document hierarchy for a workspace.
 	GetWorkspaceTree(context.Context, *GetWorkspaceTreeRequest) (*GetWorkspaceTreeResponse, error)

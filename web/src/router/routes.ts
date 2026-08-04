@@ -15,3 +15,11 @@ export const ROUTES = {
 
 export type RouteKey = keyof typeof ROUTES;
 export type RoutePath = (typeof ROUTES)[RouteKey];
+
+/**
+ * URL of a workspace's detail page. Takes the resource name ("workspaces/{uid}")
+ * — the same value the API uses — and routes on the bare uid.
+ */
+export function workspaceDetailPath(workspaceName: string): string {
+  return `${ROUTES.SHELF}/${encodeURIComponent(workspaceName.replace(/^workspaces\//, ""))}`;
+}

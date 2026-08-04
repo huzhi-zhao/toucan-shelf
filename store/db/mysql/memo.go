@@ -123,6 +123,9 @@ func (d *DB) ListMemos(ctx context.Context, find *store.FindMemo) ([]*store.Memo
 		where = append(where, "(`memo`.`folder_path` = ? OR `memo`.`folder_path` LIKE ?)")
 		args = append(args, *v, *v+"/%")
 	}
+	if find.ExcludeHiddenWorkspaces {
+		where = append(where, "`memo`.`workspace_id` NOT IN (SELECT `id` FROM `workspace` WHERE `hidden` = 1)")
+	}
 
 	order := "DESC"
 	if find.OrderByTimeAsc {

@@ -88,6 +88,11 @@ type FindMemo struct {
 	// FolderPathPrefix, when set, matches memos whose FolderPath equals this value
 	// or is nested under it (i.e. FolderPath == prefix OR FolderPath LIKE prefix + "/%").
 	FolderPathPrefix *string
+	// ExcludeHiddenWorkspaces drops memos living in a soft-deleted (hidden) workspace.
+	// Set it on cross-workspace listings — Explore, search — so hiding actually hides.
+	// Listings already scoped to one workspace by ID leave it off: reaching a hidden
+	// workspace directly is what makes restoring it possible.
+	ExcludeHiddenWorkspaces bool
 
 	// Pagination
 	Limit  *int

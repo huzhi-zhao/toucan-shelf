@@ -20,6 +20,12 @@ type Workspace struct {
 	// StorageSlug is this workspace's directory name in attachment storage. It is derived
 	// from Title once and then frozen — see EnsureWorkspaceStorageSlug.
 	StorageSlug string
+	// DisplayOrder fixes the workspace's position on the bookshelf. Smaller sorts
+	// first; it is neither unique nor contiguous, ties break on CreatedTs.
+	DisplayOrder int32
+	// Hidden is a soft delete. Hidden workspaces drop out of list entry points but
+	// stay reachable by UID, which is what makes restoring them possible.
+	Hidden bool
 }
 
 // FindWorkspace specifies filter criteria for querying workspaces.
@@ -29,6 +35,8 @@ type FindWorkspace struct {
 	CreatorID   *int32
 	Title       *string
 	StorageSlug *string
+	// Hidden filters on the soft-delete flag. Nil returns hidden and visible alike.
+	Hidden *bool
 }
 
 // UpdateWorkspace contains fields that can be updated for a workspace.
@@ -42,7 +50,9 @@ type UpdateWorkspace struct {
 	FoldersFirst *bool
 	// StorageSlug is only ever set to backfill a workspace that has none yet. Renaming a
 	// workspace must NOT touch it: object keys already written point at the old name.
-	StorageSlug *string
+	StorageSlug  *string
+	DisplayOrder *int32
+	Hidden       *bool
 }
 
 // DeleteWorkspace specifies which workspace to delete.

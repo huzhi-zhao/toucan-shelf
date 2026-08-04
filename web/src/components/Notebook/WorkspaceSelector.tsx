@@ -1,4 +1,4 @@
-import { ArrowDownIcon, ArrowUpIcon, ExternalLinkIcon, LibraryBigIcon, SettingsIcon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, ExternalLinkIcon, InfoIcon, LibraryBigIcon, SettingsIcon } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -17,28 +17,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useCreateWorkspace, useDeleteWorkspace, useUpdateWorkspace } from "@/hooks/useWorkspaceQueries";
+import { useUpdateWorkspace } from "@/hooks/useWorkspaceQueries";
+import { workspaceDetailPath } from "@/router/routes";
 import type { Workspace } from "@/types/proto/api/v1/workspace_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import { normalizeSortField, normalizeSortOrder } from "./notebookSort";
-import PromptDialog from "./PromptDialog";
 import { WorkspaceCoverColorDialog, WorkspaceCoverImageDialog } from "./WorkspaceCoverDialogs";
 
 interface Props {
   workspaces: Workspace[];
   value?: string;
   onChange: (name: string) => void;
-  onCreated?: (name: string) => void;
   onOpenInNewTab?: () => void;
 }
 
-const WorkspaceSelector = ({ workspaces, value, onChange, onCreated, onOpenInNewTab }: Props) => {
+const WorkspaceSelector = ({ workspaces, value, onChange, onOpenInNewTab }: Props) => {
   const t = useTranslate();
-  const createWorkspace = useCreateWorkspace();
   const updateWorkspace = useUpdateWorkspace();
-  const deleteWorkspace = useDeleteWorkspace();
-  const [createOpen, setCreateOpen] = useState(false);
-  const [renameOpen, setRenameOpen] = useState(false);
   const [coverColorOpen, setCoverColorOpen] = useState(false);
   const [coverImageOpen, setCoverImageOpen] = useState(false);
 
@@ -52,7 +47,14 @@ const WorkspaceSelector = ({ workspaces, value, onChange, onCreated, onOpenInNew
         <SelectTrigger className="flex-1 min-w-0">
           <div className="flex min-w-0 items-center gap-2">
             <LibraryBigIcon className="w-4 h-4 shrink-0 opacity-70" />
-            <SelectValue className="truncate" placeholder={t("notebook.select-workspace")} />
+            {/*
+              The clamp has to live on a wrapper: SelectValue renders whatever Radix
+              gives it, and a long title only shrinks if the element holding it is
+              itself a min-w-0 flex item with overflow hidden.
+            */}
+            <span className="min-w-0 truncate">
+              <SelectValue placeholder={t("notebook.select-workspace")} />
+            </span>
           </div>
         </SelectTrigger>
         <SelectContent>
@@ -70,25 +72,22 @@ const WorkspaceSelector = ({ workspaces, value, onChange, onCreated, onOpenInNew
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setCreateOpen(true)}>{t("notebook.new-workspace")}</DropdownMenuItem>
-          {current && <DropdownMenuItem onClick={() => setRenameOpen(true)}>{t("notebook.rename-workspace")}</DropdownMenuItem>}
+          {/*
+            Workspace-level management (create / rename / hide) lives on the detail
+            page now; what stays here is the current workspace's browsing settings.
+          */}
+          {current && (
+            <DropdownMenuItem asChild>
+              <Link to={workspaceDetailPath(current.name)}>
+                <InfoIcon className="w-4 h-4 mr-2" />
+                {t("notebook.workspace-details")}
+              </Link>
+            </DropdownMenuItem>
+          )}
           {current && onOpenInNewTab && (
             <DropdownMenuItem onClick={onOpenInNewTab}>
               <ExternalLinkIcon className="w-4 h-4 mr-2" />
               {t("notebook.open-in-new-tab")}
-            </DropdownMenuItem>
-          )}
-          {current && workspaces.length > 1 && (
-            <DropdownMenuItem
-              variant="destructive"
-              onClick={async () => {
-                if (!window.confirm(t("notebook.delete-workspace-confirm"))) return;
-                await deleteWorkspace.mutateAsync(current.name);
-                const remaining = workspaces.filter((w) => w.name !== current.name);
-                if (remaining[0]) onChange(remaining[0].name);
-              }}
-            >
-              {t("common.delete")}
             </DropdownMenuItem>
           )}
           {current && (
@@ -160,30 +159,6 @@ const WorkspaceSelector = ({ workspaces, value, onChange, onCreated, onOpenInNew
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <PromptDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        title={t("notebook.new-workspace")}
-        placeholder={t("notebook.workspace-title-placeholder")}
-        onConfirm={async (title) => {
-          const workspace = await createWorkspace.mutateAsync(title);
-          onCreated?.(workspace.name);
-        }}
-      />
-      {current && (
-        <PromptDialog
-          open={renameOpen}
-          onOpenChange={setRenameOpen}
-          title={t("notebook.rename-workspace")}
-          defaultValue={current.title}
-          onConfirm={async (title) => {
-            await updateWorkspace.mutateAsync({
-              workspace: { ...current, title },
-              updateMask: ["title"],
-            });
-          }}
-        />
-      )}
       {current && <WorkspaceCoverColorDialog workspace={current} open={coverColorOpen} onOpenChange={setCoverColorOpen} />}
       {current && <WorkspaceCoverImageDialog workspace={current} open={coverImageOpen} onOpenChange={setCoverImageOpen} />}
     </div>

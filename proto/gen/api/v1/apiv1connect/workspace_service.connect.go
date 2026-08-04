@@ -76,7 +76,10 @@ type WorkspaceServiceClient interface {
 	GetWorkspace(context.Context, *connect.Request[v1.GetWorkspaceRequest]) (*connect.Response[v1.Workspace], error)
 	// UpdateWorkspace updates a workspace.
 	UpdateWorkspace(context.Context, *connect.Request[v1.UpdateWorkspaceRequest]) (*connect.Response[v1.Workspace], error)
-	// DeleteWorkspace deletes a workspace. The workspace must contain no memos.
+	// DeleteWorkspace permanently deletes a workspace. The workspace must contain no
+	// memos. NOT exposed in the UI: the product-level "delete" is the reversible
+	// `hidden` flag instead. Kept for API compatibility — do not wire it back up
+	// without a deliberate decision.
 	DeleteWorkspace(context.Context, *connect.Request[v1.DeleteWorkspaceRequest]) (*connect.Response[emptypb.Empty], error)
 	// GetWorkspaceTree returns the folder/document hierarchy for a workspace.
 	GetWorkspaceTree(context.Context, *connect.Request[v1.GetWorkspaceTreeRequest]) (*connect.Response[v1.GetWorkspaceTreeResponse], error)
@@ -239,7 +242,10 @@ type WorkspaceServiceHandler interface {
 	GetWorkspace(context.Context, *connect.Request[v1.GetWorkspaceRequest]) (*connect.Response[v1.Workspace], error)
 	// UpdateWorkspace updates a workspace.
 	UpdateWorkspace(context.Context, *connect.Request[v1.UpdateWorkspaceRequest]) (*connect.Response[v1.Workspace], error)
-	// DeleteWorkspace deletes a workspace. The workspace must contain no memos.
+	// DeleteWorkspace permanently deletes a workspace. The workspace must contain no
+	// memos. NOT exposed in the UI: the product-level "delete" is the reversible
+	// `hidden` flag instead. Kept for API compatibility — do not wire it back up
+	// without a deliberate decision.
 	DeleteWorkspace(context.Context, *connect.Request[v1.DeleteWorkspaceRequest]) (*connect.Response[emptypb.Empty], error)
 	// GetWorkspaceTree returns the folder/document hierarchy for a workspace.
 	GetWorkspaceTree(context.Context, *connect.Request[v1.GetWorkspaceTreeRequest]) (*connect.Response[v1.GetWorkspaceTreeResponse], error)

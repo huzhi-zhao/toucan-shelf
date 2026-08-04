@@ -285,6 +285,11 @@ func (s *APIV1Service) ListMemos(ctx context.Context, request *v1pb.ListMemosReq
 			return nil, status.Errorf(codes.NotFound, "workspace not found")
 		}
 		memoFind.WorkspaceID = &workspace.ID
+	} else {
+		// Cross-workspace listings (Explore, Archived, the Home overview) must not surface
+		// documents from a hidden workspace. A listing scoped to one workspace by name is
+		// direct access and is left alone, so a hidden workspace stays browsable to restore.
+		memoFind.ExcludeHiddenWorkspaces = true
 	}
 
 	if currentUser == nil {

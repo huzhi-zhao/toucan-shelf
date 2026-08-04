@@ -99,7 +99,13 @@ type Workspace struct {
 	// The cover image of the workspace. Format: attachments/{attachment}
 	CoverImage string `protobuf:"bytes,9,opt,name=cover_image,json=coverImage,proto3" json:"cover_image,omitempty"`
 	// Whether folders are always sorted before documents at the same level.
-	FoldersFirst  bool `protobuf:"varint,10,opt,name=folders_first,json=foldersFirst,proto3" json:"folders_first,omitempty"`
+	FoldersFirst bool `protobuf:"varint,10,opt,name=folders_first,json=foldersFirst,proto3" json:"folders_first,omitempty"`
+	// Manual position on the bookshelf. Smaller sorts first. Neither unique nor
+	// contiguous — ties fall back to create_time.
+	DisplayOrder int32 `protobuf:"varint,11,opt,name=display_order,json=displayOrder,proto3" json:"display_order,omitempty"`
+	// Whether the workspace is hidden (a soft delete). Hidden workspaces are left
+	// out of list responses unless show_hidden is set, but stay readable by name.
+	Hidden        bool `protobuf:"varint,12,opt,name=hidden,proto3" json:"hidden,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -200,6 +206,20 @@ func (x *Workspace) GetCoverImage() string {
 func (x *Workspace) GetFoldersFirst() bool {
 	if x != nil {
 		return x.FoldersFirst
+	}
+	return false
+}
+
+func (x *Workspace) GetDisplayOrder() int32 {
+	if x != nil {
+		return x.DisplayOrder
+	}
+	return 0
+}
+
+func (x *Workspace) GetHidden() bool {
+	if x != nil {
+		return x.Hidden
 	}
 	return false
 }
@@ -422,7 +442,10 @@ func (x *CreateWorkspaceRequest) GetWorkspace() *Workspace {
 }
 
 type ListWorkspacesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Whether to include hidden workspaces. Defaults to false, which returns only
+	// visible ones. The bookshelf's "show hidden" toggle is what sets it.
+	ShowHidden    bool `protobuf:"varint,1,opt,name=show_hidden,json=showHidden,proto3" json:"show_hidden,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -455,6 +478,13 @@ func (x *ListWorkspacesRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ListWorkspacesRequest.ProtoReflect.Descriptor instead.
 func (*ListWorkspacesRequest) Descriptor() ([]byte, []int) {
 	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ListWorkspacesRequest) GetShowHidden() bool {
+	if x != nil {
+		return x.ShowHidden
+	}
+	return false
 }
 
 type ListWorkspacesResponse struct {
@@ -1049,7 +1079,7 @@ var File_api_v1_workspace_service_proto protoreflect.FileDescriptor
 
 const file_api_v1_workspace_service_proto_rawDesc = "" +
 	"\n" +
-	"\x1eapi/v1/workspace_service.proto\x12\fmemos.api.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd9\x03\n" +
+	"\x1eapi/v1/workspace_service.proto\x12\fmemos.api.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x96\x04\n" +
 	"\tWorkspace\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12\x19\n" +
 	"\x05title\x18\x02 \x01(\tB\x03\xe0A\x02R\x05title\x12\x1d\n" +
@@ -1067,7 +1097,9 @@ const file_api_v1_workspace_service_proto_rawDesc = "" +
 	"\vcover_image\x18\t \x01(\tR\n" +
 	"coverImage\x12#\n" +
 	"\rfolders_first\x18\n" +
-	" \x01(\bR\ffoldersFirst:P\xeaAM\n" +
+	" \x01(\bR\ffoldersFirst\x12#\n" +
+	"\rdisplay_order\x18\v \x01(\x05R\fdisplayOrder\x12\x16\n" +
+	"\x06hidden\x18\f \x01(\bR\x06hidden:P\xeaAM\n" +
 	"\x16memos.api.v1/Workspace\x12\x16workspaces/{workspace}\x1a\x04name*\n" +
 	"workspaces2\tworkspace\"C\n" +
 	"\x0fWorkspaceFolder\x12\x17\n" +
@@ -1091,8 +1123,10 @@ const file_api_v1_workspace_service_proto_rawDesc = "" +
 	"\x06FOLDER\x10\x01\x12\f\n" +
 	"\bDOCUMENT\x10\x02\"T\n" +
 	"\x16CreateWorkspaceRequest\x12:\n" +
-	"\tworkspace\x18\x01 \x01(\v2\x17.memos.api.v1.WorkspaceB\x03\xe0A\x02R\tworkspace\"\x17\n" +
-	"\x15ListWorkspacesRequest\"Q\n" +
+	"\tworkspace\x18\x01 \x01(\v2\x17.memos.api.v1.WorkspaceB\x03\xe0A\x02R\tworkspace\"8\n" +
+	"\x15ListWorkspacesRequest\x12\x1f\n" +
+	"\vshow_hidden\x18\x01 \x01(\bR\n" +
+	"showHidden\"Q\n" +
 	"\x16ListWorkspacesResponse\x127\n" +
 	"\n" +
 	"workspaces\x18\x01 \x03(\v2\x17.memos.api.v1.WorkspaceR\n" +

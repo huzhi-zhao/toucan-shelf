@@ -56,7 +56,7 @@ func (s *APIV1Service) CreateWorkspace(ctx context.Context, request *v1pb.Create
 	return convertWorkspaceFromStore(workspace, user.Username), nil
 }
 
-func (s *APIV1Service) ListWorkspaces(ctx context.Context, _ *v1pb.ListWorkspacesRequest) (*v1pb.ListWorkspacesResponse, error) {
+func (s *APIV1Service) ListWorkspaces(ctx context.Context, request *v1pb.ListWorkspacesRequest) (*v1pb.ListWorkspacesResponse, error) {
 	user, err := s.fetchCurrentUser(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
@@ -65,7 +65,15 @@ func (s *APIV1Service) ListWorkspaces(ctx context.Context, _ *v1pb.ListWorkspace
 		return nil, status.Errorf(codes.Unauthenticated, "user not authenticated")
 	}
 
-	list, err := s.Store.ListWorkspaces(ctx, &store.FindWorkspace{CreatorID: &user.ID})
+	find := &store.FindWorkspace{CreatorID: &user.ID}
+	// Hidden workspaces are left out by default; only the bookshelf's restore view asks
+	// for them. Direct access by name (GetWorkspace) is deliberately not filtered — that
+	// is what keeps a hidden workspace restorable.
+	if !request.ShowHidden {
+		visibleOnly := false
+		find.Hidden = &visibleOnly
+	}
+	list, err := s.Store.ListWorkspaces(ctx, find)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list workspaces: %v", err)
 	}
@@ -126,6 +134,10 @@ func (s *APIV1Service) UpdateWorkspace(ctx context.Context, request *v1pb.Update
 			update.CoverImage = &request.Workspace.CoverImage
 		} else if field == "folders_first" {
 			update.FoldersFirst = &request.Workspace.FoldersFirst
+		} else if field == "display_order" {
+			update.DisplayOrder = &request.Workspace.DisplayOrder
+		} else if field == "hidden" {
+			update.Hidden = &request.Workspace.Hidden
 		}
 	}
 
@@ -484,7 +496,10 @@ func (s *APIV1Service) DeleteWorkspaceFolder(ctx context.Context, request *v1pb.
 // "Default" one if they have none yet. It exists so legacy API clients that don't
 // pass a workspace on memo creation still get a valid, organized home for their memo.
 func (s *APIV1Service) resolveOrCreateDefaultWorkspace(ctx context.Context, userID int32) (*store.Workspace, error) {
-	list, err := s.Store.ListWorkspaces(ctx, &store.FindWorkspace{CreatorID: &userID})
+	// A hidden workspace must never become the implicit home for a new memo, so only
+	// visible ones count here — a user whose every workspace is hidden gets a fresh one.
+	visibleOnly := false
+	list, err := s.Store.ListWorkspaces(ctx, &store.FindWorkspace{CreatorID: &userID, Hidden: &visibleOnly})
 	if err != nil {
 		return nil, err
 	}
@@ -596,6 +611,8 @@ func convertWorkspaceFromStore(workspace *store.Workspace, creatorUsername strin
 		CoverColor:   workspace.CoverColor,
 		CoverImage:   workspace.CoverImage,
 		FoldersFirst: workspace.FoldersFirst,
+		DisplayOrder: workspace.DisplayOrder,
+		Hidden:       workspace.Hidden,
 	}
 }
 

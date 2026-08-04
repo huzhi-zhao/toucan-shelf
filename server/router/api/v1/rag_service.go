@@ -163,6 +163,10 @@ func (s *APIV1Service) accessibleMemoIDs(ctx context.Context, user *store.User, 
 		ExcludeComments: true,
 		ExcludeContent:  true,
 		WorkspaceID:     workspaceID,
+		// An unscoped search spans every workspace, so hidden ones have to be dropped
+		// or hiding leaks. A search explicitly scoped to one workspace is direct access
+		// and stays searchable — that is how a hidden workspace is found to restore it.
+		ExcludeHiddenWorkspaces: workspaceID == nil,
 	}
 	normal := store.Normal
 	find.RowStatus = &normal

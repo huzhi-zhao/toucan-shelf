@@ -86,7 +86,12 @@ CREATE TABLE `workspace` (
   `folders_first` TINYINT(1) NOT NULL DEFAULT 0,
   -- Stable directory name for this workspace in attachment storage. Derived from the
   -- title once, then frozen: object keys already written must keep resolving.
-  `storage_slug` VARCHAR(256) NOT NULL DEFAULT ''
+  `storage_slug` VARCHAR(256) NOT NULL DEFAULT '',
+  -- Manual shelf position. Smaller sorts first; duplicates fall back to created_ts.
+  `display_order` INT NOT NULL DEFAULT 0,
+  -- Soft delete: hidden workspaces are excluded from list entry points but stay
+  -- readable by UID so they can be restored.
+  `hidden` TINYINT(1) NOT NULL DEFAULT 0
 );
 
 -- workspace_folder

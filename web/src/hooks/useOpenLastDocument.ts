@@ -30,8 +30,8 @@ export function useOpenLastDocument() {
     try {
       [workspaces, lastOpened] = await Promise.all([
         queryClient.fetchQuery({
-          queryKey: workspaceKeys.lists(),
-          queryFn: fetchWorkspaces,
+          queryKey: workspaceKeys.list(false),
+          queryFn: () => fetchWorkspaces(false),
           // A click is not a reason to re-list workspaces the app just loaded.
           staleTime: 30_000,
         }),

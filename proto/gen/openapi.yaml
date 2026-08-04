@@ -2864,6 +2864,14 @@ paths:
                 - WorkspaceService
             description: ListWorkspaces lists all workspaces owned by the current user.
             operationId: WorkspaceService_ListWorkspaces
+            parameters:
+                - name: showHidden
+                  in: query
+                  description: |-
+                    Whether to include hidden workspaces. Defaults to false, which returns only
+                     visible ones. The bookshelf's "show hidden" toggle is what sets it.
+                  schema:
+                    type: boolean
             responses:
                 "200":
                     description: OK
@@ -2930,7 +2938,11 @@ paths:
         delete:
             tags:
                 - WorkspaceService
-            description: DeleteWorkspace deletes a workspace. The workspace must contain no memos.
+            description: |-
+                DeleteWorkspace permanently deletes a workspace. The workspace must contain no
+                 memos. NOT exposed in the UI: the product-level "delete" is the reversible
+                 `hidden` flag instead. Kept for API compatibility — do not wire it back up
+                 without a deliberate decision.
             operationId: WorkspaceService_DeleteWorkspace
             parameters:
                 - name: workspace
@@ -5781,6 +5793,17 @@ components:
                 foldersFirst:
                     type: boolean
                     description: Whether folders are always sorted before documents at the same level.
+                displayOrder:
+                    type: integer
+                    description: |-
+                        Manual position on the bookshelf. Smaller sorts first. Neither unique nor
+                         contiguous — ties fall back to create_time.
+                    format: int32
+                hidden:
+                    type: boolean
+                    description: |-
+                        Whether the workspace is hidden (a soft delete). Hidden workspaces are left
+                         out of list responses unless show_hidden is set, but stay readable by name.
         WorkspaceFolder:
             required:
                 - path

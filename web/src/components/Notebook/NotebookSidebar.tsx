@@ -191,13 +191,7 @@ const NotebookSidebar = ({
 
   return (
     <div className="w-full h-full flex flex-col gap-2 px-3 py-4">
-      <WorkspaceSelector
-        workspaces={workspaces}
-        value={workspaceName}
-        onChange={onWorkspaceChange}
-        onCreated={onWorkspaceChange}
-        onOpenInNewTab={onOpenInNewTab}
-      />
+      <WorkspaceSelector workspaces={workspaces} value={workspaceName} onChange={onWorkspaceChange} onOpenInNewTab={onOpenInNewTab} />
 
       <div className="w-full flex items-center gap-1">
         <div className="relative flex-1">
