@@ -1222,7 +1222,7 @@
     "document-count": "文档数",
     "folder-count": "文件夹数",
     "display-order": "排序下标",
-    "display-order-hint": "固定书本在书架上的位置，数字越小越靠前。下标相同的按创建时间排序。"
+    "display-order-hint": "固定书本在书架上的位置，数字越小越靠前。0 表示未设置，会排在最后。下标相同的按创建时间排序。"
   },
   "search": {
     "no-results": "未找到匹配的文档。",

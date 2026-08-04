@@ -66,6 +66,10 @@ func (d *DB) ListWorkspaces(ctx context.Context, find *store.FindWorkspace) ([]*
 		where, args = append(where, "`hidden` = ?"), append(args, *v)
 	}
 
+	// display_order 0 is the "unset" value every workspace starts at, so it sorts
+	// *last* (as if it were +infinity) rather than first: books the user has not
+	// placed on the shelf by hand fall in behind the ones that carry an explicit
+	// order, and tie-break among themselves by creation time.
 	rows, err := d.db.QueryContext(ctx, `
 		SELECT
 			id, uid, creator_id, title,
@@ -73,7 +77,7 @@ func (d *DB) ListWorkspaces(ctx context.Context, find *store.FindWorkspace) ([]*
 			UNIX_TIMESTAMP(updated_ts) AS updated_ts,
 			sort_field, sort_order, cover_color, cover_image, folders_first, storage_slug, display_order, hidden
 		FROM `+"`workspace`"+`
-		WHERE `+strings.Join(where, " AND ")+` ORDER BY display_order ASC, created_ts ASC`,
+		WHERE `+strings.Join(where, " AND ")+` ORDER BY (CASE WHEN display_order = 0 THEN 1 ELSE 0 END) ASC, display_order ASC, created_ts ASC`,
 		args...,
 	)
 	if err != nil {

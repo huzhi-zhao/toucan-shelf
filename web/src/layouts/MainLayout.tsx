@@ -11,7 +11,6 @@ import { cn } from "@/lib/utils";
 import { Routes } from "@/router";
 import { isNotebookRoute } from "@/router/notebookRoute";
 
-const ARCHIVED_ROUTE = "/archived";
 const PROFILE_ROUTE = "/u/:username";
 const DESKTOP_EXPLORER_WIDTH_CLASS = "w-64";
 const DESKTOP_EXPLORER_CLASS_NAME = cn("sticky top-0 h-svh shrink-0 border-r border-border transition-all", DESKTOP_EXPLORER_WIDTH_CLASS);
@@ -22,27 +21,29 @@ const MainLayout = () => {
   const location = useLocation();
   const currentUser = useCurrentUser();
   const [profileUserName, setProfileUserName] = useState<string | undefined>();
-  // The Notebook page ("/", plus its "/:workspaceTitle" and "/:workspaceTitle/:docId"
-  // routes) owns its own secondary sidebar (workspace tree) and full-bleed two-pane
-  // layout, so it opts out of the generic MemoExplorer chrome.
+  // The Notebook page ("/:workspaceTitle" and "/:workspaceTitle/:docId") owns its own
+  // secondary sidebar (workspace tree) and full-bleed two-pane layout, so it also opts
+  // out of the horizontal padding the other pages get.
   const isNotebook = isNotebookRoute(location.pathname);
-  // The Bookshelf page ("/shelf") is a standalone gallery with no filters, so it
-  // doesn't need the MemoExplorer sidebar either.
-  const isBookshelf = location.pathname === Routes.SHELF;
-  // The Home page ("/dashboard", plus its "/dashboard/:sectionId" tabs) is a
-  // cross-knowledge-base page of its own, unrelated to the memo feed the
-  // MemoExplorer filters — and its tab bar spans the full width, like Notebook.
+  // The Home page ("/dashboard", plus its "/dashboard/:sectionId" tabs) spans the full
+  // width the same way.
   const isDashboard = location.pathname === Routes.DASHBOARD || location.pathname.startsWith(`${Routes.DASHBOARD}/`);
-  const showMemoExplorer = location.pathname !== Routes.ABOUT && !isNotebook && !isBookshelf && !isDashboard;
 
-  // Determine context based on current route
-  const context: MemoExplorerContext = useMemo(() => {
-    if (location.pathname === Routes.HOME) return "home";
+  // Which routes get the MemoExplorer (search + calendar + tag filters) sidebar.
+  //
+  // This is deliberately an allow-list, not a deny-list: the MemoExplorer only makes
+  // sense on the pages that render the filterable *memo feed*, so a page that isn't
+  // listed here gets no secondary sidebar. Adding a new page therefore requires no
+  // change to this file — the previous deny-list meant every new page silently
+  // inherited a calendar it had no use for until someone remembered to opt out.
+  const context: MemoExplorerContext | null = useMemo(() => {
+    if (location.pathname === Routes.HOME || location.pathname === Routes.SHORTCUTS) return "home";
     if (location.pathname === Routes.EXPLORE) return "explore";
-    if (matchPath(ARCHIVED_ROUTE, location.pathname)) return "archived";
+    if (location.pathname === Routes.ARCHIVED) return "archived";
     if (matchPath(PROFILE_ROUTE, location.pathname)) return "profile";
-    return "home"; // fallback
+    return null;
   }, [location.pathname]);
+  const showMemoExplorer = context !== null;
 
   // Extract username from URL for profile context
   useEffect(() => {
@@ -79,10 +80,10 @@ const MainLayout = () => {
 
   const { statistics, tags } = useFilteredMemoStats({
     userName: statsUserName,
-    context,
+    context: context ?? undefined,
   });
   const memoExplorerProps = {
-    context,
+    context: context ?? "home",
     statisticsData: statistics,
     tagCount: tags,
   };

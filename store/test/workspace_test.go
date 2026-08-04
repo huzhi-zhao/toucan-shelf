@@ -40,10 +40,11 @@ func TestListWorkspacesOrdersByDisplayOrder(t *testing.T) {
 	list, err := ts.ListWorkspaces(ctx, &store.FindWorkspace{CreatorID: &user.ID})
 	require.NoError(t, err)
 	require.Len(t, list, 3)
-	// third (-1), then second (0, default), then first (5).
+	// third (-1), then first (5), and finally second — its display_order is still the
+	// default 0, which means "unset" and sorts last rather than first.
 	require.Equal(t, third.ID, list[0].ID)
-	require.Equal(t, second.ID, list[1].ID)
-	require.Equal(t, first.ID, list[2].ID)
+	require.Equal(t, first.ID, list[1].ID)
+	require.Equal(t, second.ID, list[2].ID)
 }
 
 func TestListWorkspacesFiltersHidden(t *testing.T) {

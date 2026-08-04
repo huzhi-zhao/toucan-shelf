@@ -1,10 +1,12 @@
-import { ArrowLeftIcon, EyeOffIcon, ImageIcon, PaletteIcon, PencilIcon, PlusIcon, RotateCcwIcon } from "lucide-react";
+import { ArrowLeftIcon, ArrowUpDownIcon, EyeOffIcon, ImageIcon, PaletteIcon, PencilIcon, PlusIcon, RotateCcwIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import BookSpine from "@/components/Bookshelf/BookSpine";
 import PromptDialog from "@/components/Notebook/PromptDialog";
 import { WorkspaceCoverColorDialog, WorkspaceCoverImageDialog } from "@/components/Notebook/WorkspaceCoverDialogs";
+import WorkspaceSortMenuItems from "@/components/Notebook/WorkspaceSortMenu";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import usePageTitle from "@/hooks/usePageTitle";
 import {
@@ -101,16 +103,26 @@ const WorkspaceDetail = () => {
         {t("bookshelf.back-to-shelf")}
       </Button>
 
-      <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
+      {/* Title row: the workspace name owns a full line of its own, with the one
+          action that isn't about *this* workspace ("New workspace") pinned opposite. */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-medium break-all">{workspace.title}</h1>
+          {workspace.hidden && <p className="mt-1 text-sm text-amber-600 dark:text-amber-500">{t("bookshelf.hidden-notice")}</p>}
+        </div>
+        <Button variant="outline" size="sm" className="shrink-0" onClick={() => setCreateOpen(true)}>
+          <PlusIcon className="w-4 h-4 mr-1.5" />
+          {t("notebook.new-workspace")}
+        </Button>
+      </div>
+
+      {/* Cover and facts sit side by side inside one self-contained panel, so the
+          pair keeps its own alignment regardless of what surrounds it. */}
+      <div className="rounded-lg border border-border p-4 sm:p-6 flex flex-col sm:flex-row gap-6 sm:gap-8">
         <div className="shrink-0 self-center sm:self-start">
           <BookSpine workspace={workspace} size="large" />
         </div>
         <div className="flex-1 min-w-0 space-y-4">
-          <div className="min-w-0">
-            <h1 className="text-2xl font-medium break-all">{workspace.title}</h1>
-            {workspace.hidden && <p className="mt-1 text-sm text-amber-600 dark:text-amber-500">{t("bookshelf.hidden-notice")}</p>}
-          </div>
-
           <div className="rounded-md border border-border px-3 py-1">
             <Row label={t("bookshelf.created-time")} value={formatTimestamp(workspace.createTime)} />
             <Row label={t("bookshelf.updated-time")} value={formatTimestamp(workspace.updateTime)} />
@@ -154,10 +166,17 @@ const WorkspaceDetail = () => {
           <ImageIcon className="w-4 h-4 mr-1.5" />
           {t("notebook.set-cover-image")}
         </Button>
-        <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
-          <PlusIcon className="w-4 h-4 mr-1.5" />
-          {t("notebook.new-workspace")}
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <ArrowUpDownIcon className="w-4 h-4 mr-1.5" />
+              {t("notebook.sort-by")}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <WorkspaceSortMenuItems workspace={workspace} />
+          </DropdownMenuContent>
+        </DropdownMenu>
         {workspace.hidden ? (
           <Button variant="outline" size="sm" onClick={() => setHidden.mutateAsync({ workspace, hidden: false })}>
             <RotateCcwIcon className="w-4 h-4 mr-1.5" />
