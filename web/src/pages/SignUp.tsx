@@ -16,7 +16,7 @@ import useNavigateTo from "@/hooks/useNavigateTo";
 import { handleError } from "@/lib/error";
 import { ROUTES } from "@/router/routes";
 import { User_Role, UserSchema } from "@/types/proto/api/v1/user_service_pb";
-import { AUTH_REDIRECT_PARAM, getSafeRedirectPath } from "@/utils/auth-redirect";
+import { AUTH_REDIRECT_PARAM, getSafeRedirectPath, navigateAfterAuth } from "@/utils/auth-redirect";
 import { useTranslate } from "@/utils/i18n";
 
 const SignUp = () => {
@@ -78,7 +78,7 @@ const SignUp = () => {
       await initAuth();
       // Refetch instance profile to update the initialized status
       await initInstance();
-      navigateTo(redirectTarget || ROUTES.HOME, { replace: true });
+      navigateAfterAuth(navigateTo, redirectTarget || ROUTES.HOME, true);
     } catch (error: unknown) {
       handleError(error, toast.error, {
         fallbackMessage: "Sign up failed",

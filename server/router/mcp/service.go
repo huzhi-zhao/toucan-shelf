@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"slices"
+	"strings"
 
 	"github.com/labstack/echo/v5"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
@@ -12,6 +14,7 @@ import (
 
 	"github.com/usememos/memos/internal/profile"
 	memosproto "github.com/usememos/memos/proto"
+	"github.com/usememos/memos/server/auth"
 )
 
 // serverInstructions is returned in the `initialize` response and injected into
@@ -54,16 +57,42 @@ Updating:
   other update_mask path is rejected. There is no delete tool; archiving through
   state is the closest thing, and it is reversible.`
 
+// scopeHeader carries the scopes granted to an OAuth-authenticated session from
+// the endpoint handler down to the individual tool handlers. It is set on the
+// inbound request after the token is validated and is never trusted from the
+// wire: RegisterRoutes strips whatever the client sent first.
+const scopeHeader = "X-Memos-MCP-Scope"
+
+// Authorizer validates the credentials on an MCP request.
+//
+// It is satisfied by server/router/oauth.Service. The interface keeps the MCP
+// package free of any OAuth machinery and avoids an import cycle.
+type Authorizer interface {
+	// AuthorizeMCPRequest validates the request's Authorization header. It
+	// returns the Authorization header value the internal API call should use
+	// and the space-delimited scopes granted, or an error if the credential is
+	// missing or invalid.
+	AuthorizeMCPRequest(request *http.Request) (authorization string, scope string, err error)
+	// ResourceMetadataURL is the RFC 9728 metadata URL advertised in the
+	// WWW-Authenticate challenge of a 401 response.
+	ResourceMetadataURL(request *http.Request) string
+}
+
 // MCPService serves the OpenAPI-driven MCP endpoint.
 type MCPService struct {
-	profile *profile.Profile
+	profile    *profile.Profile
+	authorizer Authorizer
 
 	operationsByTool map[string]*registeredOperation
 	handler          http.Handler
 }
 
 // NewMCPService creates an MCP service backed by the in-process API routes.
-func NewMCPService(profile *profile.Profile, echoServer *echo.Echo) (*MCPService, error) {
+//
+// authorizer may be nil, in which case the endpoint performs no authentication
+// of its own and forwards the client's Authorization header to the internal API
+// unchanged (the pre-OAuth behaviour).
+func NewMCPService(profile *profile.Profile, echoServer *echo.Echo, authorizer Authorizer) (*MCPService, error) {
 	spec, err := loadMCPServiceOpenAPISpec()
 	if err != nil {
 		return nil, err
@@ -110,6 +139,7 @@ func NewMCPService(profile *profile.Profile, echoServer *echo.Echo) (*MCPService
 
 	return &MCPService{
 		profile:          profile,
+		authorizer:       authorizer,
 		operationsByTool: operationsByTool,
 		handler:          handler,
 	}, nil
@@ -138,9 +168,16 @@ func newMCPToolHandler(adapter *apiAdapter, operation *registeredOperation) sdkm
 			return newToolErrorResult(err.Error()), nil
 		}
 
-		authorization := ""
+		authorization, scope := "", ""
 		if request.Extra != nil {
 			authorization = request.Extra.Header.Get("Authorization")
+			scope = request.Extra.Header.Get(scopeHeader)
+		}
+		// A scope is only present on OAuth-authenticated sessions; a personal
+		// access token carries the whole account and is left unrestricted, as
+		// it always has been.
+		if scope != "" && operation.Method != http.MethodGet && !hasScope(scope, auth.MCPScopeWrite) {
+			return newToolErrorResult("this connection was not granted the " + auth.MCPScopeWrite + " scope"), nil
 		}
 		return adapter.execute(ctx, operation.Operation, arguments, authorization)
 	}
@@ -153,7 +190,32 @@ func (s *MCPService) RegisterRoutes(echoServer *echo.Echo) {
 		if !isAllowedMCPOrigin(request.Host, request.Header.Get("Origin"), s.profile) {
 			return c.NoContent(http.StatusForbidden)
 		}
+		if s.authorizer != nil {
+			// Never let a client smuggle its own scope grant in.
+			request.Header.Del(scopeHeader)
+
+			authorization, scope, err := s.authorizer.AuthorizeMCPRequest(request)
+			if err != nil {
+				// The WWW-Authenticate challenge is what tells an MCP client to
+				// start the OAuth flow; without it the client has no way to
+				// discover that this endpoint is protected. See RFC 9728 §5.1.
+				c.Response().Header().Set("WWW-Authenticate",
+					`Bearer resource_metadata="`+s.authorizer.ResourceMetadataURL(request)+`"`)
+				return c.JSON(http.StatusUnauthorized, map[string]string{
+					"error":             "invalid_token",
+					"error_description": err.Error(),
+				})
+			}
+			request.Header.Set("Authorization", authorization)
+			if scope != "" {
+				request.Header.Set(scopeHeader, scope)
+			}
+		}
 		s.handler.ServeHTTP(c.Response(), request)
 		return nil
 	})
+}
+
+func hasScope(scope, wanted string) bool {
+	return slices.Contains(strings.Fields(scope), wanted)
 }

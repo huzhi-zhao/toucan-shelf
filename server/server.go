@@ -26,6 +26,7 @@ import (
 	"github.com/usememos/memos/server/router/fileserver"
 	"github.com/usememos/memos/server/router/frontend"
 	"github.com/usememos/memos/server/router/mcp"
+	"github.com/usememos/memos/server/router/oauth"
 	"github.com/usememos/memos/server/router/rss"
 	"github.com/usememos/memos/store"
 )
@@ -95,7 +96,12 @@ func NewServer(ctx context.Context, profile *profile.Profile, store *store.Store
 		return nil, errors.Wrap(err, "failed to register gRPC gateway")
 	}
 
-	mcpService, err := mcp.NewMCPService(profile, echoServer)
+	// The OAuth authorization server fronting /mcp. Registered before the MCP
+	// endpoint because the endpoint delegates its authentication to it.
+	oauthService := oauth.NewService(profile, store, s.Secret)
+	oauthService.RegisterRoutes(echoServer)
+
+	mcpService, err := mcp.NewMCPService(profile, echoServer, oauthService)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create MCP service")
 	}

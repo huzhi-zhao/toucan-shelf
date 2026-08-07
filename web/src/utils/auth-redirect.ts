@@ -1,6 +1,6 @@
 import { clearAccessToken } from "@/auth-state";
 import { ROUTES } from "@/router/routes";
-import { buildAuthRoute, isPublicRoute } from "./redirect-safety";
+import { buildAuthRoute, isPublicRoute, requiresFullPageNavigation } from "./redirect-safety";
 
 // Re-export the pure helpers so existing call sites (`@/utils/auth-redirect`)
 // keep working without every caller switching to the new module. The side-effectful
@@ -12,8 +12,29 @@ export {
   buildAuthRoute,
   getSafeRedirectPath,
   isPublicRoute,
+  requiresFullPageNavigation,
   shouldGatePrivateInstance,
 } from "./redirect-safety";
+
+/**
+ * Navigates to a post-authentication destination.
+ *
+ * Most targets are SPA routes and go through the router. A server-rendered
+ * target (the OAuth consent screen) needs a real page load, otherwise the
+ * router would answer with its 404 page and the pending authorization would be
+ * stranded.
+ */
+export function navigateAfterAuth(navigate: (path: string, options?: { replace?: boolean }) => void, path: string, replace = false): void {
+  if (requiresFullPageNavigation(path)) {
+    if (replace) {
+      window.location.replace(path);
+    } else {
+      window.location.assign(path);
+    }
+    return;
+  }
+  navigate(path, { replace });
+}
 
 /**
  * Imperatively redirects the current document to the auth entry page, preserving

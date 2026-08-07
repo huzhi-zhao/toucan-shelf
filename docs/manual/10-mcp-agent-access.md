@@ -29,8 +29,40 @@ Working on the knowledge base itself → memogit.**
 
 ## 10.2 Setup
 
-Create a personal access token in the web UI (user settings), then register the
-server with Claude Code:
+There are two ways to authenticate. **OAuth** is the one to use unless you have a
+reason not to: the client walks you through a browser sign-in and stores the
+token itself, so no secret ever lands in a config file. A **personal access
+token** is the older path and still works.
+
+### OAuth (recommended)
+
+Point the client at `/mcp` with no credentials at all:
+
+```bash
+claude mcp add --transport http toucanshelf https://<your-instance>/mcp
+```
+
+The first tool call opens a browser, asks you to sign in if you are not already,
+and shows a consent screen naming the client and what it will be able to do.
+Approve it and the client holds a token from then on; it refreshes on its own.
+
+In the Claude desktop and web apps the same URL goes in as a **custom
+connector** — the app registers itself and runs the same flow.
+
+This requires the instance to know its own public address. Set `MEMOS_INSTANCE_URL`
+(or `--instance-url`) to the URL users actually reach, e.g. `https://kb.example.com`;
+the OAuth discovery documents are built from it, and behind a reverse proxy the
+`Host` header is not trustworthy enough to derive it.
+
+Disconnecting the connector in the client revokes the token server-side
+(`POST /oauth/revoke`). There is **no server-side UI for this yet** — the grant is
+recorded per client, but nothing lists or deletes it from the web app. Until that
+exists, the blunt instrument is rotating the instance secret key, which
+invalidates every token and signs everyone out.
+
+### Personal access token
+
+Create a token in the web UI (user settings), then:
 
 ```bash
 claude mcp add --transport http toucanshelf https://<your-instance>/mcp --header "Authorization: Bearer ${TOUCANSHELF_PAT}"
@@ -39,7 +71,7 @@ claude mcp add --transport http toucanshelf https://<your-instance>/mcp --header
 claude mcp add --scope user --transport http toucanshelf https://<your-instance>/mcp --header "Authorization: Bearer ${TOUCANSHELF_PAT}"
 ```
 
-Verify:
+Verify either setup with:
 
 ```bash
 claude mcp list
@@ -51,10 +83,12 @@ Notes:
   the `${TOUCANSHELF_PAT}` form in any config file.
 - `claude mcp add` writes to `~/.claude.json` (all projects). To scope it to one
   project, put the same entry in that project's `.mcp.json`.
-- The endpoint works behind a reverse proxy; only the path `/mcp` is required.
-- **A PAT carries the whole account.** Tokens are not scoped, and `/mcp` adds no
-  permission layer of its own — it reuses the REST API's authorization exactly.
-  If you want to hand a token to several project directories, create a separate
+- The endpoint works behind a reverse proxy; the paths `/mcp`, `/oauth/*` and
+  `/.well-known/*` all have to reach the app.
+- **A PAT carries the whole account**, and it is not scoped. An OAuth connection
+  is at least limited to the MCP tool set — its token is rejected everywhere else
+  in the API — but it still acts as your full user account inside those tools. If
+  you want to hand access to several project directories, create a separate
   account that only joins the relevant knowledge bases.
 
 ## 10.3 The tool set

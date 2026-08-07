@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useLocation, useSearchParams } from "react-router-dom";
 import useCurrentUser from "@/hooks/useCurrentUser";
-import { AUTH_REDIRECT_PARAM, buildAuthRoute, getSafeRedirectPath } from "@/utils/auth-redirect";
+import { AUTH_REDIRECT_PARAM, buildAuthRoute, getSafeRedirectPath, requiresFullPageNavigation } from "@/utils/auth-redirect";
 import { ROUTES } from "./routes";
 
 /**
@@ -51,6 +51,12 @@ export const RequireGuestRoute = () => {
 
   if (currentUser) {
     const redirectTarget = getSafeRedirectPath(searchParams.get(AUTH_REDIRECT_PARAM));
+    if (redirectTarget && requiresFullPageNavigation(redirectTarget)) {
+      // A server-rendered target (the OAuth consent screen) has no router route;
+      // <Navigate> would land on the 404 page instead of the server.
+      window.location.replace(redirectTarget);
+      return null;
+    }
     return <Navigate to={redirectTarget || ROUTES.HOME} replace />;
   }
 

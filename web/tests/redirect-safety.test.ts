@@ -4,6 +4,7 @@ import {
   buildAuthRoute,
   getSafeRedirectPath,
   isPublicRoute,
+  requiresFullPageNavigation,
   shouldGatePrivateInstance,
 } from "@/utils/redirect-safety";
 
@@ -100,5 +101,19 @@ describe("shouldGatePrivateInstance", () => {
 
   it("keeps share links reachable for anonymous visitors on a private instance", () => {
     expect(shouldGatePrivateInstance({ isPrivateInstance: true, isAuthenticated: false, pathname: "/memos/shares/token123" })).toBe(false);
+  });
+});
+
+describe("requiresFullPageNavigation", () => {
+  it("flags server-rendered routes that the SPA router cannot handle", () => {
+    // The OAuth consent screen is rendered by the Go server. A client-side
+    // navigate() would show the SPA 404 page and strand the authorization.
+    expect(requiresFullPageNavigation("/oauth/authorize?client_id=abc")).toBe(true);
+  });
+
+  it("leaves ordinary SPA routes to the router", () => {
+    expect(requiresFullPageNavigation("/home")).toBe(false);
+    expect(requiresFullPageNavigation("/explore")).toBe(false);
+    expect(requiresFullPageNavigation("/memos/abc")).toBe(false);
   });
 });

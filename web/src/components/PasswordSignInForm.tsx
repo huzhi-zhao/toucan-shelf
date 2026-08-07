@@ -12,6 +12,7 @@ import useLoading from "@/hooks/useLoading";
 import useNavigateTo from "@/hooks/useNavigateTo";
 import { handleError } from "@/lib/error";
 import { ROUTES } from "@/router/routes";
+import { navigateAfterAuth } from "@/utils/auth-redirect";
 import { useTranslate } from "@/utils/i18n";
 
 interface PasswordSignInFormProps {
@@ -64,7 +65,7 @@ function PasswordSignInForm({ redirectPath }: PasswordSignInFormProps) {
         setAccessToken(response.accessToken, response.accessTokenExpiresAt ? timestampDate(response.accessTokenExpiresAt) : undefined);
       }
       await initialize();
-      navigateTo(redirectPath || ROUTES.HOME, { replace: true });
+      navigateAfterAuth(navigateTo, redirectPath || ROUTES.HOME, true);
     } catch (error: unknown) {
       handleError(error, toast.error, {
         fallbackMessage: "Failed to sign in.",

@@ -12,6 +12,12 @@ services:
       - "${MEMOS_PORT:-5230}:5230"
     environment:
       - TZ=${TZ:-UTC}
+      # Public URL users actually reach, e.g. https://toucan.huzhi.dev.
+      # Required for MCP OAuth: the discovery documents under /.well-known are
+      # built from it, and behind a reverse proxy the Host header is not
+      # trustworthy enough to derive it. Leaving it empty also keeps the
+      # instance in "private" mode (no anonymous access).
+      - MEMOS_INSTANCE_URL=${MEMOS_INSTANCE_URL:-}
 
 volumes:
   memos-data:

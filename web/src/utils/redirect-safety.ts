@@ -36,6 +36,23 @@ export function getSafeRedirectPath(path: string | null | undefined): string | u
 }
 
 /**
+ * Paths served by the Go server rather than by this SPA. The router has no route
+ * for them, so a client-side `navigate()` would render the 404 page instead of
+ * reaching the server.
+ */
+const SERVER_RENDERED_ROUTE_PREFIXES = ["/oauth/"] as const;
+
+/**
+ * Reports whether a post-auth redirect target must be reached with a full page
+ * load. The OAuth consent screen (`/oauth/authorize`) is the case that matters:
+ * a user bounced to sign-in from there has to land back on the server route to
+ * finish the authorization.
+ */
+export function requiresFullPageNavigation(path: string): boolean {
+  return SERVER_RENDERED_ROUTE_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
+
+/**
  * Builds a URL pointing at the auth entry page, optionally embedding a validated
  * `redirect` target and a machine-readable `reason` code.
  */

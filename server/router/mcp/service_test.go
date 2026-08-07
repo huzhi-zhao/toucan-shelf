@@ -46,7 +46,7 @@ func TestIsAllowedMCPOrigin(t *testing.T) {
 func TestNewMCPServiceRegistersCuratedTools(t *testing.T) {
 	echoServer := echo.New()
 
-	service, err := NewMCPService(&profile.Profile{Version: "test-version"}, echoServer)
+	service, err := NewMCPService(&profile.Profile{Version: "test-version"}, echoServer, nil)
 	require.NoError(t, err)
 	require.NotNil(t, service.handler)
 	require.Len(t, service.operationsByTool, len(curatedOperationIDs))
@@ -61,7 +61,7 @@ func TestNewMCPServiceRegistersCuratedTools(t *testing.T) {
 func TestNewMCPServiceUsesEmbeddedOpenAPISpec(t *testing.T) {
 	t.Chdir(t.TempDir())
 
-	service, err := NewMCPService(&profile.Profile{Version: "test-version"}, echo.New())
+	service, err := NewMCPService(&profile.Profile{Version: "test-version"}, echo.New(), nil)
 	require.NoError(t, err)
 	require.NotNil(t, service.handler)
 	require.Len(t, service.operationsByTool, len(curatedOperationIDs))
@@ -113,7 +113,7 @@ func TestMCPToolHandlerForwardsArgumentsAndAuthorization(t *testing.T) {
 func TestMCPProtocolListsCuratedToolsOnly(t *testing.T) {
 	echoServer := echo.New()
 
-	service, err := NewMCPService(&profile.Profile{Version: "test-version"}, echoServer)
+	service, err := NewMCPService(&profile.Profile{Version: "test-version"}, echoServer, nil)
 	require.NoError(t, err)
 	service.RegisterRoutes(echoServer)
 
@@ -158,7 +158,7 @@ func TestMCPProtocolListsCuratedToolsOnly(t *testing.T) {
 // load-bearing parts to the wire format.
 func TestMCPInitializeReturnsServerInstructions(t *testing.T) {
 	echoServer := echo.New()
-	service, err := NewMCPService(&profile.Profile{Version: "test-version"}, echoServer)
+	service, err := NewMCPService(&profile.Profile{Version: "test-version"}, echoServer, nil)
 	require.NoError(t, err)
 	service.RegisterRoutes(echoServer)
 
@@ -196,7 +196,7 @@ func TestMCPToolCallReturnsObjectStructuredContent(t *testing.T) {
 		})
 	})
 
-	service, err := NewMCPService(&profile.Profile{Version: "test-version"}, echoServer)
+	service, err := NewMCPService(&profile.Profile{Version: "test-version"}, echoServer, nil)
 	require.NoError(t, err)
 	service.RegisterRoutes(echoServer)
 
@@ -232,7 +232,7 @@ func TestMCPToolCallRejectsInvalidArguments(t *testing.T) {
 		return c.JSON(http.StatusOK, map[string]any{"name": c.Param("memo")})
 	})
 
-	service, err := NewMCPService(&profile.Profile{Version: "test-version"}, echoServer)
+	service, err := NewMCPService(&profile.Profile{Version: "test-version"}, echoServer, nil)
 	require.NoError(t, err)
 	service.RegisterRoutes(echoServer)
 
@@ -295,7 +295,7 @@ func TestMCPToolCallRejectsInvalidArguments(t *testing.T) {
 // allowlist still rejects disallowed origins.
 func TestMCPLoopbackBehindReverseProxy(t *testing.T) {
 	echoServer := echo.New()
-	service, err := NewMCPService(&profile.Profile{Version: "test-version"}, echoServer)
+	service, err := NewMCPService(&profile.Profile{Version: "test-version"}, echoServer, nil)
 	require.NoError(t, err)
 	service.RegisterRoutes(echoServer)
 
