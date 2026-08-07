@@ -210,10 +210,41 @@ function fetchSSEStream(token: string, signal: AbortSignal): Promise<Response> {
   });
 }
 
+/** One cross-reference the server rewrote automatically; mirrors SSELinkRepair in sse_hub.go. */
+interface SSELinkRepair {
+  oldHref: string;
+  newHref: string;
+  oldText: string;
+  newText: string;
+}
+
 interface SSEChangeEvent {
   type: (typeof SSE_EVENT_TYPES)[keyof typeof SSE_EVENT_TYPES];
   name: string;
   parent?: string;
+  /** Present only when this update was an automatic link repair, not a user edit. */
+  linkRepairs?: SSELinkRepair[];
+}
+
+/**
+ * Logs cross-reference repairs the server made to a document nobody edited: renaming or moving
+ * document B silently rewrites the links in every document that points at B. That is invisible by
+ * design in the UI, which makes "the repair didn't run" indistinguishable from "the repair ran and
+ * this page is stale" — so the before/after of each rewritten link goes to the console.
+ */
+function logLinkRepairs(event: SSEChangeEvent) {
+  if (!event.linkRepairs?.length) return;
+  console.groupCollapsed(`[link-repair] ${event.name}: ${event.linkRepairs.length} 处引用已自动更新`);
+  console.table(
+    event.linkRepairs.map((r) => ({
+      旧链接: r.oldHref,
+      新链接: r.newHref,
+      旧锚文本: r.oldText,
+      新锚文本: r.newText,
+      锚文本已改: r.oldText !== r.newText,
+    })),
+  );
+  console.groupEnd();
 }
 
 function handleSSEEvent(event: SSEChangeEvent, queryClient: ReturnType<typeof useQueryClient>) {
@@ -224,6 +255,7 @@ function handleSSEEvent(event: SSEChangeEvent, queryClient: ReturnType<typeof us
       break;
 
     case SSE_EVENT_TYPES.memoUpdated:
+      logLinkRepairs(event);
       queryClient.invalidateQueries({ queryKey: memoKeys.detail(event.name) });
       queryClient.invalidateQueries({ queryKey: memoKeys.lists() });
       if (event.parent) {

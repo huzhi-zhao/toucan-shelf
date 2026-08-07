@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
 	"github.com/usememos/memos/internal/profile"
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
@@ -311,4 +312,55 @@ func TestSetMemoRelations_EmitsMemoUpdatedSSEEvent(t *testing.T) {
 	assert.Contains(t, payload, `"memo.updated"`)
 	assert.Contains(t, payload, memo1.Name)
 	mustNotReceive(t, client.events, 100*time.Millisecond)
+}
+
+// TestRenameRepair_EmitsLinkRepairsInSSEEvent covers the provenance payload:
+// a rename rewrites the *referencing* document, whose owner did nothing, so
+// the broadcast for that document has to say what was rewritten — otherwise a
+// reader can't tell an automatic repair from an edit, and (in practice) can't
+// tell a repair that ran from a page that's merely stale.
+func TestRenameRepair_EmitsLinkRepairsInSSEEvent(t *testing.T) {
+	ctx := context.Background()
+	svc := newIntegrationService(t)
+
+	user, err := svc.Store.CreateUser(ctx, &store.User{
+		Username: "user", Role: store.RoleAdmin, Email: "user@example.com",
+	})
+	require.NoError(t, err)
+	uctx := userCtx(ctx, user.ID)
+
+	target, err := svc.CreateMemo(uctx, &v1pb.CreateMemoRequest{
+		Memo: &v1pb.Memo{Title: "Target", Content: "target", Visibility: v1pb.Visibility_PUBLIC},
+	})
+	require.NoError(t, err)
+	linker, err := svc.CreateMemo(uctx, &v1pb.CreateMemoRequest{
+		Memo: &v1pb.Memo{Title: "Linker", Content: "see [Target](/Target)", Visibility: v1pb.Visibility_PUBLIC},
+	})
+	require.NoError(t, err)
+
+	client := svc.SSEHub.Subscribe(user.ID, store.RoleAdmin)
+	defer svc.SSEHub.Unsubscribe(client)
+
+	_, err = svc.UpdateMemo(uctx, &v1pb.UpdateMemoRequest{
+		Memo:       &v1pb.Memo{Name: target.Name, Title: "Renamed"},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"title"}},
+	})
+	require.NoError(t, err)
+
+	// The repaired referrer's event is broadcast before the renamed memo's own,
+	// so scan until we find the one carrying repair provenance.
+	var repairPayload string
+	for range 2 {
+		payload := string(mustReceive(t, client.events, time.Second))
+		if strings.Contains(payload, `"linkRepairs"`) {
+			repairPayload = payload
+			break
+		}
+	}
+	require.NotEmpty(t, repairPayload, "the repaired referrer's event must carry linkRepairs")
+	assert.Contains(t, repairPayload, linker.Name)
+	assert.Contains(t, repairPayload, `"oldHref":"/Target"`)
+	assert.Contains(t, repairPayload, `"newHref":"/Renamed"`)
+	assert.Contains(t, repairPayload, `"oldText":"Target"`)
+	assert.Contains(t, repairPayload, `"newText":"Renamed"`)
 }

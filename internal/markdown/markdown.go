@@ -65,6 +65,18 @@ type Service interface {
 	// with newText in place; everything else is re-rendered unchanged. If no
 	// link is rewritten, changed is false and content is returned unchanged.
 	RewriteLinkAnchors(content []byte, decide func(href, text string) (string, bool)) (newContent string, changed bool, err error)
+
+	// RewriteLinks walks all markdown links in content and, for each one,
+	// calls decide with the link's href and its current anchor text. If
+	// decide returns rewrite == true, both the link's destination and its
+	// anchor text are replaced with newHref/newText (either may be
+	// unchanged from the input) in place; everything else is re-rendered
+	// unchanged. If no link is rewritten, changed is false and content is
+	// returned unchanged byte-for-byte, which is what makes repeated calls
+	// idempotent. Used by P4/P5 href repair, where the anchor-text-only
+	// rule of RewriteLinkAnchors isn't enough because the destination path
+	// itself must also be kept correct.
+	RewriteLinks(content []byte, decide func(href, text string) (newHref, newText string, rewrite bool)) (newContent string, changed bool, err error)
 }
 
 // LinkRef describes a single markdown link found in content.
@@ -522,6 +534,57 @@ func (s *service) RewriteLinkAnchors(content []byte, decide func(href, text stri
 		link.RemoveChildren(link)
 		link.AppendChild(link, gast.NewString([]byte(newText)))
 		changed = true
+		return gast.WalkSkipChildren, nil
+	})
+	if err != nil {
+		return "", false, err
+	}
+	if !changed {
+		return string(content), false, nil
+	}
+
+	mdRenderer := renderer.NewMarkdownRenderer()
+	return mdRenderer.Render(root, content), true, nil
+}
+
+// RewriteLinks walks all markdown links in content, replacing the
+// destination and/or anchor text of any link for which decide returns true.
+// Mirrors RewriteLinkAnchors' idempotency guarantee: a call that rewrites
+// nothing returns content byte-for-byte.
+func (s *service) RewriteLinks(content []byte, decide func(href, text string) (string, string, bool)) (string, bool, error) {
+	root, err := s.parse(content)
+	if err != nil {
+		return "", false, err
+	}
+
+	changed := false
+	err = gast.Walk(root, func(n gast.Node, entering bool) (gast.WalkStatus, error) {
+		if !entering {
+			return gast.WalkContinue, nil
+		}
+		link, ok := n.(*gast.Link)
+		if !ok {
+			return gast.WalkContinue, nil
+		}
+
+		var buf strings.Builder
+		extractTextFromNode(link, content, &buf)
+		oldHref := string(link.Destination)
+		oldText := buf.String()
+		newHref, newText, rewrite := decide(oldHref, oldText)
+		if !rewrite {
+			return gast.WalkSkipChildren, nil
+		}
+
+		if newHref != oldHref {
+			link.Destination = []byte(newHref)
+			changed = true
+		}
+		if newText != oldText {
+			link.RemoveChildren(link)
+			link.AppendChild(link, gast.NewString([]byte(newText)))
+			changed = true
+		}
 		return gast.WalkSkipChildren, nil
 	})
 	if err != nil {

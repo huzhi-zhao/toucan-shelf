@@ -12,7 +12,9 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/usememos/memos/internal/linkindex"
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
+	"github.com/usememos/memos/server/runner/memopayload"
 	"github.com/usememos/memos/store"
 )
 
@@ -284,7 +286,121 @@ func (s *APIV1Service) RenameWorkspaceFolder(ctx context.Context, request *v1pb.
 		return nil, status.Errorf(codes.Internal, "failed to rename folder: %v", err)
 	}
 	s.reindexFolder(ctx, workspace.ID, newPath)
+	// P5: this bulk SQL path bypasses UpdateMemo the same way reindexFolder's
+	// comment describes, so the href-repair sweep must be wired on manually
+	// here too, not just on the single-memo UpdateMemo path (P4).
+	s.repairFolderMoveReferencesBestEffort(ctx, workspace.ID, oldPath, newPath)
 	return &emptypb.Empty{}, nil
+}
+
+// repairFolderMoveReferencesBestEffort implements P5
+// (docs/dev/design/20260807-cross-reference-repair-plan.md): after a folder
+// subtree is renamed/moved within the same workspace (oldPath -> newPath),
+// every root-relative href whose path fell under oldPath is stale and gets
+// its prefix swapped for newPath. Two referrer sets are covered by a single
+// pass: documents outside the subtree that reference something inside it
+// (found via the P0 reverse-link index), and documents INSIDE the subtree
+// that cross-reference each other — root-relative hrefs encode the full
+// path, so a doc that moved along with its sibling still has a stale href
+// to that sibling. That reverse-link query already returns both: a link row
+// with MemoID inside the (now-moved) subtree and TargetMemoID also inside it
+// is exactly an intra-subtree cross-reference.
+//
+// TODO(design doc "已知取舍"): batch this into the same transaction as the
+// bulk rename above, and coalesce the resulting per-document reindex jobs
+// into a single pass, instead of repairing and reindexing document-by-
+// document as a best-effort post-commit sweep. Applies to any "one operation
+// batch-rewrites many documents" flow, not just this one.
+func (s *APIV1Service) repairFolderMoveReferencesBestEffort(ctx context.Context, workspaceID int32, oldPath, newPath string) {
+	subtree, err := s.Store.ListMemos(ctx, &store.FindMemo{
+		WorkspaceID:      &workspaceID,
+		FolderPathPrefix: &newPath, // already renamed by the bulk SQL above
+		ExcludeContent:   true,
+		ExcludeComments:  true,
+	})
+	if err != nil {
+		slog.Warn("failed to list moved subtree for folder move repair", slog.Int("workspaceID", int(workspaceID)), slog.Any("err", err))
+		return
+	}
+	if len(subtree) == 0 {
+		return
+	}
+
+	subtreeIDs := make([]int32, 0, len(subtree))
+	for _, m := range subtree {
+		subtreeIDs = append(subtreeIDs, m.ID)
+	}
+
+	links, err := s.Store.ListMemoLinks(ctx, &store.FindMemoLink{TargetMemoIDList: subtreeIDs})
+	if err != nil {
+		slog.Warn("failed to list inbound links for folder move repair", slog.Int("workspaceID", int(workspaceID)), slog.Any("err", err))
+		return
+	}
+
+	referrerIDs := make(map[int32]struct{})
+	for _, l := range links {
+		referrerIDs[l.MemoID] = struct{}{}
+	}
+	for id := range referrerIDs {
+		if err := s.repairOneFolderMoveReferrer(ctx, workspaceID, id, oldPath, newPath); err != nil {
+			slog.Warn("failed to repair folder move reference",
+				slog.Int("sourceMemoID", int(id)), slog.String("oldPath", oldPath), slog.String("newPath", newPath), slog.Any("err", err))
+		}
+	}
+}
+
+func (s *APIV1Service) repairOneFolderMoveReferrer(ctx context.Context, workspaceID, memoID int32, oldPath, newPath string) error {
+	source, err := s.Store.GetMemo(ctx, &store.FindMemo{ID: &memoID})
+	if err != nil || source == nil {
+		return err
+	}
+	if source.WorkspaceID != workspaceID {
+		// A referrer in a *different* workspace can only be linking in by uid
+		// ("/memos/{uid}", which no path rewrite applies to) — memo_link rows
+		// legitimately cross workspaces, see resolveMemoLinkTargets. Its own
+		// root-relative hrefs are paths in ITS workspace, where oldPath means
+		// something else entirely (or nothing); prefix-swapping them here would
+		// silently repoint them at a folder that doesn't exist. Leave it alone.
+		return nil
+	}
+
+	var repairs []SSELinkRepair
+	decide := func(href, text string) (string, string, bool) {
+		if !linkindex.IsRootRelativeDocHref(href) {
+			return href, text, false
+		}
+		newHref, ok := linkindex.RewritePathPrefix(href, oldPath, newPath)
+		if !ok {
+			// Not under oldPath (any more, on a re-run) — nothing to do here,
+			// which is what keeps repeating the same move a no-op.
+			return href, text, false
+		}
+		repairs = append(repairs, SSELinkRepair{OldHref: href, NewHref: newHref, OldText: text, NewText: text})
+		return newHref, text, true
+	}
+
+	newContent, changed, err := s.MarkdownService.RewriteLinks([]byte(source.Content), decide)
+	if err != nil {
+		return err
+	}
+	if !changed {
+		return nil
+	}
+
+	source.Content = newContent
+	if err := memopayload.RebuildMemoPayload(ctx, source, s.MarkdownService); err != nil {
+		return err
+	}
+	if err := s.Store.UpdateMemo(ctx, &store.UpdateMemo{
+		ID:      source.ID,
+		Content: &source.Content,
+		Payload: source.Payload,
+	}); err != nil {
+		return err
+	}
+	s.syncMemoLinkIndex(ctx, source)
+	s.notifyRepairedMemo(ctx, source.ID, repairs)
+	return nil
 }
 
 // reindexFolder re-enqueues every document under path for indexing.
@@ -367,6 +483,26 @@ func (s *APIV1Service) MoveWorkspaceFolder(ctx context.Context, request *v1pb.Mo
 		return nil, status.Errorf(codes.Internal, "failed to list folder contents: %v", err)
 	}
 
+	// P6: cross-workspace moves get the same reject-with-references check as
+	// archive/delete (P1) — root-relative hrefs can't be repaired across a
+	// workspace boundary, so a document outside this subtree that still links
+	// into it blocks the move instead of silently orphaning that link.
+	if len(memos) > 0 {
+		ids := make([]int32, len(memos))
+		inSubtree := make(map[int32]bool, len(memos))
+		for i, m := range memos {
+			ids[i] = m.ID
+			inSubtree[m.ID] = true
+		}
+		refs, err := s.findExternalLinkReferences(ctx, ids, inSubtree)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to check memo references: %v", err)
+		}
+		if len(refs) > 0 {
+			return nil, referenceDependencyError(refs)
+		}
+	}
+
 	// (workspace_id, folder_path, title) is unique, so a colliding title anywhere in
 	// the subtree would fail mid-move. Collect every conflict up front: a user told
 	// "3 documents already exist at the destination: a, b, c" can act on it, whereas
@@ -431,6 +567,29 @@ func (s *APIV1Service) MoveWorkspaceFolder(ctx context.Context, request *v1pb.Mo
 				"failed to move document %q (%d of %d moved, retry to finish): %v", m.Title, i, len(memos), err)
 		}
 	}
+
+	// The P6 check above rejected the move if anything OUTSIDE the subtree
+	// linked into it, so the only links left to worry about are the subtree's
+	// own cross-references — and those are stale now, because root-relative
+	// hrefs spell the full path and every document's path just gained (or
+	// changed) a prefix. Same prefix swap as the same-workspace rename path;
+	// the moved documents now live in the destination workspace, so that's the
+	// workspace the sweep runs against.
+	if path != newPath {
+		s.repairFolderMoveReferencesBestEffort(ctx, destination.ID, path, newPath)
+	}
+
+	// Links pointing OUT of the subtree at documents left behind in the source
+	// workspace can't stay root-relative either — same reasoning, opposite
+	// direction. Targets that moved along with the subtree are exempt (the
+	// sweep above already fixed their paths).
+	movedIDs := make([]int32, 0, len(memos))
+	movedUIDs := make(map[string]bool, len(memos))
+	for _, m := range memos {
+		movedIDs = append(movedIDs, m.ID)
+		movedUIDs[m.UID] = true
+	}
+	s.rewriteOutboundLinksToUIDBestEffort(ctx, movedIDs, source.ID, movedUIDs)
 
 	for _, f := range moved {
 		if err := s.Store.DeleteWorkspaceFolder(ctx, &store.DeleteWorkspaceFolder{WorkspaceID: source.ID, Path: f.Path}); err != nil {

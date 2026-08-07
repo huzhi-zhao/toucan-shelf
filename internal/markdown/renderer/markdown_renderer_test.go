@@ -174,3 +174,55 @@ func TestMarkdownRendererPreservesStructure(t *testing.T) {
 		})
 	}
 }
+
+// TestMarkdownRendererEscapesLinkDestinations pins the round-trip that the
+// link-repair path depends on: re-rendering a document must not turn a link
+// whose destination contains spaces back into something that no longer parses
+// as a link. goldmark drops the "<...>" wrapper at parse time, so the renderer
+// is the only place that can put the destination back in a safe form.
+func TestMarkdownRendererEscapesLinkDestinations(t *testing.T) {
+	md := goldmark.New(
+		goldmark.WithExtensions(extension.GFM, extensions.TagExtension),
+		goldmark.WithParserOptions(parser.WithAutoHeadingID()),
+	)
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "angle-wrapped destination with space",
+			input:    "[go](</memos-docs/Long Report.md>)",
+			expected: "[go](/memos-docs/Long%20Report.md)",
+		},
+		{
+			name:     "already percent-encoded destination is left alone",
+			input:    "[go](/memos-docs/Long%20Report.md)",
+			expected: "[go](/memos-docs/Long%20Report.md)",
+		},
+		{
+			name:     "plain destination is untouched",
+			input:    "[go](/NewFeatures/Calendar)",
+			expected: "[go](/NewFeatures/Calendar)",
+		},
+		{
+			name:     "image destination with space",
+			input:    "![img](</a b.png>)",
+			expected: "![img](/a%20b.png)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			source := []byte(tt.input)
+			doc := md.Parser().Parse(text.NewReader(source))
+			got := NewMarkdownRenderer().Render(doc, source)
+			assert.Equal(t, tt.expected, got)
+
+			// Idempotent: re-parsing and re-rendering the output is stable.
+			out := []byte(got)
+			assert.Equal(t, got, NewMarkdownRenderer().Render(md.Parser().Parse(text.NewReader(out)), out))
+		})
+	}
+}

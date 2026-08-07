@@ -1,4 +1,4 @@
-import { isRelativeDocHref, useDocumentLinkContext } from "@/components/MemoContent/DocumentLinkContext";
+import { isRootRelativeDocHref, useDocumentLinkContext } from "@/components/MemoContent/DocumentLinkContext";
 import { cn } from "@/lib/utils";
 import type { GridCardData } from "./parseGridBlock";
 
@@ -146,7 +146,7 @@ export const GridCard = ({ card, nocover, longbar }: GridCardProps) => {
     );
   }
 
-  if (docLinkContext && isRelativeDocHref(url)) {
+  if (docLinkContext && isRootRelativeDocHref(url)) {
     const target = docLinkContext.resolve(url);
     if (target) {
       return (

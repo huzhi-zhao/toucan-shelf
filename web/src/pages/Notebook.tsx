@@ -615,7 +615,7 @@ const Notebook = () => {
         {memo ? (
           <DocumentLinkProvider
             value={{
-              resolve: (href) => resolveWorkspacePath(tree, href, memo.folderPath),
+              resolve: (href) => resolveWorkspacePath(tree, href),
               navigate: (memoName, href) => handleSelectDocument(memoName, href),
             }}
           >

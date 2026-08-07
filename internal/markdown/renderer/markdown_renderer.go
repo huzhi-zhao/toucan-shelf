@@ -30,6 +30,33 @@ func (r *MarkdownRenderer) Render(node gast.Node, source []byte) string {
 	return r.buf.String()
 }
 
+// escapeDestination percent-encodes the characters that would break a bare
+// markdown link destination on re-parse. goldmark strips the "<...>" wrapper
+// when it parses `[x](</a b.md>)`, so writing Destination back verbatim would
+// emit `[x](/a b.md)` — a destination that truncates at the first space and
+// leaks the rest into the visible text. Re-adding "<...>" is not enough: it
+// survives only until the next hand-edit, and every other producer of these
+// links (import, paste, memogit) would need the same trick, whereas a
+// percent-encoded destination is unambiguous everywhere and is what both the
+// Go and frontend resolvers already decode on the way in.
+//
+// Only the parse-breaking characters are encoded, and "%" deliberately is not:
+// destinations are frequently already encoded, and encoding "%" here would
+// double-encode them on every re-render. That keeps the function idempotent,
+// which the RewriteLink* callers depend on.
+func escapeDestination(dest []byte) string {
+	return destinationEscaper.Replace(string(dest))
+}
+
+var destinationEscaper = strings.NewReplacer(
+	" ", "%20",
+	"\t", "%09",
+	"(", "%28",
+	")", "%29",
+	"<", "%3C",
+	">", "%3E",
+)
+
 // renderNode renders a single node and its children.
 func (r *MarkdownRenderer) renderNode(node gast.Node, source []byte, depth int) {
 	switch n := node.(type) {
@@ -76,7 +103,7 @@ func (r *MarkdownRenderer) renderNode(node gast.Node, source []byte, depth int) 
 		r.buf.WriteString("[")
 		r.renderChildren(n, source, depth)
 		r.buf.WriteString("](")
-		r.buf.Write(n.Destination)
+		r.buf.WriteString(escapeDestination(n.Destination))
 		if len(n.Title) > 0 {
 			r.buf.WriteString(` "`)
 			r.buf.Write(n.Title)
@@ -98,7 +125,7 @@ func (r *MarkdownRenderer) renderNode(node gast.Node, source []byte, depth int) 
 		r.buf.WriteString("![")
 		r.renderChildren(n, source, depth)
 		r.buf.WriteString("](")
-		r.buf.Write(n.Destination)
+		r.buf.WriteString(escapeDestination(n.Destination))
 		if len(n.Title) > 0 {
 			r.buf.WriteString(` "`)
 			r.buf.Write(n.Title)

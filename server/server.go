@@ -42,6 +42,7 @@ type Server struct {
 	httpServer      *http.Server
 	sseHub          *apiv1.SSEHub
 	markdownService markdown.Service
+	apiV1Service    *apiv1.APIV1Service
 
 	backgroundRunnerCancels []context.CancelFunc
 	backgroundRunnerWG      sync.WaitGroup
@@ -82,6 +83,7 @@ func NewServer(ctx context.Context, profile *profile.Profile, store *store.Store
 	apiV1Service := apiv1.NewAPIV1Service(s.Secret, profile, store)
 	s.sseHub = apiV1Service.SSEHub
 	s.markdownService = apiV1Service.MarkdownService
+	s.apiV1Service = apiV1Service
 
 	// Register HTTP file server routes BEFORE gRPC-Gateway to ensure proper range request handling for Safari.
 	// This uses native HTTP serving (http.ServeContent) instead of gRPC for video/audio files.
@@ -186,6 +188,19 @@ func (s *Server) startBackgroundRunners(ctx context.Context) {
 		defer s.backgroundRunnerWG.Done()
 		memoPayloadRunner.RunOnce(memoPayloadContext)
 		slog.Info("memo payload rebuild finished")
+	}()
+
+	// Backfill the memo_link reverse-link index once at startup: it's only
+	// ever written on the create/update-content paths, so documents that
+	// predate the cross-reference-repair feature (or weren't content-edited
+	// since) start with no index row, which silently disables both
+	// reference-blocked archive/delete and rename repair for them.
+	linkIndexContext, linkIndexCancel := context.WithCancel(ctx)
+	s.backgroundRunnerCancels = append(s.backgroundRunnerCancels, linkIndexCancel)
+	s.backgroundRunnerWG.Add(1)
+	go func() {
+		defer s.backgroundRunnerWG.Done()
+		s.apiV1Service.BackfillMemoLinkIndex(linkIndexContext)
 	}()
 
 	// RAG search index worker. Indexing is only implemented for the SQLite driver

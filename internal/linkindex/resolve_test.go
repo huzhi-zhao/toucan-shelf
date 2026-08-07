@@ -38,94 +38,139 @@ func TestResolveAbsoluteMemoHref(t *testing.T) {
 	}
 }
 
-func TestIsRelativeDocHref(t *testing.T) {
+func TestIsRootRelativeDocHref(t *testing.T) {
 	tests := []struct {
 		href string
 		want bool
 	}{
-		{"doc.md", true},
-		{"notes/doc.md", true},
-		{"../doc.md", true},
+		{"/doc.md", true},
+		{"/notes/doc.md", true},
+		{"/设计/规范.md", true},
+		{"doc.md", false},       // old relative form: retired, not a doc link
+		{"notes/doc.md", false}, // old relative form: retired, not a doc link
+		{"../doc.md", false},    // old relative form: retired, not a doc link
 		{"", false},
 		{"#section", false},
-		{"/memos/abc", false},
+		{"/memos/abc", false}, // compat uid form, not root-relative
 		{"https://example.com/x", false},
 		{"mailto:a@b.com", false},
 	}
 	for _, tt := range tests {
-		if got := IsRelativeDocHref(tt.href); got != tt.want {
-			t.Errorf("IsRelativeDocHref(%q) = %v, want %v", tt.href, got, tt.want)
+		if got := IsRootRelativeDocHref(tt.href); got != tt.want {
+			t.Errorf("IsRootRelativeDocHref(%q) = %v, want %v", tt.href, got, tt.want)
 		}
 	}
 }
 
-func TestResolveWorkspacePath(t *testing.T) {
+func TestResolveRootRelativePath(t *testing.T) {
 	tree := buildTestTree()
 
-	t.Run("resolves relative to the current folder", func(t *testing.T) {
-		uid, ok := ResolveWorkspacePath(tree, "Gamma.md", "notes/2026")
+	t.Run("resolves a root-level document", func(t *testing.T) {
+		uid, ok := ResolveRootRelativePath(tree, "/Alpha")
+		if !ok || uid != "a1" {
+			t.Fatalf("got (%q, %v), want (a1, true)", uid, ok)
+		}
+	})
+
+	t.Run("resolves a nested document", func(t *testing.T) {
+		uid, ok := ResolveRootRelativePath(tree, "/notes/2026/Gamma")
 		if !ok || uid != "c1" {
 			t.Fatalf("got (%q, %v), want (c1, true)", uid, ok)
 		}
 	})
 
-	t.Run("resolves a sibling via ..", func(t *testing.T) {
-		uid, ok := ResolveWorkspacePath(tree, "../doc-does-not-exist.md", "notes/2026")
+	t.Run("title match is case-insensitive and extension-agnostic", func(t *testing.T) {
+		uid, ok := ResolveRootRelativePath(tree, "/ALPHA.MD")
+		if !ok || uid != "a1" {
+			t.Fatalf("got (%q, %v), want (a1, true)", uid, ok)
+		}
+	})
+
+	t.Run("duplicate titles in different folders resolve unambiguously by folder", func(t *testing.T) {
+		uid, ok := ResolveRootRelativePath(tree, "/notes/Beta")
+		if !ok || uid != "b1" {
+			t.Fatalf("got (%q, %v), want (b1, true)", uid, ok)
+		}
+		uid, ok = ResolveRootRelativePath(tree, "/archive/Beta")
+		if !ok || uid != "b2" {
+			t.Fatalf("got (%q, %v), want (b2, true)", uid, ok)
+		}
+	})
+
+	t.Run("no tree-wide title fallback: wrong folder does not resolve", func(t *testing.T) {
+		_, ok := ResolveRootRelativePath(tree, "/wrong-folder/Alpha")
 		if ok {
-			t.Fatalf("expected no match, got %q", uid)
-		}
-		uid, ok = ResolveWorkspacePath(tree, "../../notes/Beta.md", "notes/2026")
-		if !ok || uid != "b1" {
-			t.Fatalf("got (%q, %v), want (b1, true)", uid, ok)
+			t.Fatalf("expected no match")
 		}
 	})
 
-	t.Run("falls back to root-relative match", func(t *testing.T) {
-		uid, ok := ResolveWorkspacePath(tree, "notes/Beta", "somewhere/else")
-		if !ok || uid != "b1" {
-			t.Fatalf("got (%q, %v), want (b1, true)", uid, ok)
-		}
-	})
-
-	t.Run("falls back to a title match anywhere in the tree", func(t *testing.T) {
-		uid, ok := ResolveWorkspacePath(tree, "Alpha", "notes/2026")
-		if !ok || uid != "a1" {
-			t.Fatalf("got (%q, %v), want (a1, true)", uid, ok)
-		}
-	})
-
-	t.Run("title match is case-insensitive and extension-stripped", func(t *testing.T) {
-		uid, ok := ResolveWorkspacePath(tree, "alpha.md", "")
-		if !ok || uid != "a1" {
-			t.Fatalf("got (%q, %v), want (a1, true)", uid, ok)
-		}
-	})
-
-	t.Run("ambiguous title-only fallback returns the first DFS match", func(t *testing.T) {
-		// Both b1 (notes/Beta) and b2 (archive/Beta) match "Beta" by title from an
-		// unrelated folder; this only exercises that resolution doesn't error or
-		// panic on ambiguity, since the design doc treats unresolvable/ambiguous
-		// links as "drop, don't block" at the indexing layer above this package.
-		uid, ok := ResolveWorkspacePath(tree, "Beta", "somewhere/else")
-		if !ok {
-			t.Fatalf("expected a match")
-		}
-		if uid != "b1" && uid != "b2" {
-			t.Fatalf("got unexpected uid %q", uid)
+	t.Run("no relative-navigation support: .. is a literal folder segment, not resolved", func(t *testing.T) {
+		_, ok := ResolveRootRelativePath(tree, "/notes/2026/../Beta")
+		if ok {
+			t.Fatalf("expected no match, since '..' is treated literally, not as navigation")
 		}
 	})
 
 	t.Run("no match returns false", func(t *testing.T) {
-		_, ok := ResolveWorkspacePath(tree, "nonexistent", "")
+		_, ok := ResolveRootRelativePath(tree, "/nonexistent")
 		if ok {
 			t.Fatalf("expected no match")
 		}
 	})
 
 	t.Run("empty href returns false", func(t *testing.T) {
-		_, ok := ResolveWorkspacePath(tree, "", "")
+		_, ok := ResolveRootRelativePath(tree, "")
 		if ok {
 			t.Fatalf("expected no match")
 		}
 	})
+}
+
+func TestCanonicalHref(t *testing.T) {
+	tests := []struct {
+		folderPath string
+		title      string
+		want       string
+	}{
+		{"", "Alpha", "/Alpha"},
+		{"notes/2026", "Gamma", "/notes/2026/Gamma"},
+		// Percent-encoded, not "<...>"-wrapped: a bare destination stops at the
+		// first space, so the space and the parens must not survive literally.
+		{"my notes", "plan (v2)", "/my%20notes/plan%20%28v2%29"},
+		// Non-ASCII is left readable — it never breaks the parse.
+		{"设计", "接口 说明", "/设计/接口%20说明"},
+	}
+	for _, tt := range tests {
+		if got := CanonicalHref(tt.folderPath, tt.title); got != tt.want {
+			t.Errorf("CanonicalHref(%q, %q) = %q, want %q", tt.folderPath, tt.title, got, tt.want)
+		}
+	}
+}
+
+func TestRewritePathPrefix(t *testing.T) {
+	tests := []struct {
+		name          string
+		href          string
+		oldFolderPath string
+		newFolderPath string
+		want          string
+		wantOK        bool
+	}{
+		{"exact folder replaced", "/设计/api", "设计", "规范", "/规范/api", true},
+		{"nested doc replaced", "/设计/sub/api", "设计", "规范", "/规范/sub/api", true},
+		{"unrelated path untouched", "/other/api", "设计", "规范", "", false},
+		{"sibling folder with shared prefix not matched", "/设计2/api", "设计", "规范", "", false},
+		{"root folder move", "/old/api", "old", "", "/api", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := RewritePathPrefix(tt.href, tt.oldFolderPath, tt.newFolderPath)
+			if ok != tt.wantOK {
+				t.Fatalf("RewritePathPrefix(%q, %q, %q) ok = %v, want %v", tt.href, tt.oldFolderPath, tt.newFolderPath, ok, tt.wantOK)
+			}
+			if ok && got != tt.want {
+				t.Fatalf("RewritePathPrefix(%q, %q, %q) = %q, want %q", tt.href, tt.oldFolderPath, tt.newFolderPath, got, tt.want)
+			}
+		})
+	}
 }

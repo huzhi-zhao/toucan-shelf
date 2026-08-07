@@ -51,11 +51,11 @@ func TestMemoLinkIndexP0(t *testing.T) {
 		require.Equal(t, targetMemo.ID, links[0].TargetMemoID)
 	})
 
-	t.Run("relative path link resolves via the workspace tree and is indexed", func(t *testing.T) {
+	t.Run("root-relative path link resolves via the workspace tree and is indexed", func(t *testing.T) {
 		source, err := ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
 			Memo: &apiv1.Memo{
 				Title:   "Source Doc 2",
-				Content: "See [Target Doc](Target%20Doc.md) for details.",
+				Content: "See [Target Doc](/Target%20Doc.md) for details.",
 			},
 		})
 		require.NoError(t, err)
@@ -67,6 +67,23 @@ func TestMemoLinkIndexP0(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, links, 1)
 		require.Equal(t, targetMemo.ID, links[0].TargetMemoID)
+	})
+
+	t.Run("bare relative path (no leading slash) is not a document link (old scheme retired)", func(t *testing.T) {
+		source, err := ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
+			Memo: &apiv1.Memo{
+				Title:   "Source Doc 2b",
+				Content: "See [Target Doc](Target%20Doc.md) for details.",
+			},
+		})
+		require.NoError(t, err)
+		sourceUID := memoUIDFromName(t, source.Name)
+		sourceMemo, err := ts.Store.GetMemo(ctx, &store.FindMemo{UID: &sourceUID})
+		require.NoError(t, err)
+
+		links, err := ts.Store.ListMemoLinks(ctx, &store.FindMemoLink{MemoID: &sourceMemo.ID})
+		require.NoError(t, err)
+		require.Empty(t, links, "P3 retires the bare-relative-path form; it must not resolve or index")
 	})
 
 	t.Run("re-editing content overwrites the index rather than appending", func(t *testing.T) {
@@ -224,7 +241,7 @@ func TestMemoLinkRenameRepairP2(t *testing.T) {
 	require.NoError(t, err)
 
 	relLinker, err := ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
-		Memo: &apiv1.Memo{Title: "Relative Linker", Content: "See [Old Title](Old%20Title.md)."},
+		Memo: &apiv1.Memo{Title: "Relative Linker", Content: "See [Old Title](/Old%20Title.md)."},
 	})
 	require.NoError(t, err)
 
@@ -247,11 +264,15 @@ func TestMemoLinkRenameRepairP2(t *testing.T) {
 		require.NotContains(t, updated.Content, "[Old Title]")
 	})
 
-	t.Run("relative-link anchor equal to the old title is rewritten", func(t *testing.T) {
+	t.Run("root-relative link href and anchor are both rewritten on rename (P4)", func(t *testing.T) {
 		updated, err := ts.Service.GetMemo(userCtx, &apiv1.GetMemoRequest{Name: relLinker.Name})
 		require.NoError(t, err)
-		require.Contains(t, updated.Content, "[New Title](Old%20Title.md)")
-		require.NotContains(t, updated.Content, "[Old Title]")
+		// The canonical href for the renamed target is a fresh CanonicalHref
+		// computed from its new title (space -> "<...>" wrapping, no extension
+		// carried over from the old href).
+		require.Contains(t, updated.Content, "[New Title](/New%20Title)")
+		require.NotContains(t, updated.Content, "Old Title")
+		require.NotContains(t, updated.Content, "Old%20Title")
 	})
 
 	t.Run("a hand-edited anchor is left untouched", func(t *testing.T) {

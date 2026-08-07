@@ -257,6 +257,13 @@ func (s *APIV1Service) RestoreMemoHistory(ctx context.Context, request *v1pb.Res
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to build updated memo state")
 	}
+	// Restoring a history version is a content write like any other: the
+	// reverse-link index (memo_link) is derived from content, so it must be
+	// re-synced or it keeps pointing at whatever content was live before the
+	// rollback (see UpdateMemo's contentUpdated handling for the normal path).
+	if restore.Content != nil {
+		s.syncMemoLinkIndex(ctx, updatedMemo)
+	}
 	s.dispatchMemoUpdatedSideEffects(ctx, updatedMemo, parentMemo, memoMessage)
 	return memoMessage, nil
 }

@@ -74,6 +74,14 @@ export const markdownStyles = {
   taskItemContent: "min-w-0 [overflow-wrap:anywhere] [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
   inlineCode: "font-mono text-sm bg-muted px-1 py-0.5 rounded-md",
   link: "text-primary underline decoration-primary/50 underline-offset-2 transition-colors hover:decoration-primary",
+  /**
+   * A root-relative doc link (per DocumentLinkContext.isRootRelativeDocHref) that failed to resolve
+   * to a memo — the one user-visible product change from the P3 canonical-path-resolution phase
+   * (docs/dev/design/20260807-cross-reference-repair-plan.md). Dashed underline + muted/destructive
+   * tint distinguishes it from a normal (resolved) or plain external link at a glance.
+   */
+  brokenLink:
+    "text-destructive/80 underline decoration-destructive/40 decoration-dashed underline-offset-2 transition-colors hover:decoration-destructive cursor-help",
   horizontalRule: "my-[var(--md-rule-gap)] h-0 border-0 border-b border-border",
   /** Wrapper spacing for block-level embeds (tables, code fences, mermaid, sheets…). */
   blockWrapper: "mt-0 mb-[var(--md-block-gap)]",

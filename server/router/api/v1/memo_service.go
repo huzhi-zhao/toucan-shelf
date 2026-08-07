@@ -580,8 +580,12 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 	}
 	var previousContent string
 	contentUpdated := false
+	previousWorkspaceID := memo.WorkspaceID
+	workspaceChanged := false
 	var previousTitle string
 	titleUpdated := false
+	var previousFolderPath string
+	folderPathUpdated := false
 	for _, path := range request.UpdateMask.Paths {
 		if path == "content" {
 			contentUpdated = true
@@ -674,6 +678,8 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 			}
 		} else if path == "folder_path" {
 			folderPath := normalizeFolderPath(request.Memo.FolderPath)
+			folderPathUpdated = true
+			previousFolderPath = memo.FolderPath
 			update.FolderPath = &folderPath
 		} else if path == "title" {
 			titleUpdated = true
@@ -686,6 +692,20 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 			workspace, err := s.resolveWorkspaceForMemo(ctx, memo.CreatorID, request.Memo.Workspace)
 			if err != nil {
 				return nil, err
+			}
+			if workspace.ID != memo.WorkspaceID {
+				// P6: cross-workspace moves can't be href-repaired (root-relative
+				// hrefs are only meaningful within one workspace), so reject the
+				// same way archive/delete does rather than silently orphaning
+				// referencers' links.
+				refs, err := s.findExternalLinkReferences(ctx, []int32{memo.ID}, map[int32]bool{memo.ID: true})
+				if err != nil {
+					return nil, status.Errorf(codes.Internal, "failed to check memo references: %v", err)
+				}
+				if len(refs) > 0 {
+					return nil, referenceDependencyError(refs)
+				}
+				workspaceChanged = true
 			}
 			update.WorkspaceID = &workspace.ID
 		}
@@ -730,10 +750,31 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 	if contentUpdated {
 		s.syncMemoLinkIndex(ctx, memo)
 	}
-	// P2: title changed, so any document linking to this one with anchor text
-	// equal to the old title now points at a stale label. Repair silently.
-	if titleUpdated && previousTitle != memo.Title {
-		s.repairInboundLinkAnchorsBestEffort(ctx, memo, previousTitle)
+	// P4: title and/or folder_path changed (same-workspace rename/move), so
+	// referencers' hrefs into this memo are stale and must be repaired
+	// unconditionally; anchor text is repaired independently, only when it
+	// exactly equals the old title (P2's original rule, unchanged in scope).
+	titleChanged := titleUpdated && previousTitle != memo.Title
+	folderChanged := folderPathUpdated && previousFolderPath != memo.FolderPath
+	if titleChanged || folderChanged {
+		if !titleChanged {
+			// Anchor-text repair keys off "text == previousTitle"; when only the
+			// folder moved, the title didn't change, so the comparison must use
+			// the current (unchanged) title rather than the zero value.
+			previousTitle = memo.Title
+		}
+		if !folderChanged {
+			// Same reasoning for the "as-of" tree used to resolve referencers'
+			// stale hrefs: when only the title changed, the folder is unchanged.
+			previousFolderPath = memo.FolderPath
+		}
+		s.repairInboundLinksBestEffort(ctx, memo, previousTitle, previousFolderPath)
+	}
+	// P6, the other direction: the check above guards documents linking INTO
+	// this one, but this one's own root-relative hrefs name paths in the
+	// workspace it just left and would go dead. Pin them to uid form instead.
+	if workspaceChanged {
+		s.rewriteOutboundLinksToUIDBestEffort(ctx, []int32{memo.ID}, previousWorkspaceID, nil)
 	}
 
 	memo, parentMemo, memoMessage, err := s.buildUpdatedMemoState(ctx, memo.ID)

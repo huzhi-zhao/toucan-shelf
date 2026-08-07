@@ -64,15 +64,26 @@ func (s *APIV1Service) buildUpdatedMemoState(ctx context.Context, memoID int32) 
 }
 
 func (s *APIV1Service) dispatchMemoUpdatedSideEffects(ctx context.Context, memo *store.Memo, parentMemo *store.Memo, memoMessage *v1pb.Memo) {
+	s.dispatchMemoUpdatedSideEffectsWithLinkRepairs(ctx, memo, parentMemo, memoMessage, nil)
+}
+
+// dispatchMemoUpdatedSideEffectsWithLinkRepairs is dispatchMemoUpdatedSideEffects
+// with the automatic-repair provenance attached: linkRepairs is non-empty only
+// when this update rewrote cross-references on the owner's behalf, which the
+// client can surface differently from an edit the user actually made.
+func (s *APIV1Service) dispatchMemoUpdatedSideEffectsWithLinkRepairs(
+	ctx context.Context, memo *store.Memo, parentMemo *store.Memo, memoMessage *v1pb.Memo, linkRepairs []SSELinkRepair,
+) {
 	if err := s.DispatchMemoUpdatedWebhook(ctx, memoMessage); err != nil {
 		slog.Warn("Failed to dispatch memo updated webhook", slog.Any("err", err))
 	}
 
 	s.SSEHub.Broadcast(&SSEEvent{
-		Type:       SSEEventMemoUpdated,
-		Name:       memoMessage.Name,
-		Parent:     memoMessage.GetParent(),
-		Visibility: memo.Visibility,
-		CreatorID:  resolveSSECreatorID(memo, parentMemo),
+		Type:        SSEEventMemoUpdated,
+		Name:        memoMessage.Name,
+		Parent:      memoMessage.GetParent(),
+		LinkRepairs: linkRepairs,
+		Visibility:  memo.Visibility,
+		CreatorID:   resolveSSECreatorID(memo, parentMemo),
 	})
 }

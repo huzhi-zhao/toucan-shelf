@@ -126,7 +126,7 @@ const MemoDetail = () => {
             )}
             <DocumentLinkProvider
               value={{
-                resolve: (href) => resolveWorkspacePath(workspaceTree, href, displayMemo.folderPath),
+                resolve: (href) => resolveWorkspacePath(workspaceTree, href),
                 navigate: (memoName, href) => {
                   // Carry the link's fragment across so the destination page can scroll to the
                   // heading (`document/abc#h-…`); the scroll effect above resolves it there.

@@ -28,9 +28,25 @@ type SSEEvent struct {
 	Name string `json:"name"`
 	// Parent is the parent memo resource name when the affected resource is a comment.
 	Parent string `json:"parent,omitempty"`
+	// LinkRepairs, when present, says this update was not authored by anyone:
+	// a rename/move elsewhere rewrote this document's cross-references on its
+	// behalf. It lists exactly what changed so the client can tell the reader
+	// (or at minimum log it) instead of silently swapping text under them.
+	LinkRepairs []SSELinkRepair `json:"linkRepairs,omitempty"`
 	// Visibility and CreatorID are used only for server-side delivery filtering.
 	Visibility store.Visibility `json:"-"`
 	CreatorID  int32            `json:"-"`
+}
+
+// SSELinkRepair is one link rewritten by an automatic cross-reference repair.
+// Old/new pairs are reported even when unchanged on one axis (a repair often
+// touches the href but deliberately leaves hand-edited anchor text alone), so
+// the client doesn't have to guess which half moved.
+type SSELinkRepair struct {
+	OldHref string `json:"oldHref"`
+	NewHref string `json:"newHref"`
+	OldText string `json:"oldText"`
+	NewText string `json:"newText"`
 }
 
 // JSON returns the JSON representation of the event.
