@@ -52,6 +52,12 @@ func (r *MarkdownRenderer) renderNode(node gast.Node, source []byte, depth int) 
 			r.buf.WriteString("  \n")
 		}
 
+	case *gast.String:
+		// String nodes hold literal text not tied to a source offset (e.g.
+		// programmatically inserted/replaced text such as a rewritten link
+		// anchor); render the value verbatim.
+		r.buf.Write(n.Value)
+
 	case *gast.CodeSpan:
 		r.buf.WriteByte('`')
 		r.renderChildren(n, source, depth)

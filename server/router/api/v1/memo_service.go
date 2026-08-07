@@ -181,6 +181,10 @@ func (s *APIV1Service) CreateMemo(ctx context.Context, request *v1pb.CreateMemoR
 		return nil, err
 	}
 
+	// Best-effort: index this memo's outbound links so the reverse-link index
+	// (P0) is populated from creation, not only after the first edit.
+	s.syncMemoLinkIndex(ctx, memo)
+
 	attachments := []*store.Attachment{}
 
 	if len(request.Memo.Attachments) > 0 {
@@ -576,6 +580,8 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 	}
 	var previousContent string
 	contentUpdated := false
+	var previousTitle string
+	titleUpdated := false
 	for _, path := range request.UpdateMask.Paths {
 		if path == "content" {
 			contentUpdated = true
@@ -610,6 +616,18 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 			update.Pinned = &request.Memo.Pinned
 		} else if path == "state" {
 			rowStatus := convertStateToStore(request.Memo.State)
+			if rowStatus == store.Archived && memo.RowStatus != store.Archived {
+				// P1: archiving is a container-emptying-adjacent operation (see
+				// docs/dev/design/20260807-cross-reference-repair-plan.md P1) —
+				// reject it if other documents still link to this one.
+				refs, err := s.findExternalLinkReferences(ctx, []int32{memo.ID}, map[int32]bool{memo.ID: true})
+				if err != nil {
+					return nil, status.Errorf(codes.Internal, "failed to check memo references: %v", err)
+				}
+				if len(refs) > 0 {
+					return nil, referenceDependencyError(refs)
+				}
+			}
 			update.RowStatus = &rowStatus
 		} else if path == "create_time" {
 			createdTs := request.Memo.CreateTime.AsTime().Unix()
@@ -658,6 +676,8 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 			folderPath := normalizeFolderPath(request.Memo.FolderPath)
 			update.FolderPath = &folderPath
 		} else if path == "title" {
+			titleUpdated = true
+			previousTitle = memo.Title
 			update.Title = &request.Memo.Title
 		} else if path == "doc_type" {
 			docType := convertDocTypeToStore(request.Memo.DocType)
@@ -704,6 +724,18 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get memo")
 	}
+
+	// P0: content changed, so this memo's outbound reverse-link index entries
+	// are stale — full reparse and overwrite. Best-effort by design.
+	if contentUpdated {
+		s.syncMemoLinkIndex(ctx, memo)
+	}
+	// P2: title changed, so any document linking to this one with anchor text
+	// equal to the old title now points at a stale label. Repair silently.
+	if titleUpdated && previousTitle != memo.Title {
+		s.repairInboundLinkAnchorsBestEffort(ctx, memo, previousTitle)
+	}
+
 	memo, parentMemo, memoMessage, err := s.buildUpdatedMemoState(ctx, memo.ID)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build updated memo state")
@@ -741,6 +773,15 @@ func (s *APIV1Service) DeleteMemo(ctx context.Context, request *v1pb.DeleteMemoR
 	// Only the creator or admin can update the memo.
 	if memo.CreatorID != user.ID && !isSuperUser(user) {
 		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+	}
+
+	// P1: reject a hard delete if other documents still link to this one.
+	refs, err := s.findExternalLinkReferences(ctx, []int32{memo.ID}, map[int32]bool{memo.ID: true})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to check memo references: %v", err)
+	}
+	if len(refs) > 0 {
+		return nil, referenceDependencyError(refs)
 	}
 
 	reactions, err := s.Store.ListReactions(ctx, &store.FindReaction{

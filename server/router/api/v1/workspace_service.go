@@ -154,12 +154,39 @@ func (s *APIV1Service) DeleteWorkspace(ctx context.Context, request *v1pb.Delete
 		return nil, err
 	}
 
-	memos, err := s.Store.ListMemos(ctx, &store.FindMemo{WorkspaceID: &workspace.ID})
+	// Only live documents block the delete, matching DeleteWorkspaceFolder's
+	// rule (see its comment): archived memos keep their workspace_id forever,
+	// so counting them here would make any workspace that ever held a deleted
+	// document permanently undeletable.
+	normal := store.Normal
+	memos, err := s.Store.ListMemos(ctx, &store.FindMemo{WorkspaceID: &workspace.ID, RowStatus: &normal})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to check workspace contents: %v", err)
 	}
 	if len(memos) > 0 {
 		return nil, status.Errorf(codes.FailedPrecondition, "workspace is not empty")
+	}
+
+	// P1: reject the delete if a document outside this workspace links to any
+	// (live or archived) document inside it.
+	allMemos, err := s.Store.ListMemos(ctx, &store.FindMemo{WorkspaceID: &workspace.ID, ExcludeContent: true, ExcludeComments: true})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to check workspace contents: %v", err)
+	}
+	if len(allMemos) > 0 {
+		ids := make([]int32, len(allMemos))
+		inWorkspace := make(map[int32]bool, len(allMemos))
+		for i, m := range allMemos {
+			ids[i] = m.ID
+			inWorkspace[m.ID] = true
+		}
+		refs, err := s.findExternalLinkReferences(ctx, ids, inWorkspace)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to check memo references: %v", err)
+		}
+		if len(refs) > 0 {
+			return nil, referenceDependencyError(refs)
+		}
 	}
 
 	if err := s.Store.DeleteWorkspace(ctx, &store.DeleteWorkspace{ID: workspace.ID}); err != nil {
@@ -484,6 +511,35 @@ func (s *APIV1Service) DeleteWorkspaceFolder(ctx context.Context, request *v1pb.
 	}
 	if len(memos) > 0 {
 		return nil, status.Errorf(codes.FailedPrecondition, "folder is not empty")
+	}
+
+	// P1: reject the delete if a document outside this folder subtree links to
+	// a document inside it. Includes archived documents in the subtree as
+	// possible link targets, since they can still be linked to even though
+	// they no longer block emptiness above.
+	subtreeMemos, err := s.Store.ListMemos(ctx, &store.FindMemo{
+		WorkspaceID:      &workspace.ID,
+		FolderPathPrefix: &path,
+		ExcludeContent:   true,
+		ExcludeComments:  true,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to check folder contents: %v", err)
+	}
+	if len(subtreeMemos) > 0 {
+		ids := make([]int32, len(subtreeMemos))
+		inSubtree := make(map[int32]bool, len(subtreeMemos))
+		for i, m := range subtreeMemos {
+			ids[i] = m.ID
+			inSubtree[m.ID] = true
+		}
+		refs, err := s.findExternalLinkReferences(ctx, ids, inSubtree)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to check memo references: %v", err)
+		}
+		if len(refs) > 0 {
+			return nil, referenceDependencyError(refs)
+		}
 	}
 
 	if err := s.Store.DeleteWorkspaceFolder(ctx, &store.DeleteWorkspaceFolder{WorkspaceID: workspace.ID, Path: path}); err != nil {

@@ -52,6 +52,25 @@ type Service interface {
 
 	// RenameTag renames all occurrences of oldTag to newTag in content
 	RenameTag(content []byte, oldTag, newTag string) (string, error)
+
+	// ExtractLinks returns every markdown link ([text](href)) found in
+	// content, in document order. Links inside code blocks/spans are not
+	// visited, since goldmark parses fenced/inline code as plain text and
+	// never emits Link nodes for it.
+	ExtractLinks(content []byte) ([]LinkRef, error)
+
+	// RewriteLinkAnchors walks all markdown links in content and, for each
+	// one, calls decide with the link's href and its current anchor text.
+	// If decide returns (newText, true), the link's anchor text is replaced
+	// with newText in place; everything else is re-rendered unchanged. If no
+	// link is rewritten, changed is false and content is returned unchanged.
+	RewriteLinkAnchors(content []byte, decide func(href, text string) (string, bool)) (newContent string, changed bool, err error)
+}
+
+// LinkRef describes a single markdown link found in content.
+type LinkRef struct {
+	Href string
+	Text string
 }
 
 // service implements the Service interface.
@@ -443,6 +462,77 @@ func (s *service) RenameTag(content []byte, oldTag, newTag string) (string, erro
 	// Render back to markdown using the already-parsed AST
 	mdRenderer := renderer.NewMarkdownRenderer()
 	return mdRenderer.Render(root, content), nil
+}
+
+// ExtractLinks returns every markdown link found in content, in document order.
+func (s *service) ExtractLinks(content []byte) ([]LinkRef, error) {
+	root, err := s.parse(content)
+	if err != nil {
+		return nil, err
+	}
+
+	var links []LinkRef
+	err = gast.Walk(root, func(n gast.Node, entering bool) (gast.WalkStatus, error) {
+		if !entering {
+			return gast.WalkContinue, nil
+		}
+		if link, ok := n.(*gast.Link); ok {
+			var buf strings.Builder
+			extractTextFromNode(link, content, &buf)
+			links = append(links, LinkRef{Href: string(link.Destination), Text: buf.String()})
+		}
+		return gast.WalkContinue, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return links, nil
+}
+
+// RewriteLinkAnchors walks all markdown links in content, replacing the
+// anchor text of any link for which decide returns true. The document is
+// re-rendered via the shared MarkdownRenderer only when at least one link
+// was rewritten, so a call that rewrites nothing returns the original
+// content byte-for-byte (changed == false), keeping repeated calls
+// idempotent.
+func (s *service) RewriteLinkAnchors(content []byte, decide func(href, text string) (string, bool)) (string, bool, error) {
+	root, err := s.parse(content)
+	if err != nil {
+		return "", false, err
+	}
+
+	changed := false
+	err = gast.Walk(root, func(n gast.Node, entering bool) (gast.WalkStatus, error) {
+		if !entering {
+			return gast.WalkContinue, nil
+		}
+		link, ok := n.(*gast.Link)
+		if !ok {
+			return gast.WalkContinue, nil
+		}
+
+		var buf strings.Builder
+		extractTextFromNode(link, content, &buf)
+		newText, rewrite := decide(string(link.Destination), buf.String())
+		if !rewrite {
+			return gast.WalkSkipChildren, nil
+		}
+
+		link.RemoveChildren(link)
+		link.AppendChild(link, gast.NewString([]byte(newText)))
+		changed = true
+		return gast.WalkSkipChildren, nil
+	})
+	if err != nil {
+		return "", false, err
+	}
+	if !changed {
+		return string(content), false, nil
+	}
+
+	mdRenderer := renderer.NewMarkdownRenderer()
+	return mdRenderer.Render(root, content), true, nil
 }
 
 // uniquePreserveCase returns unique strings from input while preserving case.
