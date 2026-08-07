@@ -36,6 +36,12 @@ type Driver interface {
 	ListMemoRelations(ctx context.Context, find *FindMemoRelation) ([]*MemoRelation, error)
 	DeleteMemoRelation(ctx context.Context, delete *DeleteMemoRelation) error
 
+	// MemoLink model related methods (reverse-link index for cross-document
+	// markdown links, derived from memo content).
+	ReplaceMemoLinks(ctx context.Context, memoID int32, targetMemoIDs []int32) error
+	ListMemoLinks(ctx context.Context, find *FindMemoLink) ([]*MemoLink, error)
+	DeleteMemoLinks(ctx context.Context, delete *DeleteMemoLink) error
+
 	// MemoHistory model related methods.
 	CreateMemoHistory(ctx context.Context, create *MemoHistory) (*MemoHistory, error)
 	ListMemoHistories(ctx context.Context, find *FindMemoHistory) ([]*MemoHistory, error)

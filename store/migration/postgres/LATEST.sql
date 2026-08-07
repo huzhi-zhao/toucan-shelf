@@ -195,3 +195,12 @@ CREATE TABLE secret_block (
 );
 
 CREATE INDEX idx_secret_block_creator_id ON secret_block(creator_id);
+
+-- memo_link
+CREATE TABLE memo_link (
+  memo_id INTEGER NOT NULL,
+  target_memo_id INTEGER NOT NULL,
+  UNIQUE(memo_id, target_memo_id)
+);
+
+CREATE INDEX idx_memo_link_target_memo_id ON memo_link(target_memo_id);

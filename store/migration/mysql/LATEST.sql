@@ -194,3 +194,11 @@ CREATE TABLE `secret_block` (
   `updated_ts`     BIGINT       NOT NULL DEFAULT (UNIX_TIMESTAMP()),
   INDEX `idx_secret_block_creator_id` (`creator_id`)
 );
+
+-- memo_link
+CREATE TABLE `memo_link` (
+  `memo_id` INT NOT NULL,
+  `target_memo_id` INT NOT NULL,
+  UNIQUE(`memo_id`,`target_memo_id`),
+  INDEX `idx_memo_link_target_memo_id` (`target_memo_id`)
+);

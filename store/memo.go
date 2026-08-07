@@ -218,6 +218,15 @@ func (s *Store) DeleteMemo(ctx context.Context, delete *DeleteMemo) error {
 			return err
 		}
 	}
+	// Clean up the reverse-link index: this memo's own outbound links, and any
+	// inbound links other memos recorded toward it (otherwise those rows would
+	// dangle, pointing at a target_memo_id that no longer exists).
+	if err := s.driver.DeleteMemoLinks(ctx, &DeleteMemoLink{MemoID: &delete.ID}); err != nil {
+		return err
+	}
+	if err := s.driver.DeleteMemoLinks(ctx, &DeleteMemoLink{TargetMemoID: &delete.ID}); err != nil {
+		return err
+	}
 	// Clean up search index artifacts (best-effort; not supported on all drivers).
 	_ = s.driver.DeleteMemoChunks(ctx, delete.ID)
 	_ = s.driver.DeleteMemoIndexJob(ctx, delete.ID)
