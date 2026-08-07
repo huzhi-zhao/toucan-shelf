@@ -15,10 +15,20 @@ import (
 // the whole bundle just to draw one dialog — and would make the "authorize"
 // button depend on client-side routing at the exact moment correctness matters.
 type consentPageData struct {
-	ClientName  string
-	Username    string
-	Scope       string
-	QueryString string
+	ClientName string
+	Username   string
+	Scope      string
+	// Params carries the authorization request back to the POST handler as
+	// hidden form fields. They must not be smuggled through the form action's
+	// query string: html/template escapes a value interpolated into a URL
+	// attribute, turning "&"/"=" into %26/%3d, and the POST handler reads the
+	// parameters from the form body anyway.
+	Params []formField
+}
+
+type formField struct {
+	Name  string
+	Value string
 }
 
 var consentTemplate = template.Must(template.New("consent").Parse(`<!doctype html>
@@ -56,8 +66,9 @@ button.primary { background: #18181b; border-color: #18181b; color: #fff; }
   <h1>Authorize {{.ClientName}}</h1>
   <p><strong>{{.ClientName}}</strong> wants to access your knowledge base as <strong>{{.Username}}</strong>.</p>
   <ul>{{range .Permissions}}<li>{{.}}</li>{{end}}</ul>
-  <form method="post" action="/oauth/authorize?{{.QueryString}}">
-    <div class="actions">
+  <form method="post" action="/oauth/authorize">
+    {{range .Params}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">
+    {{end}}<div class="actions">
       <button type="submit" name="decision" value="deny">Deny</button>
       <button type="submit" name="decision" value="allow" class="primary">Authorize</button>
     </div>

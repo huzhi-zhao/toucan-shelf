@@ -186,6 +186,24 @@ type authorizeRequest struct {
 	CodeChallengeMethod string
 }
 
+// formFields renders the authorization request as the hidden fields the consent
+// form posts back, so the POST re-parses exactly the request the user saw.
+func (r *authorizeRequest) formFields() []formField {
+	fields := []formField{
+		{Name: "response_type", Value: "code"},
+		{Name: "client_id", Value: r.ClientID},
+		{Name: "redirect_uri", Value: r.RedirectURI},
+		{Name: "scope", Value: r.Scope},
+		{Name: "resource", Value: r.Resource},
+		{Name: "code_challenge", Value: r.CodeChallenge},
+		{Name: "code_challenge_method", Value: r.CodeChallengeMethod},
+	}
+	if r.State != "" {
+		fields = append(fields, formField{Name: "state", Value: r.State})
+	}
+	return fields
+}
+
 func (s *Service) parseAuthorizeRequest(c *echo.Context) (*authorizeRequest, error) {
 	request := c.Request()
 	values := request.URL.Query()
@@ -266,10 +284,10 @@ func (s *Service) showAuthorizePage(c *echo.Context) error {
 	}
 
 	return renderConsentPage(c, consentPageData{
-		ClientName:  request.Client.ClientName,
-		Username:    user.Username,
-		Scope:       request.Scope,
-		QueryString: c.Request().URL.RawQuery,
+		ClientName: request.Client.ClientName,
+		Username:   user.Username,
+		Scope:      request.Scope,
+		Params:     request.formFields(),
 	})
 }
 

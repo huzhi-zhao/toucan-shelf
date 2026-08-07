@@ -9,9 +9,10 @@ import (
 	"strings"
 )
 
-// GuideFile is the agent-facing manual dropped into the checkout metadata dir.
-// It is a verbatim copy of docs/manual/pumpkin_book_for_llms.md, embedded so a
-// checkout carries its own instructions without needing the server repo.
+// GuideFile is the agent-facing manual dropped into the checkout metadata dir,
+// embedded so a checkout carries its own instructions without needing the
+// server repo. The asset below is now the only copy of this text; agent-facing
+// documentation has moved to docs/skill/, which this embed does not ship yet.
 const GuideFile = "toucanshelf-guide.md"
 
 //go:embed assets/pumpkin_book_for_llms.md

@@ -129,4 +129,4 @@ document comments (§8.5).
 - Like all attachment bytes, an EPUB is **not editable** and its marks/comments
   are **not** part of the file — `memogit` downloads the bytes read-only and
   never sees the annotations (see
-  [`pumpkin_book_for_llms.md`](./pumpkin_book_for_llms.md)).
+  [`docs/skill/references/attachments.md`](../skill/references/attachments.md)).

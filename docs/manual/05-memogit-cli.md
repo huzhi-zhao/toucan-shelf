@@ -115,9 +115,12 @@ itself:
 | `CLAUDE.md` | Claude Code |
 | `.cursor/rules/toucanshelf-memogit.mdc` | Cursor (`alwaysApply: true`) |
 
-The guide is compiled into the `memogit` binary (a copy of
-[`pumpkin_book_for_llms.md`](pumpkin_book_for_llms.md)), so a checkout carries
-its own instructions without needing this repository. The three entry points
+The guide is compiled into the `memogit` binary
+(`internal/memogit/assets/pumpkin_book_for_llms.md`), so a checkout carries its
+own instructions without needing this repository. That embedded file is the only
+remaining copy of the old single-file guide — the agent-facing documentation
+now lives in [`docs/skill/`](../skill/), which the binary does **not** ship yet.
+Until the embed is switched over, edit the asset itself. The three entry points
 hold a short brief — the identity-marker rule, "no frontmatter header", the
 special document types, and the `pull → edit → status → push` loop — plus a link
 to the full guide.

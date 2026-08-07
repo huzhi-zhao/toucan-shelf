@@ -34,23 +34,25 @@ documented separately because their failure modes differ:
   the knowledge base from a *different* project, with nothing written to disk and
   no interference with that project's git.
 
-[`pumpkin_book_for_llms.md`](./pumpkin_book_for_llms.md) is the condensed,
-agent-facing version of the manuals above (in Chinese): the non-standard
-syntax and sync contract an agent must know before editing a checked-out
-knowledge base. It is embedded in the `memogit` binary and dropped into every
-checkout as `.memogit/toucanshelf-guide.md`, so agents get it without this
-repository — see [§5.2a](./05-memogit-cli.md). Edit it here, then re-sync the
-embedded copy:
+[`docs/skill/`](../skill/) is the condensed, agent-facing version of the manuals
+above (in Chinese): the non-standard syntax and sync contract an agent must know
+before touching a knowledge base. `SKILL.md` is a router — the rules that apply
+to every edit — and `references/` holds one file per topic (hierarchy & doc
+types, custom Markdown syntax, view blocks & gallery views, attachments,
+memogit, MCP), read on demand rather than up front. **This is where agent-facing
+documentation goes from now on.**
 
-```bash
-cp docs/manual/pumpkin_book_for_llms.md internal/memogit/assets/
-```
+> **Not yet wired into the binary.** `memogit` still embeds an older single-file
+> guide (`internal/memogit/assets/pumpkin_book_for_llms.md`, the former "pumpkin
+> book") and drops it into every checkout as `.memogit/toucanshelf-guide.md` —
+> see [§5.2a](./05-memogit-cli.md). Until the embed is switched over to
+> `docs/skill/`, a checkout carries the **old** rules, and editing `docs/skill/`
+> alone does not reach agents working in one. The embedded copy is now the only
+> copy of that text; it has no counterpart under `docs/manual/`.
 
-Nothing checks this automatically, so remember to run it.
-
-The pumpkin book covers the **checkout** channel only. Agents on the MCP channel
-never see a file tree, so they are briefed by the server's own `initialize`
-instructions instead — maintained next to the tool list in
+`docs/skill/` covers both channels. Agents on the MCP channel never see a file
+tree, so they are additionally briefed by the server's own `initialize`
+instructions — maintained next to the tool list in
 [`server/router/mcp/`](../../server/router/mcp/), see
 [§10.4](./10-mcp-agent-access.md).
 

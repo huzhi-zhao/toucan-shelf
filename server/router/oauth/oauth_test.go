@@ -339,3 +339,44 @@ func TestNormalizeScope(t *testing.T) {
 	require.True(t, isSubsetScope("mcp:read", "mcp:read mcp:write"))
 	require.False(t, isSubsetScope("mcp:write", "mcp:read"))
 }
+
+// The consent form used to carry the authorization request in its action query
+// string, which html/template escaped ("&" -> %26, "=" -> %3d) — and which the
+// POST handler never read, since it parses the form body. Both together made
+// every "Authorize" click fail with "unknown client_id".
+func TestConsentFormPostsTheAuthorizationRequestBack(t *testing.T) {
+	_, echoServer := newTestService()
+	clientID := registerTestClient(t, "https://claude.ai/api/mcp/auth_callback")
+
+	request := &authorizeRequest{
+		ClientID:            clientID,
+		RedirectURI:         "https://claude.ai/api/mcp/auth_callback",
+		State:               "state-value",
+		Scope:               auth.MCPScopeRead + " " + auth.MCPScopeWrite,
+		Resource:            "https://kb.example.com/mcp",
+		CodeChallenge:       strings.Repeat("c", 43),
+		CodeChallengeMethod: "S256",
+	}
+
+	recorder := httptest.NewRecorder()
+	require.NoError(t, renderConsentPage(echo.NewContext(httptest.NewRequest(http.MethodGet, "/oauth/authorize", nil), recorder),
+		consentPageData{ClientName: "Claude", Username: "james", Scope: request.Scope, Params: request.formFields()}))
+	body := recorder.Body.String()
+	require.Contains(t, body, `action="/oauth/authorize"`)
+	require.Contains(t, body, `name="client_id" value="`+clientID+`"`)
+	require.NotContains(t, body, "%3d")
+
+	form := url.Values{"decision": {"allow"}}
+	for _, field := range request.formFields() {
+		form.Set(field.Name, field.Value)
+	}
+	post := httptest.NewRequest(http.MethodPost, "/oauth/authorize", strings.NewReader(form.Encode()))
+	post.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder = httptest.NewRecorder()
+	echoServer.ServeHTTP(recorder, post)
+
+	// Anonymous, so the handler bounces to sign-in — the point is that the
+	// request parsed at all instead of failing with an unknown client.
+	require.NotContains(t, recorder.Body.String(), "unknown client")
+	require.NotEqual(t, http.StatusBadRequest, recorder.Code)
+}

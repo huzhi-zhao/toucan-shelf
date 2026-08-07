@@ -274,4 +274,5 @@ content edit — leaves it intact.
   on separate child memos, not in the document's `.md`/attachment bytes. An
   agent editing a checked-out file won't see them, and **rewriting a marked
   passage detaches its highlight** (it degrades to the heading/rect/snippet
-  fallback). See [`pumpkin_book_for_llms.md`](./pumpkin_book_for_llms.md).
+  fallback). See
+  [`docs/skill/references/markdown-syntax.md`](../skill/references/markdown-syntax.md).
