@@ -154,9 +154,13 @@ design doc 是给三个月后的人读的，下面这四类内容三个月后全
   —— 存储层收敛的分阶段实施计划
 - [20260807-cross-reference-repair-plan.md](design/20260807-cross-reference-repair-plan.md)
   —— 跨文档引用完整性维护的分阶段实施计划
+- [20260808-plans-to-dev-migration.md](design/20260808-plans-to-dev-migration.md)
+  —— `docs/plans/` 历史方案文档拆入本目录的分阶段实施计划（多会话并行执行）
 
-> 2026-08-07 之前的方案文档都在 [../plans/](../plans/) 下（按日期建目录）。
-> 那批是既成事实，**不迁移、不改写**；新写的方案进 `design/`。
+> 2026-07-03 及之后的方案文档正在从 [../plans/](../plans/) 拆入本目录
+> （见 [20260808-plans-to-dev-migration.md](design/20260808-plans-to-dev-migration.md)）。
+> 2026-03～2026-04 的 6 个方案目录判定与本 fork 增量无关，原地归档、不迁移、
+> 不建议阅读；`docs/plans/`、`docs/superpowers/` 整体归档见 [../README.md](../README.md)。
 
 ### launch/ · postmortem/ —— 事件
 
