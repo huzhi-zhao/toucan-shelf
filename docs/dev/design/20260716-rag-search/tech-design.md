@@ -7,7 +7,7 @@
 
 - **DB 驱动**：`modernc.org/sqlite`（纯 Go，**无 CGO**）。→ 决定性约束：**无法加载 C 扩展**，
   `sqlite-vec` / `sqlite-vss` 不可用。FTS5 为 modernc 内置，可用（需在阶段 0 验证 `trigram` tokenizer）。
-- **AI 基建**：[`internal/ai`](../../../internal/ai/ai.go) 已封装 OpenAI / Gemini provider，
+- **AI 基建**：[`internal/ai`](../../../../internal/ai/ai.go) 已封装 OpenAI / Gemini provider，
   含 `ProviderConfig{ID,Title,Type,Endpoint,APIKey}`；现用于 STT / audiollm。
   → embedding 复用此 provider 模式，**新增 embeddings 调用方法**（当前仅有 generate/probe，无 embedding）。
 - **memo 表**：已有 `workspace_id` / `folder_path` / `title` / `doc_type`，天然带层级与归属，

@@ -1,6 +1,8 @@
 # Agent 经 MCP 协作写作 — 分阶段实施
 
-需求与关键决策见 [requirement.md](./requirement.md)。
+需求与关键决策见 [mcp-authoring.md](../requirements/agent-collab/mcp-authoring.md)（迁移后原
+`requirement.md` 里的 ADR-1…ADR-6 已重新编号为 ADR-0009…0014，正文下方仍按旧编号引用，
+不逐一改写）。
 
 阶段顺序刻意如此：**P0 独立无风险可先落地；P1–P4 构成版本安全网；写工具真正放开给 agent 使用
 （P5）必须排在安全网之后。** 在 P4 完成前，不要把 `memo_update_memo` / `memo_create_memo` 交给

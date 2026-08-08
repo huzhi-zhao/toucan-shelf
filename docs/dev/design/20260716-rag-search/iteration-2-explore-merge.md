@@ -1,6 +1,6 @@
 # RAG 检索搜索 —— 迭代 2：搜索页与 Explore 合并 + 检索质量优化
 
-> 承接 [`requirement.md`](./requirement.md) / [`tech-design.md`](./tech-design.md)。
+> 承接 [`rag-search.md`](../../rag-search.md) / [`tech-design.md`](./tech-design.md)。
 > 本文件记录第一版落地后（F1/F2/F3 + 后端全链路已实现）的一轮 bugfix 与架构优化。
 
 ## 背景问题

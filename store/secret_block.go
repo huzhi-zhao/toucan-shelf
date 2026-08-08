@@ -8,7 +8,7 @@ import "context"
 //
 // A secret block belongs to its creator, not to the document that references it.
 // Documents point at one by UID from their markdown body, and a record outlives
-// the documents referencing it — see docs/plans/2026-07-30-secret-block.
+// the documents referencing it — see docs/dev/requirements/editor/secret-block.md.
 type SecretBlock struct {
 	ID        int32
 	UID       string

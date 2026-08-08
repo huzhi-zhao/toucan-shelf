@@ -7,9 +7,9 @@ ToucanShelf 的一个 workspace。**迁移后放弃 Obsidian**，此后该知识
 memogit checkout 之间同步。
 
 因为是一次性操作，方案的取舍原则是：**能在脚本里一次性做掉的，绝不做成平台的长期能力**
-（双链就是按这条原则否掉的，见 [计划 1 附录](01-platform-support.md#附为什么不做双链渲染)）。
+（双链就是按这条原则否掉的，见 [计划 1 附录](../../requirements/editor/inline-style-rendering.md)）。
 
-前置依赖：[计划 1](01-platform-support.md) 的 **需求 B（S3 附件按 workspace 分目录）
+前置依赖：[计划 1](../../requirements/editor/inline-style-rendering.md)（拆入 `editor/` 与 `attachments/` 两域） 的 **需求 B（S3 附件按 workspace 分目录）
 必须先上线**。否则这批 165 个附件会落进旧的公共前缀，迁完还得再搬一次。
 
 ---
@@ -41,7 +41,7 @@ memogit checkout 之间同步。
 这是整个方案里唯一有实质约束的决策。
 
 `CreateAttachment` 的 `attachment.memo` 是可选的，**技术上允许先上传一批不挂文档的
-附件**。但 [checkAttachmentAccess](../../../server/router/api/v1/attachment_service.go#L736)
+附件**。但 [checkAttachmentAccess](../../../../server/router/api/v1/attachment_service.go#L736)
 规定：
 
 - **未挂载的附件：只有创建者本人能访问**，其他任何人一律拒绝；
@@ -79,7 +79,7 @@ attachment uid 的话，第二篇文档的图片能否显示将诡异地取决�
 ```
 
 URL 必须是**根相对**形式（`/file/...`），不能带协议和域名——理由见
-[attachment.ts:5](../../../web/src/utils/attachment.ts#L5) 的注释：渲染器的 sanitize
+[attachment.ts:5](../../../../web/src/utils/attachment.ts#L5) 的注释：渲染器的 sanitize
 schema 把 `src` 协议限制为 `https`，绝对的 `http://` URL 在本地开发或纯 HTTP 自建部署下
 会被整个剥掉。文件名部分按同文件的 `encodeAttachmentFilename` 规则编码，**特别注意括号
 必须转义**（未转义的 `)` 会提前终止 Markdown 链接语法，而本库文件名里括号很常见）。
@@ -90,16 +90,16 @@ schema 把 `src` 协议限制为 `https`，绝对的 `http://` URL 在本地开�
 ### 3.2 `[[文档#标题|别名]]` → 标准 Markdown 链接
 
 目标形式：`[别名](/memos/{uid}#{anchor})`（路由见
-[router/index.tsx:114](../../../web/src/router/index.tsx#L114)）。
+[router/index.tsx:114](../../../../web/src/router/index.tsx#L114)）。
 
 - **文档解析**：62 篇文档在 `(目录, 标题)` 维度无冲突，`path → uid` 映射由第一趟
   push 产出，解析是确定性的。
 - **锚点生成**：必须严格复刻平台的 slug 算法，否则锚点全废。算法在
-  [markdown-manipulation.ts:188](../../../web/src/utils/markdown-manipulation.ts#L188)
+  [markdown-manipulation.ts:188](../../../../web/src/utils/markdown-manipulation.ts#L188)
   的 `slugify` / `headingSlug`：NFC 归一化 → 转小写 → 去掉非字母数字空格连字符的字符
   （emoji 会被丢掉）→ 空白和下划线转 `-` → 折叠连续 `-` → 去首尾 `-`；结果为空时回退
   到 `h-{sdbm哈希的base36}`。同名标题按出现顺序追加 `-1`、`-2`（见
-  [rehype-heading-id.ts](../../../web/src/utils/rehype-plugins/rehype-heading-id.ts)）。
+  [rehype-heading-id.ts](../../../../web/src/utils/rehype-plugins/rehype-heading-id.ts)）。
   这段需要在脚本里用 Python 精确重写一遍，**并写一组对拍用例**。
 
 **已知的存量链接腐烂——这不是脚本的锅，但脚本必须暴露它。**
@@ -132,7 +132,7 @@ schema 把 `src` 协议限制为 `https`，绝对的 `http://` URL 在本地开�
 可读的换行/分隔，避免多段内容黏成一行）。
 
 不带 class、仅带内联 `style` 的标签**原样保留**——它们由
-[计划 1 需求 A](01-platform-support.md#a-受限的内联-style-html-渲染) 负责渲染。需求 A
+[计划 1 需求 A](../../requirements/editor/inline-style-rendering.md) 负责渲染。需求 A
 上线前，这类标签会显示为无样式的普通标签，属可接受的降级，不阻塞迁移。
 
 ### 3.4 软换行
@@ -141,7 +141,7 @@ schema 把 `src` 协议限制为 `https`，绝对的 `http://` URL 在本地开�
 `remark-breaks`（每个换行都变 `<br>`）。直接迁入会让所有段落的排版变形。
 
 处理：迁入的文档统一关闭 hard break（用文档级的 soft break 配置，见
-[MemoMarkdownRenderer.tsx:106](../../../web/src/components/MemoContent/MemoMarkdownRenderer.tsx#L106)），
+[MemoMarkdownRenderer.tsx:106](../../../../web/src/components/MemoContent/MemoMarkdownRenderer.tsx#L106)），
 或将该 workspace 的默认值设为 soft break。**优先用 workspace/实例级默认**，避免给 62 篇
 文档逐个写配置。
 
@@ -158,7 +158,7 @@ schema 把 `src` 协议限制为 `https`，绝对的 `http://` URL 在本地开�
 | `images/`、`resources/` 下的资源文件 | 见下条——它们必须走附件 API，**绝不能留在 checkout 内容树里** |
 
 > **必须重视的一条**：memogit 的
-> [`listDocFiles`](../../../internal/memogit/push.go#L522) 只跳过 `_attachments/`、
+> [`listDocFiles`](../../../../internal/memogit/push.go#L522) 只跳过 `_attachments/`、
 > 点开头文件和冲突 sidecar，**其余一切文件都当文档处理**。若把 `images/` 留在 checkout
 > 内容树里，push 会把 127 个 PNG 当成 MARKDOWN 文档创建，标题是 `xxx.png`、正文是二进制
 > 乱码。图片目录必须放在 checkout 之外。
@@ -172,7 +172,7 @@ memogit。
 
 ### 第 0 步：准备（人工）
 
-1. 确认 [计划 1 需求 B](01-platform-support.md#b-s3-附件按-workspace-分目录阻塞项) 已上线
+1. 确认 [计划 1 需求 B](../../requirements/attachments/upload-and-inline-media.md#s3-附件按-workspace-分目录) 已上线
 2. 在 ToucanShelf 创建目标 workspace
 3. 生成 PAT，`memogit login`
 
@@ -206,7 +206,7 @@ memogit push
 绝不重复上传。
 
 同时检查上传大小限制：受
-[`UploadSizeLimitMb` 实例设置](../../../server/router/api/v1/attachment_service.go#L142)
+[`UploadSizeLimitMb` 实例设置](../../../../server/router/api/v1/attachment_service.go#L142)
 约束，脚本应在开跑前先扫一遍最大文件并与该设置比对，**提前报错而不是传到一半失败**。
 
 ### 第 3 步：推送最终内容
@@ -256,6 +256,6 @@ memogit push
 - 不做 `.canvas` 的转换（单独归档）
 - 不迁 Quartz 站点门面页
 - 不为兼容 Obsidian 语法而改动平台渲染器（理由见
-  [计划 1 附录](01-platform-support.md#附为什么不做双链渲染)）
+  [计划 1 附录](../../requirements/editor/inline-style-rendering.md)）
 - 不做双向持续同步的特殊处理——迁完之后内容就是标准 Markdown，memogit 的
   `pull / push` 正常工作，无需额外机制
