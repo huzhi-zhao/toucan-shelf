@@ -1,8 +1,9 @@
 # 加密文本块 — 分阶段实施
 
-需求与关键决策见 [requirement.md](./requirement.md)。
+> 迁移注记：需求与关键决策见
+> [../requirements/editor/secret-block.md](../requirements/editor/secret-block.md)。
 
-## P0 · 契约与纯逻辑 ✅
+## P0 · 契约与纯逻辑
 
 | 产出 | 位置 |
 | --- | --- |
@@ -20,7 +21,7 @@
 - **测试跑 100k 轮而不是生产的 600k**。迭代次数与被测性质正交，600k 会让整个套件被 KDF
   占满。`encryptSecret` 因此接受 `iterations` 覆盖，应用代码不得调低。
 
-## P1 · 存储层 ✅
+## P1 · 存储层
 
 | 产出 | 位置 |
 | --- | --- |

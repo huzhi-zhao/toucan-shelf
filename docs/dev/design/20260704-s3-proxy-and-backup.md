@@ -1,5 +1,11 @@
 # S3 存储代理 + Storage 设置页重构 + 全站 SQLite 备份
 
+> 迁移注记：本文档跨两个需求域，冻结的是当时的实现方案。
+> §1-2（S3 代理化、Storage 设置页）对应
+> [../requirements/attachments/upload-and-inline-media.md](../requirements/attachments/upload-and-inline-media.md)；
+> §3（全站 SQLite 备份）对应 `storage/backup.md`（`storage/` 域，本次迁移未覆盖，
+> 待该域任务补上前先留在这里）。
+
 ## 0. 关键澄清（已对齐，2026-07-04 更新）
 
 之前一版认为需求里的"用户级别"意味着"每个用户可以配置自己的 S3、备份只导出触发者自己的数据"，需要发明一套复杂的按 `creator_id`/`uid` 过滤 + 敏感字段脱敏的导出逻辑。

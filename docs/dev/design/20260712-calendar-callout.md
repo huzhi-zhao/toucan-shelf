@@ -1,4 +1,7 @@
-对应需求见 [requirement.md](./requirement.md)。
+> 迁移注记：对应需求见
+> [../requirements/editor/calendar-block.md](../requirements/editor/calendar-block.md)。
+> 本文档冻结的是当时的实现方案；calendar 代码块后续迭代出的 events/扩展任务状态/预览态
+> 写回等能力不在本文档范围内，以需求文档为准。
 
 ## 实现路线：复用 mermaid 的代码块分发机制，不新建 remark 插件
 
