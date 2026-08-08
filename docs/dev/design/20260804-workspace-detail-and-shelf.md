@@ -3,6 +3,9 @@
 日期：2026-08-04
 范围：知识库（workspace）管理入口重构、新增知识库详情页、软删除（隐藏）、书架手动排序、书名截断
 
+> 迁移注记：对应需求见
+> [../requirements/knowledge-base/workspace-detail-and-shelf.md](../requirements/knowledge-base/workspace-detail-and-shelf.md)。
+
 ---
 
 ## 1. 背景与目标

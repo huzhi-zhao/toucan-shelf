@@ -3,6 +3,10 @@
 状态：设计确认，待开发
 关联：仿照 Notion / 语雀的"版本"能力，但简化为手动创建、全量快照、不做 diff。
 
+> 迁移注记：对应需求见
+> [../requirements/knowledge-base/document-versioning.md](../requirements/knowledge-base/document-versioning.md)。
+> 附件版本化的落地方案与切换版本 RPC 已实现，均与本文正文（§8-9）一致。
+
 ## 1. 需求背景
 
 当前 memo 的编辑是纯覆盖写（`store/memo.go` `UpdateMemo` 直接 `UPDATE memo SET content=...`），
