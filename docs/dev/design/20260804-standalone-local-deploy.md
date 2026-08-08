@@ -1,6 +1,6 @@
 # 方案评估与开发计划
 
-对 [requirement.md](requirement.md) 的代码级复核。结论：**方案成立，四个关键决策都同意**，
+对 [../standalone-local-deploy.md](../standalone-local-deploy.md) 的代码级复核。结论：**方案成立，四个关键决策都同意**，
 但需求文档漏了三处会直接导致返工的技术依赖，工期估计偏乐观。
 
 ## 一、对已有决策的复核
