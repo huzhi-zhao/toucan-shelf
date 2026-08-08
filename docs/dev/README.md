@@ -124,7 +124,12 @@ design doc 是给三个月后的人读的，下面这四类内容三个月后全
 
 ### 顶层单篇 —— 系统现在是什么样（常青）
 
-尚未撰写。规划中：
+- [rag-search.md](rag-search.md) —— 检索式搜索（hybrid FTS + 向量），`search/` 域唯一一篇，
+  未满 3 篇准入线暂平铺于此
+- [standalone-local-deploy.md](standalone-local-deploy.md) —— 单机本地部署：打包、S3 备份
+  现状与已知问题、首启引导
+
+规划中：
 
 - `roadmap.md` —— 能力阶段与优先级
 - `platform-architecture.md` —— 分层设计意图、部署拓扑与关键设计考虑
@@ -138,31 +143,75 @@ design doc 是给三个月后的人读的，下面这四类内容三个月后全
 
 ### requirements/ —— 要做什么（常青）
 
-- [requirements/README.md](requirements/README.md) —— 域清单与建域规则
-- [storage/sqlite-as-sole-datasource.md](requirements/storage/sqlite-as-sole-datasource.md)
-  —— 收敛到 SQLite 单驱动：决策依据、容量边界与复评触发条件
-- [cross-reference-repair-on-move-rename.md](requirements/cross-reference-repair-on-move-rename.md)
-  —— 文档移动/重命名/删除时的引用完整性维护：范围界定与验收判据
+- [requirements/README.md](requirements/README.md) —— 域清单与建域规则、各域文档清单
+
+域一览（详细文档清单见 [requirements/README.md](requirements/README.md)）：
+`knowledge-base/`、`views/`、`editor/`、`attachments/`、`agent-collab/`、`storage/`，
+外加根下平铺的 [cross-reference-repair-on-move-rename.md](requirements/cross-reference-repair-on-move-rename.md)。
 
 ### adr/ —— 为什么这么选（事件，不改名不删除）
 
-尚无。编号从 `0001` 起，一经分配不回收。
+编号从 `0001` 起，一经分配不回收，当前已到 `0016`：
+
+- [0001](adr/0001-attachment-proxy-not-presigned-url.md) 附件走服务端代理，不用 S3 预签名直连
+- [0002](adr/0002-private-attachments-reuse-master-passphrase.md) 私密附件复用账号主口令
+- [0003](adr/0003-private-attachment-unlock-via-cookie.md) 解锁态是短时 cookie
+- [0004](adr/0004-interactive-blocks-via-codeblock-dispatch.md) 交互块走 CodeBlock 语言分发
+- [0005](adr/0005-block-style-in-node-overlays.md) 块样式落 node_overlays
+- [0006](adr/0006-no-cgo-drop-sqlite-vec-for-fts5-and-in-memory-vector.md) 无 CGO ⇒ FTS5 + 内存向量
+- [0007](adr/0007-memogit-doc-identity-marker-in-file.md) memogit 文档身份用文件内标记
+- [0008](adr/0008-secret-block-client-side-crypto.md) 加密块浏览器端加解密
+- [0009](adr/0009-mcp-online-readwrite-complements-memogit.md) MCP 与 memogit 互补而非替代
+- [0010](adr/0010-mcp-tool-whitelist-eight-tools.md) MCP 工具白名单
+- [0011](adr/0011-agent-write-snapshots-human-baseline.md) agent 写入前留存人类基线快照
+- [0012](adr/0012-actor-kind-from-channel-not-identity.md) actor kind 取决于通道而非身份
+- [0013](adr/0013-no-optimistic-concurrency-control.md) 本期不做乐观并发控制
+- [0014](adr/0014-agent-session-open-not-a-lock.md) `agent_session_open` 不得复用为锁
+- [0015](adr/0015-no-litestream.md) 不引入 Litestream
+- [0016](adr/0016-no-multi-instance-lease.md) 不支持多端写入，靠文档约束
 
 ### design/ —— 一次变更打算怎么做（事件）
 
+- [20260704-s3-proxy-and-backup.md](design/20260704-s3-proxy-and-backup.md)
+  —— S3 存储代理 + Storage 设置页重构 + 全站 SQLite 备份
+- [20260712-calendar-callout.md](design/20260712-calendar-callout.md)
+  —— calendar 交互块技术方案
+- [20260712-memo-version-history.md](design/20260712-memo-version-history.md)
+  —— 文档版本历史技术方案
+- [20260713-memogit-cli/](design/20260713-memogit-cli/)
+  —— memogit CLI 的 API 调研与实现笔记
+- [20260716-rag-search/](design/20260716-rag-search/)
+  —— 检索式搜索技术方案（含已取代的问答方向前身文档）
+- [20260730-secret-block.md](design/20260730-secret-block.md)
+  —— 加密块技术方案
+- [20260731-mcp-agent-authoring.md](design/20260731-mcp-agent-authoring.md)
+  —— MCP 协作写作技术方案
+- [20260803-obsidian-kb-migration/](design/20260803-obsidian-kb-migration/)
+  —— Obsidian 知识库迁移方案
+- [20260804-standalone-local-deploy.md](design/20260804-standalone-local-deploy.md)
+  —— 单机本地部署方案评估与开发计划
+- [20260804-workspace-detail-and-shelf.md](design/20260804-workspace-detail-and-shelf.md)
+  —— 知识库详情页与书架优化方案
 - [20260807-storage-consolidation.md](design/20260807-storage-consolidation.md)
   —— 存储层收敛的分阶段实施计划
 - [20260807-cross-reference-repair-plan.md](design/20260807-cross-reference-repair-plan.md)
   —— 跨文档引用完整性维护的分阶段实施计划
+- [20260807-memo-link-index-backfill.md](design/20260807-memo-link-index-backfill.md)
+  —— 文档引用索引回填方案
 - [20260808-plans-to-dev-migration.md](design/20260808-plans-to-dev-migration.md)
   —— `docs/plans/` 历史方案文档拆入本目录的分阶段实施计划（多会话并行执行）
 
-> 2026-07-03 及之后的方案文档正在从 [../plans/](../plans/) 拆入本目录
-> （见 [20260808-plans-to-dev-migration.md](design/20260808-plans-to-dev-migration.md)）。
-> 2026-03～2026-04 的 6 个方案目录判定与本 fork 增量无关，原地归档、不迁移、
-> 不建议阅读；`docs/plans/`、`docs/superpowers/` 整体归档见 [../README.md](../README.md)。
+> `docs/plans/` 下 2026-07-03 及之后的方案文档已按上述计划拆入本目录并从 `docs/plans/`
+> 删除（原文保留在 git history）。2026-03～2026-04 的 6 个方案目录判定与本 fork 增量
+> 无关，原地归档、不迁移、不建议阅读；`docs/plans/`、`docs/superpowers/` 整体归档见
+> [../README.md](../README.md)。
 
-### launch/ · postmortem/ —— 事件
+### launch/ —— 一次变更实际怎么上的线（事件）
+
+- [20260803-obsidian-kb-migration.md](launch/20260803-obsidian-kb-migration.md)
+  —— Obsidian 知识库迁移上线记录：空跑实测数据、执行中改掉的方案内容
+
+### postmortem/ —— 事件
 
 尚无。
 
