@@ -130,7 +130,7 @@ key 是包内未导出类型，外部包也无法碰撞伪造。
 ```protobuf
 // 当前内容是否由 agent（MCP 通道）写入。人类写入时清零。
 // 用于决定 agent 写入前是否需要留存人类基线快照。
-// 注意：这不是锁，不得用于并发控制（见 docs/plans/2026-07-31-mcp-agent-authoring/requirement.md ADR-6）。
+// 注意：这不是锁，不得用于并发控制（见 docs/dev/adr/0014-agent-session-open-not-a-lock.md）。
 bool agent_session_open = 9;
 ```
 

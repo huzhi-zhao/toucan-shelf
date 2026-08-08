@@ -64,7 +64,7 @@ The [**User Manual**](./docs/manual/README.md) covers every added feature:
 3. [Gallery Views](./docs/manual/03-gallery-views.md)
 4. [Markdown Editor Optimization ](docs/manual/04-md-editor-optimization.md) (Notion / Obsidian–style formatting shortcuts)
 
-Design and requirement docs for each feature live under [`docs/plans/`](./docs/plans/).
+Design and requirement docs for each feature live under [`docs/dev/`](./docs/dev/README.md).
 
 ## Where this is going
 

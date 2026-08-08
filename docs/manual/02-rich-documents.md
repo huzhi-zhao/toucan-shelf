@@ -215,5 +215,5 @@ up to an **S3-compatible** bucket:
 - **Scope:** SQLite database file only. Not MySQL/Postgres (use their native
   tooling), and **not** attachments.
 
-See [`../plans/2026-07-04-media_pdf/s3-storage-proxy-plan.md`](../plans/2026-07-04-media_pdf/s3-storage-proxy-plan.md)
+See [`../dev/requirements/storage/backup.md`](../dev/requirements/storage/backup.md)
 for the full design.

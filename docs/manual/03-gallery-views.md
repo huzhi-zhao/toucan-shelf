@@ -167,4 +167,4 @@ Styles (rendered by `GalleryCardBadge` in `GalleryViewRenderer.tsx`):
   `react-hook-form` + `zod`, matching the existing stack).
 
 See the full requirement in
-[`../plans/2026-07-06-gallery-view/requirement.md`](../plans/2026-07-06-gallery-view/requirement.md).
+[`../dev/requirements/views/gallery-view.md`](../dev/requirements/views/gallery-view.md).

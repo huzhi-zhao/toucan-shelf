@@ -1,7 +1,7 @@
 # RAG 检索式搜索 —— 技术方案
 
-> 状态：**已确认，待排期实施**。配套需求见 [`requirement.md`](./requirement.md)。
-> 前身：[`docs/2026-07-12-rag-tech-design.md`](../../2026-07-12-rag-tech-design.md)（问答方向，已被本文档在检索方向上取代）。
+> 状态：**已确认，待排期实施**。配套需求见 [`rag-search.md`](../../rag-search.md)。
+> 前身：[`2026-07-12-rag-tech-design.md`](./2026-07-12-rag-tech-design.md)（问答方向，已被本文档在检索方向上取代）。
 
 ## 0. 现状盘点（本方案相关，已核对代码）
 

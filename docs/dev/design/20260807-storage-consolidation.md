@@ -139,8 +139,12 @@ DRIVER=mysql    go test ./store/test/... 2>&1 | tail -40
 
 - `AGENTS.md`、`README.md` 中的多驱动说明改为「仅支持 SQLite」，并链回
   [需求文档](../requirements/storage/sqlite-as-sole-datasource.md)的复评条件
-- `docs/2026-07-12-rag-tech-design.md` 中涉及多驱动的表述同步修正
+- `docs/dev/design/20260716-rag-search/2026-07-12-rag-tech-design.md` 中涉及多驱动的表述同步修正
 - 历史 plan 文档（`docs/plans/` 下各目录）中的多驱动描述**不改**——那是当时的事实记录
+
+> 迁移脚注（2026-08-08）：上面提到的 `docs/2026-07-12-rag-tech-design.md` 已随
+> [docs/plans → docs/dev 迁移](20260808-plans-to-dev-migration.md)移到
+> `docs/dev/design/20260716-rag-search/2026-07-12-rag-tech-design.md`，本节论述不变，只改路径。
 
 ---
 

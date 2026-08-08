@@ -5,7 +5,7 @@
 // points at. Keeping the document side this thin is deliberate: a superseded
 // envelope must leave no copy behind in memo history or in a memogit checkout,
 // which is only possible if the document never held the envelope in the first
-// place. See docs/plans/2026-07-30-secret-block/requirement.md.
+// place. See docs/dev/requirements/editor/secret-block.md.
 
 export const SECRET_BLOCK_LANGUAGE = "toucan-secret";
 

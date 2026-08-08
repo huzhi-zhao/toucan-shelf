@@ -8,8 +8,7 @@ import "context"
 // session — but whether the content was produced by a human or by an agent.
 //
 // The discriminator is therefore the channel a request arrived on, not the
-// identity it carries. See docs/plans/2026-07-31-mcp-agent-authoring/
-// requirement.md ADR-4.
+// identity it carries. See docs/dev/adr/0012-actor-kind-from-channel-not-identity.md.
 type ActorKind int
 
 const (

@@ -1,6 +1,6 @@
 // Command memogit is a local CLI that checks a memos knowledge base out to
 // Markdown files and syncs changes back, using a real local git repo for
-// version history. See docs/plans/2026-07-13-memogit-cli.
+// version history. See docs/dev/requirements/agent-collab/memogit-sync.md.
 package main
 
 import (

@@ -275,7 +275,7 @@ no lock and no conflict detection. If you save an edit between the agent's read
 and its write, your edit is silently overwritten, and once an agent session is
 already open on that document the overwrite produces no snapshot either.
 
-This is a deliberate trade-off, [recorded as ADR-5](../plans/2026-07-31-mcp-agent-authoring/requirement.md).
+This is a deliberate trade-off, [recorded as ADR-0013](../dev/adr/0013-no-optimistic-concurrency-control.md).
 Sequence your work instead: let the agent finish, then edit.
 
 The `.md` files that memogit checks out are unaffected — that channel has its own

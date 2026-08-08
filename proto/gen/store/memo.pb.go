@@ -62,7 +62,7 @@ type MemoPayload struct {
 	// NOT a lock. Do not reuse it for concurrency control: its lifetime is "true
 	// until a human edits", which as a lock means an agent holds it forever and
 	// the only thing that can release it is the very action it blocks. See
-	// docs/plans/2026-07-31-mcp-agent-authoring/requirement.md ADR-6.
+	// docs/dev/adr/0014-agent-session-open-not-a-lock.md.
 	AgentSessionOpen bool `protobuf:"varint,9,opt,name=agent_session_open,json=agentSessionOpen,proto3" json:"agent_session_open,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache

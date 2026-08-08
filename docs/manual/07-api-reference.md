@@ -82,7 +82,7 @@ curl -s /api/v1/workspaces \
 
 ## 7.3 RagService — hybrid search
 
-Backs global and in-library search (see [RAG design](../2026-07-12-rag-tech-design.md)).
+Backs global and in-library search (see [RAG design](../dev/rag-search.md)).
 `Search` runs a fused full-text + semantic query over the memos the caller can
 read.
 
