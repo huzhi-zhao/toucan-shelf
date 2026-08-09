@@ -165,6 +165,8 @@ export interface CalendarLayoutBlock {
    * explicitly instead of relying on that fallback.
    */
   newDocFolder: string;
+  /** Default grid granularity when the view is opened. The reader can still switch it in the preview; that switch is not persisted. */
+  cellUnit: "day" | "week";
 }
 
 /**
@@ -219,6 +221,7 @@ export const DEFAULT_CALENDAR_LAYOUT_BLOCK: CalendarLayoutBlock = {
   dateProperty: "",
   cardField: "__title__",
   newDocFolder: "",
+  cellUnit: "day",
 };
 
 function parseMatch(raw: unknown): GalleryMatch {
@@ -393,13 +396,14 @@ export function matchGalleryBadge(
 }
 
 function parseCalendarLayoutBlock(raw: unknown): CalendarLayoutBlock {
-  const b = (raw ?? {}) as { scope?: unknown; dateProperty?: unknown; cardField?: unknown; newDocFolder?: unknown };
+  const b = (raw ?? {}) as { scope?: unknown; dateProperty?: unknown; cardField?: unknown; newDocFolder?: unknown; cellUnit?: unknown };
   return {
     type: "calendar",
     scope: parseScope(b.scope),
     dateProperty: typeof b.dateProperty === "string" ? b.dateProperty.trim() : "",
     cardField: normalizeCardField(b.cardField, "__title__"),
     newDocFolder: typeof b.newDocFolder === "string" ? b.newDocFolder.trim() : "",
+    cellUnit: b.cellUnit === "week" ? "week" : "day",
   };
 }
 

@@ -25,6 +25,10 @@ const (
 
 	// RefreshTokenIDContextKey stores the refresh token ID.
 	RefreshTokenIDContextKey
+
+	// CredentialKindContextKey stores the CredentialKind that authenticated the
+	// request. Set by ApplyToContext for every transport that calls it.
+	CredentialKindContextKey
 )
 
 // GetUserID retrieves the authenticated user's ID from the context.
@@ -95,5 +99,21 @@ func ApplyToContext(ctx context.Context, result *AuthResult) context.Context {
 	} else if result.User != nil {
 		ctx = SetUserInContext(ctx, result.User, result.AccessToken)
 	}
+	ctx = SetCredentialKindInContext(ctx, result.CredentialKind)
 	return ctx
+}
+
+// SetCredentialKindInContext records which channel authenticated the request.
+func SetCredentialKindInContext(ctx context.Context, kind CredentialKind) context.Context {
+	return context.WithValue(ctx, CredentialKindContextKey, kind)
+}
+
+// GetCredentialKind retrieves the credential kind that authenticated the request.
+// Returns CredentialKindNone for an anonymous request, or one where it was never
+// set (e.g. the SSE handler, which authenticates without calling ApplyToContext).
+func GetCredentialKind(ctx context.Context) CredentialKind {
+	if v, ok := ctx.Value(CredentialKindContextKey).(CredentialKind); ok {
+		return v
+	}
+	return CredentialKindNone
 }

@@ -9,9 +9,27 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/usememos/memos/internal/base"
 	"github.com/usememos/memos/internal/util"
 	storepb "github.com/usememos/memos/proto/gen/store"
 	"github.com/usememos/memos/store"
+)
+
+// CredentialKind identifies which channel authenticated a request: a browser
+// session (Access Token V2 header or refresh-token cookie), a Personal Access
+// Token used directly against the REST/Connect API, or a Personal Access Token
+// carried over the MCP channel (base.ActorKindAgent).
+//
+// Nothing consumes this yet. It exists so a later check — vault-cookie gating
+// on locked attachments, which must apply to session credentials only — has
+// somewhere to read it from; see docs/dev/design/20260808-attachment-access-control-and-private-files.md.
+type CredentialKind int
+
+const (
+	CredentialKindNone CredentialKind = iota
+	CredentialKindSession
+	CredentialKindPAT
+	CredentialKindMCP
 )
 
 // Authenticator provides shared authentication and authorization logic.
@@ -125,9 +143,10 @@ func (a *Authenticator) AuthenticateByPAT(ctx context.Context, token string) (*s
 
 // AuthResult contains the result of an authentication attempt.
 type AuthResult struct {
-	User        *store.User // Set for PAT authentication
-	Claims      *UserClaims // Set for Access Token V2 (stateless)
-	AccessToken string      // Non-empty if authenticated via JWT
+	User           *store.User // Set for PAT authentication
+	Claims         *UserClaims // Set for Access Token V2 (stateless)
+	AccessToken    string      // Non-empty if authenticated via JWT
+	CredentialKind CredentialKind
 }
 
 // bearerAuth is the outcome of successfully validating a Bearer token: the resolved
@@ -136,6 +155,7 @@ type bearerAuth struct {
 	user   *store.User
 	claims *UserClaims                                                  // set for an Access Token V2
 	pat    *storepb.PersonalAccessTokensUserSetting_PersonalAccessToken // set for a Personal Access Token
+	kind   CredentialKind
 }
 
 // resolveBearer validates a Bearer token — an Access Token V2 or a Personal Access
@@ -161,15 +181,21 @@ func (a *Authenticator) resolveBearer(ctx context.Context, token string) (*beare
 				return nil, err
 			}
 			if user != nil && user.RowStatus != store.Archived {
-				return &bearerAuth{user: user, claims: claims}, nil
+				return &bearerAuth{user: user, claims: claims, kind: CredentialKindSession}, nil
 			}
 		}
 		return nil, nil
 	}
 
-	// Personal Access Token.
+	// Personal Access Token. The channel it arrived on — direct REST/Connect call
+	// vs. the in-process MCP adapter — is carried on the context by
+	// base.WithActorKind, set before the MCP adapter builds its request.
 	if user, pat, err := a.AuthenticateByPAT(ctx, token); err == nil && user != nil {
-		return &bearerAuth{user: user, pat: pat}, nil
+		kind := CredentialKindPAT
+		if base.ActorKindFromContext(ctx).IsAgent() {
+			kind = CredentialKindMCP
+		}
+		return &bearerAuth{user: user, pat: pat, kind: kind}, nil
 	}
 	return nil, nil
 }
@@ -186,25 +212,31 @@ func (a *Authenticator) recordPATUsage(userID int32, tokenID string) {
 
 // AuthenticateToUser resolves the current request to a *store.User, checking the
 // Authorization header first (access token or PAT), then falling back to the
-// refresh token cookie. Returns (nil, nil) when no valid credentials are present.
-func (a *Authenticator) AuthenticateToUser(ctx context.Context, authHeader, cookieHeader string) (*store.User, error) {
+// refresh token cookie. Returns (nil, CredentialKindNone, nil) when no valid
+// credentials are present.
+func (a *Authenticator) AuthenticateToUser(ctx context.Context, authHeader, cookieHeader string) (*store.User, CredentialKind, error) {
 	bearer, err := a.resolveBearer(ctx, ExtractBearerToken(authHeader))
 	if err != nil {
-		return nil, err
+		return nil, CredentialKindNone, err
 	}
 	if bearer != nil {
-		return bearer.user, nil
+		return bearer.user, bearer.kind, nil
 	}
 
 	// Fallback: refresh token cookie.
 	if cookieHeader != "" {
 		if refreshToken := ExtractRefreshTokenFromCookie(cookieHeader); refreshToken != "" {
 			user, _, err := a.AuthenticateByRefreshToken(ctx, refreshToken)
-			return user, err
+			if err != nil {
+				return nil, CredentialKindNone, err
+			}
+			if user != nil {
+				return user, CredentialKindSession, nil
+			}
 		}
 	}
 
-	return nil, nil
+	return nil, CredentialKindNone, nil
 }
 
 // Authenticate resolves a Bearer token (Access Token V2 or PAT) into an AuthResult,
@@ -218,7 +250,7 @@ func (a *Authenticator) Authenticate(ctx context.Context, authHeader string) *Au
 	}
 	if bearer.pat != nil {
 		a.recordPATUsage(bearer.user.ID, bearer.pat.TokenId)
-		return &AuthResult{User: bearer.user, AccessToken: token}
+		return &AuthResult{User: bearer.user, AccessToken: token, CredentialKind: bearer.kind}
 	}
-	return &AuthResult{Claims: bearer.claims, AccessToken: token}
+	return &AuthResult{Claims: bearer.claims, AccessToken: token, CredentialKind: bearer.kind}
 }

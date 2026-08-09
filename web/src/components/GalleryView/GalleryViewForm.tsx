@@ -120,6 +120,7 @@ interface CalendarDraft {
   dateProperty: string;
   cardField: CardFieldState;
   newDocFolder: string;
+  cellUnit: "day" | "week";
 }
 
 /**
@@ -218,6 +219,7 @@ function toDraft(block: ViewBlock): BlockDraft {
       dateProperty: block.dateProperty,
       cardField: toCardFieldState(block.cardField),
       newDocFolder: block.newDocFolder,
+      cellUnit: block.cellUnit,
     };
   return {
     type: "gallery",
@@ -274,6 +276,7 @@ function fromDraft(draft: BlockDraft): ViewBlock {
       dateProperty: draft.dateProperty.trim(),
       cardField: fromCardFieldState(draft.cardField),
       newDocFolder: draft.newDocFolder.trim(),
+      cellUnit: draft.cellUnit,
     };
   return {
     type: "gallery",
@@ -614,6 +617,19 @@ const CalendarLayoutBlockForm = ({
         workspaceOptions={workspaceOptions}
         onChange={onChange}
       />
+
+      <div className="flex flex-col gap-1.5">
+        <Label>{t("gallery.calendar-cell-unit-label")}</Label>
+        <Select value={draft.cellUnit} onValueChange={(v) => onChange({ cellUnit: v as "day" | "week" })}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="day">{t("gallery.calendar-cell-unit-day")}</SelectItem>
+            <SelectItem value="week">{t("gallery.calendar-cell-unit-week")}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
       <div className="flex flex-col gap-1.5">
         <Label>{t("gallery.calendar-date-label")}</Label>

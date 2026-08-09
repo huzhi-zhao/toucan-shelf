@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/usememos/memos/internal/base"
 	"github.com/usememos/memos/internal/util"
 	storepb "github.com/usememos/memos/proto/gen/store"
 	"github.com/usememos/memos/server/auth"
@@ -679,4 +680,134 @@ func TestStorePersonalAccessTokenMethods(t *testing.T) {
 		assert.NotNil(t, result.PAT)
 		assert.Equal(t, tokenID, result.PAT.TokenId)
 	})
+}
+
+// TestAuthenticatorCredentialKind is P2's acceptance test: it asserts the three
+// credential kinds (session, PAT, MCP) are classified correctly. See
+// docs/dev/design/20260808-attachment-access-control-and-private-files.md, P2.
+func TestAuthenticatorCredentialKind(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("access token v2 header is a session credential", func(t *testing.T) {
+		ts := NewTestService(t)
+		defer ts.Cleanup()
+
+		user, err := ts.CreateRegularUser(ctx, "session-header-user")
+		require.NoError(t, err)
+		token, _, err := auth.GenerateAccessTokenV2(user.ID, user.Username, string(user.Role), string(user.RowStatus), []byte(ts.Secret))
+		require.NoError(t, err)
+
+		authenticator := auth.NewAuthenticator(ts.Store, ts.Secret)
+
+		result := authenticator.Authenticate(ctx, "Bearer "+token)
+		require.NotNil(t, result)
+		assert.Equal(t, auth.CredentialKindSession, result.CredentialKind)
+
+		authedUser, kind, err := authenticator.AuthenticateToUser(ctx, "Bearer "+token, "")
+		require.NoError(t, err)
+		require.NotNil(t, authedUser)
+		assert.Equal(t, auth.CredentialKindSession, kind)
+	})
+
+	t.Run("refresh token cookie is a session credential", func(t *testing.T) {
+		ts := NewTestService(t)
+		defer ts.Cleanup()
+
+		user, err := ts.CreateRegularUser(ctx, "session-cookie-user")
+		require.NoError(t, err)
+		tokenID := util.GenUUID()
+		require.NoError(t, ts.Store.AddUserRefreshToken(ctx, user.ID, &storepb.RefreshTokensUserSetting_RefreshToken{
+			TokenId:   tokenID,
+			ExpiresAt: timestamppb.New(time.Now().Add(auth.RefreshTokenDuration)),
+			CreatedAt: timestamppb.Now(),
+		}))
+		token, _, err := auth.GenerateRefreshToken(user.ID, tokenID, []byte(ts.Secret))
+		require.NoError(t, err)
+
+		authenticator := auth.NewAuthenticator(ts.Store, ts.Secret)
+		cookieHeader := auth.RefreshTokenCookieName + "=" + token
+		authedUser, kind, err := authenticator.AuthenticateToUser(ctx, "", cookieHeader)
+		require.NoError(t, err)
+		require.NotNil(t, authedUser)
+		assert.Equal(t, auth.CredentialKindSession, kind)
+	})
+
+	t.Run("PAT used directly is a PAT credential, not session or MCP", func(t *testing.T) {
+		ts := NewTestService(t)
+		defer ts.Cleanup()
+
+		user, err := ts.CreateRegularUser(ctx, "pat-direct-user")
+		require.NoError(t, err)
+		token := auth.GeneratePersonalAccessToken()
+		require.NoError(t, ts.Store.AddUserPersonalAccessToken(ctx, user.ID, &storepb.PersonalAccessTokensUserSetting_PersonalAccessToken{
+			TokenId:     util.GenUUID(),
+			TokenHash:   auth.HashPersonalAccessToken(token),
+			Description: "direct PAT",
+			CreatedAt:   timestamppb.Now(),
+		}))
+
+		authenticator := auth.NewAuthenticator(ts.Store, ts.Secret)
+
+		result := authenticator.Authenticate(ctx, "Bearer "+token)
+		require.NotNil(t, result)
+		assert.Equal(t, auth.CredentialKindPAT, result.CredentialKind)
+
+		authedUser, kind, err := authenticator.AuthenticateToUser(ctx, "Bearer "+token, "")
+		require.NoError(t, err)
+		require.NotNil(t, authedUser)
+		assert.Equal(t, auth.CredentialKindPAT, kind)
+	})
+
+	t.Run("same PAT over the MCP channel is an MCP credential", func(t *testing.T) {
+		ts := NewTestService(t)
+		defer ts.Cleanup()
+
+		user, err := ts.CreateRegularUser(ctx, "pat-mcp-user")
+		require.NoError(t, err)
+		token := auth.GeneratePersonalAccessToken()
+		require.NoError(t, ts.Store.AddUserPersonalAccessToken(ctx, user.ID, &storepb.PersonalAccessTokensUserSetting_PersonalAccessToken{
+			TokenId:     util.GenUUID(),
+			TokenHash:   auth.HashPersonalAccessToken(token),
+			Description: "MCP-channel PAT",
+			CreatedAt:   timestamppb.Now(),
+		}))
+
+		authenticator := auth.NewAuthenticator(ts.Store, ts.Secret)
+		mcpCtx := base.WithActorKind(ctx, base.ActorKindAgent)
+
+		result := authenticator.Authenticate(mcpCtx, "Bearer "+token)
+		require.NotNil(t, result)
+		assert.Equal(t, auth.CredentialKindMCP, result.CredentialKind)
+
+		authedUser, kind, err := authenticator.AuthenticateToUser(mcpCtx, "Bearer "+token, "")
+		require.NoError(t, err)
+		require.NotNil(t, authedUser)
+		assert.Equal(t, auth.CredentialKindMCP, kind)
+	})
+
+	t.Run("anonymous request has no credential kind", func(t *testing.T) {
+		ts := NewTestService(t)
+		defer ts.Cleanup()
+
+		authenticator := auth.NewAuthenticator(ts.Store, ts.Secret)
+		assert.Nil(t, authenticator.Authenticate(ctx, ""))
+
+		user, kind, err := authenticator.AuthenticateToUser(ctx, "", "")
+		require.NoError(t, err)
+		assert.Nil(t, user)
+		assert.Equal(t, auth.CredentialKindNone, kind)
+	})
+}
+
+// TestApplyToContextCarriesCredentialKind confirms ApplyToContext — the point
+// where both the gRPC-Gateway middleware and the Connect interceptor install the
+// AuthResult onto the request context — makes the credential kind readable via
+// auth.GetCredentialKind downstream, for both transports.
+func TestApplyToContextCarriesCredentialKind(t *testing.T) {
+	ctx := context.Background()
+	assert.Equal(t, auth.CredentialKindNone, auth.GetCredentialKind(ctx))
+
+	result := &auth.AuthResult{User: &store.User{ID: 1}, CredentialKind: auth.CredentialKindPAT}
+	ctx = auth.ApplyToContext(ctx, result)
+	assert.Equal(t, auth.CredentialKindPAT, auth.GetCredentialKind(ctx))
 }

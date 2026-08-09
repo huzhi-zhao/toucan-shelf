@@ -1,6 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import dayjs from "dayjs";
-import { CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon } from "lucide-react";
+import { CalendarDaysIcon, CalendarRangeIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTodayDate, useWeekdayLabels } from "@/components/ActivityCalendar/hooks";
@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { type Memo, MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import { docCalendarDate, docColor, newCalendarDoc } from "./calendar";
+import { buildCalendarWeekRows, dateInRange } from "./calendarWeek";
 import { fieldValue, matchesScope, propertyMap } from "./fields";
 import type { CalendarLayoutBlock } from "./types";
 import { useScopeMemos } from "./useScopeMemos";
@@ -68,6 +69,8 @@ const CalendarLayout = ({ block, memo, openDoc }: Props) => {
 
   const [month, setMonth] = useState(() => dayjs(today).format("YYYY-MM"));
   const [selectedDate, setSelectedDate] = useState(today);
+  const [unit, setUnit] = useState<"day" | "week">(block.cellUnit);
+  const [selectedWeekStart, setSelectedWeekStart] = useState<string | undefined>(undefined);
   const [addOpen, setAddOpen] = useState(false);
 
   // Bucket every in-scope document by its resolved calendar date. Rebuilt from a
@@ -106,15 +109,56 @@ const CalendarLayout = ({ block, memo, openDoc }: Props) => {
 
   const monthLabel = useMemo(() => dayjs(month).format("MMM YYYY"), [month]);
   const isCurrentMonth = month === dayjs(today).format("YYYY-MM");
-  const shiftMonth = (delta: number) => setMonth(dayjs(`${month}-01`).add(delta, "month").format("YYYY-MM"));
+  const shiftMonth = (delta: number) =>
+    setMonth(
+      dayjs(`${month}-01`)
+        .add(delta * (unit === "week" ? 4 : 1), "month")
+        .format("YYYY-MM"),
+    );
+  const goToday = () => {
+    setMonth(dayjs(today).format("YYYY-MM"));
+    setSelectedWeekStart(undefined);
+  };
 
   const labelOf = (doc: Memo) => fieldValue(doc, propertyMap(doc.content), block.cardField) || doc.title || doc.name;
   const colorOf = (doc: Memo) => docColor(propertyMap(doc.content));
 
   const selectedDocs = docsByDate.get(selectedDate) ?? [];
 
+  // Chronologically sorted (date, docs) pairs, reused to gather each week
+  // cell's documents by scanning for dates within its range.
+  const sortedDateEntries = useMemo(() => Array.from(docsByDate.entries()).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)), [docsByDate]);
+  const docsInRange = (start: string, end: string): Memo[] => {
+    const list: Memo[] = [];
+    for (const [date, docs] of sortedDateEntries) {
+      if (dateInRange(date, start, end)) list.push(...docs);
+    }
+    return list;
+  };
+
+  const weekRows = useMemo(
+    () => (unit === "week" ? buildCalendarWeekRows(month, today, selectedWeekStart) : []),
+    [unit, month, today, selectedWeekStart],
+  );
+  // The effective selected week: an explicit click, or else this month's current week.
+  const effectiveWeek = useMemo(() => {
+    if (selectedWeekStart) {
+      for (const row of weekRows) {
+        const cell = row.cells.find((c) => c.start === selectedWeekStart);
+        if (cell) return cell;
+      }
+    }
+    for (const row of weekRows) {
+      const cell = row.cells.find((c) => c.isCurrentWeek);
+      if (cell) return cell;
+    }
+    return weekRows[1]?.cells[0];
+  }, [weekRows, selectedWeekStart]);
+  const selectedWeekDocs = effectiveWeek ? docsInRange(effectiveWeek.start, effectiveWeek.end) : [];
+
   const handleCreate = async (title: string) => {
-    const { folderPath, content } = newCalendarDoc(block, memo.folderPath, selectedDate, title);
+    const targetDate = unit === "week" ? (effectiveWeek?.start ?? selectedDate) : selectedDate;
+    const { folderPath, content } = newCalendarDoc(block, memo.folderPath, targetDate, title);
     try {
       const created = await createMemo.mutateAsync(create(MemoSchema, { workspace: memo.workspace, folderPath, title, content }));
       openDoc(created.name);
@@ -123,82 +167,161 @@ const CalendarLayout = ({ block, memo, openDoc }: Props) => {
     }
   };
 
+  const panelDocs = unit === "week" ? selectedWeekDocs : selectedDocs;
+  const panelTitle =
+    unit === "week" && effectiveWeek
+      ? `${dayjs(effectiveWeek.start).format("MMM D")} – ${dayjs(effectiveWeek.end).format("MMM D, YYYY")}`
+      : dayjs(selectedDate).format("MMM D, YYYY");
+
   return (
     <div {...{ [MARK_EXCLUDE_ATTR]: "" }} className="w-full flex flex-col md:flex-row gap-4">
-      {/* Month grid */}
+      {/* Month / week grid */}
       <div className="md:flex-[7] md:min-w-0 flex flex-col gap-1.5">
         <div className="flex items-center justify-between px-1">
           <span className="text-sm font-medium text-foreground">{monthLabel}</span>
-          <div className="inline-flex items-center gap-0.5 rounded-lg border border-border/30 bg-muted/10 p-0.5">
-            <Button variant="ghost" size="sm" onClick={() => shiftMonth(-1)} className="h-6 w-6 p-0" aria-label="Previous month">
-              <ChevronLeftIcon className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setMonth(dayjs(today).format("YYYY-MM"))}
-              disabled={isCurrentMonth}
-              className="h-6 px-2 text-[10px] font-medium uppercase tracking-wider"
-            >
-              {t("common.today")}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => shiftMonth(1)} className="h-6 w-6 p-0" aria-label="Next month">
-              <ChevronRightIcon className="w-4 h-4" />
-            </Button>
+          <div className="flex items-center gap-1.5">
+            <div className="inline-flex items-center gap-0.5 rounded-lg border border-border/30 bg-muted/10 p-0.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setUnit("day")}
+                aria-label={t("gallery.calendar-view-day")}
+                title={t("gallery.calendar-view-day")}
+                className={cn("h-6 w-6 p-0", unit === "day" && "bg-accent text-accent-foreground")}
+              >
+                <CalendarDaysIcon className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setUnit("week")}
+                aria-label={t("gallery.calendar-view-week")}
+                title={t("gallery.calendar-view-week")}
+                className={cn("h-6 w-6 p-0", unit === "week" && "bg-accent text-accent-foreground")}
+              >
+                <CalendarRangeIcon className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="inline-flex items-center gap-0.5 rounded-lg border border-border/30 bg-muted/10 p-0.5">
+              <Button variant="ghost" size="sm" onClick={() => shiftMonth(-1)} className="h-6 w-6 p-0" aria-label="Previous">
+                <ChevronLeftIcon className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={goToday}
+                disabled={isCurrentMonth && unit === "day"}
+                className="h-6 px-2 text-[10px] font-medium uppercase tracking-wider"
+              >
+                {t("common.today")}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => shiftMonth(1)} className="h-6 w-6 p-0" aria-label="Next">
+                <ChevronRightIcon className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
-        <div className="grid grid-cols-7 gap-1">
-          {rotatedWeekDays.map((label, i) => (
-            <div key={i} className="flex h-4 items-center justify-center text-[10px] uppercase tracking-wide text-muted-foreground/60">
-              {label}
+
+        {unit === "day" ? (
+          <>
+            <div className="grid grid-cols-7 gap-1">
+              {rotatedWeekDays.map((label, i) => (
+                <div key={i} className="flex h-4 items-center justify-center text-[10px] uppercase tracking-wide text-muted-foreground/60">
+                  {label}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7 gap-1">
-          {days.map((day) => {
-            if (!day.isCurrentMonth) return <div key={day.date} className="aspect-square" aria-hidden="true" />;
-            const docs = docsByDate.get(day.date) ?? [];
-            return (
-              <button
-                key={day.date}
-                type="button"
-                onClick={() => setSelectedDate(day.date)}
-                className={cn(
-                  "flex aspect-square flex-col gap-0.5 overflow-hidden rounded-md border border-border/10 bg-muted/10 p-1 pb-2 text-left transition-colors hover:bg-muted/40",
-                  day.isToday && "ring-1 ring-inset ring-primary",
-                  day.isSelected && "ring-2 ring-inset ring-primary bg-accent/30",
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-foreground">{day.label}</span>
-                  {/* Mobile: just the doc count. */}
-                  {docs.length > 0 && (
-                    <span className="rounded-full bg-primary/15 px-1 text-[10px] font-medium text-primary md:hidden">{docs.length}</span>
-                  )}
-                </div>
-                {/* Desktop: up to 3 doc cards, then an overflow hint. */}
-                <div className="hidden flex-col gap-0.5 md:flex">
-                  {docs.slice(0, MAX_TILE_DOCS).map((doc) => (
-                    <DocChip key={doc.name} label={labelOf(doc)} color={colorOf(doc)} onOpen={() => openDoc(doc.name, doc)} />
-                  ))}
-                  {docs.length > MAX_TILE_DOCS && (
-                    <span className="px-1 text-[10px] text-muted-foreground">
-                      {t("gallery.calendar-more", { count: docs.length - MAX_TILE_DOCS })}
-                    </span>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
+            <div className="grid grid-cols-7 gap-1">
+              {days.map((day) => {
+                if (!day.isCurrentMonth) return <div key={day.date} className="aspect-square" aria-hidden="true" />;
+                const docs = docsByDate.get(day.date) ?? [];
+                return (
+                  <button
+                    key={day.date}
+                    type="button"
+                    onClick={() => setSelectedDate(day.date)}
+                    className={cn(
+                      "flex aspect-square flex-col gap-0.5 overflow-hidden rounded-md border border-border/10 bg-muted/10 p-1 pb-2 text-left transition-colors hover:bg-muted/40",
+                      day.isToday && "ring-1 ring-inset ring-primary",
+                      day.isSelected && "ring-2 ring-inset ring-primary bg-accent/30",
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-foreground">{day.label}</span>
+                      {/* Mobile: just the doc count. */}
+                      {docs.length > 0 && (
+                        <span className="rounded-full bg-primary/15 px-1 text-[10px] font-medium text-primary md:hidden">
+                          {docs.length}
+                        </span>
+                      )}
+                    </div>
+                    {/* Desktop: up to 3 doc cards, then an overflow hint. */}
+                    <div className="hidden flex-col gap-0.5 md:flex">
+                      {docs.slice(0, MAX_TILE_DOCS).map((doc) => (
+                        <DocChip key={doc.name} label={labelOf(doc)} color={colorOf(doc)} onOpen={() => openDoc(doc.name, doc)} />
+                      ))}
+                      {docs.length > MAX_TILE_DOCS && (
+                        <span className="px-1 text-[10px] text-muted-foreground">
+                          {t("gallery.calendar-more", { count: docs.length - MAX_TILE_DOCS })}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <div className="grid grid-cols-5 gap-1">
+            {weekRows.map((row) =>
+              [0, 1, 2, 3, 4].map((col) => {
+                const cell = row.cells[col];
+                if (!cell) return <div key={`${row.month}-${col}`} className="aspect-[4/3]" aria-hidden="true" />;
+                const docs = docsInRange(cell.start, cell.end);
+                return (
+                  <button
+                    key={`${row.month}-${col}`}
+                    type="button"
+                    onClick={() => setSelectedWeekStart(cell.start)}
+                    className={cn(
+                      "flex aspect-[4/3] flex-col gap-0.5 overflow-hidden rounded-md border border-border/10 bg-muted/10 p-1 pb-2 text-left transition-colors hover:bg-muted/40",
+                      cell.isCurrentWeek && "ring-1 ring-inset ring-primary",
+                      (selectedWeekStart ? cell.isSelected : cell.isCurrentWeek && !selectedWeekStart) &&
+                        "ring-2 ring-inset ring-primary bg-accent/30",
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-foreground">{dayjs(cell.start).format("MMM D")}</span>
+                      {docs.length > 0 && (
+                        <span className="rounded-full bg-primary/15 px-1 text-[10px] font-medium text-primary md:hidden">
+                          {docs.length}
+                        </span>
+                      )}
+                    </div>
+                    <div className="hidden flex-col gap-0.5 md:flex">
+                      {docs.slice(0, MAX_TILE_DOCS).map((doc) => (
+                        <DocChip key={doc.name} label={labelOf(doc)} color={colorOf(doc)} onOpen={() => openDoc(doc.name, doc)} />
+                      ))}
+                      {docs.length > MAX_TILE_DOCS && (
+                        <span className="px-1 text-[10px] text-muted-foreground">
+                          {t("gallery.calendar-more", { count: docs.length - MAX_TILE_DOCS })}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              }),
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Selected-day panel */}
+      {/* Selected day/week panel */}
       <div className="md:flex-[3] min-w-0 flex flex-col gap-3 md:border-l md:border-border md:pl-4">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-sm font-medium">
             <CalendarDaysIcon className="w-4 h-4 text-primary" />
-            {dayjs(selectedDate).format("MMM D, YYYY")}
+            {panelTitle}
           </div>
           <Button size="sm" variant="secondary" onClick={() => setAddOpen(true)}>
             <PlusIcon className="w-4 h-4 mr-1" />
@@ -207,11 +330,13 @@ const CalendarLayout = ({ block, memo, openDoc }: Props) => {
         </div>
         {isLoading ? (
           <div className="text-sm text-muted-foreground">{t("gallery.loading")}</div>
-        ) : selectedDocs.length === 0 ? (
-          <div className="text-sm text-muted-foreground">{t("gallery.calendar-empty-day")}</div>
+        ) : panelDocs.length === 0 ? (
+          <div className="text-sm text-muted-foreground">
+            {t(unit === "week" ? "gallery.calendar-empty-week" : "gallery.calendar-empty-day")}
+          </div>
         ) : (
           <div className="flex flex-col gap-1.5">
-            {selectedDocs.map((doc) => (
+            {panelDocs.map((doc) => (
               <DocChip
                 key={doc.name}
                 label={labelOf(doc)}

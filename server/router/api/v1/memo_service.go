@@ -586,6 +586,7 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 	titleUpdated := false
 	var previousFolderPath string
 	folderPathUpdated := false
+	previousVisibility := memo.Visibility
 	for _, path := range request.UpdateMask.Paths {
 		if path == "content" {
 			contentUpdated = true
@@ -745,6 +746,15 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 		return nil, errors.Wrap(err, "failed to get memo")
 	}
 
+	// The comments hanging off this document inherit its visibility, and until now
+	// that inheritance only happened once, when each comment was created. A document
+	// later made private therefore kept comments still marked public. Realign them.
+	if update.Visibility != nil && *update.Visibility != previousVisibility {
+		if err := s.cascadeCommentVisibility(ctx, memo); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to cascade comment visibility: %v", err)
+		}
+	}
+
 	// P0: content changed, so this memo's outbound reverse-link index entries
 	// are stale — full reparse and overwrite. Best-effort by design.
 	if contentUpdated {
@@ -787,6 +797,50 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 	s.dispatchMemoUpdatedSideEffects(ctx, memo, parentMemo, memoMessage)
 
 	return memoMessage, nil
+}
+
+// cascadeCommentVisibility rewrites the visibility of a document's comments to match
+// the document's own.
+//
+// CreateMemoComment stamps a new comment with its parent's visibility, but that was
+// only ever a snapshot: nothing re-applied it afterwards, so a public document that
+// collected comments and was then made private ended up with public comments hanging
+// off it. The alignment goes both ways, exactly as the create-time assignment does —
+// only tightening would leave the opposite inconsistency behind (a document put back
+// to public keeping private comments).
+//
+// The comment relation is one level deep — a comment cannot itself be commented on —
+// so there is no chain to walk.
+func (s *APIV1Service) cascadeCommentVisibility(ctx context.Context, memo *store.Memo) error {
+	commentType := store.MemoRelationComment
+	relations, err := s.Store.ListMemoRelations(ctx, &store.FindMemoRelation{
+		RelatedMemoID: &memo.ID,
+		Type:          &commentType,
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to list memo comments")
+	}
+
+	for _, relation := range relations {
+		comment, err := s.Store.GetMemo(ctx, &store.FindMemo{ID: &relation.MemoID})
+		if err != nil {
+			return errors.Wrap(err, "failed to get memo comment")
+		}
+		if comment == nil || comment.Visibility == memo.Visibility {
+			continue
+		}
+		visibility := memo.Visibility
+		if err := s.Store.UpdateMemo(ctx, &store.UpdateMemo{
+			ID:         comment.ID,
+			Visibility: &visibility,
+			// Visibility is not part of what gets indexed (title and content are), so
+			// this must not re-queue the comment for embedding.
+			SkipReindex: true,
+		}); err != nil {
+			return errors.Wrap(err, "failed to update memo comment visibility")
+		}
+	}
+	return nil
 }
 
 func (s *APIV1Service) DeleteMemo(ctx context.Context, request *v1pb.DeleteMemoRequest) (*emptypb.Empty, error) {

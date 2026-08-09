@@ -23,6 +23,7 @@ import (
 	"github.com/usememos/memos/internal/profile"
 	"github.com/usememos/memos/internal/storage/s3"
 	storepb "github.com/usememos/memos/proto/gen/store"
+	"github.com/usememos/memos/server/attachmentacl"
 	"github.com/usememos/memos/server/auth"
 	"github.com/usememos/memos/store"
 )
@@ -171,7 +172,7 @@ func (s *FileServerService) serveUserAvatar(c *echo.Context) error {
 	// On a private instance (no InstanceURL), avatars are not exposed to anonymous
 	// visitors; a valid session, access token, or PAT is required.
 	if !s.Profile.AllowAnonymous() {
-		viewer, err := s.getCurrentUser(ctx, c)
+		viewer, _, err := s.getCurrentUser(ctx, c)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, "failed to get current user").Wrap(err)
 		}
@@ -637,65 +638,43 @@ func (s *FileServerService) getMotionPath(attachment *store.Attachment) (string,
 // =============================================================================
 
 // checkAttachmentPermission verifies the user has permission to access the attachment.
+// The decision itself lives in attachmentacl, shared with the metadata path in
+// api/v1; this only supplies the echo-specific inputs and maps the answer onto HTTP.
 func (s *FileServerService) checkAttachmentPermission(ctx context.Context, c *echo.Context, attachment *store.Attachment) error {
-	// For unlinked attachments, only the creator can access.
-	if attachment.MemoID == nil {
-		user, err := s.getCurrentUser(ctx, c)
-		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, "failed to get current user").Wrap(err)
-		}
-		if user == nil {
-			return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized access")
-		}
-		if user.ID != attachment.CreatorID && user.Role != store.RoleAdmin {
-			return echo.NewHTTPError(http.StatusForbidden, "forbidden access")
-		}
+	err := attachmentacl.CheckReadAccess(ctx, &attachmentacl.Request{
+		Store: s.Store,
+		CurrentUser: func(ctx context.Context) (*store.User, error) {
+			// Credential kind is discarded here for now: attachmentacl doesn't
+			// have a locked-attachment branch to feed it to yet. It exists on
+			// getCurrentUser/Authenticator so that branch has somewhere to read
+			// it from once it's added.
+			user, _, err := s.getCurrentUser(ctx, c)
+			return user, err
+		},
+		AllowAnonymous: s.Profile.AllowAnonymous(),
+		// Requests made from a shared document page carry the token that page was
+		// opened with, which is how a private document's images load there.
+		ShareToken: c.QueryParam("share_token"),
+	}, attachment)
+
+	switch {
+	case err == nil:
 		return nil
-	}
-
-	memo, err := s.Store.GetMemo(ctx, &store.FindMemo{ID: attachment.MemoID})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to find memo").Wrap(err)
-	}
-	if memo == nil {
-		return echo.NewHTTPError(http.StatusNotFound, "memo not found")
-	}
-
-	// Public-visibility attachments are served to anonymous visitors only when the
-	// instance allows anonymous access. On a private instance (no InstanceURL), the
-	// request must still resolve to an authenticated user or a valid share token below.
-	if memo.Visibility == store.Public && s.Profile.AllowAnonymous() {
-		return nil
-	}
-
-	// Check share token fallback: allow access if request carries a valid, non-expired share token
-	// that was issued for this specific memo. This covers attachment requests made from the shared
-	// memo page for private or protected memos.
-	if shareToken := (*c).QueryParam("share_token"); shareToken != "" {
-		ms, err := s.Store.GetMemoShare(ctx, &store.FindMemoShare{UID: &shareToken})
-		if err == nil && ms != nil && !isMemoShareExpired(ms) && ms.MemoID == memo.ID {
-			return nil
-		}
-	}
-
-	user, err := s.getCurrentUser(ctx, c)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get current user").Wrap(err)
-	}
-	if user == nil {
+	case errors.Is(err, attachmentacl.ErrNotFound):
+		return echo.NewHTTPError(http.StatusNotFound, "attachment not found")
+	case errors.Is(err, attachmentacl.ErrUnauthenticated):
 		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized access")
-	}
-
-	if memo.Visibility == store.Private && user.ID != memo.CreatorID && user.Role != store.RoleAdmin {
+	case errors.Is(err, attachmentacl.ErrForbidden):
 		return echo.NewHTTPError(http.StatusForbidden, "forbidden access")
+	default:
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to check attachment permission").Wrap(err)
 	}
-
-	return nil
 }
 
-// getCurrentUser retrieves the current authenticated user from the request.
+// getCurrentUser retrieves the current authenticated user from the request, along
+// with which credential kind resolved it (session, PAT, or MCP).
 // Authentication priority: Bearer token (Access Token V2 or PAT) > Refresh token cookie.
-func (s *FileServerService) getCurrentUser(ctx context.Context, c *echo.Context) (*store.User, error) {
+func (s *FileServerService) getCurrentUser(ctx context.Context, c *echo.Context) (*store.User, auth.CredentialKind, error) {
 	authHeader := c.Request().Header.Get(echo.HeaderAuthorization)
 	cookieHeader := c.Request().Header.Get("Cookie")
 	return s.authenticator.AuthenticateToUser(ctx, authHeader, cookieHeader)
@@ -762,9 +741,4 @@ func setMediaHeaders(c *echo.Context, contentType, originalType string) {
 	if strings.HasPrefix(originalType, "image/") || strings.HasPrefix(originalType, "video/") {
 		h.Set("Color-Gamut", "srgb, p3, rec2020")
 	}
-}
-
-// isMemoShareExpired returns true if the share has a defined expiry that has already passed.
-func isMemoShareExpired(ms *store.MemoShare) bool {
-	return ms.ExpiresTs != nil && time.Now().Unix() > *ms.ExpiresTs
 }

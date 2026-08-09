@@ -20,6 +20,7 @@ import (
 	"github.com/usememos/memos/internal/rag"
 	storepb "github.com/usememos/memos/proto/gen/store"
 	backuprunner "github.com/usememos/memos/server/runner/backup"
+	commentvisibilityrunner "github.com/usememos/memos/server/runner/commentvisibility"
 	memopayloadrunner "github.com/usememos/memos/server/runner/memopayload"
 
 	apiv1 "github.com/usememos/memos/server/router/api/v1"
@@ -201,6 +202,20 @@ func (s *Server) startBackgroundRunners(ctx context.Context) {
 	go func() {
 		defer s.backgroundRunnerWG.Done()
 		s.apiV1Service.BackfillMemoLinkIndex(linkIndexContext)
+	}()
+
+	// Realign comment visibility with the documents they hang on, once at startup.
+	// Comments took their parent's visibility only at creation time, so documents
+	// whose visibility was tightened afterwards left comments behind at the older,
+	// looser value. Rewrites are dumped to the data directory first — see the
+	// runner's doc comment.
+	commentVisibilityContext, commentVisibilityCancel := context.WithCancel(ctx)
+	s.backgroundRunnerCancels = append(s.backgroundRunnerCancels, commentVisibilityCancel)
+	commentVisibilityRunner := commentvisibilityrunner.NewRunner(s.Store, s.Profile.Data)
+	s.backgroundRunnerWG.Add(1)
+	go func() {
+		defer s.backgroundRunnerWG.Done()
+		commentVisibilityRunner.RunOnce(commentVisibilityContext)
 	}()
 
 	// RAG search index worker. Indexing is only implemented for the SQLite driver

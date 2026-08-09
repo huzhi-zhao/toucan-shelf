@@ -22,13 +22,15 @@ func TestAuthenticateNoCredentials(t *testing.T) {
 	})
 
 	t.Run("AuthenticateToUser returns nil without any credentials", func(t *testing.T) {
-		user, err := a.AuthenticateToUser(ctx, "", "")
+		user, kind, err := a.AuthenticateToUser(ctx, "", "")
 		assert.NoError(t, err)
 		assert.Nil(t, user)
+		assert.Equal(t, CredentialKindNone, kind)
 	})
 	t.Run("AuthenticateToUser returns nil for a malformed bearer and no cookie", func(t *testing.T) {
-		user, err := a.AuthenticateToUser(ctx, "Bearer not-a-valid-jwt", "")
+		user, kind, err := a.AuthenticateToUser(ctx, "Bearer not-a-valid-jwt", "")
 		assert.NoError(t, err)
 		assert.Nil(t, user)
+		assert.Equal(t, CredentialKindNone, kind)
 	})
 }

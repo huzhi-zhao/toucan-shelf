@@ -31,6 +31,7 @@ import (
 	"github.com/usememos/memos/internal/util"
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
 	storepb "github.com/usememos/memos/proto/gen/store"
+	"github.com/usememos/memos/server/attachmentacl"
 	"github.com/usememos/memos/store"
 )
 
@@ -398,9 +399,18 @@ func (s *APIV1Service) UpdateAttachment(ctx context.Context, request *v1pb.Updat
 	if err := s.Store.UpdateAttachment(ctx, update); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to update attachment: %v", err)
 	}
-	return s.GetAttachment(ctx, &v1pb.GetAttachmentRequest{
-		Name: request.Attachment.Name,
-	})
+	// Read back through the store rather than GetAttachment: the write above is
+	// allowed for an admin acting on someone else's attachment, while the read side
+	// deliberately grants admins nothing, and echoing the result of a write the caller
+	// just made is not the read that check is there to guard.
+	updated, err := s.Store.GetAttachment(ctx, &store.FindAttachment{UID: &attachmentUID})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get attachment: %v", err)
+	}
+	if updated == nil {
+		return nil, status.Errorf(codes.NotFound, "attachment not found")
+	}
+	return convertAttachmentFromStore(updated), nil
 }
 
 func (s *APIV1Service) DeleteAttachment(ctx context.Context, request *v1pb.DeleteAttachmentRequest) (*emptypb.Empty, error) {
@@ -833,41 +843,30 @@ func (s *APIV1Service) validateAttachmentFilter(ctx context.Context, filterStr s
 }
 
 // checkAttachmentAccess verifies the user has permission to access the attachment.
-// For unlinked attachments (no memo), only the creator can access.
-// For linked attachments, access follows the memo's visibility rules.
+// The decision itself lives in attachmentacl, shared with the binary download path in
+// the file server; this only supplies the Connect-side inputs and maps the answer onto
+// gRPC codes.
 func (s *APIV1Service) checkAttachmentAccess(ctx context.Context, attachment *store.Attachment) error {
-	user, _ := s.fetchCurrentUser(ctx)
+	err := attachmentacl.CheckReadAccess(ctx, &attachmentacl.Request{
+		Store:          s.Store,
+		CurrentUser:    s.fetchCurrentUser,
+		AllowAnonymous: s.Profile.AllowAnonymous(),
+		// No share token here: the shared-document page gets its attachments inline
+		// from GetMemoByShare and never calls GetAttachment.
+	}, attachment)
 
-	// For unlinked attachments, only the creator can access.
-	if attachment.MemoID == nil {
-		if user == nil {
-			return status.Errorf(codes.Unauthenticated, "user not authenticated")
-		}
-		if attachment.CreatorID != user.ID && !isSuperUser(user) {
-			return status.Errorf(codes.PermissionDenied, "permission denied")
-		}
+	switch {
+	case err == nil:
 		return nil
-	}
-
-	// For linked attachments, check memo visibility.
-	memo, err := s.Store.GetMemo(ctx, &store.FindMemo{ID: attachment.MemoID})
-	if err != nil {
-		return status.Errorf(codes.Internal, "failed to get memo: %v", err)
-	}
-	if memo == nil {
-		return status.Errorf(codes.NotFound, "memo not found")
-	}
-
-	if memo.Visibility == store.Public {
-		return nil
-	}
-	if user == nil {
+	case errors.Is(err, attachmentacl.ErrNotFound):
+		return status.Errorf(codes.NotFound, "attachment not found")
+	case errors.Is(err, attachmentacl.ErrUnauthenticated):
 		return status.Errorf(codes.Unauthenticated, "user not authenticated")
-	}
-	if memo.Visibility == store.Private && memo.CreatorID != user.ID && !isSuperUser(user) {
+	case errors.Is(err, attachmentacl.ErrForbidden):
 		return status.Errorf(codes.PermissionDenied, "permission denied")
+	default:
+		return status.Errorf(codes.Internal, "failed to check attachment access: %v", err)
 	}
-	return nil
 }
 
 func validateClientMotionMedia(motion *v1pb.MotionMedia, attachmentUID string) (*storepb.MotionMedia, error) {

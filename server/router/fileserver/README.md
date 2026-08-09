@@ -151,8 +151,9 @@ Main handler for user avatar serving.
 
 ### Authentication
 
-#### `getCurrentUser(ctx, c) (*store.User, error)`
-Authenticates request using session cookie or JWT token.
+#### `getCurrentUser(ctx, c) (*store.User, auth.CredentialKind, error)`
+Authenticates request using session cookie or JWT token. Also reports which
+credential kind resolved it (session, PAT, or MCP).
 
 #### `authenticateBySession(ctx, cookie) (*store.User, error)`
 Validates session cookie and returns authenticated user.

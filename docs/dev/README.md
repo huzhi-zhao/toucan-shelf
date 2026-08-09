@@ -200,6 +200,8 @@ design doc 是给三个月后的人读的，下面这四类内容三个月后全
   —— 文档引用索引回填方案
 - [20260808-plans-to-dev-migration.md](design/20260808-plans-to-dev-migration.md)
   —— `docs/plans/` 历史方案文档拆入本目录的分阶段实施计划（多会话并行执行）
+- [20260808-attachment-access-control-and-private-files.md](design/20260808-attachment-access-control-and-private-files.md)
+  —— 附件判定收敛（含两处越权修复）与私密附件的分阶段实施计划、风险登记
 
 > `docs/plans/` 下 2026-07-03 及之后的方案文档已按上述计划拆入本目录并从 `docs/plans/`
 > 删除（原文保留在 git history）。2026-03～2026-04 的 6 个方案目录判定与本 fork 增量
