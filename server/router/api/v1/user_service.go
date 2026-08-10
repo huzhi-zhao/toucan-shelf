@@ -1670,8 +1670,9 @@ func convertUserSettingFromStore(storeSetting *storepb.UserSetting, user *store.
 				Cipher:        secretKey.GetCipher(),
 				Salt:          secretKey.GetSalt(),
 				Nonce:         secretKey.GetNonce(),
-				Verifier:      secretKey.GetVerifier(),
-				WrappedKey:    secretKey.GetWrappedKey(),
+				Verifier:       secretKey.GetVerifier(),
+				WrappedKey:     secretKey.GetWrappedKey(),
+				UnlockVerifier: secretKey.GetUnlockVerifier(),
 			},
 		}
 	default:
@@ -1756,13 +1757,14 @@ func convertUserSettingToStore(apiSetting *v1pb.UserSetting, userID int32, key s
 		if secretKey := apiSetting.GetSecretKeySetting(); secretKey != nil {
 			storeSetting.Value = &storepb.UserSetting_SecretKey{
 				SecretKey: &storepb.SecretKeyUserSetting{
-					Kdf:           secretKey.Kdf,
-					KdfIterations: secretKey.KdfIterations,
-					Cipher:        secretKey.Cipher,
-					Salt:          secretKey.Salt,
-					Nonce:         secretKey.Nonce,
-					Verifier:      secretKey.Verifier,
-					WrappedKey:    secretKey.WrappedKey,
+					Kdf:            secretKey.Kdf,
+					KdfIterations:  secretKey.KdfIterations,
+					Cipher:         secretKey.Cipher,
+					Salt:           secretKey.Salt,
+					Nonce:          secretKey.Nonce,
+					Verifier:       secretKey.Verifier,
+					WrappedKey:     secretKey.WrappedKey,
+					UnlockVerifier: secretKey.UnlockVerifier,
 				},
 			}
 		} else {

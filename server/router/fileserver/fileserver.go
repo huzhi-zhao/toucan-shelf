@@ -641,20 +641,24 @@ func (s *FileServerService) getMotionPath(attachment *store.Attachment) (string,
 // The decision itself lives in attachmentacl, shared with the metadata path in
 // api/v1; this only supplies the echo-specific inputs and maps the answer onto HTTP.
 func (s *FileServerService) checkAttachmentPermission(ctx context.Context, c *echo.Context, attachment *store.Attachment) error {
+	// Populated by the CurrentUser resolver below, which attachmentacl guarantees
+	// to call (at most once) before VaultUnlocked ever runs — see checkVaultAccess.
+	var credentialKind auth.CredentialKind
 	err := attachmentacl.CheckReadAccess(ctx, &attachmentacl.Request{
 		Store: s.Store,
 		CurrentUser: func(ctx context.Context) (*store.User, error) {
-			// Credential kind is discarded here for now: attachmentacl doesn't
-			// have a locked-attachment branch to feed it to yet. It exists on
-			// getCurrentUser/Authenticator so that branch has somewhere to read
-			// it from once it's added.
-			user, _, err := s.getCurrentUser(ctx, c)
+			user, kind, err := s.getCurrentUser(ctx, c)
+			credentialKind = kind
 			return user, err
 		},
 		AllowAnonymous: s.Profile.AllowAnonymous(),
 		// Requests made from a shared document page carry the token that page was
 		// opened with, which is how a private document's images load there.
 		ShareToken: c.QueryParam("share_token"),
+		VaultUnlocked: func(userID int32) bool {
+			cookieHeader := c.Request().Header.Get("Cookie")
+			return s.authenticator.VaultUnlocked(cookieHeader, userID, credentialKind)
+		},
 	}, attachment)
 
 	switch {

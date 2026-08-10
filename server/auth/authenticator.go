@@ -20,9 +20,10 @@ import (
 // Token used directly against the REST/Connect API, or a Personal Access Token
 // carried over the MCP channel (base.ActorKindAgent).
 //
-// Nothing consumes this yet. It exists so a later check — vault-cookie gating
-// on locked attachments, which must apply to session credentials only — has
-// somewhere to read it from; see docs/dev/design/20260808-attachment-access-control-and-private-files.md.
+// Consumed by VaultUnlocked: a locked attachment only ever unlocks for a
+// session credential, never PAT or MCP, even if one somehow carries the vault
+// cookie (ADR-0003). See
+// docs/dev/design/20260808-attachment-access-control-and-private-files.md.
 type CredentialKind int
 
 const (

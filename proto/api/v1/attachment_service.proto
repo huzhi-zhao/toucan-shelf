@@ -58,6 +58,23 @@ service AttachmentService {
       body: "*"
     };
   }
+  // UnlockVault opens the caller's attachment vault for this browser session by
+  // verifying proof of the master key used by `toucan-secret` blocks, and issues
+  // an HttpOnly vault cookie on success. This is a lock, not encryption: locked
+  // attachments are stored unencrypted, and this call only gates whether
+  // ToucanShelf will serve them. See
+  // docs/dev/requirements/attachments/access-control-and-private-files.md, part B.
+  rpc UnlockVault(UnlockVaultRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/api/v1/attachments:unlockVault"
+      body: "*"
+    };
+  }
+  // LockVault clears the vault cookie, immediately re-locking every locked
+  // attachment for this browser session.
+  rpc LockVault(LockVaultRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {post: "/api/v1/attachments:lockVault"};
+  }
 }
 
 enum MotionMediaFamily {
@@ -134,6 +151,14 @@ message Attachment {
   // verbatim and never interprets it. Updated via UpdateAttachment with the
   // "reader_settings" field mask.
   string reader_settings = 11 [(google.api.field_behavior) = OPTIONAL];
+
+  // Optional. Whether this attachment is locked behind the caller's vault. Only
+  // the creator, unlocked (AttachmentService.UnlockVault) in the current browser
+  // session, can read a locked attachment — not admins, not share links, not
+  // anonymous visitors. Updated via UpdateAttachment with the "locked" field
+  // mask; setting it to true requires the creator to have an unlock_verifier on
+  // file (see UserSetting.SecretKeySetting), or the update is rejected.
+  bool locked = 12 [(google.api.field_behavior) = OPTIONAL];
 }
 
 message CreateAttachmentRequest {
@@ -221,3 +246,12 @@ message DeleteAttachmentRequest {
 message BatchDeleteAttachmentsRequest {
   repeated string names = 1 [(google.api.field_behavior) = REQUIRED];
 }
+
+message UnlockVaultRequest {
+  // Required. HMAC-SHA256(master key, "toucan-attach/unlock/v1"), base64-encoded,
+  // computed client-side from the unwrapped master key. Compared against the
+  // caller's stored unlock_verifier in constant time.
+  string proof = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message LockVaultRequest {}

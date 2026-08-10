@@ -27,6 +27,8 @@ const (
 	AttachmentService_DeleteAttachment_FullMethodName       = "/memos.api.v1.AttachmentService/DeleteAttachment"
 	AttachmentService_UnlinkAttachment_FullMethodName       = "/memos.api.v1.AttachmentService/UnlinkAttachment"
 	AttachmentService_BatchDeleteAttachments_FullMethodName = "/memos.api.v1.AttachmentService/BatchDeleteAttachments"
+	AttachmentService_UnlockVault_FullMethodName            = "/memos.api.v1.AttachmentService/UnlockVault"
+	AttachmentService_LockVault_FullMethodName              = "/memos.api.v1.AttachmentService/LockVault"
 )
 
 // AttachmentServiceClient is the client API for AttachmentService service.
@@ -50,6 +52,16 @@ type AttachmentServiceClient interface {
 	UnlinkAttachment(ctx context.Context, in *UnlinkAttachmentRequest, opts ...grpc.CallOption) (*Attachment, error)
 	// BatchDeleteAttachments deletes multiple attachments in one request.
 	BatchDeleteAttachments(ctx context.Context, in *BatchDeleteAttachmentsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// UnlockVault opens the caller's attachment vault for this browser session by
+	// verifying proof of the master key used by `toucan-secret` blocks, and issues
+	// an HttpOnly vault cookie on success. This is a lock, not encryption: locked
+	// attachments are stored unencrypted, and this call only gates whether
+	// ToucanShelf will serve them. See
+	// docs/dev/requirements/attachments/access-control-and-private-files.md, part B.
+	UnlockVault(ctx context.Context, in *UnlockVaultRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// LockVault clears the vault cookie, immediately re-locking every locked
+	// attachment for this browser session.
+	LockVault(ctx context.Context, in *LockVaultRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type attachmentServiceClient struct {
@@ -130,6 +142,26 @@ func (c *attachmentServiceClient) BatchDeleteAttachments(ctx context.Context, in
 	return out, nil
 }
 
+func (c *attachmentServiceClient) UnlockVault(ctx context.Context, in *UnlockVaultRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, AttachmentService_UnlockVault_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *attachmentServiceClient) LockVault(ctx context.Context, in *LockVaultRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, AttachmentService_LockVault_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AttachmentServiceServer is the server API for AttachmentService service.
 // All implementations must embed UnimplementedAttachmentServiceServer
 // for forward compatibility.
@@ -151,6 +183,16 @@ type AttachmentServiceServer interface {
 	UnlinkAttachment(context.Context, *UnlinkAttachmentRequest) (*Attachment, error)
 	// BatchDeleteAttachments deletes multiple attachments in one request.
 	BatchDeleteAttachments(context.Context, *BatchDeleteAttachmentsRequest) (*emptypb.Empty, error)
+	// UnlockVault opens the caller's attachment vault for this browser session by
+	// verifying proof of the master key used by `toucan-secret` blocks, and issues
+	// an HttpOnly vault cookie on success. This is a lock, not encryption: locked
+	// attachments are stored unencrypted, and this call only gates whether
+	// ToucanShelf will serve them. See
+	// docs/dev/requirements/attachments/access-control-and-private-files.md, part B.
+	UnlockVault(context.Context, *UnlockVaultRequest) (*emptypb.Empty, error)
+	// LockVault clears the vault cookie, immediately re-locking every locked
+	// attachment for this browser session.
+	LockVault(context.Context, *LockVaultRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedAttachmentServiceServer()
 }
 
@@ -181,6 +223,12 @@ func (UnimplementedAttachmentServiceServer) UnlinkAttachment(context.Context, *U
 }
 func (UnimplementedAttachmentServiceServer) BatchDeleteAttachments(context.Context, *BatchDeleteAttachmentsRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method BatchDeleteAttachments not implemented")
+}
+func (UnimplementedAttachmentServiceServer) UnlockVault(context.Context, *UnlockVaultRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method UnlockVault not implemented")
+}
+func (UnimplementedAttachmentServiceServer) LockVault(context.Context, *LockVaultRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method LockVault not implemented")
 }
 func (UnimplementedAttachmentServiceServer) mustEmbedUnimplementedAttachmentServiceServer() {}
 func (UnimplementedAttachmentServiceServer) testEmbeddedByValue()                           {}
@@ -329,6 +377,42 @@ func _AttachmentService_BatchDeleteAttachments_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AttachmentService_UnlockVault_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnlockVaultRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttachmentServiceServer).UnlockVault(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttachmentService_UnlockVault_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttachmentServiceServer).UnlockVault(ctx, req.(*UnlockVaultRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AttachmentService_LockVault_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LockVaultRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttachmentServiceServer).LockVault(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttachmentService_LockVault_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttachmentServiceServer).LockVault(ctx, req.(*LockVaultRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AttachmentService_ServiceDesc is the grpc.ServiceDesc for AttachmentService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -363,6 +447,14 @@ var AttachmentService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BatchDeleteAttachments",
 			Handler:    _AttachmentService_BatchDeleteAttachments_Handler,
+		},
+		{
+			MethodName: "UnlockVault",
+			Handler:    _AttachmentService_UnlockVault_Handler,
+		},
+		{
+			MethodName: "LockVault",
+			Handler:    _AttachmentService_LockVault_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

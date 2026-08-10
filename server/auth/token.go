@@ -50,6 +50,16 @@ const (
 
 	// PersonalAccessTokenPrefix is the prefix for PAT tokens.
 	PersonalAccessTokenPrefix = "memos_pat_"
+
+	// VaultTokenAudienceName is the audience claim for attachment-vault tokens.
+	VaultTokenAudienceName = "user.vault-token"
+
+	// VaultTokenDuration is the lifetime of a vault unlock (30 minutes), per the
+	// attachment access control design's decision 2.
+	VaultTokenDuration = 30 * time.Minute
+
+	// VaultCookieName is the cookie name for the attachment-vault unlock token.
+	VaultCookieName = "memos_vault"
 )
 
 // ClaimsMessage represents the claims structure in a JWT token.
@@ -81,6 +91,16 @@ type AccessTokenClaims struct {
 type RefreshTokenClaims struct {
 	Type    string `json:"type"` // "refresh"
 	TokenID string `json:"tid"`  // Token ID for revocation lookup
+	jwt.RegisteredClaims
+}
+
+// VaultTokenClaims contains claims for the attachment-vault unlock token. It is
+// validated by signature and expiry only (stateless, like the access token) —
+// there is nothing to revoke server-side, since locking the vault back up just
+// means the client stops sending the cookie (LockVault clears it) or the 30
+// minute TTL elapses.
+type VaultTokenClaims struct {
+	Type string `json:"type"` // "vault"
 	jwt.RegisteredClaims
 }
 
@@ -186,6 +206,32 @@ func GenerateRefreshToken(userID int32, tokenID string, secret []byte) (string, 
 	return tokenString, expiresAt, nil
 }
 
+// GenerateVaultToken generates a short-lived attachment-vault unlock token.
+func GenerateVaultToken(userID int32, secret []byte) (string, time.Time, error) {
+	expiresAt := time.Now().Add(VaultTokenDuration)
+
+	claims := &VaultTokenClaims{
+		Type: "vault",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    Issuer,
+			Audience:  jwt.ClaimStrings{VaultTokenAudienceName},
+			Subject:   fmt.Sprint(userID),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(expiresAt),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token.Header["kid"] = KeyID
+
+	tokenString, err := token.SignedString(secret)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+
+	return tokenString, expiresAt, nil
+}
+
 // GeneratePersonalAccessToken generates a random PAT string.
 func GeneratePersonalAccessToken() string {
 	randomStr, err := util.RandomString(32)
@@ -244,6 +290,22 @@ func ParseRefreshToken(tokenString string, secret []byte) (*RefreshTokenClaims, 
 	}
 	if claims.Type != "refresh" {
 		return nil, errors.New("invalid token type: expected refresh token")
+	}
+	return claims, nil
+}
+
+// ParseVaultToken parses and validates an attachment-vault unlock token.
+func ParseVaultToken(tokenString string, secret []byte) (*VaultTokenClaims, error) {
+	claims := &VaultTokenClaims{}
+	_, err := jwt.ParseWithClaims(tokenString, claims, verifyJWTKeyFunc(secret),
+		jwt.WithIssuer(Issuer),
+		jwt.WithAudience(VaultTokenAudienceName),
+	)
+	if err != nil {
+		return nil, err
+	}
+	if claims.Type != "vault" {
+		return nil, errors.New("invalid token type: expected vault token")
 	}
 	return claims, nil
 }

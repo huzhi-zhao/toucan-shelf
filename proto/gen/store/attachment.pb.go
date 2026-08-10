@@ -317,8 +317,15 @@ type AttachmentPayload struct {
 	// EPUB reader's theme/font/spacing settings). Stored as a string so the reader's
 	// settings schema can evolve without proto changes; the server never interprets it.
 	ReaderSettings string `protobuf:"bytes,12,opt,name=reader_settings,json=readerSettings,proto3" json:"reader_settings,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Whether this attachment is locked behind the user's vault (see
+	// docs/dev/requirements/attachments/access-control-and-private-files.md, part B).
+	// The file itself is unencrypted at rest — this is a server-enforced access gate,
+	// not encryption. Only the creator, over a browser session with a valid vault
+	// cookie, may read a locked attachment; share tokens, anonymous access, and admin
+	// privilege are all refused regardless of the document it hangs on.
+	Locked        bool `protobuf:"varint,13,opt,name=locked,proto3" json:"locked,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AttachmentPayload) Reset() {
@@ -386,6 +393,13 @@ func (x *AttachmentPayload) GetReaderSettings() string {
 		return x.ReaderSettings
 	}
 	return ""
+}
+
+func (x *AttachmentPayload) GetLocked() bool {
+	if x != nil {
+		return x.Locked
+	}
+	return false
 }
 
 type isAttachmentPayload_Payload interface {
@@ -471,13 +485,14 @@ const file_store_attachment_proto_rawDesc = "" +
 	"\x04role\x18\x02 \x01(\x0e2\x1c.memos.store.MotionMediaRoleR\x04role\x12\x19\n" +
 	"\bgroup_id\x18\x03 \x01(\tR\agroupId\x12:\n" +
 	"\x19presentation_timestamp_us\x18\x04 \x01(\x03R\x17presentationTimestampUs\x12,\n" +
-	"\x12has_embedded_video\x18\x05 \x01(\bR\x10hasEmbeddedVideo\"\xa9\x03\n" +
+	"\x12has_embedded_video\x18\x05 \x01(\bR\x10hasEmbeddedVideo\"\xc1\x03\n" +
 	"\x11AttachmentPayload\x12F\n" +
 	"\ts3_object\x18\x01 \x01(\v2'.memos.store.AttachmentPayload.S3ObjectH\x00R\bs3Object\x12;\n" +
 	"\fmotion_media\x18\n" +
 	" \x01(\v2\x18.memos.store.MotionMediaR\vmotionMedia\x125\n" +
 	"\x06origin\x18\v \x01(\x0e2\x1d.memos.store.AttachmentOriginR\x06origin\x12'\n" +
-	"\x0freader_settings\x18\f \x01(\tR\x0ereaderSettings\x1a\xa3\x01\n" +
+	"\x0freader_settings\x18\f \x01(\tR\x0ereaderSettings\x12\x16\n" +
+	"\x06locked\x18\r \x01(\bR\x06locked\x1a\xa3\x01\n" +
 	"\bS3Object\x129\n" +
 	"\ts3_config\x18\x01 \x01(\v2\x1c.memos.store.StorageS3ConfigR\bs3Config\x12\x10\n" +
 	"\x03key\x18\x02 \x01(\tR\x03key\x12J\n" +

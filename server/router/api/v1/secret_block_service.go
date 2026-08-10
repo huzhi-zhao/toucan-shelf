@@ -139,6 +139,13 @@ func validateSecretEnvelope(envelope *v1pb.SecretEnvelope) error {
 //
 // An entirely empty setting is allowed through as the "not configured yet" state.
 func validateSecretKeySetting(setting *v1pb.UserSetting_SecretKeySetting) error {
+	// unlock_verifier is a base64 HMAC-SHA256, not part of the envelope itself
+	// (it isn't a KDF/cipher parameter, and it's the one field the server actually
+	// reads back later), so it's checked on its own rather than folded into
+	// validateSecretEnvelope.
+	if len(setting.UnlockVerifier) > secretMaxSaltLength {
+		return status.Errorf(codes.InvalidArgument, "unlock_verifier is too long")
+	}
 	if setting.WrappedKey == "" && setting.Salt == "" && setting.Nonce == "" && setting.Verifier == "" {
 		return nil
 	}

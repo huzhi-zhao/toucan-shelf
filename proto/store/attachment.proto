@@ -59,6 +59,14 @@ message AttachmentPayload {
   // settings schema can evolve without proto changes; the server never interprets it.
   string reader_settings = 12;
 
+  // Whether this attachment is locked behind the user's vault (see
+  // docs/dev/requirements/attachments/access-control-and-private-files.md, part B).
+  // The file itself is unencrypted at rest — this is a server-enforced access gate,
+  // not encryption. Only the creator, over a browser session with a valid vault
+  // cookie, may read a locked attachment; share tokens, anonymous access, and admin
+  // privilege are all refused regardless of the document it hangs on.
+  bool locked = 13;
+
   message S3Object {
     StorageS3Config s3_config = 1;
     // key is the S3 object key.

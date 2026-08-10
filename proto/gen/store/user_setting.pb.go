@@ -398,12 +398,33 @@ type SecretKeyUserSetting struct {
 	// Base64 AEAD nonce.
 	Nonce string `protobuf:"bytes,5,opt,name=nonce,proto3" json:"nonce,omitempty"`
 	// Base64 HMAC over the canonical parameter header, so the client can tell a
-	// wrong passphrase from a damaged wrapper.
+	// wrong passphrase from a damaged wrapper. Client-side only — the server never
+	// reads or compares this field. Do not confuse with `unlock_verifier` below,
+	// which is the opposite: a value the server DOES compare, for an unrelated
+	// purpose (attachment vault unlock, not passphrase-vs-envelope mismatch).
 	Verifier string `protobuf:"bytes,6,opt,name=verifier,proto3" json:"verifier,omitempty"`
 	// Base64 AEAD ciphertext of the master key, tag appended.
-	WrappedKey    string `protobuf:"bytes,7,opt,name=wrapped_key,json=wrappedKey,proto3" json:"wrapped_key,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	WrappedKey string `protobuf:"bytes,7,opt,name=wrapped_key,json=wrappedKey,proto3" json:"wrapped_key,omitempty"`
+	// HMAC-SHA256(master key, "toucan-attach/unlock/v1"), base64-encoded. Computed
+	// by the client from the unwrapped master key and uploaded once, alongside the
+	// fields above. The server stores it in plaintext and compares it (constant
+	// time) against the `proof` an AttachmentService.UnlockVault call presents,
+	// never deriving or verifying it any other way. Empty for users who set their
+	// master passphrase before this field existed; see
+	// docs/dev/requirements/attachments/access-control-and-private-files.md, part B,
+	// decision 1 and risk R8 — a missing value must block locking new attachments,
+	// not be treated as "always fails to unlock".
+	UnlockVerifier string `protobuf:"bytes,8,opt,name=unlock_verifier,json=unlockVerifier,proto3" json:"unlock_verifier,omitempty"`
+	// How many consecutive UnlockVault attempts have failed since
+	// failed_unlock_window_start. Reset to 0 on a successful unlock or once the
+	// window has elapsed. Purely a server-side rate-limit counter; never sent to
+	// or read by the client.
+	FailedUnlockAttempts int32 `protobuf:"varint,9,opt,name=failed_unlock_attempts,json=failedUnlockAttempts,proto3" json:"failed_unlock_attempts,omitempty"`
+	// When the current failure-counting window started. A window is 1 minute; once
+	// it has elapsed, the next attempt (success or failure) starts a fresh one.
+	FailedUnlockWindowStart *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=failed_unlock_window_start,json=failedUnlockWindowStart,proto3" json:"failed_unlock_window_start,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *SecretKeyUserSetting) Reset() {
@@ -483,6 +504,27 @@ func (x *SecretKeyUserSetting) GetWrappedKey() string {
 		return x.WrappedKey
 	}
 	return ""
+}
+
+func (x *SecretKeyUserSetting) GetUnlockVerifier() string {
+	if x != nil {
+		return x.UnlockVerifier
+	}
+	return ""
+}
+
+func (x *SecretKeyUserSetting) GetFailedUnlockAttempts() int32 {
+	if x != nil {
+		return x.FailedUnlockAttempts
+	}
+	return 0
+}
+
+func (x *SecretKeyUserSetting) GetFailedUnlockWindowStart() *timestamppb.Timestamp {
+	if x != nil {
+		return x.FailedUnlockWindowStart
+	}
+	return nil
 }
 
 type RagSearchUserSetting struct {
@@ -1378,7 +1420,7 @@ const file_store_user_setting_proto_rawDesc = "" +
 	"\x12\x0e\n" +
 	"\n" +
 	"SECRET_KEY\x10\vB\a\n" +
-	"\x05value\"\xce\x01\n" +
+	"\x05value\"\x86\x03\n" +
 	"\x14SecretKeyUserSetting\x12\x10\n" +
 	"\x03kdf\x18\x01 \x01(\tR\x03kdf\x12%\n" +
 	"\x0ekdf_iterations\x18\x02 \x01(\x05R\rkdfIterations\x12\x16\n" +
@@ -1387,7 +1429,11 @@ const file_store_user_setting_proto_rawDesc = "" +
 	"\x05nonce\x18\x05 \x01(\tR\x05nonce\x12\x1a\n" +
 	"\bverifier\x18\x06 \x01(\tR\bverifier\x12\x1f\n" +
 	"\vwrapped_key\x18\a \x01(\tR\n" +
-	"wrappedKey\"n\n" +
+	"wrappedKey\x12'\n" +
+	"\x0funlock_verifier\x18\b \x01(\tR\x0eunlockVerifier\x124\n" +
+	"\x16failed_unlock_attempts\x18\t \x01(\x05R\x14failedUnlockAttempts\x12W\n" +
+	"\x1afailed_unlock_window_start\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\x17failedUnlockWindowStart\"n\n" +
 	"\x14RagSearchUserSetting\x12&\n" +
 	"\x0fmax_result_docs\x18\x01 \x01(\x05R\rmaxResultDocs\x12.\n" +
 	"\x04mode\x18\x02 \x01(\x0e2\x1a.memos.store.RagSearchModeR\x04mode\"\xed\x01\n" +
@@ -1501,8 +1547,8 @@ var file_store_user_setting_proto_goTypes = []any{
 	(*PersonalAccessTokensUserSetting_PersonalAccessToken)(nil), // 17: memos.store.PersonalAccessTokensUserSetting.PersonalAccessToken
 	(*ShortcutsUserSetting_Shortcut)(nil),                       // 18: memos.store.ShortcutsUserSetting.Shortcut
 	(*WebhooksUserSetting_Webhook)(nil),                         // 19: memos.store.WebhooksUserSetting.Webhook
-	(*color.Color)(nil),                                         // 20: google.type.Color
-	(*timestamppb.Timestamp)(nil),                               // 21: google.protobuf.Timestamp
+	(*timestamppb.Timestamp)(nil),                               // 20: google.protobuf.Timestamp
+	(*color.Color)(nil),                                         // 21: google.type.Color
 }
 var file_store_user_setting_proto_depIdxs = []int32{
 	1,  // 0: memos.store.UserSetting.key:type_name -> memos.store.UserSetting.Key
@@ -1515,26 +1561,27 @@ var file_store_user_setting_proto_depIdxs = []int32{
 	5,  // 7: memos.store.UserSetting.last_opened:type_name -> memos.store.LastOpenedUserSetting
 	4,  // 8: memos.store.UserSetting.rag_search:type_name -> memos.store.RagSearchUserSetting
 	3,  // 9: memos.store.UserSetting.secret_key:type_name -> memos.store.SecretKeyUserSetting
-	0,  // 10: memos.store.RagSearchUserSetting.mode:type_name -> memos.store.RagSearchMode
-	13, // 11: memos.store.LastOpenedUserSetting.workspace_memos:type_name -> memos.store.LastOpenedUserSetting.WorkspaceMemosEntry
-	20, // 12: memos.store.UserTagMetadata.background_color:type_name -> google.type.Color
-	14, // 13: memos.store.TagsUserSetting.tags:type_name -> memos.store.TagsUserSetting.TagsEntry
-	15, // 14: memos.store.RefreshTokensUserSetting.refresh_tokens:type_name -> memos.store.RefreshTokensUserSetting.RefreshToken
-	17, // 15: memos.store.PersonalAccessTokensUserSetting.tokens:type_name -> memos.store.PersonalAccessTokensUserSetting.PersonalAccessToken
-	18, // 16: memos.store.ShortcutsUserSetting.shortcuts:type_name -> memos.store.ShortcutsUserSetting.Shortcut
-	19, // 17: memos.store.WebhooksUserSetting.webhooks:type_name -> memos.store.WebhooksUserSetting.Webhook
-	7,  // 18: memos.store.TagsUserSetting.TagsEntry.value:type_name -> memos.store.UserTagMetadata
-	21, // 19: memos.store.RefreshTokensUserSetting.RefreshToken.expires_at:type_name -> google.protobuf.Timestamp
-	21, // 20: memos.store.RefreshTokensUserSetting.RefreshToken.created_at:type_name -> google.protobuf.Timestamp
-	16, // 21: memos.store.RefreshTokensUserSetting.RefreshToken.client_info:type_name -> memos.store.RefreshTokensUserSetting.ClientInfo
-	21, // 22: memos.store.PersonalAccessTokensUserSetting.PersonalAccessToken.expires_at:type_name -> google.protobuf.Timestamp
-	21, // 23: memos.store.PersonalAccessTokensUserSetting.PersonalAccessToken.created_at:type_name -> google.protobuf.Timestamp
-	21, // 24: memos.store.PersonalAccessTokensUserSetting.PersonalAccessToken.last_used_at:type_name -> google.protobuf.Timestamp
-	25, // [25:25] is the sub-list for method output_type
-	25, // [25:25] is the sub-list for method input_type
-	25, // [25:25] is the sub-list for extension type_name
-	25, // [25:25] is the sub-list for extension extendee
-	0,  // [0:25] is the sub-list for field type_name
+	20, // 10: memos.store.SecretKeyUserSetting.failed_unlock_window_start:type_name -> google.protobuf.Timestamp
+	0,  // 11: memos.store.RagSearchUserSetting.mode:type_name -> memos.store.RagSearchMode
+	13, // 12: memos.store.LastOpenedUserSetting.workspace_memos:type_name -> memos.store.LastOpenedUserSetting.WorkspaceMemosEntry
+	21, // 13: memos.store.UserTagMetadata.background_color:type_name -> google.type.Color
+	14, // 14: memos.store.TagsUserSetting.tags:type_name -> memos.store.TagsUserSetting.TagsEntry
+	15, // 15: memos.store.RefreshTokensUserSetting.refresh_tokens:type_name -> memos.store.RefreshTokensUserSetting.RefreshToken
+	17, // 16: memos.store.PersonalAccessTokensUserSetting.tokens:type_name -> memos.store.PersonalAccessTokensUserSetting.PersonalAccessToken
+	18, // 17: memos.store.ShortcutsUserSetting.shortcuts:type_name -> memos.store.ShortcutsUserSetting.Shortcut
+	19, // 18: memos.store.WebhooksUserSetting.webhooks:type_name -> memos.store.WebhooksUserSetting.Webhook
+	7,  // 19: memos.store.TagsUserSetting.TagsEntry.value:type_name -> memos.store.UserTagMetadata
+	20, // 20: memos.store.RefreshTokensUserSetting.RefreshToken.expires_at:type_name -> google.protobuf.Timestamp
+	20, // 21: memos.store.RefreshTokensUserSetting.RefreshToken.created_at:type_name -> google.protobuf.Timestamp
+	16, // 22: memos.store.RefreshTokensUserSetting.RefreshToken.client_info:type_name -> memos.store.RefreshTokensUserSetting.ClientInfo
+	20, // 23: memos.store.PersonalAccessTokensUserSetting.PersonalAccessToken.expires_at:type_name -> google.protobuf.Timestamp
+	20, // 24: memos.store.PersonalAccessTokensUserSetting.PersonalAccessToken.created_at:type_name -> google.protobuf.Timestamp
+	20, // 25: memos.store.PersonalAccessTokensUserSetting.PersonalAccessToken.last_used_at:type_name -> google.protobuf.Timestamp
+	26, // [26:26] is the sub-list for method output_type
+	26, // [26:26] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_store_user_setting_proto_init() }

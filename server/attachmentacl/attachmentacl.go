@@ -59,12 +59,30 @@ type Request struct {
 	// Only the file server can have one: the shared-document page reads its
 	// attachments off GetMemoByShare, never through GetAttachment.
 	ShareToken string
+
+	// VaultUnlocked reports whether the request may unlock a *locked* attachment
+	// creator-owned by userID — i.e. whether it carries a valid vault cookie over
+	// a browser session (see auth.VaultUnlocked). Called at most once, only after
+	// the creator check has already passed, so it never runs for anonymous
+	// visitors, for someone else's attachment, or for a non-locked one. A nil
+	// func fails closed: every locked attachment becomes unreadable rather than
+	// silently skipping the check.
+	VaultUnlocked func(userID int32) bool
 }
 
 // CheckReadAccess reports whether the request may read the attachment, returning nil
 // when it may and one of the sentinels above when it may not.
 func CheckReadAccess(ctx context.Context, req *Request, attachment *store.Attachment) error {
 	user := lazyUser(ctx, req.CurrentUser)
+
+	// A locked attachment answers to nothing else: not the document it hangs on,
+	// not the recycle bin, not a share token, not anonymous/PUBLIC access, and not
+	// admin privilege. This has to run before every other branch below, including
+	// the unattached-attachment one, because "locked" overrides "unattached but
+	// owned by me" too.
+	if attachment.Payload.GetLocked() {
+		return checkVaultAccess(req, attachment, user)
+	}
 
 	// An attachment not yet linked to a document has no visibility to inherit, so it
 	// belongs to whoever uploaded it and to nobody else.
@@ -137,6 +155,25 @@ func CheckReadAccess(ctx context.Context, req *Request, attachment *store.Attach
 		if err := checkVisibility(req, m, user); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// checkVaultAccess is the entire read decision for a locked attachment: creator
+// only, and only with a valid vault unlock for that exact user.
+func checkVaultAccess(req *Request, attachment *store.Attachment, user func() (*store.User, error)) error {
+	u, err := user()
+	if err != nil {
+		return err
+	}
+	if u == nil {
+		return ErrUnauthenticated
+	}
+	if u.ID != attachment.CreatorID {
+		return ErrForbidden
+	}
+	if req.VaultUnlocked == nil || !req.VaultUnlocked(u.ID) {
+		return ErrForbidden
 	}
 	return nil
 }

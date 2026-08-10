@@ -526,6 +526,13 @@ message UserSetting {
     // Base64 AEAD ciphertext of the master key, tag appended. Empty when the user
     // has not set a master passphrase yet.
     string wrapped_key = 7 [(google.api.field_behavior) = OPTIONAL];
+    // HMAC-SHA256(master key, "toucan-attach/unlock/v1"), base64-encoded, computed
+    // client-side from the unwrapped master key. Unlike `verifier` above, the
+    // server stores and compares this value — it is what AttachmentService.
+    // UnlockVault checks a client-submitted proof against. Empty until the client
+    // backfills it (see the message's own SecretKeyUserSetting counterpart in
+    // proto/store/user_setting.proto for why a legacy user may not have one yet).
+    string unlock_verifier = 8 [(google.api.field_behavior) = OPTIONAL];
   }
 
   // The last workspace/document the user had open in the Notebook home page.

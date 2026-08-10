@@ -19,6 +19,7 @@ import (
 	"github.com/disintegration/imaging"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -32,6 +33,7 @@ import (
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
 	storepb "github.com/usememos/memos/proto/gen/store"
 	"github.com/usememos/memos/server/attachmentacl"
+	"github.com/usememos/memos/server/auth"
 	"github.com/usememos/memos/store"
 )
 
@@ -378,21 +380,44 @@ func (s *APIV1Service) UpdateAttachment(ctx context.Context, request *v1pb.Updat
 		ID:        attachment.ID,
 		UpdatedTs: &currentTs,
 	}
+	// ensurePayload returns the payload this update is accumulating, cloning it
+	// from the stored one on first use. Every field-mask branch that touches the
+	// payload must go through this rather than cloning attachment.Payload itself,
+	// or a request naming two payload fields in the same call would have the
+	// second overwrite the first.
+	ensurePayload := func() *storepb.AttachmentPayload {
+		if update.Payload != nil {
+			return update.Payload
+		}
+		payload := proto.Clone(attachment.Payload).(*storepb.AttachmentPayload)
+		if payload == nil {
+			payload = &storepb.AttachmentPayload{}
+		}
+		update.Payload = payload
+		return payload
+	}
 	for _, field := range request.UpdateMask.Paths {
-		if field == "filename" {
+		switch field {
+		case "filename":
 			if !validateFilename(request.Attachment.Filename) {
 				return nil, status.Errorf(codes.InvalidArgument, "filename contains invalid characters or format")
 			}
 			update.Filename = &request.Attachment.Filename
-		} else if field == "reader_settings" {
-			// Reader settings ride on the attachment payload; clone the existing payload so
-			// updating settings doesn't drop the S3/motion/origin fields already stored.
-			payload := proto.Clone(attachment.Payload).(*storepb.AttachmentPayload)
-			if payload == nil {
-				payload = &storepb.AttachmentPayload{}
+		case "reader_settings":
+			ensurePayload().ReaderSettings = request.Attachment.ReaderSettings
+		case "locked":
+			if request.Attachment.Locked {
+				// R8: never let an attachment lock behind a passphrase the creator
+				// can't yet prove they hold — that's "locks, doesn't unlock".
+				canLock, err := s.canLockAttachment(ctx, attachment.CreatorID)
+				if err != nil {
+					return nil, status.Errorf(codes.Internal, "failed to check vault readiness: %v", err)
+				}
+				if !canLock {
+					return nil, status.Errorf(codes.FailedPrecondition, "the attachment owner must unlock their master passphrase once in Settings before attachments can be locked")
+				}
 			}
-			payload.ReaderSettings = request.Attachment.ReaderSettings
-			update.Payload = payload
+			ensurePayload().Locked = request.Attachment.Locked
 		}
 	}
 
@@ -543,6 +568,7 @@ func convertAttachmentFromStore(attachment *store.Attachment) *v1pb.Attachment {
 		MotionMedia:    convertMotionMediaFromStore(getAttachmentMotionMedia(attachment)),
 		Origin:         convertAttachmentOriginFromStore(attachment.Payload.GetOrigin()),
 		ReaderSettings: attachment.Payload.GetReaderSettings(),
+		Locked:         attachment.Payload.GetLocked(),
 	}
 	if attachment.MemoUID != nil && *attachment.MemoUID != "" {
 		memoName := fmt.Sprintf("%s%s", MemoNamePrefix, *attachment.MemoUID)
@@ -842,6 +868,20 @@ func (s *APIV1Service) validateAttachmentFilter(ctx context.Context, filterStr s
 	return nil
 }
 
+// cookieHeaderFromContext reads the raw Cookie header off the incoming gRPC/Connect
+// metadata, mirroring the pattern auth_service.go uses for the refresh-token cookie.
+func cookieHeaderFromContext(ctx context.Context) string {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return ""
+	}
+	cookies := md.Get("cookie")
+	if len(cookies) == 0 {
+		return ""
+	}
+	return cookies[0]
+}
+
 // checkAttachmentAccess verifies the user has permission to access the attachment.
 // The decision itself lives in attachmentacl, shared with the binary download path in
 // the file server; this only supplies the Connect-side inputs and maps the answer onto
@@ -853,6 +893,9 @@ func (s *APIV1Service) checkAttachmentAccess(ctx context.Context, attachment *st
 		AllowAnonymous: s.Profile.AllowAnonymous(),
 		// No share token here: the shared-document page gets its attachments inline
 		// from GetMemoByShare and never calls GetAttachment.
+		VaultUnlocked: func(userID int32) bool {
+			return auth.VaultUnlocked(cookieHeaderFromContext(ctx), []byte(s.Secret), userID, auth.GetCredentialKind(ctx))
+		},
 	}, attachment)
 
 	switch {

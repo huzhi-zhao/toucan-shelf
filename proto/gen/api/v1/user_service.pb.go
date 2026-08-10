@@ -3353,9 +3353,16 @@ type UserSetting_SecretKeySetting struct {
 	Verifier string `protobuf:"bytes,6,opt,name=verifier,proto3" json:"verifier,omitempty"`
 	// Base64 AEAD ciphertext of the master key, tag appended. Empty when the user
 	// has not set a master passphrase yet.
-	WrappedKey    string `protobuf:"bytes,7,opt,name=wrapped_key,json=wrappedKey,proto3" json:"wrapped_key,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	WrappedKey string `protobuf:"bytes,7,opt,name=wrapped_key,json=wrappedKey,proto3" json:"wrapped_key,omitempty"`
+	// HMAC-SHA256(master key, "toucan-attach/unlock/v1"), base64-encoded, computed
+	// client-side from the unwrapped master key. Unlike `verifier` above, the
+	// server stores and compares this value — it is what AttachmentService.
+	// UnlockVault checks a client-submitted proof against. Empty until the client
+	// backfills it (see the message's own SecretKeyUserSetting counterpart in
+	// proto/store/user_setting.proto for why a legacy user may not have one yet).
+	UnlockVerifier string `protobuf:"bytes,8,opt,name=unlock_verifier,json=unlockVerifier,proto3" json:"unlock_verifier,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *UserSetting_SecretKeySetting) Reset() {
@@ -3433,6 +3440,13 @@ func (x *UserSetting_SecretKeySetting) GetVerifier() string {
 func (x *UserSetting_SecretKeySetting) GetWrappedKey() string {
 	if x != nil {
 		return x.WrappedKey
+	}
+	return ""
+}
+
+func (x *UserSetting_SecretKeySetting) GetUnlockVerifier() string {
+	if x != nil {
+		return x.UnlockVerifier
 	}
 	return ""
 }
@@ -3736,7 +3750,7 @@ const file_api_v1_user_service_proto_rawDesc = "" +
 	"\x05state\x18\x01 \x01(\x0e2\x13.memos.api.v1.StateB\x03\xe0A\x01R\x05state\x12\x1b\n" +
 	"\x06filter\x18\x02 \x01(\tB\x03\xe0A\x01R\x06filter\"I\n" +
 	"\x18ListAllUserStatsResponse\x12-\n" +
-	"\x05stats\x18\x01 \x03(\v2\x17.memos.api.v1.UserStatsR\x05stats\"\x89\x0f\n" +
+	"\x05stats\x18\x01 \x03(\v2\x17.memos.api.v1.UserStatsR\x05stats\"\xb7\x0f\n" +
 	"\vUserSetting\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12S\n" +
 	"\x0fgeneral_setting\x18\x02 \x01(\v2(.memos.api.v1.UserSetting.GeneralSettingH\x00R\x0egeneralSetting\x12V\n" +
@@ -3762,7 +3776,7 @@ const file_api_v1_user_service_proto_rawDesc = "" +
 	"\bwebhooks\x18\x01 \x03(\v2\x19.memos.api.v1.UserWebhookR\bwebhooks\x1aX\n" +
 	"\x10RagSearchSetting\x12+\n" +
 	"\x0fmax_result_docs\x18\x01 \x01(\x05B\x03\xe0A\x01R\rmaxResultDocs\x12\x17\n" +
-	"\x04mode\x18\x02 \x01(\tB\x03\xe0A\x01R\x04mode\x1a\xed\x01\n" +
+	"\x04mode\x18\x02 \x01(\tB\x03\xe0A\x01R\x04mode\x1a\x9b\x02\n" +
 	"\x10SecretKeySetting\x12\x15\n" +
 	"\x03kdf\x18\x01 \x01(\tB\x03\xe0A\x01R\x03kdf\x12*\n" +
 	"\x0ekdf_iterations\x18\x02 \x01(\x05B\x03\xe0A\x01R\rkdfIterations\x12\x1b\n" +
@@ -3771,7 +3785,8 @@ const file_api_v1_user_service_proto_rawDesc = "" +
 	"\x05nonce\x18\x05 \x01(\tB\x03\xe0A\x01R\x05nonce\x12\x1f\n" +
 	"\bverifier\x18\x06 \x01(\tB\x03\xe0A\x01R\bverifier\x12$\n" +
 	"\vwrapped_key\x18\a \x01(\tB\x03\xe0A\x01R\n" +
-	"wrappedKey\x1a\x81\x02\n" +
+	"wrappedKey\x12,\n" +
+	"\x0funlock_verifier\x18\b \x01(\tB\x03\xe0A\x01R\x0eunlockVerifier\x1a\x81\x02\n" +
 	"\x11LastOpenedSetting\x12!\n" +
 	"\tworkspace\x18\x01 \x01(\tB\x03\xe0A\x01R\tworkspace\x12\x17\n" +
 	"\x04memo\x18\x02 \x01(\tB\x03\xe0A\x01R\x04memo\x12m\n" +

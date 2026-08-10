@@ -344,6 +344,52 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/v1/attachments:lockVault:
+        post:
+            tags:
+                - AttachmentService
+            description: |-
+                LockVault clears the vault cookie, immediately re-locking every locked
+                 attachment for this browser session.
+            operationId: AttachmentService_LockVault
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/attachments:unlockVault:
+        post:
+            tags:
+                - AttachmentService
+            description: |-
+                UnlockVault opens the caller's attachment vault for this browser session by
+                 verifying proof of the master key used by `toucan-secret` blocks, and issues
+                 an HttpOnly vault cookie on success. This is a lock, not encryption: locked
+                 attachments are stored unencrypted, and this call only gates whether
+                 ToucanShelf will serve them. See
+                 docs/dev/requirements/attachments/access-control-and-private-files.md, part B.
+            operationId: AttachmentService_UnlockVault
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/UnlockVaultRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/auth/me:
         get:
             tags:
@@ -3215,6 +3261,15 @@ components:
                          (e.g. the EPUB reader's theme/font/spacing settings). The server stores it
                          verbatim and never interprets it. Updated via UpdateAttachment with the
                          "reader_settings" field mask.
+                locked:
+                    type: boolean
+                    description: |-
+                        Optional. Whether this attachment is locked behind the caller's vault. Only
+                         the creator, unlocked (AttachmentService.UnlockVault) in the current browser
+                         session, can read a locked attachment — not admins, not share links, not
+                         anonymous visitors. Updated via UpdateAttachment with the "locked" field
+                         mask; setting it to true requires the creator to have an unlock_verifier on
+                         file (see UserSetting.SecretKeySetting), or the update is rejected.
         BackupNowRequest:
             type: object
             properties: {}
@@ -5348,6 +5403,17 @@ components:
                 contentType:
                     type: string
                     description: Optional. The MIME type of the input audio.
+        UnlockVaultRequest:
+            required:
+                - proof
+            type: object
+            properties:
+                proof:
+                    type: string
+                    description: |-
+                        Required. HMAC-SHA256(master key, "toucan-attach/unlock/v1"), base64-encoded,
+                         computed client-side from the unwrapped master key. Compared against the
+                         caller's stored unlock_verifier in constant time.
         UpsertMemoReactionRequest:
             required:
                 - name
@@ -5609,6 +5675,15 @@ components:
                     description: |-
                         Base64 AEAD ciphertext of the master key, tag appended. Empty when the user
                          has not set a master passphrase yet.
+                unlockVerifier:
+                    type: string
+                    description: |-
+                        HMAC-SHA256(master key, "toucan-attach/unlock/v1"), base64-encoded, computed
+                         client-side from the unwrapped master key. Unlike `verifier` above, the
+                         server stores and compares this value — it is what AttachmentService.
+                         UnlockVault checks a client-submitted proof against. Empty until the client
+                         backfills it (see the message's own SecretKeyUserSetting counterpart in
+                         proto/store/user_setting.proto for why a legacy user may not have one yet).
             description: |-
                 The user's `toucan-secret` master key, wrapped under a passphrase in the
                  browser. Every field is opaque to the server, which holds neither the master

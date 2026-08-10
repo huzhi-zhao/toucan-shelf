@@ -70,10 +70,33 @@ message SecretKeyUserSetting {
   // Base64 AEAD nonce.
   string nonce = 5;
   // Base64 HMAC over the canonical parameter header, so the client can tell a
-  // wrong passphrase from a damaged wrapper.
+  // wrong passphrase from a damaged wrapper. Client-side only — the server never
+  // reads or compares this field. Do not confuse with `unlock_verifier` below,
+  // which is the opposite: a value the server DOES compare, for an unrelated
+  // purpose (attachment vault unlock, not passphrase-vs-envelope mismatch).
   string verifier = 6;
   // Base64 AEAD ciphertext of the master key, tag appended.
   string wrapped_key = 7;
+
+  // HMAC-SHA256(master key, "toucan-attach/unlock/v1"), base64-encoded. Computed
+  // by the client from the unwrapped master key and uploaded once, alongside the
+  // fields above. The server stores it in plaintext and compares it (constant
+  // time) against the `proof` an AttachmentService.UnlockVault call presents,
+  // never deriving or verifying it any other way. Empty for users who set their
+  // master passphrase before this field existed; see
+  // docs/dev/requirements/attachments/access-control-and-private-files.md, part B,
+  // decision 1 and risk R8 — a missing value must block locking new attachments,
+  // not be treated as "always fails to unlock".
+  string unlock_verifier = 8;
+
+  // How many consecutive UnlockVault attempts have failed since
+  // failed_unlock_window_start. Reset to 0 on a successful unlock or once the
+  // window has elapsed. Purely a server-side rate-limit counter; never sent to
+  // or read by the client.
+  int32 failed_unlock_attempts = 9;
+  // When the current failure-counting window started. A window is 1 minute; once
+  // it has elapsed, the next attempt (success or failure) starts a fresh one.
+  google.protobuf.Timestamp failed_unlock_window_start = 10;
 }
 
 // RagSearchMode selects how hybrid search combines keyword and semantic retrieval.

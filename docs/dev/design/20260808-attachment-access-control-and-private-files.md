@@ -93,7 +93,7 @@
 
 六个阶段，P0–P1 是 A 部分（可独立发布），P2–P5 是 B 部分。每阶段独立可回滚。
 
-**进度：P0、P1、P2 已实现（2026-08-08）；P3–P5 未开始。**
+**进度：P0、P1、P2、P3（后端，无 UI）已实现（2026-08-09）；P4–P5 未开始。**
 
 ### P0 判定收敛与越权修复 —— 已实现
 
@@ -185,23 +185,66 @@ PUBLIC 文档挂评论 → 父改 PRIVATE → 评论的正文与附件对第三�
 
 **回滚**：纯加法（新类型、新字段、新返回值），回滚无数据影响。
 
-### P3 locked 元数据与解锁链路
+### P3 locked 元数据与解锁链路 —— 已实现（后端，无 UI）
 
 **目标**：附件可以被标记 locked，用户可以解锁与上锁，服务端能验证解锁态。
 
-**做法**：`AttachmentPayload` 加 `locked`；`SecretKeyUserSetting` 加 `unlock_verifier`；
-新增 `UnlockVault` / `LockVault`；vault cookie 按 ADR-0003 签发（httpOnly + Secure +
-SameSite=Lax，JWT 载 user_id/purpose/exp，实例密钥签名）；解锁接口按用户限速、失败计数
-落库、verifier 用常数时间比对。`CheckAttachmentReadAccess` 加 locked 分支：要求
-`creator_id == 当前用户` **且** 凭证种类为 session **且** 携带有效 vault cookie。
+**落地位置**：
 
-**存量用户回填**：已设过主口令的用户没有 `unlock_verifier`。客户端在下次成功解出 MK 时
-补算并上传，**不得要求用户重设口令**。回填缺失时的降级行为要明确定义（倾向：不允许把
-附件设为私密，并提示"需要先解锁一次主口令"），不能让老用户进入"能锁上、解不开"的死角。
+- Proto：`AttachmentPayload.locked`（[attachment.proto](../../../proto/store/attachment.proto)）；
+  `SecretKeyUserSetting` 加 `unlock_verifier`/`failed_unlock_attempts`/
+  `failed_unlock_window_start`（[user_setting.proto](../../../proto/store/user_setting.proto)），
+  API 侧 `SecretKeySetting` 与 `Attachment` 消息同步加对应字段；新增
+  `AttachmentService.UnlockVault(proof)` / `LockVault()`
+  （[attachment_service.proto](../../../proto/api/v1/attachment_service.proto)）。
+- vault token/cookie：[server/auth/token.go](../../../server/auth/token.go) 新增
+  `VaultTokenClaims`/`GenerateVaultToken`/`ParseVaultToken`（HS256，30 分钟 TTL，
+  audience `user.vault-token`，与 access/refresh token 同一套签名机制），
+  [server/auth/extract.go](../../../server/auth/extract.go) 新增
+  `ExtractVaultTokenFromCookie`/`VaultUnlocked`（package 级函数 + `Authenticator` 方法两个
+  入口，分别给 api/v1 和 fileserver 用）。Cookie 构建见
+  [vault_service.go](../../../server/router/api/v1/vault_service.go) 的 `buildVaultCookie`，
+  逐字段照抄 `buildRefreshTokenCookie`（httpOnly + Secure + SameSite=Lax），只换了 cookie
+  名和 TTL。
+- 判定：`attachmentacl.CheckReadAccess` 在最顶部加了 locked 分支
+  （`checkVaultAccess`），locked 附件完全跳过原有的归档/可见性/share token 逻辑——
+  只看 `creator_id == 当前用户` 且 `Request.VaultUnlocked(userID)` 为真；`VaultUnlocked`
+  是新加的闭包字段，`nil` 时按拒绝处理（fail closed）。`VaultUnlocked` 内部同时检查凭证
+  种类（必须是 P2 加的 `CredentialKindSession`）与 cookie 的 subject 是否等于该 userID。
+- 限速与常数时间比对：`UnlockVault` 里做 `subtle.ConstantTimeCompare` 比对 proof 与
+  `unlock_verifier`；失败计数与窗口起点存在 `SecretKeyUserSetting` 里，5 次/分钟，
+  见 [vault_service.go](../../../server/router/api/v1/vault_service.go)
+  的 `vaultUnlockRateLimited`/`recordFailedVaultUnlock`/`resetVaultUnlockFailures`——
+  这仨函数是本阶段唯一的限速实现，全仓库之前没有任何登录/校验类限速代码可复用。
+- `UpdateAttachment` 加 `locked` field mask 分支：设 `true` 前调用 `canLockAttachment`
+  检查创建者的 `unlock_verifier` 是否非空，否则 `FailedPrecondition`（R8）。顺带修了一个
+  潜在 bug：原来 `reader_settings` 分支每次都从 `attachment.Payload` 重新 clone，如果同一次
+  update 里出现两个 payload 字段，后写的会覆盖先写的；现在改成 `ensurePayload()` 只 clone
+  一次、后续复用。
 
-**验收判据**：设为私密是纯元数据更新——文件不搬、URL 不变、正文引用不动。
-锁定后未解锁时二进制与元数据均被拒；解锁后同一枚 cookie 能同时服务内联图片、
-`<video>` 的 range 请求和直接下载。管理员被拒。带 PAT 且同时带 vault cookie 的请求被拒。
+**存量用户回填**：本阶段实现的是"缺失时禁止加锁"这一半（`canLockAttachment`
+返回 false 时拒绝设置 `locked=true`）。客户端在下次成功解出 MK 时补算并上传
+`unlock_verifier` 的那部分是前端工作，属于 P5，未做——目前没有前端代码会写这个字段，
+所以**现在所有用户（新老一致）都还锁不了任何附件**，直到 P5 补上客户端写入路径。
+
+**已实现但未接入使用方（等 P4/P5）**：
+
+- 缩略图/motion 派生物**没有**接到 locked 判定上（P4 的工作，见下）。
+- vault cookie **没有滑动续期**：当前是拿到 token 时的固定 30 分钟 TTL，不会在后续请求里
+  自动展期。R5 要求的"与加密块共用同一套闲置计时"也未实现——加密块的计时器目前完全在
+  浏览器内存里，不会调用服务端的 `LockVault`。这两项都留给 P5 的前端工作。
+- 没有任何前端 UI：设置 `locked` 只能直接调 `UpdateAttachment` 的 API。
+
+**验收判据**（已由
+[vault_test.go](../../../server/router/api/v1/test/vault_test.go) 与
+[attachment_lock_test.go](../../../server/router/fileserver/attachment_lock_test.go) 覆盖）：
+设为私密是纯元数据更新——文件不搬、URL 不变、正文引用不动。
+锁定后未解锁时二进制与元数据均被拒（含"是创建者但没 cookie"、"cookie 是别人的"、
+"other/admin 即使拿到 owner 的合法 cookie 也不行"）；解锁后同一枚 cookie 能让
+metadata 与二进制两条路径都放行。带 PAT 且同时带 vault cookie 的请求被拒
+（`TestAttachmentAccess_LockedRequiresSessionCredential`）。5 次错误 proof 后第 6 次
+即使 proof 正确也被限速拒绝。缺 `unlock_verifier` 时 `UnlockVault` 与
+"设 locked=true" 都返回 `FailedPrecondition`，不会静默放行或静默拒绝解锁。
 
 **回滚**：proto 字段是加法；已被标记 locked 的附件在回滚后会退回普通附件——
 **这是一次静默的权限放宽**，回滚前必须先清掉 locked 标记，写进发布检查单。

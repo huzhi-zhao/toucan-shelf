@@ -55,6 +55,12 @@ const (
 	// AttachmentServiceBatchDeleteAttachmentsProcedure is the fully-qualified name of the
 	// AttachmentService's BatchDeleteAttachments RPC.
 	AttachmentServiceBatchDeleteAttachmentsProcedure = "/memos.api.v1.AttachmentService/BatchDeleteAttachments"
+	// AttachmentServiceUnlockVaultProcedure is the fully-qualified name of the AttachmentService's
+	// UnlockVault RPC.
+	AttachmentServiceUnlockVaultProcedure = "/memos.api.v1.AttachmentService/UnlockVault"
+	// AttachmentServiceLockVaultProcedure is the fully-qualified name of the AttachmentService's
+	// LockVault RPC.
+	AttachmentServiceLockVaultProcedure = "/memos.api.v1.AttachmentService/LockVault"
 )
 
 // AttachmentServiceClient is a client for the memos.api.v1.AttachmentService service.
@@ -76,6 +82,16 @@ type AttachmentServiceClient interface {
 	UnlinkAttachment(context.Context, *connect.Request[v1.UnlinkAttachmentRequest]) (*connect.Response[v1.Attachment], error)
 	// BatchDeleteAttachments deletes multiple attachments in one request.
 	BatchDeleteAttachments(context.Context, *connect.Request[v1.BatchDeleteAttachmentsRequest]) (*connect.Response[emptypb.Empty], error)
+	// UnlockVault opens the caller's attachment vault for this browser session by
+	// verifying proof of the master key used by `toucan-secret` blocks, and issues
+	// an HttpOnly vault cookie on success. This is a lock, not encryption: locked
+	// attachments are stored unencrypted, and this call only gates whether
+	// ToucanShelf will serve them. See
+	// docs/dev/requirements/attachments/access-control-and-private-files.md, part B.
+	UnlockVault(context.Context, *connect.Request[v1.UnlockVaultRequest]) (*connect.Response[emptypb.Empty], error)
+	// LockVault clears the vault cookie, immediately re-locking every locked
+	// attachment for this browser session.
+	LockVault(context.Context, *connect.Request[v1.LockVaultRequest]) (*connect.Response[emptypb.Empty], error)
 }
 
 // NewAttachmentServiceClient constructs a client for the memos.api.v1.AttachmentService service. By
@@ -131,6 +147,18 @@ func NewAttachmentServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(attachmentServiceMethods.ByName("BatchDeleteAttachments")),
 			connect.WithClientOptions(opts...),
 		),
+		unlockVault: connect.NewClient[v1.UnlockVaultRequest, emptypb.Empty](
+			httpClient,
+			baseURL+AttachmentServiceUnlockVaultProcedure,
+			connect.WithSchema(attachmentServiceMethods.ByName("UnlockVault")),
+			connect.WithClientOptions(opts...),
+		),
+		lockVault: connect.NewClient[v1.LockVaultRequest, emptypb.Empty](
+			httpClient,
+			baseURL+AttachmentServiceLockVaultProcedure,
+			connect.WithSchema(attachmentServiceMethods.ByName("LockVault")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -143,6 +171,8 @@ type attachmentServiceClient struct {
 	deleteAttachment       *connect.Client[v1.DeleteAttachmentRequest, emptypb.Empty]
 	unlinkAttachment       *connect.Client[v1.UnlinkAttachmentRequest, v1.Attachment]
 	batchDeleteAttachments *connect.Client[v1.BatchDeleteAttachmentsRequest, emptypb.Empty]
+	unlockVault            *connect.Client[v1.UnlockVaultRequest, emptypb.Empty]
+	lockVault              *connect.Client[v1.LockVaultRequest, emptypb.Empty]
 }
 
 // CreateAttachment calls memos.api.v1.AttachmentService.CreateAttachment.
@@ -180,6 +210,16 @@ func (c *attachmentServiceClient) BatchDeleteAttachments(ctx context.Context, re
 	return c.batchDeleteAttachments.CallUnary(ctx, req)
 }
 
+// UnlockVault calls memos.api.v1.AttachmentService.UnlockVault.
+func (c *attachmentServiceClient) UnlockVault(ctx context.Context, req *connect.Request[v1.UnlockVaultRequest]) (*connect.Response[emptypb.Empty], error) {
+	return c.unlockVault.CallUnary(ctx, req)
+}
+
+// LockVault calls memos.api.v1.AttachmentService.LockVault.
+func (c *attachmentServiceClient) LockVault(ctx context.Context, req *connect.Request[v1.LockVaultRequest]) (*connect.Response[emptypb.Empty], error) {
+	return c.lockVault.CallUnary(ctx, req)
+}
+
 // AttachmentServiceHandler is an implementation of the memos.api.v1.AttachmentService service.
 type AttachmentServiceHandler interface {
 	// CreateAttachment creates a new attachment.
@@ -199,6 +239,16 @@ type AttachmentServiceHandler interface {
 	UnlinkAttachment(context.Context, *connect.Request[v1.UnlinkAttachmentRequest]) (*connect.Response[v1.Attachment], error)
 	// BatchDeleteAttachments deletes multiple attachments in one request.
 	BatchDeleteAttachments(context.Context, *connect.Request[v1.BatchDeleteAttachmentsRequest]) (*connect.Response[emptypb.Empty], error)
+	// UnlockVault opens the caller's attachment vault for this browser session by
+	// verifying proof of the master key used by `toucan-secret` blocks, and issues
+	// an HttpOnly vault cookie on success. This is a lock, not encryption: locked
+	// attachments are stored unencrypted, and this call only gates whether
+	// ToucanShelf will serve them. See
+	// docs/dev/requirements/attachments/access-control-and-private-files.md, part B.
+	UnlockVault(context.Context, *connect.Request[v1.UnlockVaultRequest]) (*connect.Response[emptypb.Empty], error)
+	// LockVault clears the vault cookie, immediately re-locking every locked
+	// attachment for this browser session.
+	LockVault(context.Context, *connect.Request[v1.LockVaultRequest]) (*connect.Response[emptypb.Empty], error)
 }
 
 // NewAttachmentServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -250,6 +300,18 @@ func NewAttachmentServiceHandler(svc AttachmentServiceHandler, opts ...connect.H
 		connect.WithSchema(attachmentServiceMethods.ByName("BatchDeleteAttachments")),
 		connect.WithHandlerOptions(opts...),
 	)
+	attachmentServiceUnlockVaultHandler := connect.NewUnaryHandler(
+		AttachmentServiceUnlockVaultProcedure,
+		svc.UnlockVault,
+		connect.WithSchema(attachmentServiceMethods.ByName("UnlockVault")),
+		connect.WithHandlerOptions(opts...),
+	)
+	attachmentServiceLockVaultHandler := connect.NewUnaryHandler(
+		AttachmentServiceLockVaultProcedure,
+		svc.LockVault,
+		connect.WithSchema(attachmentServiceMethods.ByName("LockVault")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/memos.api.v1.AttachmentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AttachmentServiceCreateAttachmentProcedure:
@@ -266,6 +328,10 @@ func NewAttachmentServiceHandler(svc AttachmentServiceHandler, opts ...connect.H
 			attachmentServiceUnlinkAttachmentHandler.ServeHTTP(w, r)
 		case AttachmentServiceBatchDeleteAttachmentsProcedure:
 			attachmentServiceBatchDeleteAttachmentsHandler.ServeHTTP(w, r)
+		case AttachmentServiceUnlockVaultProcedure:
+			attachmentServiceUnlockVaultHandler.ServeHTTP(w, r)
+		case AttachmentServiceLockVaultProcedure:
+			attachmentServiceLockVaultHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -301,4 +367,12 @@ func (UnimplementedAttachmentServiceHandler) UnlinkAttachment(context.Context, *
 
 func (UnimplementedAttachmentServiceHandler) BatchDeleteAttachments(context.Context, *connect.Request[v1.BatchDeleteAttachmentsRequest]) (*connect.Response[emptypb.Empty], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.AttachmentService.BatchDeleteAttachments is not implemented"))
+}
+
+func (UnimplementedAttachmentServiceHandler) UnlockVault(context.Context, *connect.Request[v1.UnlockVaultRequest]) (*connect.Response[emptypb.Empty], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.AttachmentService.UnlockVault is not implemented"))
+}
+
+func (UnimplementedAttachmentServiceHandler) LockVault(context.Context, *connect.Request[v1.LockVaultRequest]) (*connect.Response[emptypb.Empty], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.AttachmentService.LockVault is not implemented"))
 }

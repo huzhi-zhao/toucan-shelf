@@ -561,6 +561,18 @@ func (s *ConnectServiceHandler) BatchDeleteAttachments(ctx context.Context, req 
 	return connect.NewResponse(resp), nil
 }
 
+func (s *ConnectServiceHandler) UnlockVault(ctx context.Context, req *connect.Request[v1pb.UnlockVaultRequest]) (*connect.Response[emptypb.Empty], error) {
+	return connectWithHeaderCarrier(ctx, func(ctx context.Context) (*emptypb.Empty, error) {
+		return s.APIV1Service.UnlockVault(ctx, req.Msg)
+	})
+}
+
+func (s *ConnectServiceHandler) LockVault(ctx context.Context, req *connect.Request[v1pb.LockVaultRequest]) (*connect.Response[emptypb.Empty], error) {
+	return connectWithHeaderCarrier(ctx, func(ctx context.Context) (*emptypb.Empty, error) {
+		return s.APIV1Service.LockVault(ctx, req.Msg)
+	})
+}
+
 // AIService
 
 func (s *ConnectServiceHandler) Transcribe(ctx context.Context, req *connect.Request[v1pb.TranscribeRequest]) (*connect.Response[v1pb.TranscribeResponse], error) {
