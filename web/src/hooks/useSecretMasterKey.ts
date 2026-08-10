@@ -150,10 +150,14 @@ export const useSecretMasterKey = (): SecretMasterKeyState => {
       const masterKey = await unwrapMasterKey(toEnvelope(secretKeySetting), passphrase);
       unlockSecretSession(masterKey);
       if (!secretKeySetting.unlockVerifier) {
-        // Best-effort: a failed backfill just means locking an attachment stays
-        // refused until the next successful unlock. It must not fail the unlock
-        // itself, which is what the user actually asked for.
-        backfillUnlockVerifier(masterKey).catch(() => {});
+        // Awaited, not fire-and-forget: a caller that chains a vault operation
+        // right after unlock() (LockedAttachmentRow, the attachment-lock retry)
+        // would otherwise race the backfill and hit the server's "no verifier
+        // yet" FailedPrecondition even though the passphrase was correct. Still
+        // best-effort in the sense that a failed backfill doesn't fail the
+        // unlock itself — only chained vault calls will keep failing until the
+        // next successful unlock.
+        await backfillUnlockVerifier(masterKey).catch(() => {});
       }
     },
     [secretKeySetting, backfillUnlockVerifier],

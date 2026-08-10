@@ -2,10 +2,11 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import copy from "copy-to-clipboard";
 import { DownloadIcon, ExternalLinkIcon, FileIcon, LockIcon, MoreVerticalIcon, PaperclipIcon, PlayIcon } from "lucide-react";
 import type { PropsWithChildren } from "react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import MetadataSection from "@/components/MemoMetadata/MetadataSection";
 import MotionPhotoPreview from "@/components/MotionPhotoPreview";
+import UnlockMasterKeyDialog from "@/components/Secret/UnlockMasterKeyDialog";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import VideoPoster from "@/components/VideoPoster";
@@ -244,6 +245,7 @@ const AudioList = ({ attachments, compact = false }: { attachments: Attachment[]
 const AttachmentActionsMenu = ({ attachment }: { attachment: Attachment }) => {
   const t = useTranslate();
   const { mutateAsync: setLocked, isPending: lockPending } = useSetAttachmentLocked();
+  const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
 
   const handleCopyMdReference = () => {
     copy(`![${attachment.filename}](${getAttachmentUrl(attachment)})`);
@@ -271,7 +273,11 @@ const AttachmentActionsMenu = ({ attachment }: { attachment: Attachment }) => {
       await setLocked({ name: attachment.name, locked: true });
     } catch (err) {
       if (err instanceof ConnectError && err.code === Code.FailedPrecondition) {
-        toast.error(t("attachment.vault.needs-master-key"));
+        // The account has never unlocked its master passphrase in this tab (or
+        // ever, for accounts with no encrypted block to trigger it), so the
+        // server has no unlock_verifier on file yet. Offer the unlock dialog
+        // directly instead of leaving the user to hunt for one.
+        setUnlockDialogOpen(true);
         return;
       }
       toast.error(t("attachment.vault.lock-error"));
@@ -279,24 +285,42 @@ const AttachmentActionsMenu = ({ attachment }: { attachment: Attachment }) => {
   };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground/60 hover:text-foreground/70" title={t("common.more")}>
-          <MoreVerticalIcon className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={handleDownload}>
-          <DownloadIcon className="h-4 w-4" />
-          {t("gallery.download")}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleCopyMdReference}>{t("gallery.copy-md-reference")}</DropdownMenuItem>
-        <DropdownMenuItem onClick={handleToggleLocked} disabled={lockPending}>
-          <LockIcon className="h-4 w-4" />
-          {t("attachment.vault.make-private")}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 text-muted-foreground/60 hover:text-foreground/70"
+            title={t("common.more")}
+          >
+            <MoreVerticalIcon className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={handleDownload}>
+            <DownloadIcon className="h-4 w-4" />
+            {t("gallery.download")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleCopyMdReference}>{t("gallery.copy-md-reference")}</DropdownMenuItem>
+          <DropdownMenuItem onClick={handleToggleLocked} disabled={lockPending}>
+            <LockIcon className="h-4 w-4" />
+            {t("attachment.vault.make-private")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <UnlockMasterKeyDialog
+        open={unlockDialogOpen}
+        onOpenChange={setUnlockDialogOpen}
+        onUnlocked={async () => {
+          try {
+            await setLocked({ name: attachment.name, locked: true });
+          } catch {
+            toast.error(t("attachment.vault.lock-error"));
+          }
+        }}
+      />
+    </>
   );
 };
 

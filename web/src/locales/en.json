@@ -1424,7 +1424,8 @@
       "save-failed": "Could not save. The content is still decrypted here — copy it before leaving this page.",
       "rotate-failed": "Could not change the passphrase. The old one still works.",
       "locked-session": "This session is locked. Unlock it with your master passphrase first.",
-      "migrate-failed": "Could not switch this block to the master passphrase. Its own passphrase still works."
+      "migrate-failed": "Could not switch this block to the master passphrase. Its own passphrase still works.",
+      "unlock-failed": "Could not unlock."
     },
     "change-passphrase": "Change this block’s passphrase",
     "new-passphrase": "New passphrase",
@@ -1435,6 +1436,8 @@
     "migrate": "Use master passphrase",
     "set-up-master": "Set up a master passphrase",
     "no-master-key": "Set a master passphrase before creating encrypted blocks.",
-    "unlock-first": "Enter your master passphrase to unlock this session, then create the block."
+    "unlock-first": "Enter your master passphrase to unlock this session, then create the block.",
+    "unlock-dialog-title": "Unlock master passphrase",
+    "unlock-dialog-description": "Unlocks encrypted content and locked attachments for this session."
   }
 }

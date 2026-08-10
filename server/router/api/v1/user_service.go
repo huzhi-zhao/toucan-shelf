@@ -729,16 +729,63 @@ func (s *APIV1Service) UpdateUserSetting(ctx context.Context, request *v1pb.Upda
 		if incomingSecretKey == nil {
 			return nil, status.Errorf(codes.InvalidArgument, "secret_key setting is required")
 		}
-		if err := validateSecretKeySetting(incomingSecretKey); err != nil {
+
+		existingUserSetting, _ := s.Store.GetUserSetting(ctx, &store.FindUserSetting{
+			UserID: &userID,
+			Key:    storeKey,
+		})
+		secretKeySetting := &v1pb.UserSetting_SecretKeySetting{}
+		if existing := existingUserSetting.GetSecretKey(); existing != nil {
+			// Start from the stored envelope so a mask that only covers
+			// unlock_verifier (the R8 legacy-user backfill) can't wipe kdf/salt/
+			// nonce/wrapped_key/verifier back to empty — that used to happen because
+			// this branch replaced the whole record with whatever the caller sent,
+			// and a backfill-only request sends everything else zero-valued.
+			secretKeySetting = &v1pb.UserSetting_SecretKeySetting{
+				Kdf:            existing.GetKdf(),
+				KdfIterations:  existing.GetKdfIterations(),
+				Cipher:         existing.GetCipher(),
+				Salt:           existing.GetSalt(),
+				Nonce:          existing.GetNonce(),
+				Verifier:       existing.GetVerifier(),
+				WrappedKey:     existing.GetWrappedKey(),
+				UnlockVerifier: existing.GetUnlockVerifier(),
+			}
+		}
+		for _, field := range request.UpdateMask.Paths {
+			switch field {
+			case "kdf":
+				secretKeySetting.Kdf = incomingSecretKey.Kdf
+			case "kdf_iterations":
+				secretKeySetting.KdfIterations = incomingSecretKey.KdfIterations
+			case "cipher":
+				secretKeySetting.Cipher = incomingSecretKey.Cipher
+			case "salt":
+				secretKeySetting.Salt = incomingSecretKey.Salt
+			case "nonce":
+				secretKeySetting.Nonce = incomingSecretKey.Nonce
+			case "verifier":
+				secretKeySetting.Verifier = incomingSecretKey.Verifier
+			case "wrapped_key":
+				secretKeySetting.WrappedKey = incomingSecretKey.WrappedKey
+			case "unlock_verifier":
+				secretKeySetting.UnlockVerifier = incomingSecretKey.UnlockVerifier
+			default:
+				// Ignore unsupported fields.
+			}
+		}
+		// The envelope fields (kdf/cipher/salt/nonce/verifier/wrapped_key) must
+		// still only ever change together: every caller that legitimately rewraps
+		// the master key (setup/changePassphrase/reset) already masks all of them
+		// in one request, so this check still catches a request that mixes the
+		// salt from one write with the ciphertext of another.
+		if err := validateSecretKeySetting(secretKeySetting); err != nil {
 			return nil, err
 		}
-		// Replaced wholesale, never field by field: a wrapper assembled from the
-		// salt of one write and the ciphertext of another would leave the user's
-		// entire set of secret blocks permanently unopenable.
 		updatedSetting = &v1pb.UserSetting{
 			Name: request.Setting.Name,
 			Value: &v1pb.UserSetting_SecretKeySetting_{
-				SecretKeySetting: incomingSecretKey,
+				SecretKeySetting: secretKeySetting,
 			},
 		}
 	default:

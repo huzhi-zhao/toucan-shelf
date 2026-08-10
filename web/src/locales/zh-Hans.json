@@ -1017,6 +1017,19 @@
     "back-to-top": "回到顶部",
     "ai-formatting": "AI 排版中…"
   },
+  "attachment": {
+    "vault": {
+      "lock": "锁定",
+      "locked": "已锁定",
+      "make-private": "设为私密",
+      "make-public": "取消锁定",
+      "unlock": "解锁",
+      "unlock-error": "无法解锁附件保险库。",
+      "lock-error": "无法锁定此附件。",
+      "needs-master-key": "请先解锁一次主口令，才能锁定附件。",
+      "locked-attachments-hidden": "已锁定的附件仅在此处可见——不会在文档正文中渲染，即使是所有者本人。"
+    }
+  },
   "attachment-library": {
     "actions": {
       "open": "打开",
@@ -1315,7 +1328,8 @@
       "save-failed": "保存失败。内容目前仍处于解密状态，请先复制再离开本页。",
       "rotate-failed": "修改密码失败，原密码仍然有效。",
       "locked-session": "本次会话已锁定，请先用主口令解锁。",
-      "migrate-failed": "未能把此块切换到主口令，它自己的口令仍然有效。"
+      "migrate-failed": "未能把此块切换到主口令，它自己的口令仍然有效。",
+      "unlock-failed": "解锁失败。"
     },
     "change-passphrase": "修改此块的独立口令",
     "new-passphrase": "新的独立口令",
@@ -1326,6 +1340,8 @@
     "migrate": "改用主口令",
     "set-up-master": "去设置主口令",
     "no-master-key": "请先设置主口令，然后才能创建加密块。",
-    "unlock-first": "输入主口令解锁本次会话，然后创建此块。"
+    "unlock-first": "输入主口令解锁本次会话，然后创建此块。",
+    "unlock-dialog-title": "解锁主口令",
+    "unlock-dialog-description": "解锁后即可查看本次会话中的加密内容和已锁定附件。"
   }
 }

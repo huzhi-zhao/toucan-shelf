@@ -11,9 +11,9 @@
 // configured, they just haven't unlocked it in this tab yet.
 
 import { DownloadIcon, ExternalLinkIcon, FileIcon, LoaderCircleIcon, LockIcon, LockOpenIcon } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { useState } from "react";
+import MasterPassphraseForm from "@/components/Secret/MasterPassphraseForm";
 import { Button } from "@/components/ui/button";
-import { MaskedInput } from "@/components/ui/masked-input";
 import { extractAttachmentUidFromName } from "@/helpers/resource-names";
 import { useAttachmentVault, VaultLockedError } from "@/hooks/useAttachmentVault";
 import { useSecretMasterKey } from "@/hooks/useSecretMasterKey";
@@ -27,7 +27,6 @@ const LockedAttachmentRow = ({ attachment }: { attachment: Attachment }) => {
   const t = useTranslate();
   const masterKeyState = useSecretMasterKey();
   const vault = useAttachmentVault();
-  const [passphrase, setPassphrase] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const { fileTypeLabel, fileSizeLabel } = getAttachmentMetadata(attachment);
@@ -68,33 +67,8 @@ const LockedAttachmentRow = ({ attachment }: { attachment: Attachment }) => {
     );
   }
 
-  const needsPassphrase = !masterKeyState.unlocked;
-
-  const handleUnlock = async (event: FormEvent) => {
-    event.preventDefault();
-    setBusy(true);
-    setError("");
-    try {
-      if (needsPassphrase) {
-        await masterKeyState.unlock(passphrase);
-      }
-      await vault.unlock();
-      setPassphrase("");
-    } catch (err) {
-      if (err instanceof SecretPassphraseError) {
-        setError(t("secret-block.error.wrong-passphrase"));
-      } else if (err instanceof VaultLockedError) {
-        setError(t("secret-block.error.wrong-passphrase"));
-      } else {
-        setError(t("attachment.vault.unlock-error"));
-      }
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <form className="flex flex-wrap items-center gap-2 rounded-xl border border-border/70 bg-muted/30 px-3 py-2.5" onSubmit={handleUnlock}>
+  const filenameBlock = (
+    <>
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted/50 text-muted-foreground">
         <LockIcon className="h-4 w-4" />
       </div>
@@ -104,27 +78,57 @@ const LockedAttachmentRow = ({ attachment }: { attachment: Attachment }) => {
         </div>
         <div className="mt-1 text-xs text-muted-foreground">{fileTypeLabel}</div>
       </div>
-      {needsPassphrase && (
-        <MaskedInput
-          revealable
-          autoComplete="off"
-          className="h-8 w-full max-w-56 text-sm"
-          placeholder={t("secret-block.master-passphrase-placeholder")}
-          aria-label={t("secret-block.master-passphrase-placeholder")}
-          value={passphrase}
-          onChange={(event) => {
-            setPassphrase(event.target.value);
-            if (error) setError("");
-          }}
+    </>
+  );
+
+  // The master key is already unlocked for this tab — only the vault proof is
+  // missing, and that needs no passphrase of its own.
+  if (masterKeyState.unlocked) {
+    const handleUnlockVault = async () => {
+      setBusy(true);
+      setError("");
+      try {
+        await vault.unlock();
+      } catch {
+        setError(t("attachment.vault.unlock-error"));
+      } finally {
+        setBusy(false);
+      }
+    };
+
+    return (
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/70 bg-muted/30 px-3 py-2.5">
+        {filenameBlock}
+        <Button
+          type="button"
+          size="icon"
+          title={t("attachment.vault.unlock")}
+          aria-label={t("attachment.vault.unlock")}
+          onClick={handleUnlockVault}
           disabled={busy}
-        />
-      )}
-      <Button type="submit" size="sm" disabled={busy || (needsPassphrase && passphrase === "")}>
-        {busy ? <LoaderCircleIcon className="h-4 w-4 animate-spin" /> : <LockOpenIcon className="h-4 w-4" />}
-        {t("attachment.vault.unlock")}
-      </Button>
-      {error && <span className="w-full text-xs text-destructive">{error}</span>}
-    </form>
+        >
+          {busy ? <LoaderCircleIcon className="h-4 w-4 animate-spin" /> : <LockOpenIcon className="h-4 w-4" />}
+        </Button>
+        {error && <span className="w-full text-xs text-destructive">{error}</span>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/70 bg-muted/30 px-3 py-2.5">
+      {filenameBlock}
+      <MasterPassphraseForm
+        submitLabel={t("attachment.vault.unlock")}
+        iconOnly
+        className="w-auto flex-none basis-auto"
+        onUnlocked={() => vault.unlock()}
+        mapError={(err, t) =>
+          err instanceof SecretPassphraseError || err instanceof VaultLockedError
+            ? t("secret-block.error.wrong-passphrase")
+            : t("attachment.vault.unlock-error")
+        }
+      />
+    </div>
   );
 };
 
