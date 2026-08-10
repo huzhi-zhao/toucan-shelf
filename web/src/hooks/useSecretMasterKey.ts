@@ -11,6 +11,7 @@ import { useCallback, useSyncExternalStore } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserSettingSchema } from "@/types/proto/api/v1/user_service_pb";
 import {
+  computeVaultUnlockProof,
   generateMasterKey,
   type MasterKey,
   type SecretEnvelope,
@@ -88,6 +89,11 @@ export const useSecretMasterKey = (): SecretMasterKeyState => {
         throw new Error("not signed in");
       }
       const envelope = await wrapMasterKey(masterKey, passphrase);
+      // The attachment vault's unlock_verifier travels alongside every write that
+      // has the master key on hand, so setup/changePassphrase/reset never leave it
+      // stale — only the legacy-user backfill path (see backfillUnlockVerifier
+      // below) needs to write it on its own.
+      const unlockVerifier = await computeVaultUnlockProof(masterKey);
       await updateUserSetting({
         setting: create(UserSettingSchema, {
           name: `${currentUser.name}${SECRET_KEY_SETTING_SUFFIX}`,
@@ -101,12 +107,36 @@ export const useSecretMasterKey = (): SecretMasterKeyState => {
               nonce: envelope.nonce,
               verifier: envelope.verifier,
               wrappedKey: envelope.ciphertext,
+              unlockVerifier,
             },
           },
         }),
         // The wrapper is replaced whole. A field mask that let one field through
         // would produce a record no passphrase can open.
-        updateMask: ["kdf", "kdf_iterations", "cipher", "salt", "nonce", "verifier", "wrapped_key"],
+        updateMask: ["kdf", "kdf_iterations", "cipher", "salt", "nonce", "verifier", "wrapped_key", "unlock_verifier"],
+      });
+    },
+    [currentUser?.name, updateUserSetting],
+  );
+
+  // R8 / the design doc's "存量用户回填": a user who set their master passphrase
+  // before the attachment vault existed has no unlock_verifier on file, so
+  // UpdateAttachment refuses to lock anything of theirs (canLockAttachment on the
+  // server) until this runs once. It only touches unlock_verifier — no re-wrap,
+  // no new salt/nonce for the existing envelope — so it is safe to call on every
+  // unlock and cheap when it turns out to be a no-op.
+  const backfillUnlockVerifier = useCallback(
+    async (masterKey: MasterKey) => {
+      if (!currentUser?.name) {
+        return;
+      }
+      const unlockVerifier = await computeVaultUnlockProof(masterKey);
+      await updateUserSetting({
+        setting: create(UserSettingSchema, {
+          name: `${currentUser.name}${SECRET_KEY_SETTING_SUFFIX}`,
+          value: { case: "secretKeySetting", value: { unlockVerifier } },
+        }),
+        updateMask: ["unlock_verifier"],
       });
     },
     [currentUser?.name, updateUserSetting],
@@ -119,8 +149,14 @@ export const useSecretMasterKey = (): SecretMasterKeyState => {
       }
       const masterKey = await unwrapMasterKey(toEnvelope(secretKeySetting), passphrase);
       unlockSecretSession(masterKey);
+      if (!secretKeySetting.unlockVerifier) {
+        // Best-effort: a failed backfill just means locking an attachment stays
+        // refused until the next successful unlock. It must not fail the unlock
+        // itself, which is what the user actually asked for.
+        backfillUnlockVerifier(masterKey).catch(() => {});
+      }
     },
-    [secretKeySetting],
+    [secretKeySetting, backfillUnlockVerifier],
   );
 
   const setup = useCallback(

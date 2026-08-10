@@ -93,7 +93,8 @@
 
 六个阶段，P0–P1 是 A 部分（可独立发布），P2–P5 是 B 部分。每阶段独立可回滚。
 
-**进度：P0、P1、P2、P3（后端，无 UI）已实现（2026-08-09）；P4 已实现（2026-08-10）；P5 未开始。**
+**进度：P0、P1、P2、P3（后端，无 UI）已实现（2026-08-09）；P4 已实现（2026-08-10）；
+P5 部分实现（2026-08-10，见下，附件面板已可用，正文内联渲染改造未做）。**
 
 ### P0 判定收敛与越权修复 —— 已实现
 
@@ -285,13 +286,62 @@ PUBLIC 文档挂一个普通附件和一个锁定附件，创建分享链接后�
 补测试，只在本文档记录了核查结论。如果这四条底层实现（fileserver 路由复用）
 将来被重构，回归可能不会被自动捕获——建议 P5 或后续维护时补上。
 
-### P5 前端
+### P5 前端 —— 部分实现
 
-附件级"设为私密"开关、就地引导首次启用、解锁交互（复用既有的 MK 解包逻辑与
-`useSecretMasterKey`）、锁定态的文件名遮挡、上锁时**真的关闭**已展开的私密预览
-（ADR-0003 明确要求，不能只是按钮变样）。
+**实施时补充的产品决定**（未见于原计划，实施前与产品确认）：锁定附件**不内联渲染，
+无论是谁，包括创建者本人**——正文里的 `![]()` 引用不会自动展开成图片/视频/PDF 预览。
+唯一能读到锁定附件内容的地方是文档的"附件"面板，用户在那里完成解锁，再下载或预览。
+这比原计划设想的"正文遮挡缩略图 + 关闭已展开预览"简单：既然从不展开，也就不存在
+"上锁时关闭已展开预览"这个状态转换要处理。
 
-**验收判据**：本阶段产出测试要点清单交人工走一遍，不做自动化视觉验证。
+**已实现**：
+
+- 服务端已有的解锁凭证链路补上了客户端一半。`unlock_verifier` 的推导
+  （[secret-crypto.ts](../../../web/src/utils/secret-crypto.ts) 的
+  `computeVaultUnlockProof`，`HMAC-SHA256(MK, "toucan-attach/unlock/v1")`，与
+  P3 服务端比对的值同源）；[useSecretMasterKey.ts](../../../web/src/hooks/useSecretMasterKey.ts)
+  在 `setup`/`changePassphrase`/`reset` 时随主密钥一起写 `unlock_verifier`，并在
+  `unlock` 成功后为缺失该字段的存量用户补写（R8 的客户端一半，静默失败不阻塞解锁本身）。
+- [vault-session.ts](../../../web/src/utils/vault-session.ts) 是 vault 解锁态的客户端乐观标记，
+  刻意**不新起一个计时器**，而是订阅 `secretSessionStore`：主密钥一闲置超时/登出/上锁，
+  vault 标记跟着清零——这是 R5"共用同一套闲置计时"的落地方式。
+  [useAttachmentVault.ts](../../../web/src/hooks/useAttachmentVault.ts) 包了
+  `UnlockVault`/`LockVault` 两个 RPC。
+- 附件面板（[AttachmentListView.tsx](../../../web/src/components/MemoMetadata/Attachment/AttachmentListView.tsx)）：
+  锁定附件在 `separateAttachments` 里被单独分组，不进入图片画廊/音频列表/可预览文档列表——
+  避免了对复杂的 `VisualGallery`/`CollageVisualItem` 组件动手术，代价是锁定的图片/视频在这里
+  也只显示成一个文件行，没有画廊那种卡片外观。
+  [LockedAttachmentRow.tsx](../../../web/src/components/MemoMetadata/Attachment/LockedAttachmentRow.tsx)
+  是这里唯一能读到锁定附件内容的地方：未解锁时显示"就地引导"表单（主密钥未解锁则先要口令，
+  已解锁则直接调 vault 解锁），解锁成功后原地切换成可下载/预览的行。
+  `AttachmentActionsMenu` 加了"设为私密"，`FailedPrecondition`（缺 `unlock_verifier`）时
+  提示去解锁一次主密钥，不静默失败也不弹自动重试流程。
+- 新增单元测试 [secret-crypto.test.ts](../../../web/tests/secret-crypto.test.ts) 覆盖
+  `computeVaultUnlockProof`：同一 MK 确定性、不同 MK 不同、输出形状是裸 HMAC 而非套了一层
+  envelope（防止和块的 `verifier` 语义混用）。
+
+**未实现，留给后续**：
+
+- **正文内联渲染未改造。** [Image.tsx](../../../web/src/components/MemoContent/markdown/Image.tsx)
+  只拿到一个 `src` 字符串，不知道对应哪个 `Attachment`、更不知道 `locked`。要让锁定附件在
+  正文里换成链接/跳附件区（而不是浏览器原生裂图——目前的实际状态：服务端已经 403，不泄漏
+  字节，只是丑），需要把当前文档的附件列表透传进 markdown 渲染上下文，这是比这次改的几个
+  文件更大的一次布线改动，本次没有做。今天的降级行为是浏览器原生裂图，不是安全问题，是
+  体验问题。
+- **画廊内的锁定态展示是"降级"而非"设计"。** 锁定的图片/视频在附件面板里目前只是一个文件行
+  （见上），不是产品最初设想的"遮挡缩略图"卡片外观。
+  `PdfDocumentView`/`AttachmentCard`/`AttachmentLibrary` 里另外几处渲染入口未接入 `locked`
+  检查——它们目前只会在服务端 403 时表现为加载失败，不会主动隐藏。
+- **没有自动化 UI 测试。** 按现有约定（视觉/交互类改动不做自动浏览器验证），本阶段验收
+  是列出以下人工检查点，未来测试需要覆盖：
+  1. 老用户（有主密钥但从未在本次改动后解锁过）点"设为私密"→ 提示需要先解锁；解锁一次
+     主密钥后再点"设为私密"→ 成功。
+  2. 附件面板里点锁定附件的解锁表单，主密钥已解锁时应跳过口令输入直接调 vault 解锁；
+     主密钥未解锁时应先要口令、解锁成功后自动继续解锁 vault，不需要点两次。
+  3. 30 分钟闲置后，主密钥自动上锁的同时 vault 标记也应清零（附件面板下次访问要求重新解锁）。
+  4. 输错口令时的错误提示可读，不会把底层的 `ConnectError` message 直接抛给用户。
+
+**验收判据**：上述人工检查点交人工走一遍，未做自动化视觉验证。
 
 ---
 

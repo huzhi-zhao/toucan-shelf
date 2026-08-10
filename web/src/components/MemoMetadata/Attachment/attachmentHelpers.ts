@@ -6,6 +6,7 @@ export interface AttachmentGroups {
   visual: Attachment[];
   audio: Attachment[];
   docs: Attachment[];
+  locked: Attachment[];
 }
 
 export interface AttachmentMetadata {
@@ -22,10 +23,17 @@ export const isEpubAttachment = (attachment: Attachment): boolean => getAttachme
 export const isPreviewableAttachment = (attachment: Attachment): boolean =>
   isPdfAttachment(attachment) || isHtmlAttachment(attachment) || isEpubAttachment(attachment);
 
+// A locked attachment is pulled out before any media-type classification, so it
+// never enters the visual gallery / audio player / previewable-doc paths — those
+// all assume the attachment's bytes are actually fetchable, which a locked one's
+// aren't until the vault is open. See LockedAttachmentRow for the one place a
+// locked attachment's content becomes reachable.
 export const separateAttachments = (attachments: Attachment[]): AttachmentGroups => {
   return attachments.reduce<AttachmentGroups>(
     (groups, attachment) => {
-      if (isImageAttachment(attachment) || isVideoAttachment(attachment)) {
+      if (attachment.locked) {
+        groups.locked.push(attachment);
+      } else if (isImageAttachment(attachment) || isVideoAttachment(attachment)) {
         groups.visual.push(attachment);
       } else if (isAudioAttachment(attachment)) {
         groups.audio.push(attachment);
@@ -39,6 +47,7 @@ export const separateAttachments = (attachments: Attachment[]): AttachmentGroups
       visual: [],
       audio: [],
       docs: [],
+      locked: [],
     },
   );
 };

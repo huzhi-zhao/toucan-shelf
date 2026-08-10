@@ -32,6 +32,19 @@
     "back-to-top": "Back to top",
     "ai-formatting": "Formatting with AI…"
   },
+  "attachment": {
+    "vault": {
+      "lock": "Lock",
+      "locked": "Locked",
+      "make-private": "Make private",
+      "make-public": "Remove lock",
+      "unlock": "Unlock",
+      "unlock-error": "Could not unlock the attachment vault.",
+      "lock-error": "Could not lock this attachment.",
+      "needs-master-key": "Unlock your master passphrase once to enable attachment locking.",
+      "locked-attachments-hidden": "Locked attachments are only visible here — they are never rendered inline in a document, even for their owner."
+    }
+  },
   "attachment-library": {
     "actions": {
       "open": "Open",

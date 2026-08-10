@@ -1,5 +1,6 @@
+import { Code, ConnectError } from "@connectrpc/connect";
 import copy from "copy-to-clipboard";
-import { DownloadIcon, ExternalLinkIcon, FileIcon, MoreVerticalIcon, PaperclipIcon, PlayIcon } from "lucide-react";
+import { DownloadIcon, ExternalLinkIcon, FileIcon, LockIcon, MoreVerticalIcon, PaperclipIcon, PlayIcon } from "lucide-react";
 import type { PropsWithChildren } from "react";
 import { useMemo } from "react";
 import toast from "react-hot-toast";
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import VideoPoster from "@/components/VideoPoster";
 import { extractAttachmentUidFromName } from "@/helpers/resource-names";
+import { useSetAttachmentLocked } from "@/hooks/useAttachmentLock";
 import { cn } from "@/lib/utils";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 import { getAttachmentUrl } from "@/utils/attachment";
@@ -28,6 +30,7 @@ import {
   SINGLE_VIDEO_CARD_WIDTH_CLASS,
   VISUAL_TILE_BUTTON_CLASS,
 } from "./attachmentVisualClasses";
+import LockedAttachmentRow from "./LockedAttachmentRow";
 import { resolveVisualGalleryLayout } from "./visualGalleryLayout";
 
 interface AttachmentListViewProps {
@@ -240,6 +243,7 @@ const AudioList = ({ attachments, compact = false }: { attachments: Attachment[]
 // embedded into another document's content, and downloading the file.
 const AttachmentActionsMenu = ({ attachment }: { attachment: Attachment }) => {
   const t = useTranslate();
+  const { mutateAsync: setLocked, isPending: lockPending } = useSetAttachmentLocked();
 
   const handleCopyMdReference = () => {
     copy(`![${attachment.filename}](${getAttachmentUrl(attachment)})`);
@@ -255,6 +259,25 @@ const AttachmentActionsMenu = ({ attachment }: { attachment: Attachment }) => {
     link.remove();
   };
 
+  // "设为私密" locks an attachment down to its creator's own unlocked vault. The
+  // server refuses with FailedPrecondition when the creator has no
+  // unlock_verifier on file yet (server/router/api/v1/vault_service.go's
+  // canLockAttachment) — R8, "never lock behind a passphrase you can't yet
+  // prove you hold". The full inline unlock-and-retry flow lives in
+  // LockedAttachmentRow; here a locked attachment is one that's already
+  // succeeded, so the only failure worth guiding is this one.
+  const handleToggleLocked = async () => {
+    try {
+      await setLocked({ name: attachment.name, locked: true });
+    } catch (err) {
+      if (err instanceof ConnectError && err.code === Code.FailedPrecondition) {
+        toast.error(t("attachment.vault.needs-master-key"));
+        return;
+      }
+      toast.error(t("attachment.vault.lock-error"));
+    }
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -268,6 +291,10 @@ const AttachmentActionsMenu = ({ attachment }: { attachment: Attachment }) => {
           {t("gallery.download")}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleCopyMdReference}>{t("gallery.copy-md-reference")}</DropdownMenuItem>
+        <DropdownMenuItem onClick={handleToggleLocked} disabled={lockPending}>
+          <LockIcon className="h-4 w-4" />
+          {t("attachment.vault.make-private")}
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -300,13 +327,22 @@ const DocsList = ({ attachments }: { attachments: Attachment[] }) => (
 
 const Divider = () => <div className="border-t border-border/70 opacity-80" />;
 
+const LockedList = ({ attachments }: { attachments: Attachment[] }) => (
+  <div className="flex flex-col gap-2">
+    {attachments.map((attachment) => (
+      <LockedAttachmentRow key={attachment.name} attachment={attachment} />
+    ))}
+  </div>
+);
+
 const AttachmentListView = ({ attachments, onImagePreview }: AttachmentListViewProps) => {
-  const { visual, audio, docs } = useMemo(() => separateAttachments(attachments), [attachments]);
+  const { visual, audio, docs, locked } = useMemo(() => separateAttachments(attachments), [attachments]);
   const visualItems = useMemo(() => buildAttachmentVisualItems(visual), [visual]);
   const previewItems = useMemo(() => visualItems.map((item) => item.previewItem), [visualItems]);
   const hasVisual = visualItems.length > 0;
   const hasAudio = audio.length > 0;
   const hasDocs = docs.length > 0;
+  const hasLocked = locked.length > 0;
   const hasMedia = hasVisual || hasAudio;
 
   if (attachments.length === 0) {
@@ -322,7 +358,7 @@ const AttachmentListView = ({ attachments, onImagePreview }: AttachmentListViewP
     <MetadataSection
       icon={PaperclipIcon}
       title="Attachments"
-      count={visualItems.length + audio.length + docs.length}
+      count={visualItems.length + audio.length + docs.length + locked.length}
       contentClassName="flex flex-col gap-2 p-2"
     >
       {hasMedia && (
@@ -333,6 +369,8 @@ const AttachmentListView = ({ attachments, onImagePreview }: AttachmentListViewP
       )}
       {hasMedia && hasDocs && <Divider />}
       {hasDocs && <DocsList attachments={docs} />}
+      {(hasMedia || hasDocs) && hasLocked && <Divider />}
+      {hasLocked && <LockedList attachments={locked} />}
     </MetadataSection>
   );
 };

@@ -423,3 +423,31 @@ export const decryptWithMasterKey = async (envelope: SecretEnvelope, masterKey: 
 
   return decoder.decode(plaintext);
 };
+
+// ---- attachment vault -------------------------------------------------------
+//
+// The locked-attachment vault (see the design doc's part B) reuses this same
+// master key rather than a second passphrase. The server needs a way to check
+// proof of possession without ever seeing the key or a passphrase, so the
+// client derives one fixed, non-secret-reversible value from it and the server
+// stores that value (`unlock_verifier`) to compare against on every unlock.
+//
+// This MUST stay a distinct HMAC domain from the "pbkdf2-sha256"/"master-v1"
+// suites' own `verifier` field above — that one is a client-side integrity
+// check the server never inspects; this one the server both stores and
+// compares. Reusing either the key or the label between them would let a value
+// meant for one purpose be replayed as proof for the other.
+const VAULT_UNLOCK_PROOF_INFO = "toucan-attach/unlock/v1";
+
+/**
+ * Derives the proof sent to AttachmentService.UnlockVault, and the same value
+ * the client uploads as `unlock_verifier` so the server has something to
+ * compare it against later. Deterministic in the master key alone, so it is
+ * identical across tabs/devices without needing its own round trip to agree
+ * on a salt.
+ */
+export const computeVaultUnlockProof = async (masterKey: MasterKey): Promise<string> => {
+  const key = await crypto.subtle.importKey("raw", masterKey as BufferSource, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(VAULT_UNLOCK_PROOF_INFO) as BufferSource);
+  return toBase64(new Uint8Array(signature));
+};

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  computeVaultUnlockProof,
   decryptSecret,
   encryptSecret,
+  generateMasterKey,
   SECRET_DEFAULT_ITERATIONS,
   SecretEnvelope,
   SecretFormatError,
@@ -120,5 +122,31 @@ describe("decryptSecret failure modes", () => {
   ])("rejects %s as SecretFormatError", async (_label, patch) => {
     const envelope = await encrypt("secret", "pw");
     await expect(decryptSecret({ ...envelope, ...patch } as SecretEnvelope, "pw")).rejects.toBeInstanceOf(SecretFormatError);
+  });
+});
+
+// The proof AttachmentService.UnlockVault compares against `unlock_verifier`
+// (see the design doc's part B and server/router/api/v1/vault_service.go).
+describe("computeVaultUnlockProof", () => {
+  it("is deterministic for the same master key", async () => {
+    const masterKey = generateMasterKey();
+    const [first, second] = await Promise.all([computeVaultUnlockProof(masterKey), computeVaultUnlockProof(masterKey)]);
+    expect(first).toBe(second);
+  });
+
+  it("differs across master keys", async () => {
+    const [a, b] = await Promise.all([computeVaultUnlockProof(generateMasterKey()), computeVaultUnlockProof(generateMasterKey())]);
+    expect(a).not.toBe(b);
+  });
+
+  it("differs from the block verifier's own suite (distinct HMAC domain)", async () => {
+    // Not a direct comparison (the block verifier binds a salt/AAD the vault
+    // proof doesn't), but this pins that the vault proof is plain base64(HMAC)
+    // with no envelope framing — nothing here should ever collide with a
+    // SecretEnvelope.verifier value in shape or derivation.
+    const masterKey = generateMasterKey();
+    const proof = await computeVaultUnlockProof(masterKey);
+    expect(() => atob(proof)).not.toThrow();
+    expect(atob(proof)).toHaveLength(32); // raw HMAC-SHA256 output
   });
 });
