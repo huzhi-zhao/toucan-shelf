@@ -15,6 +15,8 @@ import (
 	"github.com/pkg/errors"
 
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
+	"github.com/usememos/memos/server/attachmentacl"
+	"github.com/usememos/memos/server/auth"
 	"github.com/usememos/memos/store"
 )
 
@@ -176,6 +178,7 @@ func (s *APIV1Service) GetMemoByShare(ctx context.Context, request *v1pb.GetMemo
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list attachments")
 	}
+	attachments = s.filterShareableAttachments(ctx, attachments, request.ShareId)
 	relations, err := s.batchConvertMemoRelations(ctx, []*store.Memo{memo}, true)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to load memo relations")
@@ -209,6 +212,32 @@ func (s *APIV1Service) getActiveMemoShare(ctx context.Context, shareID string) (
 
 func stringPointer(s string) *string {
 	return &s
+}
+
+// filterShareableAttachments drops attachments a share-page viewer may not read. In
+// practice this only ever removes locked attachments: everything else on the shared
+// memo is reachable by the share token itself, but a locked attachment answers to
+// nothing but its creator's own unlocked vault (see attachmentacl.CheckReadAccess),
+// so it must not leak its filename or metadata onto a page anyone with the link can
+// open. Filtering runs through the same decision the binary download uses rather than
+// re-deriving "is it locked" here, so the two stay impossible to drift apart.
+func (s *APIV1Service) filterShareableAttachments(ctx context.Context, attachments []*store.Attachment, shareID string) []*store.Attachment {
+	visible := make([]*store.Attachment, 0, len(attachments))
+	for _, attachment := range attachments {
+		err := attachmentacl.CheckReadAccess(ctx, &attachmentacl.Request{
+			Store:          s.Store,
+			CurrentUser:    s.fetchCurrentUser,
+			AllowAnonymous: s.Profile.AllowAnonymous(),
+			ShareToken:     shareID,
+			VaultUnlocked: func(userID int32) bool {
+				return auth.VaultUnlocked(cookieHeaderFromContext(ctx), []byte(s.Secret), userID, auth.GetCredentialKind(ctx))
+			},
+		}, attachment)
+		if err == nil {
+			visible = append(visible, attachment)
+		}
+	}
+	return visible
 }
 
 // convertMemoShareFromStore converts a store MemoShare to the proto MemoShare message.

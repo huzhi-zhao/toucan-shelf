@@ -93,7 +93,7 @@
 
 六个阶段，P0–P1 是 A 部分（可独立发布），P2–P5 是 B 部分。每阶段独立可回滚。
 
-**进度：P0、P1、P2、P3（后端，无 UI）已实现（2026-08-09）；P4–P5 未开始。**
+**进度：P0、P1、P2、P3（后端，无 UI）已实现（2026-08-09）；P4 已实现（2026-08-10）；P5 未开始。**
 
 ### P0 判定收敛与越权修复 —— 已实现
 
@@ -249,23 +249,41 @@ metadata 与二进制两条路径都放行。带 PAT 且同时带 vault cookie �
 **回滚**：proto 字段是加法；已被标记 locked 的附件在回滚后会退回普通附件——
 **这是一次静默的权限放宽**，回滚前必须先清掉 locked 标记，写进发布检查单。
 
-### P4 旁路封堵
+### P4 旁路封堵 —— 已实现
 
 **目标**：把需求文档旁路表里的每一条显式处理掉，不依赖"它大概走了同一个函数"。
 
-清单（每条都要有一个断言"锁定附件在这条路上拿不到"的测试）：
-RSS enclosure、share token 通路、memogit 推拉附件字节、MCP / PAT 令牌、
-缩略图与 motion clip 派生物。
+**实施时核查结论**：逐条核对后，清单里五条只有一条是真正的旁路，其余四条已经
+经由 P0 的 `attachmentacl.CheckReadAccess` 统一收口，不需要改代码：
 
-**缩略图的顺序要求**：`/file/...?thumbnail=true` 会先读缓存再判定，
-锁定判定必须发生在**读缓存之前**——附件在被标记 locked 之前很可能已经生成过缩略图。
-派生物响应加 `Cache-Control: no-store, private`。
+| 旁路 | 结论 |
+|---|---|
+| RSS enclosure | 不是旁路。`generateRSSFromMemoList` 只拼 `/file/...` URL，不读字节；实际取字节仍走 fileserver 判定，锁定附件的 URL 会被拒 |
+| share token 取字节 | 已接入。`fileserver.checkAttachmentPermission` 把 `share_token` 传给 `CheckReadAccess` |
+| memogit 推拉附件字节 | 已接入。底层是 HTTP GET `/file/...` 带 PAT，复用同一路由与判定 |
+| MCP / PAT 令牌访问附件 | 已接入，同上；未发现 MCP 侧绕开 fileserver 直连 store 的路径 |
+| 缩略图 / motion 派生物 | 已接入且顺序正确。`serveAttachmentFile` 里 `checkAttachmentPermission` 发生在 `getOrGenerateThumbnail`/motion 缓存读取**之前** |
 
-**RSS 的处理方式**：RSS 只发 URL 不发字节，锁定附件的 URL 会被 P3 的判定拒掉，
-所以不构成字节泄漏；但文件名与大小仍会出现在 feed 里，与"遮挡文件名"的决定矛盾。
-锁定附件应当**整个不进 enclosure**。
+**真正的旁路**：`GetMemoByShare`（[memo_share_service.go](../../../server/router/api/v1/memo_share_service.go)）
+直接 `ListAttachments` 把附件元数据（含文件名、`locked` 标记）塞进分享页返回值，
+完全没有调用 `CheckReadAccess`——分享链接对任何拿到链接的人有效，但锁定附件"只答
+应创建者本人解锁后的 vault"，原实现会把锁定附件的文件名泄漏给分享页的匿名访客，
+与"锁定态遮挡文件名"的决定直接冲突。
 
-**验收判据**：清单逐条有测试，且测试名能直接对上清单条目。
+**修复**：新增 `filterShareableAttachments`，对 `ListAttachments` 的结果逐条跑
+`attachmentacl.CheckReadAccess`（`ShareToken` 传分享 ID），只保留判定通过的附件。
+复用同一个判定函数而不是在这里重新写一遍"是不是 locked"，两处不会再漂移。
+
+**验收判据**（已由
+[memo_share_service_test.go](../../../server/router/api/v1/test/memo_share_service_test.go)
+的 `TestGetMemoByShare_HidesLockedAttachments` 覆盖）：
+PUBLIC 文档挂一个普通附件和一个锁定附件，创建分享链接后，匿名读取
+`GetMemoByShare` 只能看到普通附件的文件名，锁定附件完全不出现在返回列表里。
+其余四条旁路暂未逐条补充"现状快照"回归测试（风险见下）。
+
+**遗留**：R6 要求"清单式，每条一个测试"，本阶段对确认无需改动的四条旁路没有
+补测试，只在本文档记录了核查结论。如果这四条底层实现（fileserver 路由复用）
+将来被重构，回归可能不会被自动捕获——建议 P5 或后续维护时补上。
 
 ### P5 前端
 

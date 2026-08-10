@@ -11,6 +11,8 @@ import (
 	"google.golang.org/grpc/status"
 
 	apiv1 "github.com/usememos/memos/proto/gen/api/v1"
+	storepb "github.com/usememos/memos/proto/gen/store"
+	apiv1service "github.com/usememos/memos/server/router/api/v1"
 	"github.com/usememos/memos/store"
 )
 
@@ -247,6 +249,69 @@ func TestGetMemoByShare_ReturnsNotFoundForArchivedMemo(t *testing.T) {
 	})
 	require.Error(t, err)
 	require.Equal(t, codes.NotFound, status.Code(err))
+}
+
+// TestGetMemoByShare_HidesLockedAttachments guards P4 of the attachment access
+// control plan: a share link stands in for the reader's identity, but a locked
+// attachment answers to nothing but its creator's own unlocked vault. Without this
+// filter, GetMemoByShare listed every attachment's filename and locked flag to
+// anyone holding the link, undermining the "locked hides the filename" decision.
+func TestGetMemoByShare_HidesLockedAttachments(t *testing.T) {
+	ctx := context.Background()
+
+	ts := NewTestService(t)
+	defer ts.Cleanup()
+
+	owner, err := ts.CreateRegularUser(ctx, "share-vault-owner")
+	require.NoError(t, err)
+	ownerCtx := ts.CreateUserContext(ctx, owner.ID)
+
+	memo, err := ts.Service.CreateMemo(ownerCtx, &apiv1.CreateMemoRequest{
+		Memo: &apiv1.Memo{
+			Content:    "memo with a locked attachment",
+			Visibility: apiv1.Visibility_PUBLIC,
+		},
+	})
+	require.NoError(t, err)
+
+	_, err = ts.Service.CreateAttachment(ownerCtx, &apiv1.CreateAttachmentRequest{
+		Attachment: &apiv1.Attachment{Filename: "open.txt", Type: "text/plain", Content: []byte("open"), Memo: &memo.Name},
+	})
+	require.NoError(t, err)
+
+	lockedAttachment, err := ts.Service.CreateAttachment(ownerCtx, &apiv1.CreateAttachmentRequest{
+		Attachment: &apiv1.Attachment{Filename: "secret.txt", Type: "text/plain", Content: []byte("secret"), Memo: &memo.Name},
+	})
+	require.NoError(t, err)
+
+	lockedUID, err := apiv1service.ExtractAttachmentUIDFromName(lockedAttachment.Name)
+	require.NoError(t, err)
+	storedLocked, err := ts.Store.GetAttachment(ctx, &store.FindAttachment{UID: &lockedUID})
+	require.NoError(t, err)
+	payload := storedLocked.Payload
+	if payload == nil {
+		payload = &storepb.AttachmentPayload{}
+	}
+	payload.Locked = true
+	require.NoError(t, ts.Store.UpdateAttachment(ctx, &store.UpdateAttachment{ID: storedLocked.ID, Payload: payload}))
+
+	share, err := ts.Service.CreateMemoShare(ownerCtx, &apiv1.CreateMemoShareRequest{
+		Parent:    memo.Name,
+		MemoShare: &apiv1.MemoShare{},
+	})
+	require.NoError(t, err)
+	shareToken := share.Name[strings.LastIndex(share.Name, "/")+1:]
+
+	sharedMemo, err := ts.Service.GetMemoByShare(ctx, &apiv1.GetMemoByShareRequest{ShareId: shareToken})
+	require.NoError(t, err)
+
+	var names []string
+	for _, a := range sharedMemo.Attachments {
+		names = append(names, a.Filename)
+	}
+	require.Contains(t, names, "open.txt")
+	require.NotContains(t, names, "secret.txt")
+	require.Len(t, sharedMemo.Attachments, 1)
 }
 
 func parseMemoIDFromNameForTest(t *testing.T, ts *TestService, memoName string) int32 {
