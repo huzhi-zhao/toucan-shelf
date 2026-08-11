@@ -13,7 +13,9 @@ import type { MasterKey } from "./secret-crypto";
 
 // How long an idle session stays unlocked. Every decryption pushes the deadline
 // back, so this is "walked away from the desk", not "has been reading for a while".
-const IDLE_LOCK_MS = 30 * 60 * 1000;
+// Kept in sync with the server's VaultTokenDuration (server/auth/token.go) — the
+// attachment vault piggybacks on this timer rather than keeping its own.
+const IDLE_LOCK_MS = 3 * 60 * 1000;
 
 let masterKey: MasterKey | null = null;
 let idleTimer: ReturnType<typeof setTimeout> | null = null;

@@ -54,9 +54,10 @@ const (
 	// VaultTokenAudienceName is the audience claim for attachment-vault tokens.
 	VaultTokenAudienceName = "user.vault-token"
 
-	// VaultTokenDuration is the lifetime of a vault unlock (30 minutes), per the
-	// attachment access control design's decision 2.
-	VaultTokenDuration = 30 * time.Minute
+	// VaultTokenDuration is the lifetime of a vault unlock (3 minutes). Shortened
+	// from the design doc's original 30 minutes: a stolen vault cookie needs no
+	// passphrase to replay, so the window it's usable in is the actual exposure.
+	VaultTokenDuration = 3 * time.Minute
 
 	// VaultCookieName is the cookie name for the attachment-vault unlock token.
 	VaultCookieName = "memos_vault"
