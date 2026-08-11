@@ -1,6 +1,7 @@
 import { Compartment, EditorState, Transaction } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef } from "react";
+import { useDocumentLinkContext } from "@/components/MemoContent/DocumentLinkContext";
 import { useTagCounts } from "@/hooks/useUserQueries";
 import { cn } from "@/lib/utils";
 import type { EditorController } from "../types/editorController";
@@ -34,6 +35,11 @@ const Editor = forwardRef(function Editor(props: EditorProps, ref: React.Forward
   const tags = useMemo(() => Object.keys(tagData ?? {}), [tagData]);
   const tagsRef = useRef(tags);
   tagsRef.current = tags;
+  // Absent outside a DocumentLinkProvider (e.g. share mode), in which case `![[` autocomplete
+  // simply has nothing to offer.
+  const documentLinkContext = useDocumentLinkContext();
+  const listDocumentsRef = useRef(documentLinkContext?.listDocuments);
+  listDocumentsRef.current = documentLinkContext?.listDocuments;
 
   // useLayoutEffect (not useEffect) so the EditorView — and its placeholder —
   // mount before the browser paints. With useEffect the first painted frame
@@ -49,6 +55,7 @@ const Editor = forwardRef(function Editor(props: EditorProps, ref: React.Forward
             onChange: (md) => onChangeRef.current(md),
             onUpdate: () => listenersRef.current.forEach((l) => l()),
             getTags: () => tagsRef.current,
+            getEmbedTargets: () => listDocumentsRef.current?.() ?? [],
           }),
           editableCompartmentRef.current.of(EditorView.editable.of(!readOnly)),
         ],
@@ -111,7 +118,6 @@ const Editor = forwardRef(function Editor(props: EditorProps, ref: React.Forward
         )}
         onPaste={onPaste}
       />
-
     </div>
   );
 });

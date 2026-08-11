@@ -4,7 +4,8 @@ import copy from "copy-to-clipboard";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { DocumentLinkProvider, resolveWorkspacePath } from "@/components/MemoContent/DocumentLinkContext";
+import { DocumentLinkProvider, flattenWorkspaceDocuments, resolveWorkspacePath } from "@/components/MemoContent/DocumentLinkContext";
+import { EmbedAncestryProvider } from "@/components/MemoContent/EmbedAncestryContext";
 import DocumentView from "@/components/Notebook/DocumentView";
 import LibrarySearchResults from "@/components/Notebook/LibrarySearchResults";
 import MoveDocumentDialog from "@/components/Notebook/MoveDocumentDialog";
@@ -617,21 +618,24 @@ const Notebook = () => {
             value={{
               resolve: (href) => resolveWorkspacePath(tree, href),
               navigate: (memoName, href) => handleSelectDocument(memoName, href),
+              listDocuments: () => flattenWorkspaceDocuments(tree, memo.name),
             }}
           >
-            <DocumentView
-              memo={memo}
-              onSaved={() => {
-                invalidateTree();
-              }}
-              onRenamed={handleRename}
-              onArchiveToggle={handleArchiveToggle}
-              onDelete={handleDelete}
-              onSaveHtml={handleSaveHtml}
-              onAddAttachments={handleAddAttachments}
-              onRemoveAttachment={handleRemoveAttachment}
-              onOpenDocument={handleSelectDocument}
-            />
+            <EmbedAncestryProvider ancestry={[memo.name]}>
+              <DocumentView
+                memo={memo}
+                onSaved={() => {
+                  invalidateTree();
+                }}
+                onRenamed={handleRename}
+                onArchiveToggle={handleArchiveToggle}
+                onDelete={handleDelete}
+                onSaveHtml={handleSaveHtml}
+                onAddAttachments={handleAddAttachments}
+                onRemoveAttachment={handleRemoveAttachment}
+                onOpenDocument={handleSelectDocument}
+              />
+            </EmbedAncestryProvider>
           </DocumentLinkProvider>
         ) : search ? (
           <LibrarySearchResults

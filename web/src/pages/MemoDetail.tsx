@@ -3,7 +3,8 @@ import { ArrowUpLeftFromCircleIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import MemoCommentSection from "@/components/MemoCommentSection";
-import { DocumentLinkProvider, resolveWorkspacePath } from "@/components/MemoContent/DocumentLinkContext";
+import { DocumentLinkProvider, flattenWorkspaceDocuments, resolveWorkspacePath } from "@/components/MemoContent/DocumentLinkContext";
+import { EmbedAncestryProvider } from "@/components/MemoContent/EmbedAncestryContext";
 import { MentionResolutionProvider } from "@/components/MemoContent/MentionResolutionContext";
 import { MemoDetailSidebar, MemoDetailSidebarDrawer } from "@/components/MemoDetailSidebar";
 import type { EditorController } from "@/components/MemoEditor/types/editorController";
@@ -133,24 +134,27 @@ const MemoDetail = () => {
                   const hashIndex = href.indexOf("#");
                   navigate(`/${memoName}${hashIndex >= 0 ? href.slice(hashIndex) : ""}`);
                 },
+                listDocuments: () => flattenWorkspaceDocuments(workspaceTree, memo?.name),
               }}
             >
-              <MemoView
-                ref={memoEditorRef}
-                key={`${displayMemo.name}-${displayMemo.updateTime}`}
-                memo={displayMemo}
-                compact={false}
-                parentPage={locationState?.from}
-                shareImageDialogOpen={shareImageDialogOpen}
-                showCreator
-                showVisibility
-                showPinned
-                onShareImageDialogOpenChange={setShareImageDialogOpen}
-                sidebarCollapsed={sidebarCollapsed}
-                onToggleSidebar={() => setSidebarCollapsed((v) => !v)}
-                onEditingChange={setIsEditingMemo}
-                onDraftContentChange={setDraftContent}
-              />
+              <EmbedAncestryProvider ancestry={[displayMemo.name]}>
+                <MemoView
+                  ref={memoEditorRef}
+                  key={`${displayMemo.name}-${displayMemo.updateTime}`}
+                  memo={displayMemo}
+                  compact={false}
+                  parentPage={locationState?.from}
+                  shareImageDialogOpen={shareImageDialogOpen}
+                  showCreator
+                  showVisibility
+                  showPinned
+                  onShareImageDialogOpenChange={setShareImageDialogOpen}
+                  sidebarCollapsed={sidebarCollapsed}
+                  onToggleSidebar={() => setSidebarCollapsed((v) => !v)}
+                  onEditingChange={setIsEditingMemo}
+                  onDraftContentChange={setDraftContent}
+                />
+              </EmbedAncestryProvider>
             </DocumentLinkProvider>
             <MemoCommentSection
               memo={displayMemo}

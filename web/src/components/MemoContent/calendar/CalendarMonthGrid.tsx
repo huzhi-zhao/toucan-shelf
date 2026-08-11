@@ -1,9 +1,10 @@
 import dayjs from "dayjs";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import { useMemo } from "react";
+import { ChevronLeftIcon, ChevronRightIcon, FilterIcon } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useTodayDate, useWeekdayLabels } from "@/components/ActivityCalendar/hooks";
 import { useCalendarMatrix } from "@/components/ActivityCalendar/useCalendar";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useInstance } from "@/contexts/InstanceContext";
 import { addMonths, formatMonth } from "@/lib/calendar-utils";
 import { cn } from "@/lib/utils";
@@ -11,6 +12,8 @@ import { useTranslate } from "@/utils/i18n";
 import { CalendarDayCell } from "./CalendarDayCell";
 import type { VisibleMonth } from "./defaultVisibleMonth";
 import type { CalendarItem } from "./parseCalendarBlock";
+
+const TASKS_DOT_KEY = "__tasks__";
 
 interface CalendarMonthGridProps {
   month: VisibleMonth;
@@ -49,6 +52,20 @@ export const CalendarMonthGrid = ({
   const today = useTodayDate();
   const weekDays = useWeekdayLabels();
 
+  const dotOptions = useMemo(
+    () => [{ key: TASKS_DOT_KEY, label: t("markdown.calendar-block.tasks") }, ...events.map((name) => ({ key: name, label: name }))],
+    [events, t],
+  );
+  const [visibleDots, setVisibleDots] = useState<Set<string>>(() => new Set(dotOptions.map((o) => o.key)));
+  const toggleDot = (key: string) => {
+    setVisibleDots((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
   const monthString = toMonthString(month);
   const monthLabel = useMemo(() => dayjs(monthString).format("MMM YYYY"), [monthString]);
   const isViewingCurrentMonth = monthString === formatMonth(new Date());
@@ -73,6 +90,7 @@ export const CalendarMonthGrid = ({
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between px-1">
         <span className="text-sm font-medium text-foreground">{monthLabel}</span>
+        <div className="flex items-center gap-1">
         <div className="inline-flex items-center gap-0.5 rounded-lg border border-border/30 bg-muted/10 p-0.5">
           <Button
             variant="ghost"
@@ -108,6 +126,31 @@ export const CalendarMonthGrid = ({
             <ChevronRightIcon className="w-4 h-4" />
           </Button>
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label={t("markdown.calendar-block.filter")}
+              className="h-6 w-6 p-0 rounded-lg border border-border/30 bg-muted/10 text-muted-foreground hover:text-foreground hover:bg-muted/40"
+            >
+              <FilterIcon className="w-3.5 h-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {dotOptions.map((option) => (
+              <DropdownMenuCheckboxItem
+                key={option.key}
+                checked={visibleDots.has(option.key)}
+                onSelect={(e) => e.preventDefault()}
+                onCheckedChange={() => toggleDot(option.key)}
+              >
+                {option.label}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        </div>
       </div>
       <div className="grid grid-cols-7 gap-1 mb-1" role="row">
         {rotatedWeekDays.map((label, index) => (
@@ -127,9 +170,9 @@ export const CalendarMonthGrid = ({
             key={day.date}
             day={day}
             items={itemsByDate[day.date] ?? []}
-            dayEvents={eventsByDate[day.date] ?? []}
+            dayEvents={(eventsByDate[day.date] ?? []).filter((name) => visibleDots.has(name))}
             events={events}
-            showTaskDot={showTaskDot}
+            showTaskDot={showTaskDot && visibleDots.has(TASKS_DOT_KEY)}
             onClick={day.isCurrentMonth ? onSelectDate : undefined}
           />
         ))}

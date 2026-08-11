@@ -23,6 +23,7 @@ describe("MemoEditor CodeMirror extensions", () => {
         onUpdate: vi.fn(),
         onSubmit: vi.fn(),
         getTags: () => [],
+        getEmbedTargets: () => [],
       }),
     });
     const view = new EditorView({ state, parent });

@@ -12,6 +12,12 @@ export interface DocumentLinkContextValue {
   resolve: (href: string) => string | undefined;
   /** Navigates to the resolved memo. `href` is the original markdown href, for context if needed. */
   navigate: (memoName: string, href: string) => void;
+  /**
+   * Lists documents in the current workspace as root-relative paths, for the editor's `![[`
+   * embed-target autocomplete. Absent (e.g. in share mode, with no workspace tree) means the
+   * autocomplete has nothing to offer and stays silent.
+   */
+  listDocuments?: () => Array<{ path: string; title: string }>;
 }
 
 const DocumentLinkContext = createContext<DocumentLinkContextValue | null>(null);
@@ -113,6 +119,27 @@ function findDocInFolder(tree: WorkspaceTreeNode[], folderSegments: string[], ti
  * Document nodes carry their title as `name`; their stored `path` is folder + UID, so matching is
  * done on folder names + document `name`, never on the stored `path`.
  */
+/**
+ * Flattens a workspace tree into its markdown documents as root-relative paths (`node.path` is
+ * already workspace-relative and title-terminated, matching what `resolveWorkspacePath` expects
+ * back), for the `![[` embed-target autocomplete. `excludeMemoName`, when given, omits that
+ * document (typically the one currently open, to discourage self-embedding).
+ */
+export function flattenWorkspaceDocuments(tree: WorkspaceTreeNode[], excludeMemoName?: string): Array<{ path: string; title: string }> {
+  const results: Array<{ path: string; title: string }> = [];
+  const visit = (nodes: WorkspaceTreeNode[]) => {
+    for (const node of nodes) {
+      if (node.type === WorkspaceTreeNode_NodeType.FOLDER) {
+        visit(node.children);
+      } else if (node.type === WorkspaceTreeNode_NodeType.DOCUMENT && node.docType === "MARKDOWN" && node.memo !== excludeMemoName) {
+        results.push({ path: node.path, title: node.name });
+      }
+    }
+  };
+  visit(tree);
+  return results;
+}
+
 export function resolveWorkspacePath(tree: WorkspaceTreeNode[], href: string): string | undefined {
   let path = href;
   try {

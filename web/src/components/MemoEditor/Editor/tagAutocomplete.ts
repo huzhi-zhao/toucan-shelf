@@ -1,5 +1,4 @@
-import { autocompletion, type CompletionContext, type CompletionResult } from "@codemirror/autocomplete";
-import type { Extension } from "@codemirror/state";
+import type { CompletionContext, CompletionResult } from "@codemirror/autocomplete";
 import { TAG_CHAR_CLASS } from "@/utils/tag-grammar";
 
 const TAG_BEFORE = new RegExp(`#(${TAG_CHAR_CLASS}*)$`, "u");
@@ -18,8 +17,4 @@ export function makeTagCompletionSource(getTags: () => string[]) {
     if (options.length === 0) return null;
     return { from: before.from + 1, options };
   };
-}
-
-export function tagAutocomplete(getTags: () => string[]): Extension {
-  return autocompletion({ override: [makeTagCompletionSource(getTags)] });
 }

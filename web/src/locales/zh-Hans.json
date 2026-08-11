@@ -245,7 +245,9 @@
       "empty": "空的 calendar 代码块",
       "events": "事件",
       "no-records": "{{date}} 当天无记录",
-      "ungrouped": "未分组"
+      "ungrouped": "未分组",
+      "filter": "筛选",
+      "tasks": "待办"
     },
     "checkbox": "复选框",
     "code-block": "代码块",

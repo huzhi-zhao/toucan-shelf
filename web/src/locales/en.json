@@ -339,7 +339,9 @@
       "empty": "Empty calendar code block",
       "events": "Events",
       "no-records": "No records for {{date}}",
-      "ungrouped": "Ungrouped"
+      "ungrouped": "Ungrouped",
+      "filter": "Filter",
+      "tasks": "Tasks"
     },
     "checkbox": "Checkbox",
     "code-block": "Code block",

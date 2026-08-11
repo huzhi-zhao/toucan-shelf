@@ -39,22 +39,22 @@ export const CalendarDayCell = ({ day, items, dayEvents, events, showTaskDot, on
           aria-hidden="true"
         />
       )}
-      {/* 日期数字一行，右侧对齐当天有任务的蓝点（仅 showTaskDot: true 时显示） */}
+      {/* 日期数字一行，右侧对齐当天有任务的方点（仅 showTaskDot: true 时显示） */}
       <div className="flex w-full items-center justify-between gap-1">
         <span className={cn("shrink-0 text-xs font-medium md:text-sm", isOutside ? "text-muted-foreground/50" : "text-foreground")}>
           {day.label}
         </span>
-        {showTaskDot && hasTasks && <span className="h-1 w-1 shrink-0 rounded-full bg-primary/70 md:hidden" aria-hidden="true" />}
+        {showTaskDot && hasTasks && <span className="h-1 w-1 shrink-0 bg-primary/70 md:hidden" aria-hidden="true" />}
       </div>
-      {/* 移动端：events 圆点横排一行 */}
+      {/* 移动端：events 圆点固定分布在 5 等分格中，按 events 定义顺序对号入座 */}
       {hasEvents && (
-        <div className="mt-auto flex flex-wrap items-center justify-start gap-0.5 md:hidden" aria-hidden="true">
-          {dayEvents.map((name) => (
-            <span
-              key={name}
-              className="h-1 w-1 shrink-0 rounded-full"
-              style={{ backgroundColor: getEventColorByName(name, events) }}
-            />
+        <div className="mt-auto grid grid-cols-5 items-center md:hidden" aria-hidden="true">
+          {events.slice(0, 5).map((name) => (
+            <div key={name} className="flex items-center justify-center">
+              {dayEvents.includes(name) && (
+                <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: getEventColorByName(name, events) }} />
+              )}
+            </div>
           ))}
         </div>
       )}
@@ -70,15 +70,19 @@ export const CalendarDayCell = ({ day, items, dayEvents, events, showTaskDot, on
           ))}
         </div>
       )}
+      {/* events 圆点固定分布在 5 等分格中，按 events 定义顺序对号入座，某天未发生的事件留空不占用其他格子 */}
       {hasEvents && (
-        <div className="hidden flex-wrap items-center gap-0.5 md:mt-auto md:flex" aria-hidden="true">
-          {dayEvents.map((name) => (
-            <span
-              key={name}
-              className="h-1.5 w-1.5 shrink-0 rounded-full"
-              style={{ backgroundColor: getEventColorByName(name, events) }}
-              title={isOutside ? undefined : name}
-            />
+        <div className="hidden grid-cols-5 items-center md:mt-auto md:grid" aria-hidden="true">
+          {events.slice(0, 5).map((name) => (
+            <div key={name} className="flex items-center justify-center">
+              {dayEvents.includes(name) && (
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: getEventColorByName(name, events) }}
+                  title={isOutside ? undefined : name}
+                />
+              )}
+            </div>
           ))}
         </div>
       )}

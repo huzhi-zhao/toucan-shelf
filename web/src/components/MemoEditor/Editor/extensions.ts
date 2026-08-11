@@ -1,3 +1,4 @@
+import { autocompletion } from "@codemirror/autocomplete";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { indentUnit } from "@codemirror/language";
@@ -5,10 +6,11 @@ import type { Extension } from "@codemirror/state";
 import { placeholder as cmPlaceholder, drawSelection, dropCursor, EditorView, type KeyBinding, keymap } from "@codemirror/view";
 import { GFM } from "@lezer/markdown";
 import { cjkEmphasis } from "./cjkEmphasis";
+import { type EmbedTarget, makeEmbedCompletionSource } from "./embedAutocomplete";
 import { createFormattingKeymap } from "./formatting";
 import { headingDecorations } from "./headingDecorations";
 import { liftListItem, sinkListItem } from "./listIndent";
-import { tagAutocomplete } from "./tagAutocomplete";
+import { makeTagCompletionSource } from "./tagAutocomplete";
 import { tagMentionDecorations } from "./tagMentionDecorations";
 import { memoEditorTheme } from "./theme";
 
@@ -34,9 +36,10 @@ export interface EditorExtensionsOptions {
   onChange: (markdown: string) => void;
   onUpdate: () => void;
   getTags: () => string[];
+  getEmbedTargets: () => EmbedTarget[];
 }
 
-export function buildEditorExtensions({ placeholder, onChange, onUpdate, getTags }: EditorExtensionsOptions): Extension[] {
+export function buildEditorExtensions({ placeholder, onChange, onUpdate, getTags, getEmbedTargets }: EditorExtensionsOptions): Extension[] {
   return [
     // Core editing behavior. These are the pieces from CM6 setup that this memo
     // editor uses, without enabling multi-cursor selection.
@@ -51,9 +54,11 @@ export function buildEditorExtensions({ placeholder, onChange, onUpdate, getTags
     cmPlaceholder(placeholder),
     tagMentionDecorations,
     headingDecorations,
-    // tagAutocomplete must precede the editing keymap so the completion popup's
-    // Enter/Tab/arrow bindings win while it is open.
-    tagAutocomplete(getTags),
+    // Must precede the editing keymap so the completion popup's Enter/Tab/arrow bindings win
+    // while it is open. A single `autocompletion` instance with both sources: CodeMirror tries
+    // each in turn and uses whichever matches the text before the cursor (`#tag` vs `![[doc`),
+    // so only one popup can ever be open at a time.
+    autocompletion({ override: [makeTagCompletionSource(getTags), makeEmbedCompletionSource(getEmbedTargets)] }),
     keymap.of([...editorKeys, ...createFormattingKeymap(), indentWithTab, ...defaultKeymap, ...historyKeymap]),
     EditorView.updateListener.of((u) => {
       if (u.docChanged) onChange(u.state.doc.toString());

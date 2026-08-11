@@ -42,7 +42,7 @@ const TRUSTED_IFRAME_SRC_PATTERNS = [
 
 const KATEX_INLINE_CLASS_NAMES = ["language-math", "math-inline"] as const;
 const KATEX_BLOCK_CLASS_NAMES = ["language-math", "math-display"] as const;
-const SPAN_CLASS_NAMES = ["mention", "tag"] as const;
+const SPAN_CLASS_NAMES = ["mention", "tag", "embed"] as const;
 const MARK_CLASS_NAMES = ["highlight", "highlight-yellow", "highlight-pink"] as const;
 const INPUT_ATTRIBUTES = [...(defaultSchema.attributes?.input || []), ["checked", true]] as const;
 

@@ -10,7 +10,13 @@ function makeView(doc: string) {
   return new EditorView({
     state: EditorState.create({
       doc,
-      extensions: buildEditorExtensions({ placeholder: "", onChange: () => {}, onUpdate: () => {}, getTags: () => [] }),
+      extensions: buildEditorExtensions({
+        placeholder: "",
+        onChange: () => {},
+        onUpdate: () => {},
+        getTags: () => [],
+        getEmbedTargets: () => [],
+      }),
     }),
     parent: document.body,
   });

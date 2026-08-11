@@ -268,7 +268,13 @@ const ReferencedDocBlockView = ({
         <span className="truncate">{doc.title || doc.name}</span>
       </button>
       <BlockSourceProvider value={source}>
-        <MemoContent content={doc.content} memoName={doc.name} headingIdPrefix={`vb${blockIndex}`} softBreak={doc.docConfig?.softBreak} />
+        <MemoContent
+          content={doc.content}
+          memoName={doc.name}
+          headingIdPrefix={`vb${blockIndex}`}
+          softBreak={doc.docConfig?.softBreak}
+          showProperties={false}
+        />
       </BlockSourceProvider>
     </div>
   );

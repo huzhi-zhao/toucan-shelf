@@ -18,6 +18,7 @@ import {
   getAlertTags,
   getAlertTitle,
   getAlertType,
+  isEmbedElement,
   isMentionElement,
   isTagElement,
   isTaskListItemElement,
@@ -29,6 +30,7 @@ import { remarkAlert } from "@/utils/remark-plugins/remark-alert";
 import { remarkCodeFold } from "@/utils/remark-plugins/remark-code-fold";
 import { remarkCounter } from "@/utils/remark-plugins/remark-counter";
 import { remarkDisableSetext } from "@/utils/remark-plugins/remark-disable-setext";
+import { remarkEmbed, substituteEmbedSyntax } from "@/utils/remark-plugins/remark-embed";
 import { remarkHighlight } from "@/utils/remark-plugins/remark-highlight";
 import { remarkMention } from "@/utils/remark-plugins/remark-mention";
 import { remarkPreserveType } from "@/utils/remark-plugins/remark-preserve-type";
@@ -38,6 +40,7 @@ import { remarkTag } from "@/utils/remark-plugins/remark-tag";
 import { remarkTaskStatus } from "@/utils/remark-plugins/remark-task-status";
 import { CodeBlock } from "./CodeBlock";
 import { SANITIZE_SCHEMA } from "./constants";
+import { Embed } from "./Embed";
 import { MarkdownRenderContext, rootMarkdownRenderContext } from "./MarkdownRenderContext";
 import { Mention } from "./Mention";
 import { Alert, AnchorLink, Blockquote, Heading, HorizontalRule, Image, InlineCode, Link, List, ListItem, Paragraph } from "./markdown";
@@ -86,6 +89,20 @@ function getMentionUsername(node: Element, children?: React.ReactNode): string {
   return "";
 }
 
+function getEmbedTarget(node: Element): string {
+  const dataEmbedTarget = node.properties?.["data-embed-target"];
+  if (typeof dataEmbedTarget === "string" && dataEmbedTarget !== "") {
+    return dataEmbedTarget;
+  }
+
+  const camelDataEmbedTarget = (node.properties as Record<string, unknown> | undefined)?.dataEmbedTarget;
+  if (typeof camelDataEmbedTarget === "string" && camelDataEmbedTarget !== "") {
+    return camelDataEmbedTarget;
+  }
+
+  return "";
+}
+
 export const MemoMarkdownRenderer = ({
   content,
   resolvedMentionUsernames,
@@ -100,6 +117,10 @@ export const MemoMarkdownRenderer = ({
   // as a read-only panel above the body, and the raw `---` block never reaches
   // the markdown pipeline (where it would otherwise show as horizontal rules).
   const { properties, body } = useMemo(() => parseFrontmatter(content), [content]);
+  // `![[target]]` is substituted for a sentinel run before the parser ever sees it — see
+  // remark-embed.ts for why this can't be done as a post-parse text-node scan like
+  // mention/tag are.
+  const renderedBody = useMemo(() => substituteEmbedSyntax(body), [body]);
   const softBreakDefault = useSoftBreakDefault();
   // remark-breaks turns every newline into a `<br>`. That is what someone typing a
   // note expects and the opposite of what CommonMark says, so it is the one plugin
@@ -117,6 +138,7 @@ export const MemoMarkdownRenderer = ({
       ...(hardBreaks ? [remarkBreaks] : []),
       remarkMention,
       remarkTag,
+      remarkEmbed,
       remarkCounter,
       remarkHighlight,
       remarkAlert,
@@ -150,6 +172,9 @@ export const MemoMarkdownRenderer = ({
       }
       if (node && isTagElement(node)) {
         return <Tag {...spanProps} node={node} />;
+      }
+      if (node && isEmbedElement(node)) {
+        return <Embed target={getEmbedTarget(node)} />;
       }
       return <span {...spanProps} />;
     },
@@ -280,7 +305,7 @@ export const MemoMarkdownRenderer = ({
         ]}
         components={markdownComponents}
       >
-        {body}
+        {renderedBody}
       </ReactMarkdown>
     </MarkdownRenderContext.Provider>
   );

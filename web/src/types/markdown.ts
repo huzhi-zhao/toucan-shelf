@@ -12,6 +12,12 @@ export interface MentionNode {
   data: MentionNodeData;
 }
 
+export interface EmbedNode {
+  type: "embedNode";
+  value: string;
+  data: EmbedNodeData;
+}
+
 export interface TagNodeData {
   hName: "span";
   hProperties: TagNodeProperties;
@@ -24,6 +30,12 @@ export interface MentionNodeData {
   hChildren: Array<{ type: "text"; value: string }>;
 }
 
+export interface EmbedNodeData {
+  hName: "span";
+  hProperties: EmbedNodeProperties;
+  hChildren: Array<{ type: "text"; value: string }>;
+}
+
 export interface TagNodeProperties {
   className: string;
   "data-tag": string;
@@ -32,6 +44,11 @@ export interface TagNodeProperties {
 export interface MentionNodeProperties {
   className: string;
   "data-mention": string;
+}
+
+export interface EmbedNodeProperties {
+  className: string;
+  "data-embed-target": string;
 }
 
 export interface ExtendedData extends Data {
@@ -78,6 +95,27 @@ export function isMentionElement(node: HastElement): boolean {
     return true;
   }
   if (typeof className === "string" && className.split(/\s+/).includes("mention")) {
+    return true;
+  }
+
+  return false;
+}
+
+export function isEmbedElement(node: HastElement): boolean {
+  if (hasExtendedData(node) && node.data.mdastType === "embedNode") {
+    return true;
+  }
+
+  const dataEmbedTarget = node.properties?.["data-embed-target"];
+  if (typeof dataEmbedTarget === "string" && dataEmbedTarget !== "") {
+    return true;
+  }
+
+  const className = node.properties?.className;
+  if (Array.isArray(className) && className.includes("embed")) {
+    return true;
+  }
+  if (typeof className === "string" && className.split(/\s+/).includes("embed")) {
     return true;
   }
 
