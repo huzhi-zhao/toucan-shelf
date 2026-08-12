@@ -116,9 +116,40 @@ func substitutePathParameters(operation *openAPIOperation, arguments map[string]
 		if !ok || value == nil || valueToString(value) == "" {
 			return "", errors.Errorf(`missing required path parameter "%s"`, parameter.Name)
 		}
-		path = strings.ReplaceAll(path, "{"+parameter.Name+"}", url.PathEscape(valueToString(value)))
+		raw := trimCollectionPrefix(operation.Path, parameter.Name, valueToString(value))
+		path = strings.ReplaceAll(path, "{"+parameter.Name+"}", url.PathEscape(raw))
 	}
 	return path, nil
+}
+
+// trimCollectionPrefix drops a redundant collection prefix from a path
+// parameter, so that both "WGMbm..." and "memos/WGMbm..." address the same memo.
+//
+// The REST paths take bare ids ("/api/v1/memos/{memo}", where {memo} is
+// documented as "The memo id"), but every response speaks AIP resource names
+// ("name": "memos/WGMbm..."), and so do the tool descriptions. A model that
+// lists memos and then fetches one naturally feeds the name it was just given
+// straight back, producing "/api/v1/memos/memos%2FWGMbm..." and a 404 that
+// reads as if the document does not exist. Observed with Gemini via Cherry
+// Studio; it is the obvious thing for any client to do.
+//
+// Only an exact match on the literal segment preceding the placeholder is
+// stripped ("memos/" for ".../memos/{memo}"), so a value that merely happens to
+// contain a slash is left untouched.
+func trimCollectionPrefix(pathTemplate string, parameterName string, value string) string {
+	placeholder := "{" + parameterName + "}"
+	segments := strings.Split(pathTemplate, "/")
+	for i, segment := range segments {
+		if segment != placeholder || i == 0 {
+			continue
+		}
+		collection := segments[i-1]
+		if collection == "" || strings.Contains(collection, "{") {
+			continue
+		}
+		return strings.TrimPrefix(value, collection+"/")
+	}
+	return value
 }
 
 func valueToString(value any) string {

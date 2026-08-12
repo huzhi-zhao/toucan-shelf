@@ -265,3 +265,30 @@ func TestExecuteOperationConvertsAPIErrorsToToolErrors(t *testing.T) {
 	require.Contains(t, text.Text, "404")
 	require.Contains(t, text.Text, "missing memo")
 }
+
+// A model that lists memos gets AIP resource names back ("memos/XXX") and feeds
+// them straight into memo_get_memo, whose path template wants a bare id.
+func TestSubstitutePathParametersTrimsCollectionPrefix(t *testing.T) {
+	operation := &openAPIOperation{
+		Path:       "/api/v1/memos/{memo}",
+		Parameters: []openAPIParameter{{Name: "memo", In: "path"}},
+	}
+
+	for _, supplied := range []string{"WGMbmQYkk8beWMJAQnNrgq", "memos/WGMbmQYkk8beWMJAQnNrgq"} {
+		path, err := substitutePathParameters(operation, map[string]any{"memo": supplied})
+		require.NoError(t, err)
+		require.Equal(t, "/api/v1/memos/WGMbmQYkk8beWMJAQnNrgq", path, "input %q", supplied)
+	}
+}
+
+func TestSubstitutePathParametersKeepsUnrelatedSlashes(t *testing.T) {
+	operation := &openAPIOperation{
+		Path:       "/api/v1/memos/{memo}",
+		Parameters: []openAPIParameter{{Name: "memo", In: "path"}},
+	}
+
+	// Only the exact collection prefix is stripped; anything else is escaped as-is.
+	path, err := substitutePathParameters(operation, map[string]any{"memo": "users/alice"})
+	require.NoError(t, err)
+	require.Equal(t, "/api/v1/memos/users%2Falice", path)
+}
