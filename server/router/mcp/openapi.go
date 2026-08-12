@@ -101,6 +101,7 @@ func buildOperationRegistry(spec *openAPISpec) (map[string]*openAPIOperation, er
 			}
 			stripUnknownFormats(operation.ResponseSchema)
 			stripUnknownFormats(operation.RequestBodySchema)
+			stripRequired(operation.ResponseSchema)
 
 			registry[operation.OperationID] = operation
 		}
@@ -158,6 +159,48 @@ func stripUnknownFormatsInMap(schema map[string]any) {
 	}
 	for _, child := range schema {
 		stripUnknownFormats(child)
+	}
+}
+
+// stripRequired recursively drops `required` keywords from a *response* schema.
+//
+// protoc-gen-openapi marks every proto3 field that is not explicitly `optional`
+// as required. That is wrong for a protojson payload: proto3 has no presence
+// for plain scalar and enum fields, so the marshaler omits them whenever they
+// hold the zero value. A memo whose content is "" or whose visibility is the
+// zero enum comes back over the wire without those keys, and a client that
+// validates structuredContent against the tool's output schema -- the
+// TypeScript MCP SDK does, strictly -- rejects the whole call with
+// "data must have required property 'content'".
+//
+// Nothing is lost by dropping it: `required` on a response constrains the
+// server, not the caller, and the property definitions themselves survive, so
+// clients keep the full type information.
+//
+// Input schemas are deliberately left alone -- there `required` is meaningful
+// and is what validateToolArguments enforces.
+func stripRequired(value any) {
+	switch typed := value.(type) {
+	case jsonSchema:
+		stripRequiredInMap(typed)
+	case map[string]any:
+		stripRequiredInMap(typed)
+	case []any:
+		for _, item := range typed {
+			stripRequired(item)
+		}
+	}
+}
+
+func stripRequiredInMap(schema map[string]any) {
+	// Only an array-valued "required" is the keyword; a property *named*
+	// "required" maps to a schema object and must survive.
+	switch schema["required"].(type) {
+	case []any, []string:
+		delete(schema, "required")
+	}
+	for _, child := range schema {
+		stripRequired(child)
 	}
 }
 

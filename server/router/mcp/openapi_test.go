@@ -274,6 +274,53 @@ func collectSchemaFormats(value any) []string {
 	return formats
 }
 
+// A protojson response omits proto3 scalar and enum fields that hold the zero
+// value, so any `required` the generator put on a response schema is a promise
+// the server cannot keep. Clients that validate structuredContent against the
+// output schema reject the whole call when it is broken.
+func TestGetMemoOutputSchemaHasNoRequired(t *testing.T) {
+	spec, err := loadOpenAPISpec("../../../proto/gen/openapi.yaml")
+	require.NoError(t, err)
+
+	// Guard the premise: the generated spec really does mark these required.
+	require.Contains(t, requiredNames(spec.Components.Schemas["Memo"]["required"]), "content")
+
+	registry, err := buildOperationRegistry(spec)
+	require.NoError(t, err)
+	operation, ok := registry["MemoService_GetMemo"]
+	require.True(t, ok)
+
+	require.NotContains(t, operation.ResponseSchema, "required")
+	require.Contains(t, operation.ResponseSchema, "properties", "properties must survive; only required is dropped")
+
+	encoded, err := json.Marshal(operation.ResponseSchema)
+	require.NoError(t, err)
+	var decoded any
+	require.NoError(t, json.Unmarshal(encoded, &decoded))
+	require.Empty(t, collectRequiredKeywords(decoded), "nested schemas must be stripped too")
+
+	// Input schemas keep required: there it is meaningful and enforced.
+	require.Contains(t, inputSchemaForOperation(operation), "required")
+}
+
+func collectRequiredKeywords(value any) []any {
+	found := []any{}
+	switch typed := value.(type) {
+	case map[string]any:
+		if required, ok := typed["required"].([]any); ok {
+			found = append(found, required...)
+		}
+		for _, child := range typed {
+			found = append(found, collectRequiredKeywords(child)...)
+		}
+	case []any:
+		for _, item := range typed {
+			found = append(found, collectRequiredKeywords(item)...)
+		}
+	}
+	return found
+}
+
 func TestBuildOperationRegistryUsesOKSchemaForEmptySuccessResponse(t *testing.T) {
 	spec := &openAPISpec{
 		Paths: map[string]map[string]*openAPIOperation{
