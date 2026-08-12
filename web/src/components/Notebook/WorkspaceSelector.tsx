@@ -71,14 +71,14 @@ const WorkspaceSelector = ({ workspaces, value, onChange, onOpenInNewTab }: Prop
           {current && (
             <DropdownMenuItem asChild>
               <Link to={workspaceDetailPath(current.name)}>
-                <InfoIcon className="w-4 h-4 mr-2" />
+                <InfoIcon className="w-4 h-4" />
                 {t("notebook.workspace-details")}
               </Link>
             </DropdownMenuItem>
           )}
           {current && onOpenInNewTab && (
             <DropdownMenuItem onClick={onOpenInNewTab}>
-              <ExternalLinkIcon className="w-4 h-4 mr-2" />
+              <ExternalLinkIcon className="w-4 h-4" />
               {t("notebook.open-in-new-tab")}
             </DropdownMenuItem>
           )}

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { buildTextQuote, MARK_EXCLUDE_ATTR, resolveTextQuote } from "@/components/DocComments/textAnchor";
+import { buildTextQuote, createQuoteResolver, MARK_EXCLUDE_ATTR, resolveTextQuote } from "@/components/DocComments/textAnchor";
 
 // Builds a container and a Range over `text`'s first occurrence of `target`, the way a user's
 // selection would arrive from the browser.
@@ -143,6 +143,68 @@ describe("doc text anchors", () => {
     // ...and text selected inside the card wall yields no quote at all.
     const excluded = setup(`<div ${MARK_EXCLUDE_ATTR}><span>card title text</span></div>`);
     expect(buildTextQuote(excluded, selectIn(excluded, "card title"))).toBeUndefined();
+  });
+
+  // The mark's own text getting a light copy-edit is the commonest way a mark used to die: an
+  // exact-substring search sees a one-character deletion exactly the way it sees a full rewrite.
+  it("survives a small edit inside the marked text itself", () => {
+    const container = setup("<p>提问：为什么可以用用文档搜索相关性 作为向量化依据？后面还有别的话。</p>");
+    const quote = buildTextQuote(container, selectIn(container, "为什么可以用用文档搜索相关性 作为向量化依据？"));
+
+    // The stray 用 is deleted — the only change to the document.
+    container.innerHTML = "<p>提问：为什么可以用文档搜索相关性 作为向量化依据？后面还有别的话。</p>";
+    expect(resolveTextQuote(container, quote!)?.toString()).toBe("为什么可以用文档搜索相关性 作为向量化依据？");
+  });
+
+  it("survives a word inserted into the marked text", () => {
+    const container = setup("<p>lead in, the marked sentence about anchoring, trailing words</p>");
+    const quote = buildTextQuote(container, selectIn(container, "the marked sentence about anchoring"));
+
+    container.innerHTML = "<p>lead in, the marked sentence really about anchoring, trailing words</p>";
+    expect(resolveTextQuote(container, quote!)?.toString()).toBe("the marked sentence really about anchoring");
+  });
+
+  it("survives punctuation and whitespace being normalised", () => {
+    const container = setup("<p>开头，这是一段被标记的话（含注释），结尾。</p>");
+    const quote = buildTextQuote(container, selectIn(container, "这是一段被标记的话（含注释）"));
+
+    // Full-width brackets swapped for half-width ones: the same words to a reader.
+    container.innerHTML = "<p>开头，这是一段被标记的话(含注释)，结尾。</p>";
+    expect(resolveTextQuote(container, quote!)?.toString()).toBe("这是一段被标记的话(含注释)");
+  });
+
+  it("locates the rewritten passage between surviving context when none of it survived", () => {
+    const container = setup("<p>the sentence before it. the marked passage in the middle. the sentence after it.</p>");
+    const quote = buildTextQuote(container, selectIn(container, "the marked passage in the middle."));
+
+    container.innerHTML = "<p>the sentence before it. an utterly different wording here. the sentence after it.</p>";
+    expect(resolveTextQuote(container, quote!)?.toString().trim()).toBe("an utterly different wording here.");
+  });
+
+  it("reports how far the passage has drifted, and what it now says", () => {
+    const container = setup("<p>lead in, the marked sentence about anchoring, trailing words</p>");
+    const quote = buildTextQuote(container, selectIn(container, "the marked sentence about anchoring"));
+
+    // Unedited: found verbatim, so there is nothing to heal.
+    expect(createQuoteResolver(container)(quote!)?.confidence).toBe(1);
+
+    container.innerHTML = "<p>lead in, the marked sentence really about anchoring, trailing words</p>";
+    const drifted = createQuoteResolver(container)(quote!);
+    expect(drifted?.confidence).toBeLessThan(1);
+    expect(drifted?.confidence).toBeGreaterThan(0.7);
+    // The healed quote describes the passage as it reads now, so writing it back re-bases the
+    // anchor and the next edit is measured against the new text rather than the original.
+    expect(drifted?.quote.exact).toBe("the marked sentence really about anchoring");
+    expect(drifted?.quote.prefix).toBe("lead in, ");
+    expect(drifted?.quote.suffix).toBe(", trailing words");
+  });
+
+  it("still refuses a passage that was replaced outright", () => {
+    const container = setup("<p>the original wording of this particular sentence</p>");
+    const quote = buildTextQuote(container, selectIn(container, "the original wording of this particular sentence"));
+
+    container.innerHTML = "<p>a totally unrelated remark about something else entirely</p>";
+    expect(resolveTextQuote(container, quote!)).toBeUndefined();
   });
 
   it("ignores a selection that covers no text", () => {

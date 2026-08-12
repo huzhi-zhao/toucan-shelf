@@ -107,16 +107,17 @@ const FileTreeNode = ({
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const isSelected = !isFolder && node.memo === selectedMemo;
   // node.path is already workspace-relative ("foldera/folderb"), which is exactly what a
-  // reader needs to address the folder elsewhere.
+  // reader needs to address the folder elsewhere. The leading "/" makes it explicit that the
+  // path is anchored at the workspace root rather than relative to wherever it gets pasted.
   const handleCopyFolderPath = useCallback(() => {
-    copy(node.path);
+    copy(`/${node.path}`);
     toast.success(t("message.succeed-copy-path"));
   }, [node.path, t]);
   // A document node's own path ends in its UID; the title is what identifies it everywhere a
   // path is typed (folder_path + title, the local memogit mirror), so swap the last segment.
   const handleCopyDocumentPath = useCallback(() => {
     const folderPath = parentFolderPath(node.path);
-    copy(folderPath ? `${folderPath}/${node.name}` : node.name);
+    copy(folderPath ? `/${folderPath}/${node.name}` : `/${node.name}`);
     toast.success(t("message.succeed-copy-path"));
   }, [node.path, node.name, t]);
   // Where this node lives, in the exact vocabulary the ToucanShelf MCP addresses documents with
@@ -198,12 +199,12 @@ const FileTreeNode = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
               <DropdownMenuItem onClick={() => onOpenDocumentInNewTab(node.memo)}>
-                <ExternalLinkIcon className="w-4 h-4 mr-2" />
+                <ExternalLinkIcon className="w-4 h-4" />
                 {t("notebook.open-in-new-tab")}
               </DropdownMenuItem>
               {onMoveDocument && (
                 <DropdownMenuItem onClick={() => onMoveDocument(node.memo)}>
-                  <FolderInputIcon className="w-4 h-4 mr-2" />
+                  <FolderInputIcon className="w-4 h-4" />
                   {t("notebook.move")}
                 </DropdownMenuItem>
               )}
@@ -213,13 +214,13 @@ const FileTreeNode = ({
                 <DropdownMenuSubContent>
                   {onCopyDocumentLink && (
                     <DropdownMenuItem onClick={() => onCopyDocumentLink(node.memo)}>
-                      <LinkIcon className="w-4 h-4 mr-2" />
+                      <LinkIcon className="w-4 h-4" />
                       {t("memo.copy-link")}
                     </DropdownMenuItem>
                   )}
                   {onCopyDocumentContent && (
                     <DropdownMenuItem onClick={() => onCopyDocumentContent(node.memo)}>
-                      <FileTextIcon className="w-4 h-4 mr-2" />
+                      <FileTextIcon className="w-4 h-4" />
                       {t("memo.copy-content")}
                     </DropdownMenuItem>
                   )}

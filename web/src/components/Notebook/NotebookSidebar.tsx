@@ -234,23 +234,23 @@ const NotebookSidebar = ({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => onNewDocument("")}>
-              <FilePlusIcon className="w-4 h-4 mr-2" />
+              <FilePlusIcon className="w-4 h-4" />
               {t("notebook.new-document")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onNewView("")}>
-              <LayoutGridIcon className="w-4 h-4 mr-2" />
+              <LayoutGridIcon className="w-4 h-4" />
               {t("notebook.new-view")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onNewFolder("")}>
-              <FolderPlusIcon className="w-4 h-4 mr-2" />
+              <FolderPlusIcon className="w-4 h-4" />
               {t("notebook.new-folder")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-              <UploadIcon className="w-4 h-4 mr-2" />
+              <UploadIcon className="w-4 h-4" />
               {t("notebook.upload-file")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => pdfInputRef.current?.click()}>
-              <UploadIcon className="w-4 h-4 mr-2" />
+              <UploadIcon className="w-4 h-4" />
               {t("notebook.upload-pdf")}
             </DropdownMenuItem>
           </DropdownMenuContent>

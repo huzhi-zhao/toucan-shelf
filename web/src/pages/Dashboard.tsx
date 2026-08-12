@@ -152,19 +152,19 @@ const Dashboard = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
                   <DropdownMenuItem onClick={() => setRenaming(section)}>
-                    <PencilIcon className="w-4 h-4 mr-2" />
+                    <PencilIcon className="w-4 h-4" />
                     {t("home.rename-section")}
                   </DropdownMenuItem>
                   <DropdownMenuItem disabled={index === 0} onClick={() => moveSection(index, index - 1)}>
-                    <ChevronLeftIcon className="w-4 h-4 mr-2" />
+                    <ChevronLeftIcon className="w-4 h-4" />
                     {t("home.move-left")}
                   </DropdownMenuItem>
                   <DropdownMenuItem disabled={index === sections.length - 1} onClick={() => moveSection(index, index + 1)}>
-                    <ChevronRightIcon className="w-4 h-4 mr-2" />
+                    <ChevronRightIcon className="w-4 h-4" />
                     {t("home.move-right")}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setDeleting(section)}>
-                    <Trash2Icon className="w-4 h-4 mr-2" />
+                    <Trash2Icon className="w-4 h-4" />
                     {t("home.delete-section")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>

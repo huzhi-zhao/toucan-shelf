@@ -19,7 +19,7 @@ import { toast } from "react-hot-toast";
 import { DocCommentSidebar } from "@/components/DocComments/DocCommentSidebar";
 import { type DocMark, DocMarkLayer } from "@/components/DocComments/DocMarkLayer";
 import { anchorTextQuote, buildSelectionAnchor, scrollToAnchor } from "@/components/DocComments/docAnchor";
-import { MARK_LAYER_ATTR } from "@/components/DocComments/textAnchor";
+import { MARK_LAYER_ATTR, type TextQuote } from "@/components/DocComments/textAnchor";
 import { useAnchorHealth } from "@/components/DocComments/useAnchorHealth";
 import GalleryViewForm from "@/components/GalleryView/GalleryViewForm";
 import GalleryViewRenderer from "@/components/GalleryView/GalleryViewRenderer";
@@ -69,6 +69,11 @@ import { attachmentUIDsOf, hashMemoState } from "@/utils/memoState";
 import { useReadingDensity } from "@/utils/readingDensity";
 import { getDocScrollPosition, restoreScrollTopWhenReady, saveDocScrollPosition } from "@/utils/scrollPositionCache";
 import DocumentOutline, { ATTACHMENTS_ANCHOR_ID } from "./DocumentOutline";
+
+// How long after a save a drift report is still treated as "caused by that save", and so
+// eligible to be written back. Long enough to cover the refetch and re-render, short enough
+// that a later, unrelated remeasure never writes to the database.
+const HEAL_WINDOW_MS = 15_000;
 
 interface Props {
   memo: Memo;
@@ -517,6 +522,49 @@ const DocumentView = ({
     [isDesktop],
   );
 
+  // Anchors located only through an edit, reported by the mark layer after it draws them.
+  const [driftedMarks, setDriftedMarks] = useState<{ memoName: string; quote: TextQuote }[]>([]);
+  // Until when a drift report should be written back to the server. A stored quote is a snapshot
+  // of the text as it read when the mark was made, and the fuzzy tiers only tolerate so much
+  // divergence from it — so unless each edit moves the anchor forward onto the new text, a handful
+  // of small edits eventually add up past that bound and the mark is lost for good. Healing is
+  // gated on the reader having just saved this document themselves: everyone else is only reading,
+  // and their view resolving a mark fuzzily is no reason to write to the database.
+  const healUntilRef = useRef(0);
+
+  useEffect(() => {
+    if (driftedMarks.length === 0 || Date.now() > healUntilRef.current) return;
+    healUntilRef.current = 0;
+    const byName = new Map(docComments.map((comment) => [comment.name, comment]));
+    const heal = async () => {
+      let healed = 0;
+      for (const drift of driftedMarks) {
+        const comment = byName.get(drift.memoName);
+        if (!comment?.docAnchor) continue;
+        try {
+          await memoServiceClient.updateMemo({
+            memo: create(MemoSchema, {
+              name: comment.name,
+              docAnchor: {
+                ...comment.docAnchor,
+                textExact: drift.quote.exact,
+                textPrefix: drift.quote.prefix,
+                textSuffix: drift.quote.suffix,
+              },
+            }),
+            updateMask: create(FieldMaskSchema, { paths: ["doc_anchor"] }),
+          });
+          healed++;
+        } catch {
+          // A mark that couldn't be written forward isn't lost — it still resolves through the
+          // fuzzy tiers — so a failure here is not worth interrupting the writer over.
+        }
+      }
+      if (healed > 0) refetchComments();
+    };
+    heal();
+  }, [driftedMarks, docComments, refetchComments]);
+
   const cancelRelink = useCallback(() => {
     setRelinkTarget(undefined);
     setSelectionPopover(undefined);
@@ -608,6 +656,7 @@ const DocumentView = ({
         // Open the panel first, then mark or restyle.
         onMarkClick={commentsOpen && !relinkTarget ? handleMarkClick : undefined}
         onUnresolved={setUnresolvedMarks}
+        onDrifted={setDriftedMarks}
         onAnchors={setMarkAnchors}
       />
       {/* While re-anchoring, a selection means "put it here" — the mark toolbar would offer to
@@ -751,7 +800,7 @@ const DocumentView = ({
               {/* Bare reader in a new tab — also the entry point for printing to PDF.
                   Mirrors the same item in MemoActionMenu, which this toolbar predates. */}
               <DropdownMenuItem onClick={handleOpenReader}>
-                <ExpandIcon className="w-4 h-4 mr-2" />
+                <ExpandIcon className="w-4 h-4" />
                 {t("memo.fullscreen-view")}
               </DropdownMenuItem>
               {/* This document's own framing. Reading density is NOT here: it's a per-reader
@@ -759,7 +808,7 @@ const DocumentView = ({
               {!isPdf && !isHtml && (
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
-                    <Settings2Icon className="w-4 h-4 mr-2" />
+                    <Settings2Icon className="w-4 h-4" />
                     {t("notebook.document-settings")}
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
@@ -809,17 +858,17 @@ const DocumentView = ({
               {canManageVersions && (
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
-                    <HistoryIcon className="w-4 h-4 mr-2" />
+                    <HistoryIcon className="w-4 h-4" />
                     {t("memo.version-history")}
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
                     <DropdownMenuItem onClick={() => setCreateVersionDialogOpen(true)}>
-                      <SaveIcon className="w-4 h-4 mr-2" />
+                      <SaveIcon className="w-4 h-4" />
                       {t("memo.create-as-version")}
                     </DropdownMenuItem>
                     <DropdownMenuSub onOpenChange={setVersionsMenuOpen}>
                       <DropdownMenuSubTrigger>
-                        <HistoryIcon className="w-4 h-4 mr-2" />
+                        <HistoryIcon className="w-4 h-4" />
                         {t("memo.view-versions")}
                       </DropdownMenuSubTrigger>
                       <DropdownMenuSubContent className="max-h-80 overflow-y-auto">
@@ -849,7 +898,7 @@ const DocumentView = ({
                 </DropdownMenuSub>
               )}
               <DropdownMenuItem onClick={onArchiveToggle}>
-                {isArchived ? <ArchiveRestoreIcon className="w-4 h-4 mr-2" /> : <ArchiveIcon className="w-4 h-4 mr-2" />}
+                {isArchived ? <ArchiveRestoreIcon className="w-4 h-4" /> : <ArchiveIcon className="w-4 h-4" />}
                 {isArchived ? t("notebook.unarchive") : t("common.archive")}
               </DropdownMenuItem>
               {/* 删除文档会彻底删除其内容以及挂载在其上的附件，没有恢复渠道，所以暂不提供 delete
@@ -994,6 +1043,9 @@ const DocumentView = ({
                 memo={memo}
                 onContentChange={setEditDraftContent}
                 onConfirm={() => {
+                  // The edit that's about to land is what marks drift under, and the writer is the
+                  // one entitled to move them — so open the healing window before the save.
+                  healUntilRef.current = Date.now() + HEAL_WINDOW_MS;
                   setMode("preview");
                   onSaved();
                 }}
