@@ -138,6 +138,27 @@ const AttachmentPreview = () => {
     target?.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
+  // Up/down arrow keys scroll the active reading container by a fixed 1/3 of the viewport
+  // (a page-like jump, like dragging a scrollbar) instead of the browser's single-line
+  // native arrow scroll. Only fires while the content is actually vertically scrollable,
+  // and is ignored while typing in a form field.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+
+      const el = epubScrollerRef.current ?? scrollContainerRef.current;
+      if (!el || el.scrollHeight <= el.clientHeight) return;
+
+      e.preventDefault();
+      const delta = el.clientHeight / 3;
+      el.scrollBy({ top: e.key === "ArrowDown" ? delta : -delta, behavior: "auto" });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   if (isLoading) {
     return <div className="flex h-screen w-screen items-center justify-center text-sm text-muted-foreground">{t("pdf.loading")}</div>;
   }
