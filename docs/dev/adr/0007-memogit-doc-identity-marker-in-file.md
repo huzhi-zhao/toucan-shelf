@@ -7,7 +7,7 @@
 索引反查身份：本地 `mv` 一个文件后，索引还指着旧路径，push 只能理解成"旧文档
 消失 + 新文档出现"，于是把旧 memo 归档、新建一个新 uid，版本历史、评论、
 reactions、分享链接和所有指向它的引用全部留在被归档的原文档上（详见
-[memogit-doc-identity.md](../requirements/agent-collab/memogit-doc-identity.md)
+[memogit-doc-identity.md](../requirements/collaboration/memogit-doc-identity.md)
 §1、§2）。
 
 考察过的事后配对方案：

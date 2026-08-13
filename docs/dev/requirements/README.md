@@ -20,7 +20,7 @@
 | [views/](views/) | html/pdf/view 三类渲染型文档、gallery view | 2 |
 | [editor/](editor/) | calendar 块、sheets 块、secret 加密块、受限内联样式渲染 | 4 |
 | [attachments/](attachments/) | 上传与媒体内联、访问控制与私密附件 | 2 |
-| [agent-collab/](agent-collab/) | memogit 同步、memogit 文档身份、MCP 协作写作 | 3 |
+| [collaboration/](collaboration/) | memogit 同步、memogit 文档身份、MCP 协作写作、团队成员与知识库授权 | 4 |
 | [storage/](storage/) | 数据源、持久化边界、容量与迁移承诺、全站备份 | 2 |
 
 ## 规划中的域
@@ -59,12 +59,14 @@
 - [access-control-and-private-files.md](attachments/access-control-and-private-files.md)
   —— 访问控制与私密附件
 
-### agent-collab/
+### collaboration/
 
-- [memogit-sync.md](agent-collab/memogit-sync.md) —— memogit 同步
-- [memogit-doc-identity.md](agent-collab/memogit-doc-identity.md)
+- [memogit-sync.md](collaboration/memogit-sync.md) —— memogit 同步
+- [memogit-doc-identity.md](collaboration/memogit-doc-identity.md)
   —— memogit 文档身份与移动语义
-- [mcp-authoring.md](agent-collab/mcp-authoring.md) —— MCP 协作写作
+- [mcp-authoring.md](collaboration/mcp-authoring.md) —— MCP 协作写作
+- [workspace-member-access.md](collaboration/workspace-member-access.md)
+  —— 团队成员与知识库授权
 
 ### storage/
 

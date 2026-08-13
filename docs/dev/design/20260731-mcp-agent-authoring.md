@@ -1,6 +1,6 @@
 # Agent 经 MCP 协作写作 — 分阶段实施
 
-需求与关键决策见 [mcp-authoring.md](../requirements/agent-collab/mcp-authoring.md)（迁移后原
+需求与关键决策见 [mcp-authoring.md](../requirements/collaboration/mcp-authoring.md)（迁移后原
 `requirement.md` 里的 ADR-1…ADR-6 已重新编号为 ADR-0009…0014，正文下方仍按旧编号引用，
 不逐一改写）。
 

@@ -104,12 +104,12 @@
 
 memogit 移动语义早期把「移动」实现成「归档旧的 + 新建一个」，导致所有引用该文档的
 链接全部断链（详见
-[../requirements/agent-collab/memogit-doc-identity.md](../requirements/agent-collab/memogit-doc-identity.md)
+[../requirements/collaboration/memogit-doc-identity.md](../requirements/collaboration/memogit-doc-identity.md)
 §4.2、§6.1）。
 
 > 迁移脚注（2026-08-08）：上面链接的原文档已随
 > [docs/plans → docs/dev 迁移](20260808-plans-to-dev-migration.md)拆入
-> `requirements/agent-collab/memogit-doc-identity.md`，原文的 §4.2、§6.1 编号未必仍对应，
+> `requirements/collaboration/memogit-doc-identity.md`，原文的 §4.2、§6.1 编号未必仍对应，
 > 本节论述不变，只改路径。当前 `UpdateMemo`/`RenameWorkspaceFolder` 已经是原地更新、uid 不变，
 不会重蹈这个坑，但它确立的原则仍然适用：**自动改写文档内容必须幂等、可逆、
 不产生误伤 diff**。P4/P5 是本计划里自动改写「别的文档」正文的动作，出错代价最高，

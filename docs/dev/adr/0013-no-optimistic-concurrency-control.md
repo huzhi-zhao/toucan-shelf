@@ -39,7 +39,7 @@ hash 校验路线，而不是锁**——这是留给未来的方向性结论，�
 
 - 已知且已接受的风险缺口：agent 会话已开启时，人类的并发编辑可能被静默覆盖
   且不产生快照。文档中需如实说明（见
-  [mcp-authoring.md](../requirements/agent-collab/mcp-authoring.md) §8）。
+  [mcp-authoring.md](../requirements/collaboration/mcp-authoring.md) §8）。
 - 不需要引入任何新状态、TTL、续租或解锁 UI。
 - `agent_session_open` 保持单一语义（版本快照判据），不承担并发控制职责，见
   [ADR-0014](0014-agent-session-open-not-a-lock.md)。

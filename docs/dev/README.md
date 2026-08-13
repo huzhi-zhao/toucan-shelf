@@ -15,7 +15,7 @@ docs/dev/
 │   │   ├── pdf-preview.md
 │   │   ├── pdf-private-doc.md
 │   │   └── pdf-permission.md
-│   ├── agent-collab/            # agent 协作
+│   ├── collaboration/            # agent 协作 + 团队成员协作
 │   │   ├── mcp.md
 │   │   ├── mcp-oauth.md
 │   │   ├── memogit-identity.md
@@ -146,7 +146,7 @@ design doc 是给三个月后的人读的，下面这四类内容三个月后全
 - [requirements/README.md](requirements/README.md) —— 域清单与建域规则、各域文档清单
 
 域一览（详细文档清单见 [requirements/README.md](requirements/README.md)）：
-`knowledge-base/`、`views/`、`editor/`、`attachments/`、`agent-collab/`、`storage/`，
+`knowledge-base/`、`views/`、`editor/`、`attachments/`、`collaboration/`、`storage/`，
 外加根下平铺的 [cross-reference-repair-on-move-rename.md](requirements/cross-reference-repair-on-move-rename.md)。
 
 ### adr/ —— 为什么这么选（事件，不改名不删除）
