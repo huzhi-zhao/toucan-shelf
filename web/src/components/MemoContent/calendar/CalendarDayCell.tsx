@@ -8,7 +8,7 @@ interface CalendarDayCellProps {
   items: CalendarItem[];
   dayEvents: string[]; // 当天发生的 event 名称（已去重、按预定义顺序）
   events: string[]; // 预定义 event 列表，用于取色
-  showTaskDot: boolean; // 移动端是否在日期右侧画"当天有任务"的蓝点
+  showTaskDot: boolean; // 是否在日期右侧画"当天有任务"的蓝点
   onClick?: (date: string) => void;
 }
 
@@ -44,7 +44,7 @@ export const CalendarDayCell = ({ day, items, dayEvents, events, showTaskDot, on
         <span className={cn("shrink-0 text-xs font-medium md:text-sm", isOutside ? "text-muted-foreground/50" : "text-foreground")}>
           {day.label}
         </span>
-        {showTaskDot && hasTasks && <span className="h-1 w-1 shrink-0 bg-primary/70 md:hidden" aria-hidden="true" />}
+        {showTaskDot && hasTasks && <span className="h-1 w-1 shrink-0 bg-primary/70" aria-hidden="true" />}
       </div>
       {/* 移动端：events 圆点固定分布在 5 等分格中，按 events 定义顺序对号入座 */}
       {hasEvents && (
