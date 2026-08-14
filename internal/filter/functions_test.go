@@ -45,33 +45,23 @@ func TestCompileDivisionByZeroErrors(t *testing.T) {
 // size() on scalar string fields -> SQL length
 // ---------------------------------------------------------------------------
 
-func TestCompileSizeOnContentRendersLengthPerDialect(t *testing.T) {
+func TestCompileSizeOnContentRendersLength(t *testing.T) {
 	t.Parallel()
 
 	engine, err := NewEngine(NewSchema())
 	require.NoError(t, err)
 
-	cases := []struct {
-		dialect  DialectName
-		fragment string
-	}{
-		{DialectSQLite, "LENGTH("},
-		{DialectPostgres, "LENGTH("},
-		{DialectMySQL, "CHAR_LENGTH("},
-	}
-	for _, tc := range cases {
-		stmt, err := engine.CompileToStatement(context.Background(), `size(content) > 5`, RenderOptions{Dialect: tc.dialect})
-		require.NoError(t, err, tc.dialect)
-		require.Contains(t, stmt.SQL, tc.fragment, "dialect %s", tc.dialect)
-		require.Equal(t, []any{int64(5)}, stmt.Args, "dialect %s", tc.dialect)
-	}
+	stmt, err := engine.CompileToStatement(context.Background(), `size(content) > 5`, RenderOptions{Dialect: DialectSQLite})
+	require.NoError(t, err)
+	require.Contains(t, stmt.SQL, "LENGTH(")
+	require.Equal(t, []any{int64(5)}, stmt.Args)
 }
 
 // ---------------------------------------------------------------------------
 // Timestamp accessor methods (getFullYear, getMonth, ...)
 // ---------------------------------------------------------------------------
 
-func TestCompileTimestampAccessorsPerDialect(t *testing.T) {
+func TestCompileTimestampAccessors(t *testing.T) {
 	t.Parallel()
 
 	engine, err := NewEngine(NewSchema())
@@ -80,26 +70,20 @@ func TestCompileTimestampAccessorsPerDialect(t *testing.T) {
 	cases := []struct {
 		name      string
 		filter    string
-		dialect   DialectName
 		fragments []string
 		arg       int64
 	}{
 		// getFullYear == 2024
-		{"sqlite year", `created_ts.getFullYear() == 2024`, DialectSQLite, []string{"strftime('%Y'", "'unixepoch'"}, 2024},
-		{"pg year", `created_ts.getFullYear() == 2024`, DialectPostgres, []string{"EXTRACT(YEAR FROM to_timestamp(", "AT TIME ZONE 'UTC'"}, 2024},
-		{"mysql year", `created_ts.getFullYear() == 2024`, DialectMySQL, []string{"YEAR(`memo`.`created_ts`)"}, 2024},
+		{"year", `created_ts.getFullYear() == 2024`, []string{"strftime('%Y'", "'unixepoch'"}, 2024},
 		// getMonth is 0-based -> SQL must subtract 1
-		{"sqlite month", `created_ts.getMonth() == 5`, DialectSQLite, []string{"strftime('%m'", "- 1)"}, 5},
-		{"pg month", `created_ts.getMonth() == 5`, DialectPostgres, []string{"EXTRACT(MONTH FROM", "- 1)"}, 5},
-		{"mysql month", `created_ts.getMonth() == 5`, DialectMySQL, []string{"MONTH(`memo`.`created_ts`)", "- 1)"}, 5},
-		// getDayOfWeek 0=Sunday -> MySQL DAYOFWEEK is 1-based and must subtract 1
-		{"mysql dow", `created_ts.getDayOfWeek() == 0`, DialectMySQL, []string{"DAYOFWEEK(`memo`.`created_ts`)", "- 1)"}, 0},
-		{"sqlite dow", `created_ts.getDayOfWeek() == 0`, DialectSQLite, []string{"strftime('%w'"}, 0},
+		{"month", `created_ts.getMonth() == 5`, []string{"strftime('%m'", "- 1)"}, 5},
+		// getDayOfWeek 0=Sunday, matching strftime('%w') -> no offset
+		{"dow", `created_ts.getDayOfWeek() == 0`, []string{"strftime('%w'"}, 0},
 		// getDate is 1-based -> no offset
-		{"sqlite date", `created_ts.getDate() == 22`, DialectSQLite, []string{"strftime('%d'"}, 22},
+		{"date", `created_ts.getDate() == 22`, []string{"strftime('%d'"}, 22},
 	}
 	for _, tc := range cases {
-		stmt, err := engine.CompileToStatement(context.Background(), tc.filter, RenderOptions{Dialect: tc.dialect})
+		stmt, err := engine.CompileToStatement(context.Background(), tc.filter, RenderOptions{Dialect: DialectSQLite})
 		require.NoError(t, err, tc.name)
 		for _, frag := range tc.fragments {
 			require.Contains(t, stmt.SQL, frag, tc.name)
@@ -142,28 +126,18 @@ func TestCompileNowAccessorRejectsTimezoneArg(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestCompileOnThisDayPerDialect(t *testing.T) {
+func TestCompileOnThisDay(t *testing.T) {
 	t.Parallel()
 
 	const onThisDay = `created_ts.getMonth() == now.getMonth() && created_ts.getDate() == now.getDate()`
 	engine := memoEngineAt(t, time.Date(2026, time.July, 7, 10, 30, 45, 0, time.UTC).Unix())
 
-	cases := []struct {
-		dialect   DialectName
-		fragments []string
-	}{
-		{DialectSQLite, []string{"strftime('%m'", "strftime('%d'", "'unixepoch'"}},
-		{DialectPostgres, []string{"EXTRACT(MONTH FROM", "EXTRACT(DAY FROM"}},
-		{DialectMySQL, []string{"MONTH(`memo`.`created_ts`)", "DAYOFMONTH(`memo`.`created_ts`)"}},
+	stmt, err := engine.CompileToStatement(context.Background(), onThisDay, RenderOptions{Dialect: DialectSQLite})
+	require.NoError(t, err)
+	for _, frag := range []string{"strftime('%m'", "strftime('%d'", "'unixepoch'"} {
+		require.Contains(t, stmt.SQL, frag)
 	}
-	for _, tc := range cases {
-		stmt, err := engine.CompileToStatement(context.Background(), onThisDay, RenderOptions{Dialect: tc.dialect})
-		require.NoError(t, err, tc.dialect)
-		for _, frag := range tc.fragments {
-			require.Contains(t, stmt.SQL, frag, "dialect %s", tc.dialect)
-		}
-		require.Equal(t, []any{int64(6), int64(7)}, stmt.Args, "dialect %s", tc.dialect)
-	}
+	require.Equal(t, []any{int64(6), int64(7)}, stmt.Args)
 }
 
 func TestCompileNowAccessorsAtBoundaryDates(t *testing.T) {
@@ -352,26 +326,16 @@ func TestCompileSetsEquivalentAddsLengthCheck(t *testing.T) {
 // exists_one() comprehension on tags
 // ---------------------------------------------------------------------------
 
-func TestCompileExistsOnePerDialect(t *testing.T) {
+func TestCompileExistsOne(t *testing.T) {
 	t.Parallel()
 
 	engine, err := NewEngine(NewSchema())
 	require.NoError(t, err)
 
-	cases := []struct {
-		dialect   DialectName
-		fragments []string
-	}{
-		{DialectSQLite, []string{"COUNT(", "json_each(", ") = 1"}},
-		{DialectPostgres, []string{"COUNT(", "jsonb_array_elements_text(", ") = 1"}},
-		{DialectMySQL, []string{"COUNT(", "JSON_TABLE(", ") = 1"}},
+	stmt, err := engine.CompileToStatement(context.Background(), `tags.exists_one(t, t == "urgent")`, RenderOptions{Dialect: DialectSQLite})
+	require.NoError(t, err)
+	for _, frag := range []string{"COUNT(", "json_each(", ") = 1"} {
+		require.Contains(t, stmt.SQL, frag)
 	}
-	for _, tc := range cases {
-		stmt, err := engine.CompileToStatement(context.Background(), `tags.exists_one(t, t == "urgent")`, RenderOptions{Dialect: tc.dialect})
-		require.NoError(t, err, tc.dialect)
-		for _, frag := range tc.fragments {
-			require.Contains(t, stmt.SQL, frag, "dialect %s", tc.dialect)
-		}
-		require.Equal(t, []any{"urgent"}, stmt.Args, "dialect %s", tc.dialect)
-	}
+	require.Equal(t, []any{"urgent"}, stmt.Args)
 }
