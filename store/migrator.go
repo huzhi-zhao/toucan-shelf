@@ -267,14 +267,8 @@ func (*Store) getSeedBasePath() string {
 
 // seed seeds the database with initial data.
 // It reads all seed files from the embedded filesystem and executes them in order.
-// This is only supported for SQLite databases and is used in demo mode.
+// This is used in demo mode.
 func (s *Store) seed(ctx context.Context) error {
-	// Only seed for SQLite - other databases should use production data
-	if s.profile.Driver != "sqlite" {
-		slog.Warn("seed is only supported for SQLite, skipping for other databases")
-		return nil
-	}
-
 	filenames, err := fs.Glob(seedFS, fmt.Sprintf("%s*.sql", s.getSeedBasePath()))
 	if err != nil {
 		return errors.Wrap(err, "failed to read seed files")
