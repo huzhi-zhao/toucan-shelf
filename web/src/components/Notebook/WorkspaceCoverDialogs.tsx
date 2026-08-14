@@ -1,9 +1,9 @@
 import { create } from "@bufbuild/protobuf";
 import { useEffect, useRef, useState } from "react";
-import { attachmentServiceClient } from "@/connect";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { attachmentServiceClient } from "@/connect";
 import { useUpdateWorkspace } from "@/hooks/useWorkspaceQueries";
 import { AttachmentOrigin, AttachmentSchema } from "@/types/proto/api/v1/attachment_service_pb";
 import type { Workspace } from "@/types/proto/api/v1/workspace_service_pb";

@@ -11,9 +11,9 @@
 // this is lossless on write-back.
 
 // @ts-expect-error - deep import; this subpath ships no type declarations.
-import { formulam } from "x-data-spreadsheet/src/core/formula";
-// @ts-expect-error - deep import; this subpath ships no type declarations.
 import cellModule from "x-data-spreadsheet/src/core/cell";
+// @ts-expect-error - deep import; this subpath ships no type declarations.
+import { formulam } from "x-data-spreadsheet/src/core/formula";
 import { cellRef, columnIndex } from "./cellRef";
 
 type FormulaEntry = { key: string; title: () => string; render: (ary: unknown[]) => unknown };
@@ -173,7 +173,12 @@ function matchesCriteria(value: unknown, criteria: string): boolean {
   const text = String(value ?? "").toLowerCase();
   const target = operand.toLowerCase();
   if (op === "=" || op === "<>") {
-    const pattern = new RegExp(`^${target.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, ".")}$`);
+    const pattern = new RegExp(
+      `^${target
+        .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+        .replace(/\*/g, ".*")
+        .replace(/\?/g, ".")}$`,
+    );
     const equal = pattern.test(text);
     return op === "=" ? equal : !equal;
   }

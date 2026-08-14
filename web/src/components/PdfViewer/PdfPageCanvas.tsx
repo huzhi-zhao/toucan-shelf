@@ -25,7 +25,7 @@ const linkService = {
   },
   getDestinationHash: () => "#",
   getAnchorUrl: () => "#",
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: pdf.js does not export the IPDFLinkService interface
 } as any;
 
 /** How a mark looks: a background fill in `color` ("" = none) and/or an underline. */
@@ -225,7 +225,7 @@ export const PdfPageCanvas = ({
           div: annotationLayerEl,
           page,
           viewport: cssViewport.clone({ dontFlip: true }),
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          // biome-ignore lint/suspicious/noExplicitAny: AnnotationLayer's constructor options are untyped in this pdf.js build
         } as any).render({
           viewport: cssViewport.clone({ dontFlip: true }),
           div: annotationLayerEl,

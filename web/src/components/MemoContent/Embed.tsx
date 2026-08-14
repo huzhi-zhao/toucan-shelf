@@ -1,11 +1,11 @@
 import { FileTextIcon } from "lucide-react";
 import { useMemo as useReactMemo } from "react";
+import MemoContent from "@/components/MemoContent";
 import { useMemo as useMemoDetail } from "@/hooks/useMemoQueries";
 import { cn } from "@/lib/utils";
 import { parseFrontmatter } from "@/utils/frontmatter";
 import { useDocumentLinkContext } from "./DocumentLinkContext";
 import { EmbedAncestryProvider, MAX_EMBED_DEPTH, useEmbedAncestry } from "./EmbedAncestryContext";
-import MemoContent from "@/components/MemoContent";
 
 interface EmbedProps {
   /** Raw text between `![[` and `]]`, a root-relative document path (e.g. `/folder/doc.md`). */

@@ -2,6 +2,7 @@ import { syntaxTree } from "@codemirror/language";
 import { RangeSetBuilder } from "@codemirror/state";
 
 type SyntaxNode = ReturnType<ReturnType<typeof syntaxTree>["resolve"]>;
+
 import { Decoration, type DecorationSet, EditorView } from "@codemirror/view";
 import { HEADING_LINE } from "./formatting";
 import { viewportDecorations } from "./viewportDecorations";
