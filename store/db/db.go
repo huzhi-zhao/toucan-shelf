@@ -10,8 +10,8 @@ import (
 
 // NewDBDriver creates new db driver based on profile.
 //
-// This project supports SQLite only. The inherited mysql/postgres drivers are
-// being removed; see docs/dev/requirements/storage/sqlite-as-sole-datasource.md.
+// This project supports SQLite only. The inherited mysql/postgres drivers have
+// been removed; see docs/dev/requirements/storage/sqlite-as-sole-datasource.md.
 func NewDBDriver(profile *profile.Profile) (store.Driver, error) {
 	var driver store.Driver
 	var err error

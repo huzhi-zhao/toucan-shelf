@@ -483,7 +483,7 @@ message InstanceStats {
 
   // Database size statistics.
   message DatabaseStats {
-    // driver is one of "sqlite", "mysql", "postgres".
+    // driver is the database driver in use; always "sqlite".
     string driver = 1;
     // size_bytes is the database size in bytes; -1 if unavailable.
     int64 size_bytes = 2;

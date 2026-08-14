@@ -1,5 +1,9 @@
 # 存储层收敛 — 分阶段实施
 
+> **状态：已完成（2026-08-14）。** P0–P3、P5 均已合入 `storage/sqlite-only`；P4 前置调查
+> 后否决，无代码改动。本文保留为实施记录，各阶段的「验证」步骤已全部执行通过。
+> 后续触发重新评估的条件见需求文档的「复评触发条件」。
+
 需求、决策依据与复评条件见
 [requirements/storage/sqlite-as-sole-datasource.md](../requirements/storage/sqlite-as-sole-datasource.md)。
 

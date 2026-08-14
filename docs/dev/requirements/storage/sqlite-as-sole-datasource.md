@@ -137,6 +137,27 @@ sqlite 在该区间为舒适区。写并发方面 WAL 为「单写多读」，�
   `mmap_size(0)` 是 commit `05f31e45`（*prevent OOM errors*）显式加入的防御性设置，
   代码注释亦有说明。改动需独立的 OOM 复现与压测支撑，不搭本次收敛的车
 
+## 落地结果（2026-08-14）
+
+已在 `storage/sqlite-only` 分支完成，`go build ./... && go test ./...` 全绿。
+
+| 需求项 | 落地情况 |
+|---|---|
+| 1 删驱动与迁移 | `store/db/{mysql,postgres}/`、`store/migration/{mysql,postgres}/` 已删；`store/db/db.go` 对 mysql/postgres 返回明确的「不再支持」错误，而非笼统的 unknown driver |
+| 2 filter 单方言 | `DialectMySQL` / `DialectPostgres` 已从 `internal/filter` 全部移除，sqlite 断言原样通过 |
+| 3 清理泄漏点 | 五处 `driver == "sqlite"` 判断已展开 |
+| 4 测试脚手架 | `store/test/containers.go` 由 382 行降至 146 行；`go.mod` 移除 mysql/postgres 相关依赖 |
+| 5 文档与配置 | `AGENTS.md`、`internal/filter/{README,MAINTENANCE}.md`、`store/test/README.md`、`docs/dev/standalone-local-deploy.md`、`docs/manual/` 及 issue 模板已更新；`instance_service.proto` 中 `DatabaseStats.driver` 的注释同步改为「always "sqlite"」并重新生成 |
+
+两点与原计划的偏差，均为有意为之：
+
+- **`testcontainers-go` 主包保留。** 它不是 mysql/postgres 残留——`store/test/containers.go`
+  仍用它起 memos 容器跑 `migrator_upgrade_test.go`。仅移除了 `modules/mysql`、
+  `modules/postgres` 与 `go-sql-driver/mysql`。
+- **未在 `CHANGELOG.md` 写 breaking change 条目。** 该文件由 release-please 从上游 commit
+  自动生成，本 fork 从未手写过条目，手工插入会与下次生成冲突。breaking change 的说明
+  改由 release notes 承载。
+
 ## 复评触发条件
 
 删除后并非永久决定。以下任一指标触发时重新评估存储选型：
