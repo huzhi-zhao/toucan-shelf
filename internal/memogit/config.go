@@ -167,18 +167,48 @@ func (c *Config) Save(root string) error {
 	return nil
 }
 
-// Add appends a freshly cloned workspace, erroring if it is already checked out
-// here (by resource name or by target directory).
-func (c *Config) Add(ws *WorkspaceConfig) error {
-	for _, existing := range c.Workspaces {
-		if existing.Workspace == ws.Workspace {
-			return fmt.Errorf("workspace %q already cloned into %s/; use `memogit pull` to update", existing.Title, existing.Dir)
+// Adopt registers a workspace being cloned into root, and reports whether it is
+// resuming an interrupted clone.
+//
+// The config entry alone does not mean "cloned": it is written before the first
+// document is fetched, so a clone that dies partway (a failed download, a git
+// error, Ctrl-C) leaves an entry with no sync-state file behind. Such an entry
+// is retaken with this run's options instead of being reported as an existing
+// checkout — otherwise the only way out is hand-editing config.yaml. The
+// sync-state file is the real "cloned" marker: once it exists, cloning again is
+// refused and `memogit pull` is the way forward.
+func (c *Config) Adopt(root string, ws *WorkspaceConfig) (resumed bool, err error) {
+	for i, existing := range c.Workspaces {
+		if existing.Workspace != ws.Workspace {
+			continue
+		}
+		if _, statErr := os.Stat(statePath(root, existing.stateName())); statErr == nil {
+			return false, fmt.Errorf("workspace %q already cloned into %s/; use `memogit pull` to update", existing.Title, existing.Dir)
+		}
+		if err := c.checkNameFree(ws, i); err != nil {
+			return false, err
+		}
+		c.Workspaces[i] = ws
+		return true, nil
+	}
+	if err := c.checkNameFree(ws, -1); err != nil {
+		return false, err
+	}
+	c.Workspaces = append(c.Workspaces, ws)
+	return false, nil
+}
+
+// checkNameFree rejects a checkout name (and thus directory) already taken by
+// another workspace. skip is the index of the entry being replaced, or -1.
+func (c *Config) checkNameFree(ws *WorkspaceConfig, skip int) error {
+	for i, existing := range c.Workspaces {
+		if i == skip {
+			continue
 		}
 		if strings.EqualFold(existing.stateName(), ws.stateName()) {
 			return fmt.Errorf("name %q is already used by workspace %q", ws.stateName(), existing.Title)
 		}
 	}
-	c.Workspaces = append(c.Workspaces, ws)
 	return nil
 }
 

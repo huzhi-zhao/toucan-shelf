@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -45,16 +43,17 @@ func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter
 		wsCfg.Dir = "."
 		wsCfg.Name = workspaceDir(remote.GetTitle())
 	}
-	// Refuse to clobber a workspace already checked out into this root.
-	if err := cfg.Add(wsCfg); err != nil {
+	// Refuse to clobber a completed checkout, but retake the entry of a clone
+	// that was interrupted before it ever wrote a baseline.
+	resumed, err := cfg.Adopt(root, wsCfg)
+	if err != nil {
 		return err
-	}
-	if _, err := os.Stat(statePath(root, wsCfg.stateName())); err == nil {
-		return fmt.Errorf("already cloned (%s exists); use `memogit pull` to update",
-			filepath.Join(MetaDir, StateDir, wsCfg.stateName()+".json"))
 	}
 	if err := cfg.Save(root); err != nil {
 		return err
+	}
+	if resumed {
+		fmt.Fprintf(out, "Resuming an interrupted clone of %q (no sync state yet); re-fetching everything.\n", wsCfg.Title)
 	}
 
 	if wsCfg.Sparse != "" {

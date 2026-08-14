@@ -253,15 +253,42 @@ func TestConfigSelectAndAdd(t *testing.T) {
 	if _, err := cfg.Select("Nope"); err == nil {
 		t.Error("want error selecting an uncloned workspace")
 	}
-	// Cloning the same workspace or directory twice is refused.
-	if err := cfg.Add(&WorkspaceConfig{Workspace: "workspaces/a", Title: "MPNP", Dir: "MPNP"}); err == nil {
-		t.Error("want error re-adding an existing workspace")
+	// A workspace with a baseline on disk is really cloned: re-cloning is refused.
+	root := t.TempDir()
+	if err := NewState("https://example.com").Save(root, "MPNP"); err != nil {
+		t.Fatal(err)
 	}
-	if err := cfg.Add(&WorkspaceConfig{Workspace: "workspaces/c", Title: "Other", Dir: "MPNP"}); err == nil {
-		t.Error("want error adding a workspace with a taken directory")
+	if _, err := cfg.Adopt(root, &WorkspaceConfig{Workspace: "workspaces/a", Title: "MPNP", Dir: "MPNP"}); err == nil {
+		t.Error("want error re-cloning a workspace that has a sync state")
 	}
-	if err := cfg.Add(&WorkspaceConfig{Workspace: "workspaces/c", Title: "Other", Dir: "Other"}); err != nil {
-		t.Errorf("adding a fresh workspace: %v", err)
+	// Another workspace may not take a directory that is already in use.
+	if _, err := cfg.Adopt(root, &WorkspaceConfig{Workspace: "workspaces/c", Title: "Other", Dir: "MPNP"}); err == nil {
+		t.Error("want error adopting a workspace with a taken directory")
+	}
+	if _, err := cfg.Adopt(root, &WorkspaceConfig{Workspace: "workspaces/c", Title: "Other", Dir: "Other"}); err != nil {
+		t.Errorf("adopting a fresh workspace: %v", err)
+	}
+}
+
+// An interrupted clone leaves a config entry with no sync state. Re-running
+// clone must retake that entry (with this run's options) instead of dead-ending
+// the user into hand-editing config.yaml.
+func TestAdoptResumesInterruptedClone(t *testing.T) {
+	root := t.TempDir()
+	cfg := &Config{Workspaces: []*WorkspaceConfig{
+		{Workspace: "workspaces/a", Title: "PACE_AI", Dir: "PACE_AI"},
+	}}
+	resumed, err := cfg.Adopt(root, &WorkspaceConfig{
+		Workspace: "workspaces/a", Title: "PACE_AI", Dir: "PACE_AI", Filter: `"work" in tags`,
+	})
+	if err != nil || !resumed {
+		t.Fatalf("want a resumed adopt, got resumed=%v err=%v", resumed, err)
+	}
+	if len(cfg.Workspaces) != 1 {
+		t.Fatalf("want the entry retaken in place, got %d entries", len(cfg.Workspaces))
+	}
+	if cfg.Workspaces[0].Filter != `"work" in tags` {
+		t.Errorf("this run's options were not applied: %+v", cfg.Workspaces[0])
 	}
 }
 

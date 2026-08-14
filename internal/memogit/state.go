@@ -86,7 +86,9 @@ func LoadState(root, dir string) (*State, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("no sync state for %s/ — run `memogit clone` first", dir)
+			// Typically an interrupted clone: the config entry was written but no
+			// baseline ever was. Re-running clone retakes that entry.
+			return nil, fmt.Errorf("no sync state for %s/ (clone never finished) — re-run `memogit clone <workspace>` to redo it", dir)
 		}
 		return nil, fmt.Errorf("read state: %w", err)
 	}
