@@ -35,7 +35,7 @@ func TestReconcileAdoptsUntrackedMemo(t *testing.T) {
 
 	res := &PullResult{}
 	err = reconcileAgainst(context.Background(), nil, ws, root,
-		[]*v1pb.Memo{tracked, missed}, state, res, io.Discard)
+		[]*v1pb.Memo{tracked, missed}, state, res, io.Discard, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,11 +76,11 @@ func TestReconcileAdoptionIsIdempotent(t *testing.T) {
 	listing := []*v1pb.Memo{m}
 
 	first := &PullResult{}
-	if err := reconcileAgainst(context.Background(), nil, ws, root, listing, state, first, io.Discard); err != nil {
+	if err := reconcileAgainst(context.Background(), nil, ws, root, listing, state, first, io.Discard, nil); err != nil {
 		t.Fatal(err)
 	}
 	second := &PullResult{}
-	if err := reconcileAgainst(context.Background(), nil, ws, root, listing, state, second, io.Discard); err != nil {
+	if err := reconcileAgainst(context.Background(), nil, ws, root, listing, state, second, io.Discard, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -113,7 +113,7 @@ func TestReconcileAdoptsServerContentDrift(t *testing.T) {
 
 	res := &PullResult{}
 	if err := reconcileAgainst(context.Background(), nil, ws, root,
-		[]*v1pb.Memo{drifted}, state, res, io.Discard); err != nil {
+		[]*v1pb.Memo{drifted}, state, res, io.Discard, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -152,7 +152,7 @@ func TestReconcileDriftWithLocalEditsConflicts(t *testing.T) {
 	drifted := mkMemo("d1", "notes", "Doc", "their server edit", v1pb.Memo_MARKDOWN)
 	res := &PullResult{}
 	if err := reconcileAgainst(context.Background(), nil, ws, root,
-		[]*v1pb.Memo{drifted}, state, res, io.Discard); err != nil {
+		[]*v1pb.Memo{drifted}, state, res, io.Discard, nil); err != nil {
 		t.Fatal(err)
 	}
 

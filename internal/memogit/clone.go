@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
@@ -20,10 +21,11 @@ import (
 // explicitly so clone never guesses the wrong knowledge base.
 func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter, sparse string, out io.Writer) error {
 	client := NewClient(cfg)
-	username, err := client.CurrentUsername(ctx)
+	user, err := client.CurrentUser(ctx)
 	if err != nil {
 		return err
 	}
+	username := user.GetUsername()
 
 	remote, err := resolveCloneWorkspace(ctx, client, workspaceTitle)
 	if err != nil {
@@ -75,9 +77,10 @@ func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter
 		return err
 	}
 	contentRoot := ContentRoot(root, wsCfg)
+	warn := &attachmentWarner{out: out}
 	attachmentCount := 0
 	for _, m := range memos {
-		ms, nDown, err := exportMemo(ctx, client, wsCfg, contentRoot, m, nil)
+		ms, nDown, err := exportMemo(ctx, client, wsCfg, contentRoot, m, nil, warn)
 		if err != nil {
 			return err
 		}
@@ -101,6 +104,15 @@ func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter
 	if err := GitInitIfNeeded(root); err != nil {
 		return err
 	}
+	// A fresh machine may have no git identity at all; seed a repo-local one
+	// from the memogit account so the baseline commit doesn't hard-fail.
+	gitName := user.GetDisplayName()
+	if strings.TrimSpace(gitName) == "" {
+		gitName = username
+	}
+	if err := EnsureGitIdentity(root, gitName, user.GetEmail()); err != nil {
+		return err
+	}
 	if err := GitCommitAll(root, fmt.Sprintf("memogit clone %s: baseline snapshot of %d memos", wsCfg.Title, len(memos))); err != nil {
 		return err
 	}
@@ -110,6 +122,9 @@ func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter
 		dest = root // sparse checkout: content sits at the root itself
 	}
 	fmt.Fprintf(out, "Cloned %d memos (%d attachments) into %s and committed baseline.\n", len(memos), attachmentCount, dest)
+	if warn.failed > 0 {
+		fmt.Fprintf(out, "%d attachment(s) could not be downloaded (see ! lines above); `memogit pull` retries them.\n", warn.failed)
+	}
 	return nil
 }
 

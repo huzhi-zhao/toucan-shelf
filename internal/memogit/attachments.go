@@ -3,6 +3,7 @@ package memogit
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,12 +26,33 @@ func attachmentRelPath(attachmentName, filename string) string {
 	return filepath.Join(attachmentsDir, sanitizeSegment(uid), stem)
 }
 
+// attachmentWarner reports attachments that could not be downloaded. A single
+// broken file on the server (a 500 on one image) must not abort a whole clone,
+// so failures are warned about, counted, and left out of the baseline — the
+// next pull retries them.
+type attachmentWarner struct {
+	out    io.Writer
+	failed int
+}
+
+func (w *attachmentWarner) warn(docPath, filename, attachmentName string, err error) {
+	if w == nil {
+		return
+	}
+	w.failed++
+	if w.out != nil {
+		fmt.Fprintf(w.out, "  ! skipped attachment %s (%s) of %s: %v\n", filename, attachmentName, docPath, err)
+	}
+}
+
 // downloadMemoAttachments downloads all of a memo's attachments into the
 // content root (one-way: bytes are pulled down for local/LLM context and never
 // pushed back). It skips any attachment already present locally at the same
 // size, and returns the refs to record in sync-state plus the number actually
 // downloaded. prev is the memo's previous attachment refs (may be nil).
-func downloadMemoAttachments(ctx context.Context, client *Client, contentRoot string, m *v1pb.Memo, prev []AttachmentRef) ([]AttachmentRef, int, error) {
+// Individual download failures are reported through warn and skipped; only
+// cancellation and local filesystem errors abort.
+func downloadMemoAttachments(ctx context.Context, client *Client, contentRoot, docPath string, m *v1pb.Memo, prev []AttachmentRef, warn *attachmentWarner) ([]AttachmentRef, int, error) {
 	atts := m.GetAttachments()
 	if len(atts) == 0 {
 		return nil, 0, nil
@@ -62,7 +84,11 @@ func downloadMemoAttachments(ctx context.Context, client *Client, contentRoot st
 
 		data, err := client.DownloadAttachment(ctx, a.GetName(), a.GetFilename())
 		if err != nil {
-			return nil, downloaded, err
+			if ctx.Err() != nil {
+				return nil, downloaded, err
+			}
+			warn.warn(docPath, a.GetFilename(), a.GetName(), err)
+			continue
 		}
 		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 			return nil, downloaded, fmt.Errorf("create attachment dir: %w", err)

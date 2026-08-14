@@ -13,14 +13,15 @@ import (
 
 // PullResult summarizes a pull run.
 type PullResult struct {
-	Added       int
-	Updated     int
-	Unchanged   int
-	Conflicts   []string // uids skipped because both sides changed
-	Missing     []string // uids whose local file is gone (pending push)
-	Attachments int      // attachment files freshly downloaded this pull
-	Removed     int      // local files removed because deleted/archived on server
-	Orphaned    []string // paths deleted on server but kept (locally modified)
+	Added             int
+	Updated           int
+	Unchanged         int
+	Conflicts         []string // uids skipped because both sides changed
+	Missing           []string // uids whose local file is gone (pending push)
+	Attachments       int      // attachment files freshly downloaded this pull
+	AttachmentsFailed int      // attachments the server refused to serve (retried next pull)
+	Removed           int      // local files removed because deleted/archived on server
+	Orphaned          []string // paths deleted on server but kept (locally modified)
 }
 
 // Pull incrementally fetches memos changed on the server since the last sync,
@@ -59,6 +60,7 @@ func Pull(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, ou
 
 	contentRoot := ContentRoot(root, ws)
 	res := &PullResult{}
+	warn := &attachmentWarner{out: out}
 	for _, m := range memos {
 		uid := uidFromName(m.GetName())
 		newState := memoState(ws, m) // path + metadata + canonical server hash
@@ -67,7 +69,7 @@ func Pull(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, ou
 		prev, tracked := state.Memos[uid]
 		if !tracked {
 			// New memo on the server.
-			ms, nDown, err := exportMemo(ctx, client, ws, contentRoot, m, nil)
+			ms, nDown, err := exportMemo(ctx, client, ws, contentRoot, m, nil, warn)
 			if err != nil {
 				return nil, err
 			}
@@ -89,7 +91,7 @@ func Pull(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, ou
 		// stub, so there is no "local edit" to conflict with. Just re-export and
 		// adopt the server state.
 		if prev.DocType == "PDF" || newState.DocType == "PDF" {
-			ms, nDown, err := relocateMemo(ctx, client, ws, contentRoot, prev.Path, m, &prev)
+			ms, nDown, err := relocateMemo(ctx, client, ws, contentRoot, prev.Path, m, &prev, warn)
 			if err != nil {
 				return nil, err
 			}
@@ -127,7 +129,7 @@ func Pull(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, ou
 
 		// Only the server changed → adopt server content, relocating the file if
 		// its folder_path/title (and thus path) changed.
-		ms, nDown, err := relocateMemo(ctx, client, ws, contentRoot, prev.Path, m, &prev)
+		ms, nDown, err := relocateMemo(ctx, client, ws, contentRoot, prev.Path, m, &prev, warn)
 		if err != nil {
 			return nil, err
 		}
@@ -143,7 +145,7 @@ func Pull(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, ou
 	// Reconcile against a full current listing: catches server-side deletions
 	// (never returned by the incremental filter) and path drift (memos whose
 	// folder/title changed without their updated_ts moving).
-	if err := reconcileFullListing(ctx, client, ws, username, contentRoot, state, res, out); err != nil {
+	if err := reconcileFullListing(ctx, client, ws, username, contentRoot, state, res, out, warn); err != nil {
 		return nil, err
 	}
 
@@ -155,6 +157,7 @@ func Pull(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, ou
 		fmt.Fprintf(out, "  stamped %d file(s) with their memogit id\n", n)
 	}
 
+	res.AttachmentsFailed = warn.failed
 	state.LastSync = time.Now().UTC()
 	// Re-record the server this baseline was actually synced against, so moving
 	// the instance to a new URL doesn't leave the old hostname in the state file
@@ -179,6 +182,9 @@ func Pull(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, ou
 	}
 	if len(res.Orphaned) > 0 {
 		fmt.Fprintf(out, "Deleted on server but kept (locally modified): %v\n", res.Orphaned)
+	}
+	if res.AttachmentsFailed > 0 {
+		fmt.Fprintf(out, "%d attachment(s) could not be downloaded (see ! lines above); the next pull retries them.\n", res.AttachmentsFailed)
 	}
 	return res, nil
 }
@@ -225,19 +231,19 @@ func syncWorkspaceTitle(ctx context.Context, client *Client, root string, cfg *C
 //     is exported as an add. The incremental filter only ever looks forward from
 //     last_sync, so a memo whose last update predates the watermark is invisible
 //     to it forever; the full listing is the ground truth that closes that gap.
-func reconcileFullListing(ctx context.Context, client *Client, ws *WorkspaceConfig, username, contentRoot string, state *State, res *PullResult, out io.Writer) error {
+func reconcileFullListing(ctx context.Context, client *Client, ws *WorkspaceConfig, username, contentRoot string, state *State, res *PullResult, out io.Writer, warn *attachmentWarner) error {
 	current, err := client.ListAllMemos(ctx, ws.Workspace, scopedFilter(username, ws.Filter))
 	if err != nil {
 		return err
 	}
 	// Sparse checkout: a memo that left the mapped folder is no longer "alive"
 	// here, so it is reconciled as a local removal below.
-	return reconcileAgainst(ctx, client, ws, contentRoot, inScopeMemos(ws, current), state, res, out)
+	return reconcileAgainst(ctx, client, ws, contentRoot, inScopeMemos(ws, current), state, res, out, warn)
 }
 
 // reconcileAgainst is reconcileFullListing's logic over an already-fetched
 // listing: the pure step, and the unit-test seam that needs no server.
-func reconcileAgainst(ctx context.Context, client *Client, ws *WorkspaceConfig, contentRoot string, current []*v1pb.Memo, state *State, res *PullResult, out io.Writer) error {
+func reconcileAgainst(ctx context.Context, client *Client, ws *WorkspaceConfig, contentRoot string, current []*v1pb.Memo, state *State, res *PullResult, out io.Writer, warn *attachmentWarner) error {
 	alive := make(map[string]*v1pb.Memo, len(current))
 	for _, m := range current {
 		alive[uidFromName(m.GetName())] = m
@@ -245,7 +251,7 @@ func reconcileAgainst(ctx context.Context, client *Client, ws *WorkspaceConfig, 
 
 	for _, uid := range sortedUIDs(state) {
 		if m := alive[uid]; m != nil {
-			if err := reconcileDrifted(ctx, client, ws, contentRoot, uid, m, state, res, out); err != nil {
+			if err := reconcileDrifted(ctx, client, ws, contentRoot, uid, m, state, res, out, warn); err != nil {
 				return err
 			}
 			continue
@@ -278,7 +284,7 @@ func reconcileAgainst(ctx context.Context, client *Client, ws *WorkspaceConfig, 
 		if _, tracked := state.Memos[uid]; tracked {
 			continue
 		}
-		ms, nDown, err := exportMemo(ctx, client, ws, contentRoot, m, nil)
+		ms, nDown, err := exportMemo(ctx, client, ws, contentRoot, m, nil, warn)
 		if err != nil {
 			return err
 		}
@@ -300,7 +306,7 @@ func reconcileAgainst(ctx context.Context, client *Client, ws *WorkspaceConfig, 
 // A locally modified file is never overwritten: a pure move would discard where
 // the edit lives, and a content difference with edits on both sides is a genuine
 // conflict. Either way the file is kept and reported so the user can push first.
-func reconcileDrifted(ctx context.Context, client *Client, ws *WorkspaceConfig, contentRoot, uid string, m *v1pb.Memo, state *State, res *PullResult, out io.Writer) error {
+func reconcileDrifted(ctx context.Context, client *Client, ws *WorkspaceConfig, contentRoot, uid string, m *v1pb.Memo, state *State, res *PullResult, out io.Writer, warn *attachmentWarner) error {
 	prev := state.Memos[uid]
 	next := memoState(ws, m)
 	movedOnServer := next.Path != prev.Path
@@ -338,7 +344,7 @@ func reconcileDrifted(ctx context.Context, client *Client, ws *WorkspaceConfig, 
 		}
 	}
 
-	ms, nDown, err := relocateMemo(ctx, client, ws, contentRoot, prev.Path, m, &prev)
+	ms, nDown, err := relocateMemo(ctx, client, ws, contentRoot, prev.Path, m, &prev, warn)
 	if err != nil {
 		return err
 	}

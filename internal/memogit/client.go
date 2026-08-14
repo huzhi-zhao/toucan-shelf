@@ -69,16 +69,26 @@ func NewClient(cfg *Config) *Client {
 	}
 }
 
-// CurrentUsername returns the authenticated user's username (used to scope
-// list queries to the user's own memos).
-func (c *Client) CurrentUsername(ctx context.Context) (string, error) {
+// CurrentUser returns the authenticated user (username scopes list queries to
+// the user's own memos; the email seeds the git commit identity on clone).
+func (c *Client) CurrentUser(ctx context.Context) (*v1pb.User, error) {
 	resp, err := c.auth.GetCurrentUser(ctx, connect.NewRequest(&v1pb.GetCurrentUserRequest{}))
 	if err != nil {
-		return "", fmt.Errorf("get current user (check server URL and token): %w", err)
+		return nil, fmt.Errorf("get current user (check server URL and token): %w", err)
 	}
 	user := resp.Msg.GetUser()
 	if user == nil || user.GetUsername() == "" {
-		return "", fmt.Errorf("current user response missing username")
+		return nil, fmt.Errorf("current user response missing username")
+	}
+	return user, nil
+}
+
+// CurrentUsername returns the authenticated user's username (used to scope
+// list queries to the user's own memos).
+func (c *Client) CurrentUsername(ctx context.Context) (string, error) {
+	user, err := c.CurrentUser(ctx)
+	if err != nil {
+		return "", err
 	}
 	return user.GetUsername(), nil
 }

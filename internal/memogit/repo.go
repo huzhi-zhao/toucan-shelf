@@ -59,6 +59,54 @@ func GitInitIfNeeded(root string) error {
 	return nil
 }
 
+// fallbackGitName/Email are used when neither the machine nor the memogit
+// account provides a git identity — without one `git commit` hard-fails on a
+// fresh box that never ran `git config --global user.email`.
+const (
+	fallbackGitName  = "memogit"
+	fallbackGitEmail = "memogit@localhost"
+)
+
+// gitHasIdentity reports whether git can resolve a committer identity in root
+// (from any config scope, or the environment).
+func gitHasIdentity(root string) bool {
+	_, err := git(root, "var", "GIT_COMMITTER_IDENT")
+	return err == nil
+}
+
+// EnsureGitIdentity writes a repo-local user.name/user.email when the machine
+// has no git identity configured, so the baseline commit succeeds on a fresh
+// host. name/email come from the memogit account (either may be empty); global
+// config, when present, is left untouched.
+func EnsureGitIdentity(root, name, email string) error {
+	if gitHasIdentity(root) {
+		return nil
+	}
+	if strings.TrimSpace(name) == "" {
+		name = fallbackGitName
+	}
+	if strings.TrimSpace(email) == "" {
+		email = fallbackGitEmail
+	}
+	if _, err := git(root, "config", "user.name", name); err != nil {
+		return err
+	}
+	if _, err := git(root, "config", "user.email", email); err != nil {
+		return err
+	}
+	return nil
+}
+
+// commitIdentityArgs returns `-c user.*` overrides for a single commit when the
+// repo still has no identity (e.g. a checkout cloned before EnsureGitIdentity
+// existed), so pull/push can commit without mutating the user's config.
+func commitIdentityArgs(root string) []string {
+	if gitHasIdentity(root) {
+		return nil
+	}
+	return []string{"-c", "user.name=" + fallbackGitName, "-c", "user.email=" + fallbackGitEmail}
+}
+
 // GitStatusPorcelain returns the number of entries in `git status --porcelain`
 // (uncommitted working-tree changes), or 0 if git errors.
 func GitStatusPorcelain(root string) int {
@@ -83,7 +131,8 @@ func GitCommitAll(root, msg string) error {
 	if out, _ := git(root, "status", "--porcelain"); strings.TrimSpace(out) == "" {
 		return nil
 	}
-	if _, err := git(root, "commit", "-m", msg); err != nil {
+	args := append(commitIdentityArgs(root), "commit", "-m", msg)
+	if _, err := git(root, args...); err != nil {
 		return err
 	}
 	return nil

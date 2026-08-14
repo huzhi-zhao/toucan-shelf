@@ -102,12 +102,12 @@ func memoState(ws *WorkspaceConfig, m *v1pb.Memo) MemoState {
 // baseline MemoState plus the number of attachments freshly downloaded. prev is
 // the previous baseline for this memo (nil on first export), used to skip
 // re-downloading unchanged attachments.
-func exportMemo(ctx context.Context, client *Client, ws *WorkspaceConfig, contentRoot string, m *v1pb.Memo, prev *MemoState) (MemoState, int, error) {
+func exportMemo(ctx context.Context, client *Client, ws *WorkspaceConfig, contentRoot string, m *v1pb.Memo, prev *MemoState, warn *attachmentWarner) (MemoState, int, error) {
 	var prevRefs []AttachmentRef
 	if prev != nil {
 		prevRefs = prev.Attachments
 	}
-	refs, n, err := downloadMemoAttachments(ctx, client, contentRoot, m, prevRefs)
+	refs, n, err := downloadMemoAttachments(ctx, client, contentRoot, memoState(ws, m).Path, m, prevRefs, warn)
 	if err != nil {
 		return MemoState{}, 0, err
 	}
@@ -134,16 +134,16 @@ func writeMemoDoc(ws *WorkspaceConfig, contentRoot string, m *v1pb.Memo, refs []
 // relocateMemo is like exportMemo but for an already-tracked memo whose file may
 // have moved (folder_path/title changed): it downloads attachments, writes the
 // new file, and removes the old one. Returns the new baseline + downloads.
-func relocateMemo(ctx context.Context, client *Client, ws *WorkspaceConfig, contentRoot, oldRel string, m *v1pb.Memo, prev *MemoState) (MemoState, int, error) {
+func relocateMemo(ctx context.Context, client *Client, ws *WorkspaceConfig, contentRoot, oldRel string, m *v1pb.Memo, prev *MemoState, warn *attachmentWarner) (MemoState, int, error) {
 	var prevRefs []AttachmentRef
 	if prev != nil {
 		prevRefs = prev.Attachments
 	}
-	refs, n, err := downloadMemoAttachments(ctx, client, contentRoot, m, prevRefs)
+	ms := memoState(ws, m)
+	refs, n, err := downloadMemoAttachments(ctx, client, contentRoot, ms.Path, m, prevRefs, warn)
 	if err != nil {
 		return MemoState{}, 0, err
 	}
-	ms := memoState(ws, m)
 	ms.Attachments = refs
 	if err := relocateAndWrite(contentRoot, oldRel, ms.Path, FileContent(m, refs)); err != nil {
 		return MemoState{}, 0, err
