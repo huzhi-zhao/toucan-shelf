@@ -24,7 +24,8 @@ DRIVER=mysql    go test ./store/test/... 2>&1 | tail -40
 | 大面积失败 | 证实「名义支持、实际半残」，按本计划删除 |
 | 基本通过 | 说明代码仍活着，**暂停并重新评估**是否改为「保留但不再新增迁移」的保守档 |
 
-同时记录一份当前基线，供 P4 调优前后对比：
+同时记录一份当前基线，作为收敛前后的行为对照（P4 调优已否决，此基线只用于确认
+删除动作没有改变现有表现）：
 
 - `ls -la memos_prod.db*` 体积
 - 一次典型 RAG 搜索的耗时
@@ -67,9 +68,18 @@ DRIVER=mysql    go test ./store/test/... 2>&1 | tail -40
 
 ## P2 · 收敛 filter 方言
 
-[internal/filter/render.go](../../../internal/filter/render.go)（980 行）中
-`DialectMySQL` / `DialectPostgres` 分支约 18 处，散布在
-`schema.go` 的 `Expressions map[DialectName]string` 与 `render.go` 的多个 `switch`。
+`DialectMySQL` / `DialectPostgres` 合计 **65 处**引用，分布：
+
+| 文件 | 引用数 |
+|---|---|
+| [internal/filter/render.go](../../../internal/filter/render.go) | 34 |
+| [internal/filter/schema.go](../../../internal/filter/schema.go) | 12 |
+| `internal/filter/functions_test.go` | 11 |
+| `internal/filter/engine_test.go` | 8 |
+
+即 `schema.go` 的 `Expressions map[DialectName]string` 与 `render.go` 的多个 `switch`，
+外加两个测试文件里的多方言断言表。（早期草稿写的「约 18 处」只数了 `DialectPostgres`
+在 `render.go` 内的出现，低估了工作量。）
 
 做法：
 
@@ -90,12 +100,17 @@ DRIVER=mysql    go test ./store/test/... 2>&1 | tail -40
 
 ## P3 · 清理泄漏点与测试脚手架
 
-三处驱动判断，删除后条件恒真，直接展开：
+五处驱动判断，删除后条件恒真，直接展开：
 
 | 位置 | 处理 |
 |---|---|
-| [server/server.go:187](../../../server/server.go) | 去掉 `if s.Profile.Driver == "sqlite"`，RAG worker 无条件启动 |
+| [server/server.go:223](../../../server/server.go) | 去掉 `if s.Profile.Driver == "sqlite"`，RAG worker 无条件启动 |
 | [server/runner/backup/runner.go:31,49](../../../server/runner/backup/runner.go) | 去掉两处提前 `return` |
+| [server/backup/backup.go:59](../../../server/backup/backup.go) | 去掉 `run()` 开头的 `driver != "sqlite"` 报错 |
+| [store/migrator.go:271](../../../store/migrator.go) | `seed()` 的非 sqlite 早退分支删除，注释同步改写 |
+
+`internal/profile/profile.go:110` 的 `if p.Driver == "sqlite" && p.DSN == ""` **保留**——
+它是默认 DSN 推导，不是能力开关，且 `profile.Driver` 字段本身按「边界」一节要留着。
 
 测试脚手架：
 
@@ -115,23 +130,23 @@ DRIVER=mysql    go test ./store/test/... 2>&1 | tail -40
 
 ---
 
-## P4 · sqlite 专属调优（收敛后的红利）
+## P4 · sqlite 专属调优 —— 已否决，不做
 
-[store/db/sqlite/sqlite.go:53](../../../store/db/sqlite/sqlite.go) 当前：
+原计划：开启 mmap（`mmap_size(0)` → 256MB）以降低读延迟。
 
-```
-?_pragma=foreign_keys(0)&_pragma=busy_timeout(10000)&_pragma=journal_mode(WAL)&_pragma=mmap_size(0)
-```
+**前置调查已完成，结论是不动。** `git log -S 'mmap_size'` 指向 commit `05f31e45`：
 
-`mmap_size(0)` 关闭了内存映射。库长到几百 MB 后，开启 mmap（如 256MB）通常能明显降低
-读延迟。24G 内存的部署环境完全吃得下。
+> fix: add mmap size setting to database connection to prevent OOM errors
 
-**必须查清 `mmap_size(0)` 是被谁、为什么设成 0 的**（`git log -S 'mmap_size'`）——
-上游 memos 可能是为了规避某平台的已知问题而显式关闭的，不能想当然改掉。查清前不动。
+该提交把 `_pragma=mmap_size(0)` 显式加进 DSN，并在
+[store/db/sqlite/sqlite.go](../../../store/db/sqlite/sqlite.go) 留了注释：
+「it disables memory mapping, which can cause OOM errors on some systems」。
 
-改动后用 P-1 记录的基线做前后对比，**有实测数据才合入**。
+也就是说这不是上游默认值，而是本项目为修 OOM 主动加的防御。把它改回去等于回退一个
+线上修复。若将来确有读延迟问题，需独立立项：先复现当初的 OOM 场景、确认现部署环境
+不受影响，再配压测数据推进——不搭本次存储收敛的车。
 
-这一步与前面几步无依赖，可以延后做，也可以不做。
+本阶段**不产生任何代码改动**，保留此节仅为记录调查结论，避免将来重复提出。
 
 ---
 
@@ -196,7 +211,9 @@ CHANGELOG 明确标注 breaking change。
 - 业务逻辑、API 契约、proto 定义、前端
 - `store/driver.go` 的 69 方法接口。**保留接口不改成具体类型**——这层抽象正是将来
   重新支持 postgres 成本可控的原因，删掉等于把 Q1 的结论作废
-- `profile.Driver` 字段。保留它才能在 P0 给出明确错误，而不是让配置被静默忽略
+- `profile.Driver` 字段。保留它才能在 P0 给出明确错误，而不是让配置被静默忽略。
+  `profile.go:110` 用它推导默认 DSN，也一并保留
+- sqlite 的 DSN pragma。`mmap_size(0)` 是既有 OOM 修复，理由见 P4
 - 历史 plan 文档
 
 **明确不做的**（各自独立议题）：

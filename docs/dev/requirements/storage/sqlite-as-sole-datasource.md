@@ -23,7 +23,7 @@ Postgres 的优势集中在多实例、高并发写、连接池等场景，单�
 - **RAG 混合搜索**。`store/db/postgres/memo_chunk.go` 仅 54 行，全部返回
   `errRAGUnsupported`；对照 sqlite 的 374 行完整实现。`store/migration/postgres/` 下
   不存在 `rag_search.sql`，`memo_chunk` / `memo_index_job` 两张表在 postgres 根本没有。
-  且 [server/server.go:187](../../../../server/server.go) 写死了
+  且 [server/server.go:223](../../../../server/server.go) 写死了
   `if s.Profile.Driver == "sqlite"` 才启动索引 worker。
 - **自动备份**。[server/runner/backup/runner.go:31](../../../../server/runner/backup/runner.go)
   `if r.Profile.Driver != "sqlite" { return }`。
@@ -75,10 +75,13 @@ mysql/postgres 代码从未被 CI 执行过一次。**
 
 1. **抽象边界干净。** `store/driver.go` 是 69 方法的接口，SQL 完全封装在
    `store/db/{driver}/` 内，上层调用领域方法而非 SQL。新增驱动是机械填空，不触碰业务逻辑。
-   驱动泄漏点经排查仅三处，且均为显式判断，可直接作为将来的 TODO 清单：
-   - `server/server.go:187` — RAG worker 启动条件
-   - `server/runner/backup/runner.go:31,49` — 备份
-   - `internal/filter/render.go` — CEL 方言分支（`DialectPostgres` 出现 18 次）
+   驱动泄漏点经排查为五处，且均为显式判断，可直接作为将来的 TODO 清单：
+   - `server/server.go:223` — RAG worker 启动条件
+   - `server/runner/backup/runner.go:31,49` — 备份 runner
+   - `server/backup/backup.go:59` — 备份执行入口
+   - `store/migrator.go:271` — demo 模式 seed
+   - `internal/filter/` — CEL 方言分支（`DialectMySQL` / `DialectPostgres` 合计 65 处引用：
+     `render.go` 34、`schema.go` 12、`engine_test.go` 8、`functions_test.go` 11）
 
 2. **删除后重新支持比现在维护更便宜。** 不存在任何 postgres 存量用户，因此将来永远
    不需要 postgres 的增量迁移链，只需一份 `LATEST.sql` 快照建库。当前正在维护的恰恰
@@ -119,10 +122,9 @@ sqlite 在该区间为舒适区。写并发方面 WAL 为「单写多读」，�
 
 1. 删除 mysql、postgres 驱动实现与迁移文件，`store/db/db.go` 仅保留 sqlite 分支
 2. `internal/filter` 收敛为单方言，移除 `DialectMySQL` / `DialectPostgres` 分支
-3. 清理三处 `if driver == "sqlite"` 泄漏点（判断恒真，直接展开）
+3. 清理五处 `if driver == "sqlite"` 泄漏点（判断恒真，直接展开）
 4. 测试脚手架移除 mysql/postgres testcontainers 路径
 5. 文档与部署配置中移除多驱动说明
-6. 收敛后启用 sqlite 专属调优（见技术方案）
 
 ## 非目标
 
@@ -131,6 +133,9 @@ sqlite 在该区间为舒适区。写并发方面 WAL 为「单写多读」，�
 - **不改**表结构。sqlite 的 schema 与迁移链保持原样
 - **不实现** pgvector 或任何向量数据库能力
 - **不优化** `SearchMemosLike` 全表扫描（独立议题，见观察指标）
+- **不调整** sqlite pragma。原计划中的「收敛后开启 mmap」已查明不可行：
+  `mmap_size(0)` 是 commit `05f31e45`（*prevent OOM errors*）显式加入的防御性设置，
+  代码注释亦有说明。改动需独立的 OOM 复现与压测支撑，不搭本次收敛的车
 
 ## 复评触发条件
 

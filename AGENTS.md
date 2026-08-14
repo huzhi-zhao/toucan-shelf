@@ -9,7 +9,7 @@ Memos is a self-hosted note-taking app.
 
 - Backend: Go 1.26.2, Echo v5, Connect RPC, gRPC-Gateway, Protocol Buffers.
 - Frontend: React 19, TypeScript 6, Vite 8, Tailwind CSS v4, React Query v5.
-- Storage: SQLite, MySQL, PostgreSQL.
+- Storage: SQLite only. The inherited MySQL/PostgreSQL drivers are being removed; see `docs/dev/requirements/storage/sqlite-as-sole-datasource.md`.
 - Generated API outputs: `proto/gen/` for Go/OpenAPI, `web/src/types/proto/` for TypeScript.
 
 ## Working Rules
@@ -17,7 +17,7 @@ Memos is a self-hosted note-taking app.
 - Read relevant code before editing; prefer local patterns over new abstractions.
 - Keep diffs scoped. Do not do repo-wide cleanup, dependency churn, or generated-file rewrites unless the task requires it.
 - Do not hand-edit generated proto outputs. Change `.proto` files, then run `buf generate`.
-- Add migrations for all database drivers when schema changes, and update each driver's `LATEST.sql`.
+- Schema changes go in `store/migration/sqlite/` only, plus that directory's `LATEST.sql`. Do not add MySQL/PostgreSQL migrations.
 - Add public API endpoints to `server/router/api/v1/acl_config.go`.
 - Ask before adding heavy dependencies, changing auth/token behavior, or altering Docker/release workflows.
 
@@ -63,7 +63,7 @@ cd proto && buf format -w          # Format proto files
 | `server/router/fileserver/` | Native HTTP file serving, thumbnails, range requests |
 | `server/runner/` | Background memo processing and S3 presign refresh |
 | `store/` | Store facade, cache, migrations, driver interface |
-| `store/db/{sqlite,mysql,postgres}/` | Database-specific drivers and SQL |
+| `store/db/sqlite/` | SQLite driver and SQL |
 | `proto/api/v1/` | Public API service definitions |
 | `proto/store/` | Internal storage proto messages |
 | `internal/` | App-private packages: scheduler, cron, email, CEL filter, markdown, idp, S3 |
@@ -79,7 +79,7 @@ cd proto && buf format -w          # Format proto files
 | Change | Update | Verify |
 | --- | --- | --- |
 | Go service or router behavior | Service code under `server/`, tests near package | `go test -v -race ./server/...` |
-| Store or migration behavior | `store/`, all three DB driver migrations, `LATEST.sql` | `go test -v ./store/...` |
+| Store or migration behavior | `store/`, `store/migration/sqlite/`, `LATEST.sql` | `go test -v ./store/...` |
 | Internal package logic | Relevant `internal/` package tests | `go test -v -race ./internal/...` |
 | Frontend behavior | Components/hooks/contexts under `web/src/` | `cd web && pnpm lint && pnpm test` |
 | Frontend production output | Vite config or release-sensitive UI | `cd web && pnpm build` or `pnpm release` |
@@ -105,7 +105,7 @@ cd proto && buf format -w          # Format proto files
 
 ## Database And Proto Rules
 
-- Schema changes require SQLite, MySQL, and PostgreSQL migrations plus `LATEST.sql` updates.
+- Schema changes require a SQLite migration plus a `LATEST.sql` update. SQLite is the sole schema source of truth.
 - Fresh-install SQL and incremental migrations must stay equivalent.
 - Proto field changes must preserve compatibility unless the task explicitly allows a breaking API change.
 - Regenerate after proto edits and include both Go/OpenAPI and TypeScript generated outputs.
