@@ -4,11 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
 	storepb "github.com/usememos/memos/proto/gen/store"
@@ -22,10 +20,9 @@ func TestMigrationFromV0262PreservesLegacyData(t *testing.T) {
 	skipIfContainerProviderUnavailable(t)
 
 	ctx := context.Background()
-	driver := getDriverFromEnv()
 
-	cfg, hostDSN := prepareV0262MigrationTest(t, driver)
-	t.Logf("Starting Memos %s container for %s schema bootstrap...", cfg.Version, driver)
+	cfg, hostDSN := prepareV0262MigrationTest(t)
+	t.Logf("Starting Memos %s container for schema bootstrap...", cfg.Version)
 	container, err := StartMemosContainer(ctx, cfg)
 	require.NoError(t, err, "failed to start v0.26.2 memos container")
 	t.Cleanup(func() {
@@ -34,7 +31,7 @@ func TestMigrationFromV0262PreservesLegacyData(t *testing.T) {
 		}
 	})
 
-	legacyStore := NewTestingStoreWithDSN(ctx, t, driver, hostDSN)
+	legacyStore := NewTestingStoreWithDSN(ctx, t, hostDSN)
 	require.Eventually(t, func() bool {
 		setting, err := legacyStore.GetInstanceBasicSetting(ctx)
 		return err == nil && setting != nil && setting.SchemaVersion != ""
@@ -48,18 +45,18 @@ func TestMigrationFromV0262PreservesLegacyData(t *testing.T) {
 	require.NoError(t, err, "failed to stop v0.26.2 memos container")
 	container = nil
 
-	db := openMigrationSQLDB(t, driver, hostDSN)
+	db := openMigrationSQLDB(t, hostDSN)
 	defer db.Close()
 
-	seedLegacyMigrationData(ctx, t, driver, db)
+	seedLegacyMigrationData(ctx, t, db)
 
 	count, err := countSystemSetting(ctx, db, "STORAGE")
 	require.NoError(t, err)
 	require.Zero(t, count, "v0.26.2 database should not have a STORAGE setting before migration")
 
-	ts := NewTestingStoreWithDSN(ctx, t, driver, hostDSN)
+	ts := NewTestingStoreWithDSN(ctx, t, hostDSN)
 	err = ts.Migrate(ctx)
-	require.NoError(t, err, "migration from v0.26.2 should succeed for %s", driver)
+	require.NoError(t, err, "migration from v0.26.2 should succeed")
 
 	currentVersion, err := ts.GetCurrentSchemaVersion()
 	require.NoError(t, err)
@@ -89,11 +86,11 @@ func TestMigrationFromV0262PreservesLegacyData(t *testing.T) {
 	require.Equal(t, int32(102), inboxes[0].Message.GetMemoComment().MemoId)
 	require.Equal(t, int32(101), inboxes[0].Message.GetMemoComment().RelatedMemoId)
 
-	activityExists, err := tableExists(ctx, db, driver, "activity")
+	activityExists, err := tableExists(ctx, db, "activity")
 	require.NoError(t, err)
 	require.False(t, activityExists, "activity table should be removed after migration")
 
-	memoShareExists, err := tableExists(ctx, db, driver, "memo_share")
+	memoShareExists, err := tableExists(ctx, db, "memo_share")
 	require.NoError(t, err)
 	require.True(t, memoShareExists, "memo_share table should be created")
 
@@ -117,57 +114,30 @@ func TestMigrationFromV0262PreservesLegacyData(t *testing.T) {
 	require.Equal(t, "created after v0.26.2 migration", postUpgradeMemo.Content)
 }
 
-func prepareV0262MigrationTest(t *testing.T, driver string) (MemosContainerConfig, string) {
+func prepareV0262MigrationTest(t *testing.T) (MemosContainerConfig, string) {
 	t.Helper()
 
-	const version = "0.26.2"
-
-	switch driver {
-	case "sqlite":
-		dataDir := t.TempDir()
-		return MemosContainerConfig{
-			Version: version,
-			Driver:  driver,
-			DataDir: dataDir,
-		}, fmt.Sprintf("%s/memos_prod.db", dataDir)
-	case "mysql":
-		hostDSN := GetMySQLDSN(t)
-		containerDSN, err := getContainerDSN(driver, hostDSN)
-		require.NoError(t, err)
-		return MemosContainerConfig{
-			Version: version,
-			Driver:  driver,
-			DSN:     containerDSN,
-		}, hostDSN
-	case "postgres":
-		hostDSN := GetPostgresDSN(t)
-		containerDSN, err := getContainerDSN(driver, hostDSN)
-		require.NoError(t, err)
-		return MemosContainerConfig{
-			Version: version,
-			Driver:  driver,
-			DSN:     containerDSN,
-		}, hostDSN
-	default:
-		t.Fatalf("unsupported driver: %s", driver)
-		return MemosContainerConfig{}, ""
-	}
+	dataDir := t.TempDir()
+	return MemosContainerConfig{
+		Version: "0.26.2",
+		DataDir: dataDir,
+	}, fmt.Sprintf("%s/memos_prod.db", dataDir)
 }
 
-func openMigrationSQLDB(t *testing.T, driver, dsn string) *sql.DB {
+func openMigrationSQLDB(t *testing.T, dsn string) *sql.DB {
 	t.Helper()
 
-	db, err := sql.Open(driver, dsn)
+	db, err := sql.Open("sqlite", dsn)
 	require.NoError(t, err)
 	require.NoError(t, db.Ping())
 	return db
 }
 
-func seedLegacyMigrationData(ctx context.Context, t *testing.T, driver string, db *sql.DB) {
+func seedLegacyMigrationData(ctx context.Context, t *testing.T, db *sql.DB) {
 	t.Helper()
 
-	execMigrationSQL(t, db, legacyInsertUserSQL(driver, 11, "owner"))
-	execMigrationSQL(t, db, legacyInsertUserSQL(driver, 12, "commenter"))
+	execMigrationSQL(t, db, legacyInsertUserSQL(11, "owner"))
+	execMigrationSQL(t, db, legacyInsertUserSQL(12, "commenter"))
 	execMigrationSQL(t, db, legacyInsertMemoSQL(101, 11, "legacy-parent", "parent memo"))
 	execMigrationSQL(t, db, legacyInsertMemoSQL(102, 12, "legacy-comment", "comment memo"))
 	execMigrationSQL(t, db, legacyInsertActivitySQL(201, 12))
@@ -188,16 +158,8 @@ func execMigrationSQL(t *testing.T, db *sql.DB, query string) {
 	require.NoError(t, err, "failed to execute SQL: %s", query)
 }
 
-func legacyInsertUserSQL(driver string, id int, username string) string {
-	table := "user"
-	switch driver {
-	case "mysql":
-		table = "`user`"
-	case "postgres", "sqlite":
-		table = `"user"`
-	default:
-		// Keep the unquoted fallback for unknown test drivers.
-	}
+func legacyInsertUserSQL(id int, username string) string {
+	const table = `"user"`
 
 	return fmt.Sprintf(
 		"INSERT INTO %s (id, username, role, email, nickname, password_hash, avatar_url, description) VALUES (%d, '%s', 'USER', '%s@example.com', '%s', 'legacy-hash', '', 'legacy user')",
@@ -240,32 +202,14 @@ func legacyInsertIDPSQL(id int, name string) string {
 func countSystemSetting(ctx context.Context, db *sql.DB, name string) (int, error) {
 	var count int
 	err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM system_setting WHERE name = ?", name).Scan(&count)
-	if err == nil {
-		return count, nil
-	}
-
-	err = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM system_setting WHERE name = $1", name).Scan(&count)
 	return count, err
 }
 
-func tableExists(ctx context.Context, db *sql.DB, driver, table string) (bool, error) {
-	switch driver {
-	case "sqlite":
-		var name string
-		err := db.QueryRowContext(ctx, "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?", table).Scan(&name)
-		if err == sql.ErrNoRows {
-			return false, nil
-		}
-		return err == nil, err
-	case "mysql":
-		var count int
-		err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?", table).Scan(&count)
-		return count > 0, err
-	case "postgres":
-		var regclass sql.NullString
-		err := db.QueryRowContext(ctx, "SELECT to_regclass($1)", "public."+table).Scan(&regclass)
-		return regclass.Valid && strings.EqualFold(regclass.String, table), err
-	default:
-		return false, errors.Errorf("unsupported driver: %s", driver)
+func tableExists(ctx context.Context, db *sql.DB, table string) (bool, error) {
+	var name string
+	err := db.QueryRowContext(ctx, "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?", table).Scan(&name)
+	if err == sql.ErrNoRows {
+		return false, nil
 	}
+	return err == nil, err
 }

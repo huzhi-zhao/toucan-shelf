@@ -91,65 +91,65 @@ export const CalendarMonthGrid = ({
       <div className="flex items-center justify-between px-1">
         <span className="text-sm font-medium text-foreground">{monthLabel}</span>
         <div className="flex items-center gap-1">
-        <div className="inline-flex items-center gap-0.5 rounded-lg border border-border/30 bg-muted/10 p-0.5">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handlePrev}
-            aria-label="Previous month"
-            className="h-6 w-6 p-0 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40"
-          >
-            <ChevronLeftIcon className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleToday}
-            disabled={isViewingCurrentMonth}
-            aria-label="Jump to current month"
-            className={cn(
-              "h-6 px-2 rounded-md text-[10px] font-medium uppercase tracking-wider",
-              isViewingCurrentMonth
-                ? "text-muted-foreground/50 cursor-default"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
-            )}
-          >
-            {t("common.today")}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleNext}
-            aria-label="Next month"
-            className="h-6 w-6 p-0 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40"
-          >
-            <ChevronRightIcon className="w-4 h-4" />
-          </Button>
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+          <div className="inline-flex items-center gap-0.5 rounded-lg border border-border/30 bg-muted/10 p-0.5">
             <Button
               variant="ghost"
               size="sm"
-              aria-label={t("markdown.calendar-block.filter")}
-              className="h-6 w-6 p-0 rounded-lg border border-border/30 bg-muted/10 text-muted-foreground hover:text-foreground hover:bg-muted/40"
+              onClick={handlePrev}
+              aria-label="Previous month"
+              className="h-6 w-6 p-0 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40"
             >
-              <FilterIcon className="w-3.5 h-3.5" />
+              <ChevronLeftIcon className="w-4 h-4" />
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {dotOptions.map((option) => (
-              <DropdownMenuCheckboxItem
-                key={option.key}
-                checked={visibleDots.has(option.key)}
-                onSelect={(e) => e.preventDefault()}
-                onCheckedChange={() => toggleDot(option.key)}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleToday}
+              disabled={isViewingCurrentMonth}
+              aria-label="Jump to current month"
+              className={cn(
+                "h-6 px-2 rounded-md text-[10px] font-medium uppercase tracking-wider",
+                isViewingCurrentMonth
+                  ? "text-muted-foreground/50 cursor-default"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
+              )}
+            >
+              {t("common.today")}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleNext}
+              aria-label="Next month"
+              className="h-6 w-6 p-0 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40"
+            >
+              <ChevronRightIcon className="w-4 h-4" />
+            </Button>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={t("markdown.calendar-block.filter")}
+                className="h-6 w-6 p-0 rounded-lg border border-border/30 bg-muted/10 text-muted-foreground hover:text-foreground hover:bg-muted/40"
               >
-                {option.label}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                <FilterIcon className="w-3.5 h-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {dotOptions.map((option) => (
+                <DropdownMenuCheckboxItem
+                  key={option.key}
+                  checked={visibleDots.has(option.key)}
+                  onSelect={(e) => e.preventDefault()}
+                  onCheckedChange={() => toggleDot(option.key)}
+                >
+                  {option.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
       <div className="grid grid-cols-7 gap-1 mb-1" role="row">

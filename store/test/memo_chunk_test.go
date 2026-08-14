@@ -13,9 +13,6 @@ func TestMemoChunkStoreAndFTS(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	ts := NewTestingStore(ctx, t)
-	if getDriverFromEnv() != "sqlite" {
-		t.Skip("RAG chunk store is only implemented for sqlite")
-	}
 	user, err := createTestingHostUser(ctx, ts)
 	require.NoError(t, err)
 
@@ -71,9 +68,6 @@ func TestMemoChunkFTSTokenization(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	ts := NewTestingStore(ctx, t)
-	if getDriverFromEnv() != "sqlite" {
-		t.Skip("RAG chunk store is only implemented for sqlite")
-	}
 	user, err := createTestingHostUser(ctx, ts)
 	require.NoError(t, err)
 	memo, err := ts.CreateMemo(ctx, &store.Memo{
@@ -115,9 +109,6 @@ func TestSearchMemosLike(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	ts := NewTestingStore(ctx, t)
-	if getDriverFromEnv() != "sqlite" {
-		t.Skip("SearchMemosLike is only implemented for sqlite")
-	}
 	user, err := createTestingHostUser(ctx, ts)
 	require.NoError(t, err)
 
@@ -162,9 +153,6 @@ func TestMemoChunkEmbeddingRoundTrip(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	ts := NewTestingStore(ctx, t)
-	if getDriverFromEnv() != "sqlite" {
-		t.Skip("RAG chunk store is only implemented for sqlite")
-	}
 	user, err := createTestingHostUser(ctx, ts)
 	require.NoError(t, err)
 	memo, err := ts.CreateMemo(ctx, &store.Memo{

@@ -218,24 +218,21 @@ func (s *Server) startBackgroundRunners(ctx context.Context) {
 		commentVisibilityRunner.RunOnce(commentVisibilityContext)
 	}()
 
-	// RAG search index worker. Indexing is only implemented for the SQLite driver
-	// in this release, so the worker is started only there.
-	if s.Profile.Driver == "sqlite" {
-		ragContext, ragCancel := context.WithCancel(ctx)
-		s.backgroundRunnerCancels = append(s.backgroundRunnerCancels, ragCancel)
-		ragWorker := rag.NewWorker(s.Store)
-		s.backgroundRunnerWG.Add(1)
-		go func() {
-			defer s.backgroundRunnerWG.Done()
-			// One-time bootstrap: enqueue pre-existing memos when the index queue is empty
-			// (e.g. documents that existed before RAG search was installed).
-			if err := rag.Backfill(ragContext, s.Store); err != nil {
-				slog.Error("rag index backfill failed", "err", err)
-			}
-			ragWorker.Run(ragContext)
-			slog.Info("rag index worker stopped")
-		}()
-	}
+	// RAG search index worker.
+	ragContext, ragCancel := context.WithCancel(ctx)
+	s.backgroundRunnerCancels = append(s.backgroundRunnerCancels, ragCancel)
+	ragWorker := rag.NewWorker(s.Store)
+	s.backgroundRunnerWG.Add(1)
+	go func() {
+		defer s.backgroundRunnerWG.Done()
+		// One-time bootstrap: enqueue pre-existing memos when the index queue is empty
+		// (e.g. documents that existed before RAG search was installed).
+		if err := rag.Backfill(ragContext, s.Store); err != nil {
+			slog.Error("rag index backfill failed", "err", err)
+		}
+		ragWorker.Run(ragContext)
+		slog.Info("rag index worker stopped")
+	}()
 
 	slog.Info("background runners started")
 }

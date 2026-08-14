@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"os"
 	"testing"
 
 	// sqlite driver.
@@ -18,13 +17,10 @@ import (
 	"github.com/usememos/memos/store/db"
 )
 
-// NewTestingStore creates a new testing store with a fresh database.
-// Each test gets its own isolated database:
-//   - SQLite: new temp file per test
-//   - MySQL/PostgreSQL: new database per test in shared container
+// NewTestingStore creates a new testing store with a fresh SQLite database in
+// a temp file, one per test.
 func NewTestingStore(ctx context.Context, t *testing.T) *store.Store {
-	driver := getDriverFromEnv()
-	profile := getTestingProfileForDriver(t, driver)
+	profile := getTestingProfile(t)
 	dbDriver, err := db.NewDBDriver(profile)
 	if err != nil {
 		t.Fatalf("failed to create db driver: %v", err)
@@ -39,12 +35,12 @@ func NewTestingStore(ctx context.Context, t *testing.T) *store.Store {
 
 // NewTestingStoreWithDSN creates a testing store connected to a specific DSN.
 // This is useful for testing migrations on existing data.
-func NewTestingStoreWithDSN(_ context.Context, t *testing.T, driver, dsn string) *store.Store {
+func NewTestingStoreWithDSN(_ context.Context, t *testing.T, dsn string) *store.Store {
 	profile := &profile.Profile{
 		Port:    getUnusedPort(),
 		Data:    t.TempDir(), // Dummy dir, DSN matters
 		DSN:     dsn,
-		Driver:  driver,
+		Driver:  "sqlite",
 		Version: version.GetCurrentVersion(),
 	}
 	dbDriver, err := db.NewDBDriver(profile)
@@ -71,41 +67,20 @@ func getUnusedPort() int {
 	return port
 }
 
-// getTestingProfileForDriver creates a testing profile for a specific driver.
-func getTestingProfileForDriver(t *testing.T, driver string) *profile.Profile {
+// getTestingProfile creates a testing profile backed by a temp SQLite file.
+func getTestingProfile(t *testing.T) *profile.Profile {
 	// Attempt to load .env file if present (optional, for local development)
 	_ = godotenv.Load(".env")
 
 	// Get a temporary directory for the test data.
 	dir := t.TempDir()
 	mode := "prod"
-	port := getUnusedPort()
-
-	var dsn string
-	switch driver {
-	case "sqlite":
-		dsn = fmt.Sprintf("%s/memos_%s.db", dir, mode)
-	case "mysql":
-		dsn = GetMySQLDSN(t)
-	case "postgres":
-		dsn = GetPostgresDSN(t)
-	default:
-		t.Fatalf("unsupported driver: %s", driver)
-	}
 
 	return &profile.Profile{
-		Port:    port,
+		Port:    getUnusedPort(),
 		Data:    dir,
-		DSN:     dsn,
-		Driver:  driver,
+		DSN:     fmt.Sprintf("%s/memos_%s.db", dir, mode),
+		Driver:  "sqlite",
 		Version: version.GetCurrentVersion(),
 	}
-}
-
-func getDriverFromEnv() string {
-	driver := os.Getenv("DRIVER")
-	if driver == "" {
-		driver = "sqlite"
-	}
-	return driver
 }

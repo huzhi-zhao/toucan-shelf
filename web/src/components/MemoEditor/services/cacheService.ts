@@ -1,6 +1,8 @@
 export const CACHE_DEBOUNCE_DELAY = 500;
 
-const pendingSaves = new Map<string, ReturnType<typeof window.setTimeout>>();
+// Browser setTimeout ids are numbers; don't infer the type, or @types/node in
+// the CI toolchain turns it into NodeJS.Timeout and the assignment fails.
+const pendingSaves = new Map<string, number>();
 const STRUCTURED_CACHE_ENTRY_KIND = "memos.editor-cache";
 const STRUCTURED_CACHE_ENTRY_VERSION = 1;
 

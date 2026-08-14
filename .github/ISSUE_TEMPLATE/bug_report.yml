@@ -82,7 +82,6 @@ body:
       description: Include the deployment, database, client, and network details that apply.
       placeholder: |
         - Deployment: Docker / binary / source / demo site
-        - Database: SQLite / PostgreSQL / MySQL
         - Browser: Firefox 126 on macOS 15
         - Server OS: Ubuntu 24.04
         - Reverse proxy: nginx / Caddy / Traefik / none

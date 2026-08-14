@@ -11,9 +11,9 @@ import (
 type DialectName string
 
 const (
-	DialectSQLite   DialectName = "sqlite"
-	DialectMySQL    DialectName = "mysql"
-	DialectPostgres DialectName = "postgres"
+	// DialectSQLite is the only supported dialect. The type is kept so that
+	// re-adding a dialect later does not have to reintroduce the plumbing.
+	DialectSQLite DialectName = "sqlite"
 )
 
 // FieldType represents the logical type of a field.
@@ -52,7 +52,7 @@ type Field struct {
 	JSONPath             []string
 	AliasFor             string
 	SupportsContains     bool
-	Expressions          map[DialectName]string
+	Expression           string
 	AllowedComparisonOps map[ComparisonOperator]bool
 }
 
@@ -94,44 +94,34 @@ func NewSchema() Schema {
 			Type:             FieldTypeString,
 			Column:           Column{Table: "memo", Name: "content"},
 			SupportsContains: true,
-			Expressions:      map[DialectName]string{},
 		},
 		"creator": {
-			Name:   "creator",
-			Kind:   FieldKindScalar,
-			Type:   FieldTypeString,
-			Column: Column{Table: "memo_creator", Name: "username"},
-			Expressions: map[DialectName]string{
-				DialectSQLite:   "('users/' || %s)",
-				DialectMySQL:    "CONCAT('users/', %s)",
-				DialectPostgres: "('users/' || %s)",
-			},
+			Name:       "creator",
+			Kind:       FieldKindScalar,
+			Type:       FieldTypeString,
+			Column:     Column{Table: "memo_creator", Name: "username"},
+			Expression: "('users/' || %s)",
 			AllowedComparisonOps: map[ComparisonOperator]bool{
 				CompareEq:  true,
 				CompareNeq: true,
 			},
 		},
 		"workspace": {
-			Name:   "workspace",
-			Kind:   FieldKindScalar,
-			Type:   FieldTypeString,
-			Column: Column{Table: "memo_workspace", Name: "uid"},
-			Expressions: map[DialectName]string{
-				DialectSQLite:   "('workspaces/' || %s)",
-				DialectMySQL:    "CONCAT('workspaces/', %s)",
-				DialectPostgres: "('workspaces/' || %s)",
-			},
+			Name:       "workspace",
+			Kind:       FieldKindScalar,
+			Type:       FieldTypeString,
+			Column:     Column{Table: "memo_workspace", Name: "uid"},
+			Expression: "('workspaces/' || %s)",
 			AllowedComparisonOps: map[ComparisonOperator]bool{
 				CompareEq:  true,
 				CompareNeq: true,
 			},
 		},
 		"creator_id": {
-			Name:        "creator_id",
-			Kind:        FieldKindScalar,
-			Type:        FieldTypeInt,
-			Column:      Column{Table: "memo", Name: "creator_id"},
-			Expressions: map[DialectName]string{},
+			Name:   "creator_id",
+			Kind:   FieldKindScalar,
+			Type:   FieldTypeInt,
+			Column: Column{Table: "memo", Name: "creator_id"},
 			AllowedComparisonOps: map[ComparisonOperator]bool{
 				CompareEq:  true,
 				CompareNeq: true,
@@ -142,55 +132,38 @@ func NewSchema() Schema {
 			Kind:   FieldKindScalar,
 			Type:   FieldTypeTimestamp,
 			Column: Column{Table: "memo", Name: "created_ts"},
-			Expressions: map[DialectName]string{
-				// MySQL stores created_ts as TIMESTAMP, needs conversion to epoch
-				DialectMySQL: "UNIX_TIMESTAMP(%s)",
-				// PostgreSQL and SQLite store created_ts as BIGINT (epoch), no conversion needed
-				DialectPostgres: "%s",
-				DialectSQLite:   "%s",
-			},
 		},
 		"updated_ts": {
 			Name:   "updated_ts",
 			Kind:   FieldKindScalar,
 			Type:   FieldTypeTimestamp,
 			Column: Column{Table: "memo", Name: "updated_ts"},
-			Expressions: map[DialectName]string{
-				// MySQL stores updated_ts as TIMESTAMP, needs conversion to epoch
-				DialectMySQL: "UNIX_TIMESTAMP(%s)",
-				// PostgreSQL and SQLite store updated_ts as BIGINT (epoch), no conversion needed
-				DialectPostgres: "%s",
-				DialectSQLite:   "%s",
-			},
 		},
 		"pinned": {
-			Name:        "pinned",
-			Kind:        FieldKindBoolColumn,
-			Type:        FieldTypeBool,
-			Column:      Column{Table: "memo", Name: "pinned"},
-			Expressions: map[DialectName]string{},
+			Name:   "pinned",
+			Kind:   FieldKindBoolColumn,
+			Type:   FieldTypeBool,
+			Column: Column{Table: "memo", Name: "pinned"},
 			AllowedComparisonOps: map[ComparisonOperator]bool{
 				CompareEq:  true,
 				CompareNeq: true,
 			},
 		},
 		"visibility": {
-			Name:        "visibility",
-			Kind:        FieldKindScalar,
-			Type:        FieldTypeString,
-			Column:      Column{Table: "memo", Name: "visibility"},
-			Expressions: map[DialectName]string{},
+			Name:   "visibility",
+			Kind:   FieldKindScalar,
+			Type:   FieldTypeString,
+			Column: Column{Table: "memo", Name: "visibility"},
 			AllowedComparisonOps: map[ComparisonOperator]bool{
 				CompareEq:  true,
 				CompareNeq: true,
 			},
 		},
 		"doc_type": {
-			Name:        "doc_type",
-			Kind:        FieldKindScalar,
-			Type:        FieldTypeString,
-			Column:      Column{Table: "memo", Name: "doc_type"},
-			Expressions: map[DialectName]string{},
+			Name:   "doc_type",
+			Kind:   FieldKindScalar,
+			Type:   FieldTypeString,
+			Column: Column{Table: "memo", Name: "doc_type"},
 			AllowedComparisonOps: map[ComparisonOperator]bool{
 				CompareEq:  true,
 				CompareNeq: true,
@@ -292,7 +265,6 @@ func NewAttachmentSchema() Schema {
 			Type:             FieldTypeString,
 			Column:           Column{Table: "attachment", Name: "filename"},
 			SupportsContains: true,
-			Expressions:      map[DialectName]string{},
 		},
 		"mime_type": {
 			Name:             "mime_type",
@@ -300,27 +272,18 @@ func NewAttachmentSchema() Schema {
 			Type:             FieldTypeString,
 			Column:           Column{Table: "attachment", Name: "type"},
 			SupportsContains: true,
-			Expressions:      map[DialectName]string{},
 		},
 		"create_time": {
 			Name:   "create_time",
 			Kind:   FieldKindScalar,
 			Type:   FieldTypeTimestamp,
 			Column: Column{Table: "attachment", Name: "created_ts"},
-			Expressions: map[DialectName]string{
-				// MySQL stores created_ts as TIMESTAMP, needs conversion to epoch
-				DialectMySQL: "UNIX_TIMESTAMP(%s)",
-				// PostgreSQL and SQLite store created_ts as BIGINT (epoch), no conversion needed
-				DialectPostgres: "%s",
-				DialectSQLite:   "%s",
-			},
 		},
 		"memo_id": {
-			Name:        "memo_id",
-			Kind:        FieldKindScalar,
-			Type:        FieldTypeInt,
-			Column:      Column{Table: "attachment", Name: "memo_id"},
-			Expressions: map[DialectName]string{},
+			Name:   "memo_id",
+			Kind:   FieldKindScalar,
+			Type:   FieldTypeInt,
+			Column: Column{Table: "attachment", Name: "memo_id"},
 			AllowedComparisonOps: map[ComparisonOperator]bool{
 				CompareEq:  true,
 				CompareNeq: true,
@@ -344,12 +307,12 @@ func NewAttachmentSchema() Schema {
 	}
 }
 
-// columnExpr returns the field expression for the given dialect, applying
-// any schema-specific overrides (e.g. UNIX timestamp conversions).
-func (f Field) columnExpr(d DialectName) string {
-	base := qualifyColumn(d, f.Column)
-	if expr, ok := f.Expressions[d]; ok && expr != "" {
-		return fmt.Sprintf(expr, base)
+// columnExpr returns the field expression, applying any schema-specific
+// override.
+func (f Field) columnExpr() string {
+	base := qualifyColumn(f.Column)
+	if f.Expression != "" {
+		return fmt.Sprintf(f.Expression, base)
 	}
 	return base
 }

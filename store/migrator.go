@@ -255,24 +255,20 @@ func (s *Store) preMigrate(ctx context.Context) error {
 	return nil
 }
 
-func (s *Store) getMigrationBasePath() string {
-	return fmt.Sprintf("migration/%s/", s.profile.Driver)
+// SQLite is the only supported driver, so these paths are fixed rather than
+// derived from profile.Driver.
+func (*Store) getMigrationBasePath() string {
+	return "migration/sqlite/"
 }
 
-func (s *Store) getSeedBasePath() string {
-	return fmt.Sprintf("seed/%s/", s.profile.Driver)
+func (*Store) getSeedBasePath() string {
+	return "seed/sqlite/"
 }
 
 // seed seeds the database with initial data.
 // It reads all seed files from the embedded filesystem and executes them in order.
-// This is only supported for SQLite databases and is used in demo mode.
+// This is used in demo mode.
 func (s *Store) seed(ctx context.Context) error {
-	// Only seed for SQLite - other databases should use production data
-	if s.profile.Driver != "sqlite" {
-		slog.Warn("seed is only supported for SQLite, skipping for other databases")
-		return nil
-	}
-
 	filenames, err := fs.Glob(seedFS, fmt.Sprintf("%s*.sql", s.getSeedBasePath()))
 	if err != nil {
 		return errors.Wrap(err, "failed to read seed files")

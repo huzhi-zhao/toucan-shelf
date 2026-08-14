@@ -243,17 +243,20 @@ const StorageSection = () => {
 
   return (
     <SettingSection title={t("setting.storage.label")}>
-      <SettingGroup
-        title={t("setting.storage.s3-configuration")}
-        description={t("setting.storage.s3-configuration-description")}
-      >
+      <SettingGroup title={t("setting.storage.s3-configuration")} description={t("setting.storage.s3-configuration-description")}>
         <SettingRow label={t("setting.storage.accesskey")} description={t("setting.storage.accesskey-description")}>
-          <Input className="w-64" value={s3Draft.s3Config?.accessKeyId ?? ""} onChange={(e) => handleS3FieldChange("accessKeyId", e.target.value)} />
+          <Input
+            className="w-64"
+            value={s3Draft.s3Config?.accessKeyId ?? ""}
+            onChange={(e) => handleS3FieldChange("accessKeyId", e.target.value)}
+          />
         </SettingRow>
 
         <SettingRow
           label={t("setting.storage.secretkey")}
-          description={hasExistingS3Config ? t("setting.storage.secretkey-preserve-description") : t("setting.storage.secretkey-description")}
+          description={
+            hasExistingS3Config ? t("setting.storage.secretkey-preserve-description") : t("setting.storage.secretkey-description")
+          }
         >
           <Input
             className="w-64"
@@ -264,7 +267,11 @@ const StorageSection = () => {
         </SettingRow>
 
         <SettingRow label={t("setting.storage.endpoint")} description={t("setting.storage.endpoint-description")}>
-          <Input className="w-64" value={s3Draft.s3Config?.endpoint ?? ""} onChange={(e) => handleS3FieldChange("endpoint", e.target.value)} />
+          <Input
+            className="w-64"
+            value={s3Draft.s3Config?.endpoint ?? ""}
+            onChange={(e) => handleS3FieldChange("endpoint", e.target.value)}
+          />
         </SettingRow>
 
         <SettingRow label={t("setting.storage.region")} description={t("setting.storage.region-description")}>
@@ -276,17 +283,27 @@ const StorageSection = () => {
         </SettingRow>
 
         <SettingRow label={t("setting.storage.use-path-style")} description={t("setting.storage.use-path-style-description")}>
-          <Switch checked={s3Draft.s3Config?.usePathStyle ?? false} onCheckedChange={(checked) => handleS3FieldChange("usePathStyle", checked)} />
+          <Switch
+            checked={s3Draft.s3Config?.usePathStyle ?? false}
+            onCheckedChange={(checked) => handleS3FieldChange("usePathStyle", checked)}
+          />
         </SettingRow>
 
-        <SettingRow label={t("setting.storage.insecure-skip-tls-verify")} description={t("setting.storage.insecure-skip-tls-verify-description")}>
+        <SettingRow
+          label={t("setting.storage.insecure-skip-tls-verify")}
+          description={t("setting.storage.insecure-skip-tls-verify-description")}
+        >
           <Switch
             checked={s3Draft.s3Config?.insecureSkipTlsVerify ?? false}
             onCheckedChange={(checked) => handleS3FieldChange("insecureSkipTlsVerify", checked)}
           />
         </SettingRow>
 
-        <SettingRow label={t("setting.storage.filepath-template")} description={t("setting.storage.filepath-template-description")} vertical>
+        <SettingRow
+          label={t("setting.storage.filepath-template")}
+          description={t("setting.storage.filepath-template-description")}
+          vertical
+        >
           <Input
             className="w-full max-w-lg font-mono"
             value={s3Draft.filepathTemplate}
@@ -308,7 +325,11 @@ const StorageSection = () => {
         {hasExistingS3Config && isS3Active && <p className="text-xs text-muted-foreground">{t("setting.storage.delete-blocked-active")}</p>}
       </SettingGroup>
 
-      <SettingGroup title={t("setting.storage.current-storage")} description={t("setting.storage.current-storage-description")} showSeparator>
+      <SettingGroup
+        title={t("setting.storage.current-storage")}
+        description={t("setting.storage.current-storage-description")}
+        showSeparator
+      >
         <SettingRow label={t("setting.storage.active-backend")}>
           <Select value={String(originalSetting.storageType)} onValueChange={(v) => requestStorageTypeChange(Number(v))}>
             <SelectTrigger className="w-56">
@@ -345,7 +366,11 @@ const StorageSection = () => {
       </SettingGroup>
 
       <SettingGroup title={t("setting.storage.backup-title")} description={t("setting.storage.backup-description")} showSeparator>
-        <SettingRow label={t("setting.storage.backup-path-template")} description={t("setting.storage.backup-path-template-description")} vertical>
+        <SettingRow
+          label={t("setting.storage.backup-path-template")}
+          description={t("setting.storage.backup-path-template-description")}
+          vertical
+        >
           <div className="flex w-full max-w-lg items-center gap-2">
             <Input
               className="font-mono"
@@ -353,7 +378,11 @@ const StorageSection = () => {
               placeholder={backupSetting.pathTemplate}
               onChange={(e) => setPathTemplateDraft(e.target.value)}
             />
-            <Button variant="outline" disabled={!pathTemplateDraft || pathTemplateDraft === backupSetting.pathTemplate} onClick={savePathTemplate}>
+            <Button
+              variant="outline"
+              disabled={!pathTemplateDraft || pathTemplateDraft === backupSetting.pathTemplate}
+              onClick={savePathTemplate}
+            >
               {t("common.save")}
             </Button>
           </div>
@@ -364,7 +393,9 @@ const StorageSection = () => {
             {lastBackup.lastBackupTime
               ? t("setting.storage.backup-last-run-value", {
                   time: new Date(Number(lastBackup.lastBackupTime.seconds) * 1000).toLocaleString(),
-                  status: lastBackup.lastBackupSuccess ? t("setting.storage.backup-status-success") : t("setting.storage.backup-status-failed"),
+                  status: lastBackup.lastBackupSuccess
+                    ? t("setting.storage.backup-status-success")
+                    : t("setting.storage.backup-status-failed"),
                 })
               : t("setting.storage.backup-never-run")}
           </div>

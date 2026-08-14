@@ -70,10 +70,7 @@ const MemoExplorer = (props: Props) => {
 
   return (
     <aside
-      className={cn(
-        "relative w-full h-full flex flex-col justify-start items-start bg-background text-sidebar-foreground",
-        className,
-      )}
+      className={cn("relative w-full h-full flex flex-col justify-start items-start bg-background text-sidebar-foreground", className)}
     >
       <div className="w-full flex-1 min-h-0 overflow-auto flex flex-col">
         {context === "explore" && (

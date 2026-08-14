@@ -56,10 +56,6 @@ func Run(ctx context.Context, profile *profile.Profile, stores *store.Store) err
 }
 
 func run(ctx context.Context, profile *profile.Profile, stores *store.Store) error {
-	if profile.Driver != "sqlite" {
-		return errors.New("database backup is only supported for sqlite instances")
-	}
-
 	storageSetting, err := stores.GetInstanceStorageSetting(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to get storage setting")

@@ -47,12 +47,7 @@ export const useFilteredMemoStats = (options: UseFilteredMemoStatsOptions = {}):
   // PUBLIC only for visitors). Passing an extra visibility filter here would be
   // AND'ed with that rule and wrongly exclude the user's own PRIVATE memos,
   // which the Explore memo list does show.
-  const allUserStatsRequest =
-    context === "explore"
-      ? { state: State.NORMAL }
-      : context === "archived"
-        ? { state: State.ARCHIVED }
-        : {};
+  const allUserStatsRequest = context === "explore" ? { state: State.NORMAL } : context === "archived" ? { state: State.ARCHIVED } : {};
   const shouldFetchAllUserStats = context === "explore" || (context === "archived" && !!currentUser?.name);
   const { data: allUserStats = [], isLoading: isLoadingAllUserStats } = useAllUserStats(allUserStatsRequest, {
     enabled: shouldFetchAllUserStats,

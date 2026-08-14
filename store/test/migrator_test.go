@@ -116,10 +116,6 @@ func TestMigrationMultipleReRuns(t *testing.T) {
 
 // TestMigrationCopiesInstanceTagsToUserSettings verifies instance tag metadata is copied into user settings.
 func TestMigrationCopiesInstanceTagsToUserSettings(t *testing.T) {
-	if getDriverFromEnv() != "sqlite" {
-		t.Skip("skipping focused migration fixture for non-sqlite driver")
-	}
-
 	ctx := context.Background()
 	dsn := fmt.Sprintf("%s/memos_tag_migration.db", t.TempDir())
 
@@ -181,7 +177,7 @@ func TestMigrationCopiesInstanceTagsToUserSettings(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, db.Close())
 
-	ts := NewTestingStoreWithDSN(ctx, t, "sqlite", dsn)
+	ts := NewTestingStoreWithDSN(ctx, t, dsn)
 	require.NoError(t, ts.Migrate(ctx))
 	defer ts.Close()
 
@@ -221,11 +217,6 @@ func TestMigrationCopiesInstanceTagsToUserSettings(t *testing.T) {
 // Note: This test is skipped when running with -race flag because testcontainers
 // has known race conditions in its reaper code that are outside our control.
 func TestMigrationFromStableVersion(t *testing.T) {
-	// Skip for non-SQLite drivers (simplifies the test)
-	if getDriverFromEnv() != "sqlite" {
-		t.Skip("skipping upgrade test for non-sqlite driver")
-	}
-
 	skipIfContainerProviderUnavailable(t)
 
 	ctx := context.Background()
@@ -233,7 +224,6 @@ func TestMigrationFromStableVersion(t *testing.T) {
 
 	// 1. Start stable Memos container to create database with old schema
 	cfg := MemosContainerConfig{
-		Driver:  "sqlite",
 		DataDir: dataDir,
 		Version: StableMemosVersion,
 	}
@@ -257,7 +247,7 @@ func TestMigrationFromStableVersion(t *testing.T) {
 	dsn := fmt.Sprintf("%s/memos_prod.db", dataDir)
 	t.Logf("Connecting to database at %s...", dsn)
 
-	ts := NewTestingStoreWithDSN(ctx, t, "sqlite", dsn)
+	ts := NewTestingStoreWithDSN(ctx, t, dsn)
 
 	// Get the schema version before migration
 	oldSetting, err := ts.GetInstanceBasicSetting(ctx)

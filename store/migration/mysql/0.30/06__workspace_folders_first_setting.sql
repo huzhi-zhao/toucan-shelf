@@ -1,1 +1,0 @@
-ALTER TABLE `workspace` ADD COLUMN `folders_first` TINYINT(1) NOT NULL DEFAULT 0;

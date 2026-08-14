@@ -48,18 +48,6 @@ func TestCompileRejectsMalformedRegex(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestCompileMatchesRendersRegexOperator(t *testing.T) {
-	t.Parallel()
-
-	engine, err := NewEngine(NewSchema())
-	require.NoError(t, err)
-
-	stmt, err := engine.CompileToStatement(context.Background(), `content.matches("v[0-9]+")`, RenderOptions{Dialect: DialectPostgres})
-	require.NoError(t, err)
-	require.Contains(t, stmt.SQL, "~")
-	require.Equal(t, []any{"v[0-9]+"}, stmt.Args)
-}
-
 func TestCompileRejectsStartsWithOnUnsupportedField(t *testing.T) {
 	t.Parallel()
 
@@ -90,87 +78,55 @@ func TestCompileContainsEscapesLikeWildcards(t *testing.T) {
 // behavioral tests in store/test by asserting MySQL/Postgres SQL generation).
 // =============================================================================
 
-func TestRenderStartsWithPerDialect(t *testing.T) {
+func TestRenderStartsWith(t *testing.T) {
 	t.Parallel()
 
 	engine, err := NewEngine(NewSchema())
 	require.NoError(t, err)
 
-	cases := []struct {
-		dialect   DialectName
-		fragments []string
-	}{
-		{DialectSQLite, []string{"memos_unicode_lower(", "`memo`.`content`", `ESCAPE '\'`}},
-		{DialectPostgres, []string{"memo.content ILIKE $1"}},
-		{DialectMySQL, []string{"`memo`.`content` LIKE ?"}},
+	stmt, err := engine.CompileToStatement(context.Background(), `content.startsWith("TODO")`, RenderOptions{Dialect: DialectSQLite})
+	require.NoError(t, err)
+	for _, frag := range []string{"memos_unicode_lower(", "`memo`.`content`", `ESCAPE '\'`} {
+		require.Contains(t, stmt.SQL, frag)
 	}
-	for _, tc := range cases {
-		stmt, err := engine.CompileToStatement(context.Background(), `content.startsWith("TODO")`, RenderOptions{Dialect: tc.dialect})
-		require.NoError(t, err, tc.dialect)
-		for _, frag := range tc.fragments {
-			require.Contains(t, stmt.SQL, frag, "dialect %s", tc.dialect)
-		}
-		require.Equal(t, []any{"TODO%"}, stmt.Args, "dialect %s", tc.dialect)
-	}
+	require.Equal(t, []any{"TODO%"}, stmt.Args)
 }
 
-func TestRenderEndsWithPerDialect(t *testing.T) {
+func TestRenderEndsWith(t *testing.T) {
 	t.Parallel()
 
 	engine, err := NewEngine(NewSchema())
 	require.NoError(t, err)
 
-	for _, dialect := range []DialectName{DialectSQLite, DialectPostgres, DialectMySQL} {
-		stmt, err := engine.CompileToStatement(context.Background(), `content.endsWith(".md")`, RenderOptions{Dialect: dialect})
-		require.NoError(t, err, dialect)
-		require.Equal(t, []any{"%.md"}, stmt.Args, "dialect %s", dialect)
-	}
+	stmt, err := engine.CompileToStatement(context.Background(), `content.endsWith(".md")`, RenderOptions{Dialect: DialectSQLite})
+	require.NoError(t, err)
+	require.Equal(t, []any{"%.md"}, stmt.Args)
 }
 
-func TestRenderMatchesPerDialect(t *testing.T) {
+func TestRenderMatches(t *testing.T) {
 	t.Parallel()
 
 	engine, err := NewEngine(NewSchema())
 	require.NoError(t, err)
 
-	cases := []struct {
-		dialect  DialectName
-		fragment string
-	}{
-		{DialectSQLite, "`memo`.`content` REGEXP ?"},
-		{DialectMySQL, "`memo`.`content` REGEXP ?"},
-		{DialectPostgres, "memo.content ~ $1"},
-	}
-	for _, tc := range cases {
-		stmt, err := engine.CompileToStatement(context.Background(), `content.matches("v[0-9]+")`, RenderOptions{Dialect: tc.dialect})
-		require.NoError(t, err, tc.dialect)
-		require.Contains(t, stmt.SQL, tc.fragment, "dialect %s", tc.dialect)
-		require.Equal(t, []any{"v[0-9]+"}, stmt.Args, "dialect %s", tc.dialect)
-	}
+	stmt, err := engine.CompileToStatement(context.Background(), `content.matches("v[0-9]+")`, RenderOptions{Dialect: DialectSQLite})
+	require.NoError(t, err)
+	require.Contains(t, stmt.SQL, "`memo`.`content` REGEXP ?")
+	require.Equal(t, []any{"v[0-9]+"}, stmt.Args)
 }
 
-func TestRenderTagsAllPerDialect(t *testing.T) {
+func TestRenderTagsAll(t *testing.T) {
 	t.Parallel()
 
 	engine, err := NewEngine(NewSchema())
 	require.NoError(t, err)
 
-	cases := []struct {
-		dialect   DialectName
-		fragments []string
-	}{
-		{DialectSQLite, []string{"NOT EXISTS", "json_each(", "!= '[]'", "memos_unicode_lower(value)"}},
-		{DialectPostgres, []string{"NOT EXISTS", "jsonb_array_elements_text(", "jsonb_array_length(", "value ILIKE"}},
-		{DialectMySQL, []string{"NOT EXISTS", "JSON_TABLE(", "JSON_LENGTH(", "value LIKE"}},
+	stmt, err := engine.CompileToStatement(context.Background(), `tags.all(t, t.startsWith("work/"))`, RenderOptions{Dialect: DialectSQLite})
+	require.NoError(t, err)
+	for _, frag := range []string{"NOT EXISTS", "json_each(", "!= '[]'", "memos_unicode_lower(value)"} {
+		require.Contains(t, stmt.SQL, frag)
 	}
-	for _, tc := range cases {
-		stmt, err := engine.CompileToStatement(context.Background(), `tags.all(t, t.startsWith("work/"))`, RenderOptions{Dialect: tc.dialect})
-		require.NoError(t, err, tc.dialect)
-		for _, frag := range tc.fragments {
-			require.Contains(t, stmt.SQL, frag, "dialect %s", tc.dialect)
-		}
-		require.Equal(t, []any{"work/%"}, stmt.Args, "dialect %s", tc.dialect)
-	}
+	require.Equal(t, []any{"work/%"}, stmt.Args)
 }
 
 func TestRenderTextMatchEscaping(t *testing.T) {

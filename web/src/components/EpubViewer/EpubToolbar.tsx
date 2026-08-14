@@ -9,16 +9,11 @@ import {
   ScrollTextIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useTranslate } from "@/utils/i18n";
-import type { EpubSettings } from "./epubSettings";
 import { EpubSettingsMenu } from "./EpubSettingsMenu";
+import type { EpubSettings } from "./epubSettings";
 import type { EpubFlow } from "./useEpubRendition";
 
 interface Props {

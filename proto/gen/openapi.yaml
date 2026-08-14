@@ -4145,7 +4145,7 @@ components:
             properties:
                 driver:
                     type: string
-                    description: driver is one of "sqlite", "mysql", "postgres".
+                    description: driver is the database driver in use; always "sqlite".
                 sizeBytes:
                     type: string
                     description: size_bytes is the database size in bytes; -1 if unavailable.

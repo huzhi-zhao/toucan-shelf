@@ -212,8 +212,7 @@ up to an **S3-compatible** bucket:
 - **Automatic backup** — the server backs up once per week.
 - Retention is handled by **S3 bucket versioning** (keep ~3 months; older
   versions expire) — Memos just pushes a gzip'd copy of the database file.
-- **Scope:** SQLite database file only. Not MySQL/Postgres (use their native
-  tooling), and **not** attachments.
+- **Scope:** the SQLite database file only — **not** attachments.
 
 See [`../dev/requirements/storage/backup.md`](../dev/requirements/storage/backup.md)
 for the full design.

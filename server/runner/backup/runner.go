@@ -27,11 +27,6 @@ func NewRunner(profile *profile.Profile, store *store.Store) *Runner {
 }
 
 func (r *Runner) Run(ctx context.Context) {
-	// Only sqlite instances are backed up; other drivers have their own backup tooling.
-	if r.Profile.Driver != "sqlite" {
-		return
-	}
-
 	ticker := time.NewTicker(runnerInterval)
 	defer ticker.Stop()
 
@@ -46,9 +41,6 @@ func (r *Runner) Run(ctx context.Context) {
 }
 
 func (r *Runner) RunOnce(ctx context.Context) {
-	if r.Profile.Driver != "sqlite" {
-		return
-	}
 	if err := backupsvc.Run(ctx, r.Profile, r.Store); err != nil {
 		// Most commonly this just means S3 storage isn't configured yet, which is expected on
 		// many instances; log at Info rather than Error to avoid alarming operators who never
