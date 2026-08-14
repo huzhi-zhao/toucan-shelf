@@ -1,1 +1,0 @@
-ALTER TABLE `workspace` ADD COLUMN `storage_slug` VARCHAR(256) NOT NULL DEFAULT '';

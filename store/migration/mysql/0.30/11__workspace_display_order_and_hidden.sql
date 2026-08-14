@@ -1,2 +1,0 @@
-ALTER TABLE `workspace` ADD COLUMN `display_order` INT NOT NULL DEFAULT 0;
-ALTER TABLE `workspace` ADD COLUMN `hidden` TINYINT(1) NOT NULL DEFAULT 0;

@@ -255,12 +255,14 @@ func (s *Store) preMigrate(ctx context.Context) error {
 	return nil
 }
 
-func (s *Store) getMigrationBasePath() string {
-	return fmt.Sprintf("migration/%s/", s.profile.Driver)
+// SQLite is the only supported driver, so these paths are fixed rather than
+// derived from profile.Driver.
+func (*Store) getMigrationBasePath() string {
+	return "migration/sqlite/"
 }
 
-func (s *Store) getSeedBasePath() string {
-	return fmt.Sprintf("seed/%s/", s.profile.Driver)
+func (*Store) getSeedBasePath() string {
+	return "seed/sqlite/"
 }
 
 // seed seeds the database with initial data.
