@@ -13,7 +13,9 @@
   `internal/ai/` 包（`ai.go` / `generate.go` / `models.go` / `probe.go`）封装了 provider 调用逻辑，
   当前用于转写（Transcribe）和 Markdown 格式化（FormatMarkdown）。RAG 的 embedding 调用与生成式
   回答调用应直接复用这套 provider 配置，不新增平行的 AI 连接配置。
-- **存储**：项目默认 SQLite（也支持 MySQL/Postgres），本次讨论明确不引入外部向量数据库。
+- **存储**：项目默认 SQLite（本文写作时也名义支持 MySQL/Postgres，后已收敛为仅
+  SQLite，见 [sqlite-as-sole-datasource.md](../../requirements/storage/sqlite-as-sole-datasource.md)），
+  本次讨论明确不引入外部向量数据库。
 
 ## 存储方案：SQLite 内的向量检索
 

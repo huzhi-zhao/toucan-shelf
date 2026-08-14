@@ -111,4 +111,5 @@ standalone 模式下计划让 S3 凭证只能来自环境变量（`TOUCAN_S3_END
 - 本地目录备份（S3 之外的本地/外接盘备份选项）
 - 本地图片资源向 S3 的批量迁移工具
 - 多端写入 + S3 租约（见上方决策）
-- MySQL / Postgres 的 standalone 部署形态（仅支持 SQLite）
+- MySQL / Postgres 的部署形态。本项目仅支持 SQLite，见
+  [sqlite-as-sole-datasource.md](requirements/storage/sqlite-as-sole-datasource.md)
