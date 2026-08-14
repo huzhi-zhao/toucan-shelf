@@ -58,3 +58,18 @@ func TestDownloadMemoAttachmentsSkipsServerErrors(t *testing.T) {
 		t.Fatalf("good attachment not written: %v", err)
 	}
 }
+
+// The file route answers several distinct failures with a bare 500, so the
+// body's message is the only thing that says which one happened.
+func TestErrorBodySuffix(t *testing.T) {
+	cases := map[string]string{
+		`{"message":"failed to get attachment reader"}`: " (failed to get attachment reader)",
+		"plain text\n":                                  " (plain text)",
+		"":                                              "",
+	}
+	for body, want := range cases {
+		if got := errorBodySuffix(strings.NewReader(body)); got != want {
+			t.Errorf("errorBodySuffix(%q) = %q, want %q", body, got, want)
+		}
+	}
+}

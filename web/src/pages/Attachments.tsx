@@ -18,8 +18,13 @@ import MobileHeader from "@/components/MobileHeader";
 import PreviewImageDialog from "@/components/PreviewImageDialog";
 import { Button } from "@/components/ui/button";
 import { attachmentServiceClient } from "@/connect";
-import { type AttachmentLibraryStats, type AttachmentLibraryTab, useAttachmentLibrary } from "@/hooks/useAttachmentLibrary";
-import { useBatchDeleteAttachments } from "@/hooks/useAttachmentQueries";
+import {
+  type AttachmentLibraryListItem,
+  type AttachmentLibraryStats,
+  type AttachmentLibraryTab,
+  useAttachmentLibrary,
+} from "@/hooks/useAttachmentLibrary";
+import { useBatchDeleteAttachments, useDeleteAttachment } from "@/hooks/useAttachmentQueries";
 import useDialog from "@/hooks/useDialog";
 import useMediaQuery from "@/hooks/useMediaQuery";
 import usePageTitle from "@/hooks/usePageTitle";
@@ -75,7 +80,9 @@ const Attachments = () => {
   const [activeTab, setActiveTab] = useState<AttachmentLibraryTab>("media");
   const [previewState, setPreviewState] = useState({ open: false, initialIndex: 0 });
   const [showUnusedSection, setShowUnusedSection] = useState(false);
+  const [pendingDeleteItem, setPendingDeleteItem] = useState<AttachmentLibraryListItem | undefined>(undefined);
   const { mutateAsync: batchDeleteAttachments, isPending: isDeletingUnused } = useBatchDeleteAttachments();
+  const { mutateAsync: deleteAttachment, isPending: isDeletingOne, variables: deletingName } = useDeleteAttachment();
   const {
     audioItems,
     documentItems,
@@ -129,6 +136,25 @@ const Attachments = () => {
     }
   };
 
+  const handleDeleteUnusedAttachment = async () => {
+    if (!pendingDeleteItem) {
+      return;
+    }
+
+    try {
+      await deleteAttachment(pendingDeleteItem.attachment.name);
+      toast.success(t("attachment-library.unused.delete-one-success", { name: pendingDeleteItem.attachment.filename }));
+      await refetch();
+    } catch (deleteError) {
+      handleError(deleteError, toast.error, {
+        context: "Failed to delete unused attachment",
+        fallbackMessage: t("resource.delete-all-unused-error"),
+      });
+    } finally {
+      setPendingDeleteItem(undefined);
+    }
+  };
+
   const renderContent = () => {
     if (isLoading) {
       return <AttachmentLibrarySkeletonGrid />;
@@ -174,6 +200,17 @@ const Attachments = () => {
           />
         )}
 
+        {/* Kept directly under the panel: the toggle has to show its result without a scroll. */}
+        {showUnusedSection && stats.unused > 0 && (
+          <div className="space-y-3">
+            <AttachmentUnusedRows
+              items={unusedItems}
+              onDelete={setPendingDeleteItem}
+              deletingName={isDeletingOne ? deletingName : undefined}
+            />
+          </div>
+        )}
+
         <div className="min-h-[16rem] pt-1">
           {renderContent()}
 
@@ -190,14 +227,22 @@ const Attachments = () => {
             <div className="mt-4 text-center text-xs text-muted-foreground">{t("resource.fetching-data")}</div>
           )}
         </div>
-
-        {showUnusedSection && stats.unused > 0 && (
-          <div className="space-y-4 pt-1">
-            <div className="text-sm font-medium text-foreground">{t("attachment-library.unused.title")}</div>
-            <AttachmentUnusedRows items={unusedItems} />
-          </div>
-        )}
       </div>
+
+      <ConfirmDialog
+        open={Boolean(pendingDeleteItem)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingDeleteItem(undefined);
+          }
+        }}
+        title={t("resource.delete-resource")}
+        description={t("attachment-library.unused.delete-one-description", { name: pendingDeleteItem?.attachment.filename ?? "" })}
+        confirmLabel={t("common.delete")}
+        cancelLabel={t("common.cancel")}
+        onConfirm={handleDeleteUnusedAttachment}
+        confirmVariant="destructive"
+      />
 
       <ConfirmDialog
         open={deleteUnusedAttachmentsDialog.isOpen}

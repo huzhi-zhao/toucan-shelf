@@ -49,6 +49,8 @@
     },
     "unused": {
       "confirm-description": "這將移除所有未連結至備忘錄的上傳檔案。",
+      "delete-one-description": "將永久刪除 {{name}}。",
+      "delete-one-success": "已刪除 {{name}}。",
       "description": "這些檔案未連結至任何備忘錄。您可以在此處檢視或移除它們。",
       "title": "未連結的檔案"
     }

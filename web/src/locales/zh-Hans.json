@@ -1060,6 +1060,8 @@
     },
     "unused": {
       "confirm-description": "这将删除所有未关联到任何备忘的上传文件。",
+      "delete-one-description": "将永久删除 {{name}}。",
+      "delete-one-success": "已删除 {{name}}。",
       "description": "这些文件从未附加到任何备忘。可在此查看或删除。",
       "title": "未关联的上传"
     }

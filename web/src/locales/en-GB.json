@@ -813,6 +813,8 @@
     },
     "unused": {
       "confirm-description": "This removes every uploaded file that is not linked to a memo.",
+      "delete-one-description": "This permanently deletes {{name}}.",
+      "delete-one-success": "Deleted {{name}}.",
       "description": "These uploads were never attached to a memo. Review or remove them here.",
       "title": "Unlinked uploads"
     }

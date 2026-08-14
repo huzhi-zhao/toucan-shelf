@@ -2,6 +2,7 @@ package memogit
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -263,6 +264,28 @@ func (c *Client) ArchiveMemo(ctx context.Context, uid string) error {
 	return nil
 }
 
+// errorBodySuffix reads an error response body and renders it as a short
+// parenthesised suffix (empty when there is nothing useful to show). It reads a
+// bounded amount: an error body is a short JSON message, never a file.
+func errorBodySuffix(body io.Reader) string {
+	data, err := io.ReadAll(io.LimitReader(body, 2048))
+	if err != nil {
+		return ""
+	}
+	var payload struct {
+		Message string `json:"message"`
+	}
+	msg := strings.TrimSpace(string(data))
+	if json.Unmarshal(data, &payload) == nil && payload.Message != "" {
+		msg = payload.Message
+	}
+	msg = strings.Join(strings.Fields(msg), " ")
+	if msg == "" {
+		return ""
+	}
+	return " (" + msg + ")"
+}
+
 // DownloadAttachment fetches an attachment's raw bytes via the /file/ route,
 // which accepts the same PAT Bearer auth as the Connect API. attachmentName is
 // the resource name ("attachments/{uid}"); filename is the display filename.
@@ -279,7 +302,10 @@ func (c *Client) DownloadAttachment(ctx context.Context, attachmentName, filenam
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("download %s: server returned %s", filename, resp.Status)
+		// The status alone doesn't say which failure it was — the file route
+		// answers a missing blob, a broken permission check and a store error all
+		// with 500 — so carry the body's message along.
+		return nil, fmt.Errorf("download %s: server returned %s%s", filename, resp.Status, errorBodySuffix(resp.Body))
 	}
 	return io.ReadAll(resp.Body)
 }
