@@ -1,5 +1,7 @@
 import { cn } from "@/lib/utils";
 import { getMediaKindFromUrl } from "@/utils/attachment";
+import { isSvgUrl } from "@/utils/drawio";
+import { DrawioSvgImage } from "./DrawioSvgImage";
 import type { ReactMarkdownProps } from "./types";
 
 interface ImageProps extends React.ImgHTMLAttributes<HTMLImageElement>, ReactMarkdownProps {}
@@ -20,6 +22,12 @@ export const Image = ({ className, alt, node: _node, height, width, style, src, 
 
   if (mediaKind === "audio") {
     return <audio className={cn("w-full my-2", className)} style={sizeStyle} src={src} controls preload="metadata" />;
+  }
+
+  // SVGs may be draw.io exports carrying their own editable source; that component falls back
+  // to a plain <img> when they aren't (see utils/drawio.ts).
+  if (src && isSvgUrl(src)) {
+    return <DrawioSvgImage className={className} alt={alt} sizeStyle={sizeStyle} src={src} {...props} />;
   }
 
   return <img className={cn("max-w-full my-2", !height && "h-auto", className)} alt={alt} style={sizeStyle} src={src} {...props} />;

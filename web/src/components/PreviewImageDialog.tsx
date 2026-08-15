@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, RotateCcw, X, ZoomIn, ZoomOut } from "lucide-react";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import MotionPhotoPreview from "@/components/MotionPhotoPreview";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -27,6 +27,11 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], items, initialIn
   const sm = useMediaQuery("sm");
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [zoomScale, setZoomScale] = useState(MIN_ZOOM);
+  // Pan offset in screen pixels. Zooming without it would only ever reveal the centre of the
+  // image, which is useless for anything dense (a diagram, a scanned page).
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const dragRef = useRef<{ pointerId: number; startX: number; startY: number; originX: number; originY: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const previewItems = useMemo(
     () => items ?? imgUrls.map((url) => ({ id: url, kind: "image" as const, sourceUrl: url, posterUrl: url, filename: "Image" })),
     [imgUrls, items],
@@ -75,6 +80,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], items, initialIn
 
   useEffect(() => {
     setZoomScale(MIN_ZOOM);
+    setOffset({ x: 0, y: 0 });
   }, [currentItem?.id, open]);
 
   const handleClose = () => onOpenChange(false);
@@ -86,9 +92,16 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], items, initialIn
   };
 
   const updateZoom = (nextScale: number) => {
-    setZoomScale(clampZoom(nextScale));
+    const clamped = clampZoom(nextScale);
+    setZoomScale(clamped);
+    // Back at 1x the image fits the viewport again, so a leftover offset would only push it
+    // off-centre with no way to notice why.
+    if (clamped === MIN_ZOOM) setOffset({ x: 0, y: 0 });
   };
-  const resetZoom = () => setZoomScale(MIN_ZOOM);
+  const resetZoom = () => {
+    setZoomScale(MIN_ZOOM);
+    setOffset({ x: 0, y: 0 });
+  };
   const handleZoomIn = () => updateZoom(zoomScale + ZOOM_STEP);
   const handleZoomOut = () => updateZoom(zoomScale - ZOOM_STEP);
   const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
@@ -97,7 +110,30 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], items, initialIn
       updateZoom(zoomScale + (event.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP));
     }
   };
-  const handleDoubleClick = () => setZoomScale((scale) => (scale === MIN_ZOOM ? DOUBLE_TAP_ZOOM : MIN_ZOOM));
+  const handleDoubleClick = () =>
+    setZoomScale((scale) => {
+      if (scale !== MIN_ZOOM) setOffset({ x: 0, y: 0 });
+      return scale === MIN_ZOOM ? DOUBLE_TAP_ZOOM : MIN_ZOOM;
+    });
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLImageElement>) => {
+    if (!isZoomed) return;
+    event.preventDefault();
+    dragRef.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, originX: offset.x, originY: offset.y };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setIsDragging(true);
+  };
+  const handlePointerMove = (event: React.PointerEvent<HTMLImageElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    setOffset({ x: drag.originX + (event.clientX - drag.startX), y: drag.originY + (event.clientY - drag.startY) });
+  };
+  const handlePointerUp = (event: React.PointerEvent<HTMLImageElement>) => {
+    if (dragRef.current?.pointerId !== event.pointerId) return;
+    dragRef.current = null;
+    setIsDragging(false);
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  };
 
   if (!itemCount || !currentItem) {
     return null;
@@ -179,12 +215,21 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], items, initialIn
               <img
                 src={currentItem.sourceUrl}
                 alt={`Preview image ${safeIndex + 1} of ${itemCount}`}
-                className="max-h-[calc(100vh-8rem)] max-w-[calc(100vw-1.5rem)] rounded-md object-contain select-none sm:max-h-[calc(100vh-7rem)] sm:max-w-[calc(100vw-8rem)]"
+                className={cn(
+                  "max-h-[calc(100vh-8rem)] max-w-[calc(100vw-1.5rem)] rounded-md object-contain select-none touch-none sm:max-h-[calc(100vh-7rem)] sm:max-w-[calc(100vw-8rem)]",
+                  isZoomed && (isDragging ? "cursor-grabbing" : "cursor-grab"),
+                )}
                 style={{
-                  transform: `translate3d(0px, 0px, 0) scale(${zoomScale})`,
-                  transition: "transform 120ms ease-out",
+                  transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${zoomScale})`,
+                  // While dragging the transform must track the pointer exactly; easing it
+                  // would make the image lag behind the cursor.
+                  transition: isDragging ? "none" : "transform 120ms ease-out",
                   transformOrigin: "center center",
                 }}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerUp}
                 onDoubleClick={handleDoubleClick}
                 draggable={false}
                 loading="eager"

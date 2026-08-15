@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"encoding/xml"
 	"fmt"
 	"image"
 	"io"
@@ -78,6 +79,52 @@ var exifCapableImageTypes = map[string]bool{
 	"image/heif": true,
 }
 
+// validateAttachmentContentSize applies the instance upload limit and the tighter media cap to
+// a blob, returning its size. Shared by the upload path and the in-place overwrite path so an
+// overwrite can never smuggle in bytes an upload of the same file would have rejected.
+func (s *APIV1Service) validateAttachmentContentSize(ctx context.Context, mimeType string, content []byte) (int64, error) {
+	instanceStorageSetting, err := s.Store.GetInstanceStorageSetting(ctx)
+	if err != nil {
+		return 0, status.Errorf(codes.Internal, "failed to get instance storage setting: %v", err)
+	}
+	size := binary.Size(content)
+	uploadSizeLimit := int(instanceStorageSetting.UploadSizeLimitMb) * MebiByte
+	if uploadSizeLimit == 0 {
+		uploadSizeLimit = MaxUploadBufferSizeBytes
+	}
+	if size > uploadSizeLimit {
+		return 0, status.Errorf(codes.InvalidArgument, "file size exceeds the limit")
+	}
+	if isMediaMimeType(mimeType) && size > maxMediaAttachmentSizeBytes {
+		return 0, status.Errorf(codes.InvalidArgument, "media file size exceeds the 100MB limit")
+	}
+	return int64(size), nil
+}
+
+// stripExifIfNeeded removes EXIF metadata (GPS, device details) from image blobs for privacy.
+// Returns the blob unchanged when the format can't carry EXIF, when the file is an Android
+// motion container (re-encoding would drop the embedded video), or when stripping fails —
+// a metadata-stripping failure must not fail the write.
+func (s *APIV1Service) stripExifIfNeeded(ctx context.Context, blob []byte, mimeType, filename string, motionMedia *storepb.MotionMedia) ([]byte, error) {
+	if !shouldStripExif(mimeType) || isAndroidMotionContainer(motionMedia) {
+		return blob, nil
+	}
+	release, err := s.acquireImageProcessingSlot(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.ResourceExhausted, "too many image processing requests")
+	}
+	stripped, stripErr := stripImageExif(blob, mimeType)
+	release()
+	if stripErr != nil {
+		slog.Warn("failed to strip EXIF metadata from image",
+			slog.String("type", mimeType),
+			slog.String("filename", filename),
+			slog.String("error", stripErr.Error()))
+		return blob, nil
+	}
+	return stripped, nil
+}
+
 func (s *APIV1Service) CreateAttachment(ctx context.Context, request *v1pb.CreateAttachmentRequest) (*v1pb.Attachment, error) {
 	user, err := s.fetchCurrentUser(ctx)
 	if err != nil {
@@ -143,22 +190,11 @@ func (s *APIV1Service) CreateAttachment(ctx context.Context, request *v1pb.Creat
 		create.Payload.Origin = origin
 	}
 
-	instanceStorageSetting, err := s.Store.GetInstanceStorageSetting(ctx)
+	size, err := s.validateAttachmentContentSize(ctx, request.Attachment.Type, request.Attachment.Content)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get instance storage setting: %v", err)
+		return nil, err
 	}
-	size := binary.Size(request.Attachment.Content)
-	uploadSizeLimit := int(instanceStorageSetting.UploadSizeLimitMb) * MebiByte
-	if uploadSizeLimit == 0 {
-		uploadSizeLimit = MaxUploadBufferSizeBytes
-	}
-	if size > uploadSizeLimit {
-		return nil, status.Errorf(codes.InvalidArgument, "file size exceeds the limit")
-	}
-	if isMediaMimeType(request.Attachment.Type) && size > maxMediaAttachmentSizeBytes {
-		return nil, status.Errorf(codes.InvalidArgument, "media file size exceeds the 100MB limit")
-	}
-	create.Size = int64(size)
+	create.Size = size
 	create.Blob = request.Attachment.Content
 
 	// Set when the upload names a memo, so the blob can inherit that memo's workspace
@@ -195,26 +231,12 @@ func (s *APIV1Service) CreateAttachment(ctx context.Context, request *v1pb.Creat
 		}
 	}
 
-	// Strip EXIF metadata from images for privacy protection.
-	// This removes sensitive information like GPS location, device details, etc.
-	if shouldStripExif(create.Type) && !isAndroidMotionContainer(create.Payload.GetMotionMedia()) {
-		release, err := s.acquireImageProcessingSlot(ctx)
-		if err != nil {
-			return nil, status.Errorf(codes.ResourceExhausted, "too many image processing requests")
-		}
-		strippedBlob, stripErr := stripImageExif(create.Blob, create.Type)
-		release()
-		if stripErr != nil {
-			// Log warning but continue with original image to ensure uploads don't fail.
-			slog.Warn("failed to strip EXIF metadata from image",
-				slog.String("type", create.Type),
-				slog.String("filename", create.Filename),
-				slog.String("error", stripErr.Error()))
-		} else {
-			create.Blob = strippedBlob
-			create.Size = int64(len(strippedBlob))
-		}
+	strippedBlob, err := s.stripExifIfNeeded(ctx, create.Blob, create.Type, create.Filename, create.Payload.GetMotionMedia())
+	if err != nil {
+		return nil, err
 	}
+	create.Blob = strippedBlob
+	create.Size = int64(len(strippedBlob))
 
 	if err := SaveAttachmentBlob(ctx, s.Profile, s.Store, create, workspaceSlug); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to save attachment blob: %v", err)
@@ -418,6 +440,10 @@ func (s *APIV1Service) UpdateAttachment(ctx context.Context, request *v1pb.Updat
 				}
 			}
 			ensurePayload().Locked = request.Attachment.Locked
+		case "content":
+			if err := s.applyAttachmentContentUpdate(ctx, attachment, request.Attachment.Content, update); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -436,6 +462,101 @@ func (s *APIV1Service) UpdateAttachment(ctx context.Context, request *v1pb.Updat
 		return nil, status.Errorf(codes.NotFound, "attachment not found")
 	}
 	return convertAttachmentFromStore(updated), nil
+}
+
+// overwritableAttachmentTypes lists the MIME types whose bytes may be replaced in place.
+//
+// Attachment content used to be immutable; making it mutable re-opens the upload path's
+// validation surface, so the allowance is deliberately narrow. SVG is here for draw.io
+// diagrams, which carry their own editable source and are saved back over the original
+// (ADR-0017). Restricting by stored type is also what makes "the MIME type can't change"
+// true by construction: the type column is never part of a content update, and a type we
+// can verify structurally can't be turned into something else by the new bytes.
+var overwritableAttachmentTypes = map[string]bool{
+	"image/svg+xml": true,
+}
+
+// applyAttachmentContentUpdate validates replacement bytes and writes them over the
+// attachment's existing storage, recording the new size on `update`. The blob is rewritten in
+// place (same local path / same S3 key) so no orphan object is left behind.
+func (s *APIV1Service) applyAttachmentContentUpdate(ctx context.Context, attachment *store.Attachment, content []byte, update *store.UpdateAttachment) error {
+	if len(content) == 0 {
+		return status.Errorf(codes.InvalidArgument, "content is required")
+	}
+	// Locked attachments are decrypted client-side; the server holds no key and can't tell a
+	// legitimate re-encryption from a destructive overwrite. The frontend hides the edit entry
+	// for these, but the frontend is not the security boundary.
+	if attachment.Payload.GetLocked() {
+		return status.Errorf(codes.FailedPrecondition, "locked attachments cannot be overwritten")
+	}
+	if attachment.StorageType == storepb.AttachmentStorageType_EXTERNAL {
+		return status.Errorf(codes.FailedPrecondition, "externally linked attachments cannot be overwritten")
+	}
+	if !overwritableAttachmentTypes[attachment.Type] {
+		return status.Errorf(codes.FailedPrecondition, "content of a %s attachment cannot be replaced", attachment.Type)
+	}
+	if attachment.Type == "image/svg+xml" && !looksLikeSVG(content) {
+		return status.Errorf(codes.InvalidArgument, "replacement content is not an SVG document")
+	}
+
+	if _, err := s.validateAttachmentContentSize(ctx, attachment.Type, content); err != nil {
+		return err
+	}
+	blob, err := s.stripExifIfNeeded(ctx, content, attachment.Type, attachment.Filename, attachment.Payload.GetMotionMedia())
+	if err != nil {
+		return err
+	}
+	size := int64(len(blob))
+
+	switch attachment.StorageType {
+	case storepb.AttachmentStorageType_LOCAL:
+		attachmentPath := filepath.FromSlash(attachment.Reference)
+		if !filepath.IsAbs(attachmentPath) {
+			attachmentPath = filepath.Join(s.Profile.Data, attachmentPath)
+		}
+		if err := os.WriteFile(attachmentPath, blob, 0644); err != nil {
+			return status.Errorf(codes.Internal, "failed to write attachment file: %v", err)
+		}
+	case storepb.AttachmentStorageType_S3:
+		s3Object := attachment.Payload.GetS3Object()
+		if s3Object == nil || s3Object.Key == "" {
+			return status.Errorf(codes.Internal, "S3 object key is missing")
+		}
+		s3Config, err := s.Store.ResolveAttachmentS3Config(ctx, s3Object.S3Config)
+		if err != nil {
+			return status.Errorf(codes.Internal, "failed to resolve S3 config: %v", err)
+		}
+		s3Client, err := s3.NewClient(ctx, s3Config)
+		if err != nil {
+			return status.Errorf(codes.Internal, "failed to create S3 client: %v", err)
+		}
+		// Same key as before — uploading under a new one would leave the old object orphaned.
+		if _, err := s3Client.UploadObject(ctx, s3Object.Key, attachment.Type, bytes.NewReader(blob)); err != nil {
+			return status.Errorf(codes.Internal, "failed to upload to S3: %v", err)
+		}
+	default:
+		// Database-backed storage: the bytes live in the row itself.
+		update.Blob = blob
+	}
+	update.Size = &size
+	return nil
+}
+
+// looksLikeSVG reports whether blob is an SVG document, by parsing far enough to see that the
+// root element is <svg>. Cheap structural check, not a full validation — its job is to stop a
+// non-image from being written under an image/svg+xml content type.
+func looksLikeSVG(blob []byte) bool {
+	decoder := xml.NewDecoder(bytes.NewReader(blob))
+	decoder.Strict = false
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return false
+		}
+		if start, ok := token.(xml.StartElement); ok {
+			return strings.EqualFold(start.Name.Local, "svg")
+		}
+	}
 }
 
 func (s *APIV1Service) DeleteAttachment(ctx context.Context, request *v1pb.DeleteAttachmentRequest) (*emptypb.Empty, error) {

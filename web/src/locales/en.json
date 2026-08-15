@@ -1443,5 +1443,14 @@
     "unlock-first": "Enter your master passphrase to unlock this session, then create the block.",
     "unlock-dialog-title": "Unlock master passphrase",
     "unlock-dialog-description": "Unlocks encrypted content and locked attachments for this session."
+  },
+  "drawio": {
+    "edit": "Edit in draw.io",
+    "download-svg": "Download SVG",
+    "download-xml": "Download XML",
+    "preview": "Preview",
+    "editor-title": "Edit diagram",
+    "saved": "Diagram saved",
+    "save-failed": "Failed to save the diagram"
   }
 }

@@ -1347,5 +1347,14 @@
     "unlock-first": "输入主口令解锁本次会话，然后创建此块。",
     "unlock-dialog-title": "解锁主口令",
     "unlock-dialog-description": "解锁后即可查看本次会话中的加密内容和已锁定附件。"
+  },
+  "drawio": {
+    "edit": "在 draw.io 中编辑",
+    "download-svg": "下载 SVG",
+    "download-xml": "下载 XML",
+    "preview": "预览",
+    "editor-title": "编辑图",
+    "saved": "图已保存",
+    "save-failed": "保存失败"
   }
 }

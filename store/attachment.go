@@ -64,6 +64,12 @@ type UpdateAttachment struct {
 	MemoID    *int32
 	Reference *string
 	Payload   *storepb.AttachmentPayload
+	// Blob and Size overwrite the attachment's content in place. Only set for
+	// database-backed attachments (LOCAL/S3 blobs live outside the row and are
+	// rewritten by the caller); Size is set for every storage type so the row
+	// keeps matching the bytes actually stored.
+	Blob []byte
+	Size *int64
 	// UnsetMemoID, when true, clears memo_id (sets it to NULL), unlinking the
 	// attachment from its memo without deleting the file. Used when restoring a
 	// memo version so attachments dropped by the restore are kept, not destroyed.

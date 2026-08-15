@@ -17,6 +17,15 @@ export const getAttachmentUrl = (attachment: Attachment) => {
   return `/file/${attachment.name}/${encodeAttachmentFilename(attachment.filename)}`;
 };
 
+// Inverse of getAttachmentUrl: recovers `attachments/{uid}` from a `/file/...` URL so a
+// component holding only a markdown image reference can address the attachment via the API.
+// Returns undefined for external links and any other URL shape.
+export const getAttachmentNameFromUrl = (url: string | undefined): string | undefined => {
+  if (!url) return undefined;
+  const match = /^\/file\/(attachments\/[^/?#]+)\//.exec(url);
+  return match?.[1];
+};
+
 export const getAttachmentThumbnailUrl = (attachment: Attachment) => {
   return `/file/${attachment.name}/${encodeAttachmentFilename(attachment.filename)}?thumbnail=true`;
 };

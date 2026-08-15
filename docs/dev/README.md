@@ -151,7 +151,7 @@ design doc 是给三个月后的人读的，下面这四类内容三个月后全
 
 ### adr/ —— 为什么这么选（事件，不改名不删除）
 
-编号从 `0001` 起，一经分配不回收，当前已到 `0016`：
+编号从 `0001` 起，一经分配不回收，当前已到 `0017`：
 
 - [0001](adr/0001-attachment-proxy-not-presigned-url.md) 附件走服务端代理，不用 S3 预签名直连
 - [0002](adr/0002-private-attachments-reuse-master-passphrase.md) 私密附件复用账号主口令
@@ -169,6 +169,7 @@ design doc 是给三个月后的人读的，下面这四类内容三个月后全
 - [0014](adr/0014-agent-session-open-not-a-lock.md) `agent_session_open` 不得复用为锁
 - [0015](adr/0015-no-litestream.md) 不引入 Litestream
 - [0016](adr/0016-no-multi-instance-lease.md) 不支持多端写入，靠文档约束
+- [0017](adr/0017-drawio-svg-with-embedded-xml.md) draw.io 图存成带内嵌 XML 的 SVG 附件
 
 ### design/ —— 一次变更打算怎么做（事件）
 
@@ -202,6 +203,8 @@ design doc 是给三个月后的人读的，下面这四类内容三个月后全
   —— `docs/plans/` 历史方案文档拆入本目录的分阶段实施计划（多会话并行执行）
 - [20260808-attachment-access-control-and-private-files.md](design/20260808-attachment-access-control-and-private-files.md)
   —— 附件判定收敛（含两处越权修复）与私密附件的分阶段实施计划、风险登记
+- [20260814-drawio-svg-round-trip.md](design/20260814-drawio-svg-round-trip.md)
+  —— draw.io SVG 图的渲染与回写的分阶段实施计划
 
 > `docs/plans/` 下 2026-07-03 及之后的方案文档已按上述计划拆入本目录并从 `docs/plans/`
 > 删除（原文保留在 git history）。2026-03～2026-04 的 6 个方案目录判定与本 fork 增量

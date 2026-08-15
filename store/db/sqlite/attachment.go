@@ -190,6 +190,12 @@ func (d *DB) UpdateAttachment(ctx context.Context, update *store.UpdateAttachmen
 	if v := update.Reference; v != nil {
 		set, args = append(set, "`reference` = ?"), append(args, *v)
 	}
+	if v := update.Blob; v != nil {
+		set, args = append(set, "`blob` = ?"), append(args, v)
+	}
+	if v := update.Size; v != nil {
+		set, args = append(set, "`size` = ?"), append(args, *v)
+	}
 	if v := update.Payload; v != nil {
 		bytes, err := protojson.Marshal(v)
 		if err != nil {

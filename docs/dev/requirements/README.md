@@ -18,7 +18,7 @@
 |---|---|---|
 | [knowledge-base/](knowledge-base/) | 层级目录、workspace、知识库详情页与书架、文档版本历史 | 3（另有 1 篇同域文档暂平铺根下，见下） |
 | [views/](views/) | html/pdf/view 三类渲染型文档、gallery view | 2 |
-| [editor/](editor/) | calendar 块、sheets 块、secret 加密块、受限内联样式渲染 | 4 |
+| [editor/](editor/) | calendar 块、sheets 块、secret 加密块、受限内联样式渲染、draw.io 图 | 5 |
 | [attachments/](attachments/) | 上传与媒体内联、访问控制与私密附件 | 2 |
 | [collaboration/](collaboration/) | memogit 同步、memogit 文档身份、MCP 协作写作、团队成员与知识库授权 | 4 |
 | [storage/](storage/) | 数据源、持久化边界、容量与迁移承诺、全站备份 | 2 |
@@ -51,6 +51,7 @@
 - [sheets-block.md](editor/sheets-block.md) —— sheets 交互块
 - [secret-block.md](editor/secret-block.md) —— 加密块
 - [inline-style-rendering.md](editor/inline-style-rendering.md) —— 受限内联 style 渲染
+- [drawio-diagram.md](editor/drawio-diagram.md) —— draw.io 图：带内嵌源码的 SVG 附件
 
 ### attachments/
 
