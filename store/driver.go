@@ -97,6 +97,12 @@ type Driver interface {
 	DeleteWorkspaceFolder(ctx context.Context, delete *DeleteWorkspaceFolder) error
 	RenameWorkspaceFolder(ctx context.Context, workspaceID int32, oldPath, newPath string) error
 
+	// WorkspaceGrant model related methods.
+	CreateWorkspaceGrant(ctx context.Context, create *WorkspaceGrant) (*WorkspaceGrant, error)
+	ListWorkspaceGrants(ctx context.Context, find *FindWorkspaceGrant) ([]*WorkspaceGrant, error)
+	UpdateWorkspaceGrant(ctx context.Context, update *UpdateWorkspaceGrant) (*WorkspaceGrant, error)
+	DeleteWorkspaceGrant(ctx context.Context, delete *DeleteWorkspaceGrant) error
+
 	// Reaction model related methods.
 	UpsertReaction(ctx context.Context, create *Reaction) (*Reaction, error)
 	ListReactions(ctx context.Context, find *FindReaction) ([]*Reaction, error)

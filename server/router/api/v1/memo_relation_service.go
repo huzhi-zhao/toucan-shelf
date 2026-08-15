@@ -32,8 +32,8 @@ func (s *APIV1Service) SetMemoRelations(ctx context.Context, request *v1pb.SetMe
 	if memo == nil {
 		return nil, status.Errorf(codes.NotFound, "memo not found")
 	}
-	if memo.CreatorID != user.ID && !isSuperUser(user) {
-		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+	if err := s.checkMemoWriteAccess(ctx, user, memo); err != nil {
+		return nil, err
 	}
 	if err := s.setMemoRelationsInternal(ctx, memo, request.Relations); err != nil {
 		return nil, err

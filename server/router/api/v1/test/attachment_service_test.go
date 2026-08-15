@@ -235,7 +235,9 @@ func TestCreateAttachmentMemoPermission(t *testing.T) {
 			},
 		})
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "permission denied")
+		// A member outside the document's knowledge base is told it does not exist,
+		// rather than that they may not touch it.
+		require.Contains(t, err.Error(), "memo not found")
 
 		attachments, err := ts.Store.ListAttachments(ctx, &store.FindAttachment{
 			CreatorID: &other.ID,

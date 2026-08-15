@@ -19,6 +19,7 @@ import { User, User_Role } from "@/types/proto/api/v1/user_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import CreateUserDialog from "../CreateUserDialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import MemberWorkspaceGrantDialog from "./MemberWorkspaceGrantDialog";
 import SettingSection from "./SettingSection";
 import SettingTable from "./SettingTable";
 
@@ -33,6 +34,7 @@ const MemberSection = () => {
   const sortedUsers = useMemo(() => sortBy(users, "id"), [users]);
   const [archiveTarget, setArchiveTarget] = useState<User | undefined>(undefined);
   const [deleteTarget, setDeleteTarget] = useState<User | undefined>(undefined);
+  const [grantTarget, setGrantTarget] = useState<User | undefined>(undefined);
 
   const stringifyUserRole = (role: User_Role) => (role === User_Role.ADMIN ? t("setting.member.admin") : t("setting.member.user"));
 
@@ -175,6 +177,10 @@ const MemberSection = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" sideOffset={2}>
                     <DropdownMenuItem onClick={() => handleEditUser(user)}>{t("common.update")}</DropdownMenuItem>
+                    {/* The admin reaches every knowledge base implicitly, so it has nothing to be assigned. */}
+                    {user.role === User_Role.ADMIN ? null : (
+                      <DropdownMenuItem onClick={() => setGrantTarget(user)}>{t("setting.member.assign-workspaces")}</DropdownMenuItem>
+                    )}
                     {user.state === State.NORMAL ? (
                       <DropdownMenuItem onClick={() => handleArchiveUserClick(user)}>{t("setting.member.archive-member")}</DropdownMenuItem>
                     ) : (
@@ -194,6 +200,8 @@ const MemberSection = () => {
         emptyMessage={t("setting.member.no-members-found")}
         getRowKey={(user) => user.name}
       />
+
+      <MemberWorkspaceGrantDialog open={!!grantTarget} onOpenChange={(open) => !open && setGrantTarget(undefined)} member={grantTarget} />
 
       {/* Create User Dialog */}
       <CreateUserDialog open={createDialog.isOpen} onOpenChange={createDialog.setOpen} onSuccess={refetchUsers} />

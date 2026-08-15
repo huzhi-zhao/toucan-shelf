@@ -64,6 +64,18 @@ const (
 	// WorkspaceServiceDeleteWorkspaceFolderProcedure is the fully-qualified name of the
 	// WorkspaceService's DeleteWorkspaceFolder RPC.
 	WorkspaceServiceDeleteWorkspaceFolderProcedure = "/memos.api.v1.WorkspaceService/DeleteWorkspaceFolder"
+	// WorkspaceServiceListWorkspaceGrantsProcedure is the fully-qualified name of the
+	// WorkspaceService's ListWorkspaceGrants RPC.
+	WorkspaceServiceListWorkspaceGrantsProcedure = "/memos.api.v1.WorkspaceService/ListWorkspaceGrants"
+	// WorkspaceServiceCreateWorkspaceGrantProcedure is the fully-qualified name of the
+	// WorkspaceService's CreateWorkspaceGrant RPC.
+	WorkspaceServiceCreateWorkspaceGrantProcedure = "/memos.api.v1.WorkspaceService/CreateWorkspaceGrant"
+	// WorkspaceServiceUpdateWorkspaceGrantProcedure is the fully-qualified name of the
+	// WorkspaceService's UpdateWorkspaceGrant RPC.
+	WorkspaceServiceUpdateWorkspaceGrantProcedure = "/memos.api.v1.WorkspaceService/UpdateWorkspaceGrant"
+	// WorkspaceServiceDeleteWorkspaceGrantProcedure is the fully-qualified name of the
+	// WorkspaceService's DeleteWorkspaceGrant RPC.
+	WorkspaceServiceDeleteWorkspaceGrantProcedure = "/memos.api.v1.WorkspaceService/DeleteWorkspaceGrant"
 )
 
 // WorkspaceServiceClient is a client for the memos.api.v1.WorkspaceService service.
@@ -92,6 +104,14 @@ type WorkspaceServiceClient interface {
 	MoveWorkspaceFolder(context.Context, *connect.Request[v1.MoveWorkspaceFolderRequest]) (*connect.Response[v1.MoveWorkspaceFolderResponse], error)
 	// DeleteWorkspaceFolder deletes an empty folder.
 	DeleteWorkspaceFolder(context.Context, *connect.Request[v1.DeleteWorkspaceFolderRequest]) (*connect.Response[emptypb.Empty], error)
+	// ListWorkspaceGrants lists who has been given access to a workspace. Admin only.
+	ListWorkspaceGrants(context.Context, *connect.Request[v1.ListWorkspaceGrantsRequest]) (*connect.Response[v1.ListWorkspaceGrantsResponse], error)
+	// CreateWorkspaceGrant gives one member access to one workspace. Admin only.
+	CreateWorkspaceGrant(context.Context, *connect.Request[v1.CreateWorkspaceGrantRequest]) (*connect.Response[v1.WorkspaceGrant], error)
+	// UpdateWorkspaceGrant switches an existing grant between VIEWER and EDITOR. Admin only.
+	UpdateWorkspaceGrant(context.Context, *connect.Request[v1.UpdateWorkspaceGrantRequest]) (*connect.Response[v1.WorkspaceGrant], error)
+	// DeleteWorkspaceGrant revokes a member's access to a workspace. Admin only.
+	DeleteWorkspaceGrant(context.Context, *connect.Request[v1.DeleteWorkspaceGrantRequest]) (*connect.Response[emptypb.Empty], error)
 }
 
 // NewWorkspaceServiceClient constructs a client for the memos.api.v1.WorkspaceService service. By
@@ -165,6 +185,30 @@ func NewWorkspaceServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(workspaceServiceMethods.ByName("DeleteWorkspaceFolder")),
 			connect.WithClientOptions(opts...),
 		),
+		listWorkspaceGrants: connect.NewClient[v1.ListWorkspaceGrantsRequest, v1.ListWorkspaceGrantsResponse](
+			httpClient,
+			baseURL+WorkspaceServiceListWorkspaceGrantsProcedure,
+			connect.WithSchema(workspaceServiceMethods.ByName("ListWorkspaceGrants")),
+			connect.WithClientOptions(opts...),
+		),
+		createWorkspaceGrant: connect.NewClient[v1.CreateWorkspaceGrantRequest, v1.WorkspaceGrant](
+			httpClient,
+			baseURL+WorkspaceServiceCreateWorkspaceGrantProcedure,
+			connect.WithSchema(workspaceServiceMethods.ByName("CreateWorkspaceGrant")),
+			connect.WithClientOptions(opts...),
+		),
+		updateWorkspaceGrant: connect.NewClient[v1.UpdateWorkspaceGrantRequest, v1.WorkspaceGrant](
+			httpClient,
+			baseURL+WorkspaceServiceUpdateWorkspaceGrantProcedure,
+			connect.WithSchema(workspaceServiceMethods.ByName("UpdateWorkspaceGrant")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteWorkspaceGrant: connect.NewClient[v1.DeleteWorkspaceGrantRequest, emptypb.Empty](
+			httpClient,
+			baseURL+WorkspaceServiceDeleteWorkspaceGrantProcedure,
+			connect.WithSchema(workspaceServiceMethods.ByName("DeleteWorkspaceGrant")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -180,6 +224,10 @@ type workspaceServiceClient struct {
 	renameWorkspaceFolder *connect.Client[v1.RenameWorkspaceFolderRequest, emptypb.Empty]
 	moveWorkspaceFolder   *connect.Client[v1.MoveWorkspaceFolderRequest, v1.MoveWorkspaceFolderResponse]
 	deleteWorkspaceFolder *connect.Client[v1.DeleteWorkspaceFolderRequest, emptypb.Empty]
+	listWorkspaceGrants   *connect.Client[v1.ListWorkspaceGrantsRequest, v1.ListWorkspaceGrantsResponse]
+	createWorkspaceGrant  *connect.Client[v1.CreateWorkspaceGrantRequest, v1.WorkspaceGrant]
+	updateWorkspaceGrant  *connect.Client[v1.UpdateWorkspaceGrantRequest, v1.WorkspaceGrant]
+	deleteWorkspaceGrant  *connect.Client[v1.DeleteWorkspaceGrantRequest, emptypb.Empty]
 }
 
 // CreateWorkspace calls memos.api.v1.WorkspaceService.CreateWorkspace.
@@ -232,6 +280,26 @@ func (c *workspaceServiceClient) DeleteWorkspaceFolder(ctx context.Context, req 
 	return c.deleteWorkspaceFolder.CallUnary(ctx, req)
 }
 
+// ListWorkspaceGrants calls memos.api.v1.WorkspaceService.ListWorkspaceGrants.
+func (c *workspaceServiceClient) ListWorkspaceGrants(ctx context.Context, req *connect.Request[v1.ListWorkspaceGrantsRequest]) (*connect.Response[v1.ListWorkspaceGrantsResponse], error) {
+	return c.listWorkspaceGrants.CallUnary(ctx, req)
+}
+
+// CreateWorkspaceGrant calls memos.api.v1.WorkspaceService.CreateWorkspaceGrant.
+func (c *workspaceServiceClient) CreateWorkspaceGrant(ctx context.Context, req *connect.Request[v1.CreateWorkspaceGrantRequest]) (*connect.Response[v1.WorkspaceGrant], error) {
+	return c.createWorkspaceGrant.CallUnary(ctx, req)
+}
+
+// UpdateWorkspaceGrant calls memos.api.v1.WorkspaceService.UpdateWorkspaceGrant.
+func (c *workspaceServiceClient) UpdateWorkspaceGrant(ctx context.Context, req *connect.Request[v1.UpdateWorkspaceGrantRequest]) (*connect.Response[v1.WorkspaceGrant], error) {
+	return c.updateWorkspaceGrant.CallUnary(ctx, req)
+}
+
+// DeleteWorkspaceGrant calls memos.api.v1.WorkspaceService.DeleteWorkspaceGrant.
+func (c *workspaceServiceClient) DeleteWorkspaceGrant(ctx context.Context, req *connect.Request[v1.DeleteWorkspaceGrantRequest]) (*connect.Response[emptypb.Empty], error) {
+	return c.deleteWorkspaceGrant.CallUnary(ctx, req)
+}
+
 // WorkspaceServiceHandler is an implementation of the memos.api.v1.WorkspaceService service.
 type WorkspaceServiceHandler interface {
 	// CreateWorkspace creates a new workspace (knowledge base) for the current user.
@@ -258,6 +326,14 @@ type WorkspaceServiceHandler interface {
 	MoveWorkspaceFolder(context.Context, *connect.Request[v1.MoveWorkspaceFolderRequest]) (*connect.Response[v1.MoveWorkspaceFolderResponse], error)
 	// DeleteWorkspaceFolder deletes an empty folder.
 	DeleteWorkspaceFolder(context.Context, *connect.Request[v1.DeleteWorkspaceFolderRequest]) (*connect.Response[emptypb.Empty], error)
+	// ListWorkspaceGrants lists who has been given access to a workspace. Admin only.
+	ListWorkspaceGrants(context.Context, *connect.Request[v1.ListWorkspaceGrantsRequest]) (*connect.Response[v1.ListWorkspaceGrantsResponse], error)
+	// CreateWorkspaceGrant gives one member access to one workspace. Admin only.
+	CreateWorkspaceGrant(context.Context, *connect.Request[v1.CreateWorkspaceGrantRequest]) (*connect.Response[v1.WorkspaceGrant], error)
+	// UpdateWorkspaceGrant switches an existing grant between VIEWER and EDITOR. Admin only.
+	UpdateWorkspaceGrant(context.Context, *connect.Request[v1.UpdateWorkspaceGrantRequest]) (*connect.Response[v1.WorkspaceGrant], error)
+	// DeleteWorkspaceGrant revokes a member's access to a workspace. Admin only.
+	DeleteWorkspaceGrant(context.Context, *connect.Request[v1.DeleteWorkspaceGrantRequest]) (*connect.Response[emptypb.Empty], error)
 }
 
 // NewWorkspaceServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -327,6 +403,30 @@ func NewWorkspaceServiceHandler(svc WorkspaceServiceHandler, opts ...connect.Han
 		connect.WithSchema(workspaceServiceMethods.ByName("DeleteWorkspaceFolder")),
 		connect.WithHandlerOptions(opts...),
 	)
+	workspaceServiceListWorkspaceGrantsHandler := connect.NewUnaryHandler(
+		WorkspaceServiceListWorkspaceGrantsProcedure,
+		svc.ListWorkspaceGrants,
+		connect.WithSchema(workspaceServiceMethods.ByName("ListWorkspaceGrants")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workspaceServiceCreateWorkspaceGrantHandler := connect.NewUnaryHandler(
+		WorkspaceServiceCreateWorkspaceGrantProcedure,
+		svc.CreateWorkspaceGrant,
+		connect.WithSchema(workspaceServiceMethods.ByName("CreateWorkspaceGrant")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workspaceServiceUpdateWorkspaceGrantHandler := connect.NewUnaryHandler(
+		WorkspaceServiceUpdateWorkspaceGrantProcedure,
+		svc.UpdateWorkspaceGrant,
+		connect.WithSchema(workspaceServiceMethods.ByName("UpdateWorkspaceGrant")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workspaceServiceDeleteWorkspaceGrantHandler := connect.NewUnaryHandler(
+		WorkspaceServiceDeleteWorkspaceGrantProcedure,
+		svc.DeleteWorkspaceGrant,
+		connect.WithSchema(workspaceServiceMethods.ByName("DeleteWorkspaceGrant")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/memos.api.v1.WorkspaceService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case WorkspaceServiceCreateWorkspaceProcedure:
@@ -349,6 +449,14 @@ func NewWorkspaceServiceHandler(svc WorkspaceServiceHandler, opts ...connect.Han
 			workspaceServiceMoveWorkspaceFolderHandler.ServeHTTP(w, r)
 		case WorkspaceServiceDeleteWorkspaceFolderProcedure:
 			workspaceServiceDeleteWorkspaceFolderHandler.ServeHTTP(w, r)
+		case WorkspaceServiceListWorkspaceGrantsProcedure:
+			workspaceServiceListWorkspaceGrantsHandler.ServeHTTP(w, r)
+		case WorkspaceServiceCreateWorkspaceGrantProcedure:
+			workspaceServiceCreateWorkspaceGrantHandler.ServeHTTP(w, r)
+		case WorkspaceServiceUpdateWorkspaceGrantProcedure:
+			workspaceServiceUpdateWorkspaceGrantHandler.ServeHTTP(w, r)
+		case WorkspaceServiceDeleteWorkspaceGrantProcedure:
+			workspaceServiceDeleteWorkspaceGrantHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -396,4 +504,20 @@ func (UnimplementedWorkspaceServiceHandler) MoveWorkspaceFolder(context.Context,
 
 func (UnimplementedWorkspaceServiceHandler) DeleteWorkspaceFolder(context.Context, *connect.Request[v1.DeleteWorkspaceFolderRequest]) (*connect.Response[emptypb.Empty], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.WorkspaceService.DeleteWorkspaceFolder is not implemented"))
+}
+
+func (UnimplementedWorkspaceServiceHandler) ListWorkspaceGrants(context.Context, *connect.Request[v1.ListWorkspaceGrantsRequest]) (*connect.Response[v1.ListWorkspaceGrantsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.WorkspaceService.ListWorkspaceGrants is not implemented"))
+}
+
+func (UnimplementedWorkspaceServiceHandler) CreateWorkspaceGrant(context.Context, *connect.Request[v1.CreateWorkspaceGrantRequest]) (*connect.Response[v1.WorkspaceGrant], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.WorkspaceService.CreateWorkspaceGrant is not implemented"))
+}
+
+func (UnimplementedWorkspaceServiceHandler) UpdateWorkspaceGrant(context.Context, *connect.Request[v1.UpdateWorkspaceGrantRequest]) (*connect.Response[v1.WorkspaceGrant], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.WorkspaceService.UpdateWorkspaceGrant is not implemented"))
+}
+
+func (UnimplementedWorkspaceServiceHandler) DeleteWorkspaceGrant(context.Context, *connect.Request[v1.DeleteWorkspaceGrantRequest]) (*connect.Response[emptypb.Empty], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.WorkspaceService.DeleteWorkspaceGrant is not implemented"))
 }

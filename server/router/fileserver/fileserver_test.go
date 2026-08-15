@@ -38,12 +38,7 @@ func TestServeAttachmentFile_ShareTokenAllowsDirectMemoAttachment(t *testing.T) 
 	svc, fs, _, cleanup := newShareAttachmentTestServices(ctx, t)
 	defer cleanup()
 
-	creator, err := svc.Store.CreateUser(ctx, &store.User{
-		Username: "share-parent-owner",
-		Role:     store.RoleUser,
-		Email:    "share-parent-owner@example.com",
-	})
-	require.NoError(t, err)
+	creator := createMember(ctx, t, svc, "share-parent-owner")
 
 	creatorCtx := context.WithValue(ctx, auth.UserIDContextKey, creator.ID)
 
@@ -90,12 +85,7 @@ func TestServeAttachmentFile_LocalStaticFileSupportsRangeRequests(t *testing.T) 
 	svc, fs, _, cleanup := newShareAttachmentTestServices(ctx, t)
 	defer cleanup()
 
-	creator, err := svc.Store.CreateUser(ctx, &store.User{
-		Username: "range-owner",
-		Role:     store.RoleUser,
-		Email:    "range-owner@example.com",
-	})
-	require.NoError(t, err)
+	creator := createMember(ctx, t, svc, "range-owner")
 	creatorCtx := context.WithValue(ctx, auth.UserIDContextKey, creator.ID)
 
 	attachment, err := svc.CreateAttachment(creatorCtx, &apiv1.CreateAttachmentRequest{
@@ -136,20 +126,12 @@ func TestServeAttachmentFile_ShareTokenRejectsCommentAttachment(t *testing.T) {
 	svc, fs, _, cleanup := newShareAttachmentTestServices(ctx, t)
 	defer cleanup()
 
-	creator, err := svc.Store.CreateUser(ctx, &store.User{
-		Username: "private-parent-owner",
-		Role:     store.RoleUser,
-		Email:    "private-parent-owner@example.com",
-	})
-	require.NoError(t, err)
+	creator, workspace := createMemberWithWorkspace(ctx, t, svc, "private-parent-owner")
 
 	creatorCtx := context.WithValue(ctx, auth.UserIDContextKey, creator.ID)
-	commenter, err := svc.Store.CreateUser(ctx, &store.User{
-		Username: "share-commenter",
-		Role:     store.RoleUser,
-		Email:    "share-commenter@example.com",
-	})
-	require.NoError(t, err)
+	commenter := createMember(ctx, t, svc, "share-commenter")
+	// The commenter has to reach the parent's knowledge base to comment on it at all.
+	grantWorkspace(ctx, t, svc, workspace, commenter, store.WorkspaceGrantRoleEditor)
 	commenterCtx := context.WithValue(ctx, auth.UserIDContextKey, commenter.ID)
 
 	parentMemo, err := svc.CreateMemo(creatorCtx, &apiv1.CreateMemoRequest{
@@ -203,12 +185,7 @@ func TestServeAttachmentFile_MotionClip(t *testing.T) {
 	svc, fs, _, cleanup := newShareAttachmentTestServices(ctx, t)
 	defer cleanup()
 
-	creator, err := svc.Store.CreateUser(ctx, &store.User{
-		Username: "motion-owner",
-		Role:     store.RoleUser,
-		Email:    "motion-owner@example.com",
-	})
-	require.NoError(t, err)
+	creator := createMember(ctx, t, svc, "motion-owner")
 	creatorCtx := context.WithValue(ctx, auth.UserIDContextKey, creator.ID)
 
 	attachment, err := svc.CreateAttachment(creatorCtx, &apiv1.CreateAttachmentRequest{
@@ -248,12 +225,7 @@ func TestServeAttachmentFile_SVGThumbnailServedAsImageWithSecurityHeaders(t *tes
 	svc, fs, _, cleanup := newShareAttachmentTestServices(ctx, t)
 	defer cleanup()
 
-	creator, err := svc.Store.CreateUser(ctx, &store.User{
-		Username: "svg-owner",
-		Role:     store.RoleUser,
-		Email:    "svg-owner@example.com",
-	})
-	require.NoError(t, err)
+	creator := createMember(ctx, t, svc, "svg-owner")
 	creatorCtx := context.WithValue(ctx, auth.UserIDContextKey, creator.ID)
 
 	svgContent := []byte(`<svg xmlns="http://www.w3.org/2000/svg" width="120" height="40"><text x="0" y="20">memos</text></svg>`)
@@ -301,12 +273,7 @@ func TestServeAttachmentFile_ImagesRevalidateWhileDocumentsStayCached(t *testing
 	svc, fs, _, cleanup := newShareAttachmentTestServices(ctx, t)
 	defer cleanup()
 
-	creator, err := svc.Store.CreateUser(ctx, &store.User{
-		Username: "cache-owner",
-		Role:     store.RoleUser,
-		Email:    "cache-owner@example.com",
-	})
-	require.NoError(t, err)
+	creator := createMember(ctx, t, svc, "cache-owner")
 	creatorCtx := context.WithValue(ctx, auth.UserIDContextKey, creator.ID)
 
 	svgContent := []byte(`<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"></svg>`)
@@ -378,12 +345,7 @@ func TestServeAttachmentFile_ThumbnailWithSensitiveMetadataServesOriginal(t *tes
 	svc, fs, _, cleanup := newShareAttachmentTestServices(ctx, t)
 	defer cleanup()
 
-	creator, err := svc.Store.CreateUser(ctx, &store.User{
-		Username: "hdr-owner",
-		Role:     store.RoleUser,
-		Email:    "hdr-owner@example.com",
-	})
-	require.NoError(t, err)
+	creator := createMember(ctx, t, svc, "hdr-owner")
 	creatorCtx := context.WithValue(ctx, auth.UserIDContextKey, creator.ID)
 
 	imageContent := testPNGWithChunk(t, "cICP", []byte{9, 16, 9, 1})
@@ -540,12 +502,7 @@ func TestServeAttachmentFile_PrivateInstanceDeniesAnonymous(t *testing.T) {
 	svc, fs, _, cleanup := newShareAttachmentTestServices(ctx, t)
 	defer cleanup()
 
-	creator, err := svc.Store.CreateUser(ctx, &store.User{
-		Username: "private-attachment-owner",
-		Role:     store.RoleUser,
-		Email:    "private-attachment-owner@example.com",
-	})
-	require.NoError(t, err)
+	creator := createMember(ctx, t, svc, "private-attachment-owner")
 	creatorCtx := context.WithValue(ctx, auth.UserIDContextKey, creator.ID)
 
 	attachment, err := svc.CreateAttachment(creatorCtx, &apiv1.CreateAttachmentRequest{
@@ -628,12 +585,7 @@ func TestServeAttachmentFile_RefreshCookieAuthenticatesOwner(t *testing.T) {
 	svc, fs, _, cleanup := newShareAttachmentTestServices(ctx, t)
 	defer cleanup()
 
-	owner, err := svc.Store.CreateUser(ctx, &store.User{
-		Username: "cookie-owner",
-		Role:     store.RoleUser,
-		Email:    "cookie-owner@example.com",
-	})
-	require.NoError(t, err)
+	owner := createMember(ctx, t, svc, "cookie-owner")
 	ownerCtx := context.WithValue(ctx, auth.UserIDContextKey, owner.ID)
 
 	attachment, err := svc.CreateAttachment(ownerCtx, &apiv1.CreateAttachmentRequest{

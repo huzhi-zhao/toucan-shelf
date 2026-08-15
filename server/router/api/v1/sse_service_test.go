@@ -92,6 +92,20 @@ func TestCreateMemoComment_NoDuplicateSSEBroadcast(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	// Commenting is a write inside the parent's knowledge base, so the commenter
+	// needs a grant on it — the admin's memo landed in the default one.
+	parentUID := strings.TrimPrefix(parent.Name, "memos/")
+	parentMemo, err := svc.Store.GetMemo(ctx, &store.FindMemo{UID: &parentUID})
+	require.NoError(t, err)
+	_, err = svc.Store.CreateWorkspaceGrant(ctx, &store.WorkspaceGrant{
+		WorkspaceID: parentMemo.WorkspaceID,
+		SubjectType: store.WorkspaceGrantSubjectUser,
+		SubjectID:   commenter.ID,
+		Role:        store.WorkspaceGrantRoleEditor,
+		GrantedBy:   author.ID,
+	})
+	require.NoError(t, err)
+
 	// Subscribe after the parent memo is created so the memo.created event
 	// for the parent does not pollute the assertion window.
 	client := svc.SSEHub.Subscribe(author.ID, store.RoleAdmin)

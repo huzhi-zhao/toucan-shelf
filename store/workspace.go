@@ -30,7 +30,10 @@ type Workspace struct {
 
 // FindWorkspace specifies filter criteria for querying workspaces.
 type FindWorkspace struct {
-	ID          *int32
+	ID *int32
+	// IDList restricts the result to these ids. An empty (non-nil) list matches
+	// nothing, which is what a member with no grants must see.
+	IDList      []int32
 	UID         *string
 	CreatorID   *int32
 	Title       *string

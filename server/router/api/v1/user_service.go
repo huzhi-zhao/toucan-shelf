@@ -253,6 +253,10 @@ func (s *APIV1Service) CreateUser(ctx context.Context, request *v1pb.CreateUserR
 		}
 	}
 
+	if err := s.ensureSingleAdmin(ctx, roleToAssign, 0); err != nil {
+		return nil, err
+	}
+
 	// If validate_only is true, just validate without creating
 	if request.ValidateOnly {
 		// Perform validation checks without actually creating the user
@@ -281,6 +285,31 @@ func (s *APIV1Service) CreateUser(ctx context.Context, request *v1pb.CreateUserR
 	}
 
 	return convertUserFromStore(user, user), nil
+}
+
+// ensureSingleAdmin enforces the one-admin-per-instance rule: the team owner is the
+// first account that registered, and ADMIN carries implicit access to everything, so
+// a second one would be a second set of unrevokable full rights. This is the only
+// place the rule is written — CreateUser and UpdateUser both come through here.
+//
+// excludeUserID is the user being written (0 when creating), so that re-saving the
+// existing admin's own role does not read as a second admin. The very first
+// registration is unaffected: it runs when no user exists at all.
+func (s *APIV1Service) ensureSingleAdmin(ctx context.Context, role store.Role, excludeUserID int32) error {
+	if role != store.RoleAdmin {
+		return nil
+	}
+	adminRole := store.RoleAdmin
+	admins, err := s.Store.ListUsers(ctx, &store.FindUser{Role: &adminRole})
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to list admin users: %v", err)
+	}
+	for _, admin := range admins {
+		if admin.ID != excludeUserID {
+			return status.Errorf(codes.PermissionDenied, "the instance already has an admin (%s); there can only be one", admin.Username)
+		}
+	}
+	return nil
 }
 
 func (s *APIV1Service) UpdateUser(ctx context.Context, request *v1pb.UpdateUserRequest) (*v1pb.User, error) {
@@ -368,6 +397,9 @@ func (s *APIV1Service) UpdateUser(ctx context.Context, request *v1pb.UpdateUserR
 				return nil, status.Errorf(codes.PermissionDenied, "permission denied")
 			}
 			role := convertUserRoleToStore(request.User.Role)
+			if err := s.ensureSingleAdmin(ctx, role, userID); err != nil {
+				return nil, err
+			}
 			update.Role = &role
 		case "password":
 			if err := validatePassword(request.User.Password); err != nil {

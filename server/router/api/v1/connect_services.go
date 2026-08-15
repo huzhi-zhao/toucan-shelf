@@ -840,3 +840,35 @@ func (s *ConnectServiceHandler) DeleteWorkspaceFolder(ctx context.Context, req *
 	}
 	return connect.NewResponse(resp), nil
 }
+
+func (s *ConnectServiceHandler) ListWorkspaceGrants(ctx context.Context, req *connect.Request[v1pb.ListWorkspaceGrantsRequest]) (*connect.Response[v1pb.ListWorkspaceGrantsResponse], error) {
+	resp, err := s.APIV1Service.ListWorkspaceGrants(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) CreateWorkspaceGrant(ctx context.Context, req *connect.Request[v1pb.CreateWorkspaceGrantRequest]) (*connect.Response[v1pb.WorkspaceGrant], error) {
+	resp, err := s.APIV1Service.CreateWorkspaceGrant(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) UpdateWorkspaceGrant(ctx context.Context, req *connect.Request[v1pb.UpdateWorkspaceGrantRequest]) (*connect.Response[v1pb.WorkspaceGrant], error) {
+	resp, err := s.APIV1Service.UpdateWorkspaceGrant(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) DeleteWorkspaceGrant(ctx context.Context, req *connect.Request[v1pb.DeleteWorkspaceGrantRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := s.APIV1Service.DeleteWorkspaceGrant(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}

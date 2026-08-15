@@ -35,13 +35,35 @@ func (d *DB) DeleteUser(ctx context.Context, delete *store.DeleteUser) (*store.D
 		_ = tx.Rollback()
 	}()
 
-	targets, err := collectDeleteUserTargets(ctx, tx, delete.ID)
+	// A deleted member's documents stay with the team: their authorship moves to the
+	// team owner instead of the documents being deleted along with the account. The
+	// purge path below only runs when there is no owner to move them to — deleting the
+	// ADMIN account itself, which is also the only case the old behaviour still fits.
+	transferToID, err := findContentTransferTargetTx(ctx, tx, delete.ID)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to collect delete user targets")
+		return nil, errors.Wrap(err, "failed to resolve content transfer target")
 	}
 
-	if err := deleteUserTargetsTx(ctx, tx, delete.ID, targets); err != nil {
-		return nil, errors.Wrap(err, "failed to delete user targets")
+	var targets *deleteUserTargetSet
+	if transferToID != 0 {
+		targets, err = collectTransferUserTargets(ctx, tx, delete.ID)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to collect transfer user targets")
+		}
+		if err := transferUserContentTx(ctx, tx, delete.ID, transferToID); err != nil {
+			return nil, errors.Wrap(err, "failed to transfer user content")
+		}
+		if err := deleteUserResidualTx(ctx, tx, delete.ID, targets); err != nil {
+			return nil, errors.Wrap(err, "failed to delete user residuals")
+		}
+	} else {
+		targets, err = collectDeleteUserTargets(ctx, tx, delete.ID)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to collect delete user targets")
+		}
+		if err := deleteUserTargetsTx(ctx, tx, delete.ID, targets); err != nil {
+			return nil, errors.Wrap(err, "failed to delete user targets")
+		}
 	}
 
 	if store.GetDeleteUserFailpoint(ctx) == store.DeleteUserFailpointBeforeCommit {
@@ -56,6 +78,119 @@ func (d *DB) DeleteUser(ctx context.Context, delete *store.DeleteUser) (*store.D
 		Attachments:     targets.attachments,
 		UserSettingKeys: targets.userSettingKeys,
 	}, nil
+}
+
+// findContentTransferTargetTx returns the id of the team owner that a deleted user's
+// documents should be re-signed to, or 0 when there is none (the account being deleted
+// is itself the only ADMIN).
+func findContentTransferTargetTx(ctx context.Context, tx *sql.Tx, userID int32) (int32, error) {
+	var adminID int32
+	err := tx.QueryRowContext(ctx, `
+		SELECT id
+		FROM user
+		WHERE role = `+deleteUserPlaceholder(1)+`
+			AND id <> `+deleteUserPlaceholder(2)+`
+		ORDER BY id
+		LIMIT 1
+	`, string(store.RoleAdmin), userID).Scan(&adminID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return adminID, nil
+}
+
+// collectTransferUserTargets gathers what still has to be removed when the user's
+// documents are kept: only their standalone attachments, i.e. uploads not attached to
+// any document. Attachments that belong to a surviving document travel with it.
+func collectTransferUserTargets(ctx context.Context, tx *sql.Tx, userID int32) (*deleteUserTargetSet, error) {
+	targets := &deleteUserTargetSet{}
+
+	attachments := make([]*store.Attachment, 0)
+	if err := appendDeleteUserAttachments(ctx, tx, `
+		SELECT
+			id,
+			uid,
+			creator_id,
+			memo_id,
+			storage_type,
+			reference,
+			payload
+		FROM attachment
+		WHERE creator_id = `+deleteUserPlaceholder(1)+`
+			AND memo_id IS NULL`, []any{userID}, make(map[int32]struct{}), &attachments); err != nil {
+		return nil, err
+	}
+	targets.attachments = attachments
+	targets.attachmentIDs = attachmentIDsFromList(attachments)
+
+	userSettingKeys, err := listDeleteUserSettingKeys(ctx, tx, userID)
+	if err != nil {
+		return nil, err
+	}
+	targets.userSettingKeys = userSettingKeys
+
+	inboxIDs, err := listDeleteUserDirectInboxIDs(ctx, tx, userID)
+	if err != nil {
+		return nil, err
+	}
+	targets.inboxIDs = inboxIDs
+
+	return targets, nil
+}
+
+// transferUserContentTx re-signs everything that stays behind to the team owner, so no
+// surviving row points at an account that no longer exists.
+func transferUserContentTx(ctx context.Context, tx *sql.Tx, userID, transferToID int32) error {
+	statements := []string{
+		`UPDATE memo SET creator_id = ` + deleteUserPlaceholder(1) + ` WHERE creator_id = ` + deleteUserPlaceholder(2),
+		`UPDATE memo_history SET creator_id = ` + deleteUserPlaceholder(1) + ` WHERE creator_id = ` + deleteUserPlaceholder(2),
+		`UPDATE attachment SET creator_id = ` + deleteUserPlaceholder(1) + ` WHERE creator_id = ` + deleteUserPlaceholder(2) + ` AND memo_id IS NOT NULL`,
+	}
+	for _, statement := range statements {
+		if _, err := tx.ExecContext(ctx, statement, transferToID, userID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// deleteUserResidualTx removes what is personal to the deleted account and cannot be
+// inherited: their grants, reactions, share links, inbox, credentials and settings.
+func deleteUserResidualTx(ctx context.Context, tx *sql.Tx, userID int32, targets *deleteUserTargetSet) error {
+	if err := deleteAttachmentsByIDsTx(ctx, tx, targets.attachmentIDs); err != nil {
+		return err
+	}
+	if err := deleteWorkspaceGrantsBySubjectTx(ctx, tx, userID); err != nil {
+		return err
+	}
+	if err := deleteReactionsByCreatorTx(ctx, tx, userID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM memo_share WHERE creator_id = `+deleteUserPlaceholder(1), userID); err != nil {
+		return err
+	}
+	if err := deleteInboxesByIDsTx(ctx, tx, targets.inboxIDs); err != nil {
+		return err
+	}
+	if err := deleteUserIdentitiesTx(ctx, tx, userID); err != nil {
+		return err
+	}
+	if err := deleteUserSettingsTx(ctx, tx, userID); err != nil {
+		return err
+	}
+	return deleteUserRowTx(ctx, tx, userID)
+}
+
+func deleteWorkspaceGrantsBySubjectTx(ctx context.Context, tx *sql.Tx, userID int32) error {
+	_, err := tx.ExecContext(ctx, `
+		DELETE FROM workspace_grant
+		WHERE subject_type = `+deleteUserPlaceholder(1)+`
+			AND subject_id = `+deleteUserPlaceholder(2),
+		string(store.WorkspaceGrantSubjectUser), userID)
+	return err
 }
 
 func collectDeleteUserTargets(ctx context.Context, tx *sql.Tx, userID int32) (*deleteUserTargetSet, error) {
@@ -106,6 +241,9 @@ func deleteUserTargetsTx(ctx context.Context, tx *sql.Tx, userID int32, targets 
 		return err
 	}
 	if err := deleteInboxesByIDsTx(ctx, tx, targets.inboxIDs); err != nil {
+		return err
+	}
+	if err := deleteWorkspaceGrantsBySubjectTx(ctx, tx, userID); err != nil {
 		return err
 	}
 	if err := deleteUserIdentitiesTx(ctx, tx, userID); err != nil {

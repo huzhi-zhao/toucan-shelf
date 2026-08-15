@@ -26,18 +26,9 @@ func (s *APIV1Service) ListMemoReactions(ctx context.Context, request *v1pb.List
 		return nil, status.Errorf(codes.NotFound, "memo not found")
 	}
 
-	// Check memo visibility.
-	if memo.Visibility != store.Public {
-		user, err := s.fetchCurrentUser(ctx)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to get user")
-		}
-		if user == nil {
-			return nil, status.Errorf(codes.Unauthenticated, "user not authenticated")
-		}
-		if memo.Visibility == store.Private && memo.CreatorID != user.ID && !isSuperUser(user) {
-			return nil, status.Errorf(codes.PermissionDenied, "permission denied")
-		}
+	// Reactions are readable exactly where the document is.
+	if err := s.checkMemoReadAccess(ctx, memo); err != nil {
+		return nil, err
 	}
 
 	reactions, err := s.Store.ListReactions(ctx, &store.FindReaction{
@@ -79,9 +70,9 @@ func (s *APIV1Service) UpsertMemoReaction(ctx context.Context, request *v1pb.Ups
 		return nil, status.Errorf(codes.NotFound, "memo not found")
 	}
 
-	// Check memo visibility.
-	if memo.Visibility == store.Private && memo.CreatorID != user.ID && !isSuperUser(user) {
-		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+	// Reacting needs no more than being able to read the document.
+	if err := s.checkMemoReadAccess(ctx, memo); err != nil {
+		return nil, err
 	}
 
 	reaction, err := s.Store.UpsertReaction(ctx, &store.Reaction{

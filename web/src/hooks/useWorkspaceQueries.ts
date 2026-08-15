@@ -2,8 +2,8 @@ import { create } from "@bufbuild/protobuf";
 import { FieldMaskSchema } from "@bufbuild/protobuf/wkt";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { workspaceServiceClient } from "@/connect";
-import type { Workspace } from "@/types/proto/api/v1/workspace_service_pb";
-import { WorkspaceSchema } from "@/types/proto/api/v1/workspace_service_pb";
+import type { Workspace, WorkspaceGrant_Role } from "@/types/proto/api/v1/workspace_service_pb";
+import { WorkspaceGrantSchema, WorkspaceSchema } from "@/types/proto/api/v1/workspace_service_pb";
 
 export const workspaceKeys = {
   all: ["workspaces"] as const,
@@ -11,6 +11,8 @@ export const workspaceKeys = {
   list: (showHidden: boolean) => [...workspaceKeys.lists(), { showHidden }] as const,
   detail: (name?: string) => [...workspaceKeys.all, "detail", name] as const,
   tree: (name?: string, archived?: boolean) => [...workspaceKeys.all, "tree", name, archived] as const,
+  grants: () => [...workspaceKeys.all, "grants"] as const,
+  grantsForUser: (user?: string) => [...workspaceKeys.grants(), { user }] as const,
 };
 
 // Exported so callers that only need the list *on demand* (e.g. the logo button resolving the
@@ -213,6 +215,65 @@ export function useDeleteWorkspaceFolder() {
       queryClient.invalidateQueries({
         queryKey: workspaceKeys.tree(variables.parent, true),
       });
+    },
+  });
+}
+
+/**
+ * One member's knowledge-base assignments, across every base. The admin-only member
+ * settings page asks this way round; the wildcard parent is what the API takes for
+ * "not scoped to a single base".
+ */
+export function useWorkspaceGrantsForUser(user: string | undefined) {
+  return useQuery({
+    queryKey: workspaceKeys.grantsForUser(user),
+    queryFn: async () => {
+      const { grants } = await workspaceServiceClient.listWorkspaceGrants({ parent: "workspaces/-", user: user! });
+      return grants;
+    },
+    enabled: !!user,
+  });
+}
+
+export function useCreateWorkspaceGrant() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ workspace, user, role }: { workspace: string; user: string; role: WorkspaceGrant_Role }) => {
+      return workspaceServiceClient.createWorkspaceGrant({
+        parent: workspace,
+        grant: create(WorkspaceGrantSchema, { user, role }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.grants() });
+    },
+  });
+}
+
+export function useUpdateWorkspaceGrant() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ name, role }: { name: string; role: WorkspaceGrant_Role }) => {
+      return workspaceServiceClient.updateWorkspaceGrant({
+        grant: create(WorkspaceGrantSchema, { name, role }),
+        updateMask: create(FieldMaskSchema, { paths: ["role"] }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.grants() });
+    },
+  });
+}
+
+export function useDeleteWorkspaceGrant() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (name: string) => {
+      await workspaceServiceClient.deleteWorkspaceGrant({ name });
+      return name;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.grants() });
     },
   });
 }

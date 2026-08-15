@@ -25,6 +25,7 @@ const (
 	IdentityProviderNamePrefix = "identity-providers/"
 	WebhookNamePrefix          = "webhooks/"
 	WorkspaceNamePrefix        = "workspaces/"
+	WorkspaceGrantNamePrefix   = "grants/"
 )
 
 // GetNameParentTokens returns the tokens from a resource name.
@@ -136,6 +137,20 @@ func ExtractWorkspaceUIDFromName(name string) (string, error) {
 		return "", err
 	}
 	return tokens[0], nil
+}
+
+// ExtractWorkspaceGrantIDFromName returns the workspace UID and grant ID from a
+// resource name. e.g., "workspaces/abc/grants/3" -> ("abc", 3).
+func ExtractWorkspaceGrantIDFromName(name string) (string, int32, error) {
+	tokens, err := GetNameParentTokens(name, WorkspaceNamePrefix, WorkspaceGrantNamePrefix)
+	if err != nil {
+		return "", 0, err
+	}
+	grantID, err := util.ConvertStringToInt32(tokens[1])
+	if err != nil {
+		return "", 0, errors.Errorf("invalid grant ID %q", tokens[1])
+	}
+	return tokens[0], grantID, nil
 }
 
 func ExtractIdentityProviderUIDFromName(name string) (string, error) {

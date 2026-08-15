@@ -88,6 +88,15 @@ type FindMemo struct {
 	// FolderPathPrefix, when set, matches memos whose FolderPath equals this value
 	// or is nested under it (i.e. FolderPath == prefix OR FolderPath LIKE prefix + "/%").
 	FolderPathPrefix *string
+	// VisibleWorkspaceIDs restricts a cross-workspace listing to the knowledge bases
+	// the caller has been granted, which is the outer gate of the access model. PUBLIC
+	// documents are exempt: they are readable by anyone, including anonymous visitors,
+	// so workspace membership cannot be what decides them.
+	//
+	// Nil means "no workspace restriction" (the team owner, whose access is implicit).
+	// An empty, non-nil slice means "no workspace at all" — a member with no grants,
+	// who still sees PUBLIC documents.
+	VisibleWorkspaceIDs []int32
 	// ExcludeHiddenWorkspaces drops memos living in a soft-deleted (hidden) workspace.
 	// Set it on cross-workspace listings — Explore, search — so hiding actually hides.
 	// Listings already scoped to one workspace by ID leave it off: reaching a hidden

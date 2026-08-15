@@ -212,8 +212,8 @@ func (s *APIV1Service) CreateAttachment(ctx context.Context, request *v1pb.Creat
 		if memo == nil {
 			return nil, status.Errorf(codes.NotFound, "memo not found: %s", *request.Attachment.Memo)
 		}
-		if !canModifyMemo(user, memo) {
-			return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+		if err := s.checkMemoWriteAccess(ctx, user, memo); err != nil {
+			return nil, err
 		}
 		create.MemoID = &memo.ID
 		memoWorkspaceID = &memo.WorkspaceID
@@ -284,8 +284,18 @@ func (s *APIV1Service) resolveAttachmentWorkspaceSlug(ctx context.Context, userI
 		}
 		return "", status.Errorf(codes.NotFound, "workspace not found: %s", workspaceName)
 	}
-	if find.UID != nil && workspace.CreatorID != userID {
-		return "", status.Errorf(codes.PermissionDenied, "permission denied")
+	if find.UID != nil {
+		user, err := s.Store.GetUser(ctx, &store.FindUser{ID: &userID})
+		if err != nil {
+			return "", status.Errorf(codes.Internal, "failed to get user: %v", err)
+		}
+		access, err := s.resolveWorkspaceAccess(ctx, user, workspace.ID)
+		if err != nil {
+			return "", status.Errorf(codes.Internal, "failed to resolve workspace access: %v", err)
+		}
+		if !access.CanWrite() {
+			return "", status.Errorf(codes.PermissionDenied, "permission denied")
+		}
 	}
 
 	slug, err := s.Store.EnsureWorkspaceStorageSlug(ctx, workspace)

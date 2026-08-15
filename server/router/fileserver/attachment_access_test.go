@@ -77,14 +77,15 @@ func newAccessFixture(ctx context.Context, t *testing.T) (*accessFixture, func()
 	t.Helper()
 	svc, fs, _, cleanup := newShareAttachmentTestServices(ctx, t)
 
-	owner, err := svc.Store.CreateUser(ctx, &store.User{
-		Username: "acl-owner", Role: store.RoleUser, Email: "acl-owner@example.com",
-	})
-	require.NoError(t, err)
+	// owner and other share one knowledge base: "other" stands for a colleague who
+	// can reach the document's library, so that what the matrix probes is the
+	// document's own visibility rather than the library gate in front of it.
+	owner, workspace := createMemberWithWorkspace(ctx, t, svc, "acl-owner")
 	other, err := svc.Store.CreateUser(ctx, &store.User{
 		Username: "acl-other", Role: store.RoleUser, Email: "acl-other@example.com",
 	})
 	require.NoError(t, err)
+	grantWorkspace(ctx, t, svc, workspace, other, store.WorkspaceGrantRoleEditor)
 	admin, err := svc.Store.CreateUser(ctx, &store.User{
 		Username: "acl-admin", Role: store.RoleAdmin, Email: "acl-admin@example.com",
 	})
@@ -186,8 +187,9 @@ func (f *accessFixture) getMetadata(ctx context.Context, t *testing.T, attachmen
 //
 // Two rules the table encodes that the pre-convergence code got wrong: a document in
 // the recycle bin takes its attachments with it (only the creator still reaches them),
-// and an admin is just another signed-in user here — the document side grants admins
-// no read privilege, so the attachment side must not either.
+// and "other" — a colleague with access to the same knowledge base — parts ways with
+// the owner exactly where the document's own visibility says so. The admin is the team
+// owner and reads PRIVATE documents too, but the recycle bin stops even them.
 func TestAttachmentAccessMatrix(t *testing.T) {
 	ctx := context.Background()
 
@@ -202,12 +204,12 @@ func TestAttachmentAccessMatrix(t *testing.T) {
 		// Open instance (InstanceURL configured), documents in normal state.
 		{"public/active/open", apiv1.Visibility_PUBLIC, false, true, allowed, allowed, allowed, allowed},
 		{"protected/active/open", apiv1.Visibility_PROTECTED, false, true, unauthenticated, allowed, allowed, allowed},
-		{"private/active/open", apiv1.Visibility_PRIVATE, false, true, unauthenticated, allowed, forbidden, forbidden},
+		{"private/active/open", apiv1.Visibility_PRIVATE, false, true, unauthenticated, allowed, forbidden, allowed},
 
 		// Private instance (no InstanceURL): even a PUBLIC document needs a viewer.
 		{"public/active/private-instance", apiv1.Visibility_PUBLIC, false, false, unauthenticated, allowed, allowed, allowed},
 		{"protected/active/private-instance", apiv1.Visibility_PROTECTED, false, false, unauthenticated, allowed, allowed, allowed},
-		{"private/active/private-instance", apiv1.Visibility_PRIVATE, false, false, unauthenticated, allowed, forbidden, forbidden},
+		{"private/active/private-instance", apiv1.Visibility_PRIVATE, false, false, unauthenticated, allowed, forbidden, allowed},
 
 		// Recycle bin: creator only, whatever the visibility says.
 		{"public/archived/open", apiv1.Visibility_PUBLIC, true, true, notFound, allowed, notFound, notFound},
@@ -318,7 +320,7 @@ func TestAttachmentAccess_CommentInheritsParent(t *testing.T) {
 		"anonymous": unauthenticated,
 		"owner":     allowed,
 		"other":     forbidden,
-		"admin":     forbidden,
+		"admin":     allowed,
 	}
 	for _, v := range f.viewers() {
 		t.Run(v.name+"/file", func(t *testing.T) {

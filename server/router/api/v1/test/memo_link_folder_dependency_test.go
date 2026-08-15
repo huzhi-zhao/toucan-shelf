@@ -31,7 +31,9 @@ func TestMemoLinkDependencyFolderAndWorkspaceP1(t *testing.T) {
 	ts := NewTestService(t)
 	defer ts.Cleanup()
 
-	user, err := ts.CreateRegularUser(ctx, "user")
+	// Creating a knowledge base and its folders is admin-only, and these tests are
+	// about link repair rather than authorization, so they act as the team owner.
+	user, err := ts.CreateHostUser(ctx, "user")
 	require.NoError(t, err)
 	userCtx := ts.CreateUserContext(ctx, user.ID)
 

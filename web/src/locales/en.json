@@ -725,14 +725,20 @@
       "delete-member": "Delete Member",
       "delete-success": "{{username}} deleted successfully",
       "delete-warning": "Are you sure you want to delete {{username}}?",
-      "delete-warning-description": "THIS ACTION IS IRREVERSIBLE",
+      "delete-warning-description": "The account is removed and cannot be restored. Documents they created stay in their knowledge base, re-signed to the admin.",
       "label": "Member",
       "list-title": "Member list",
       "member-column": "Member",
       "restore-success": "{{username}} restored successfully",
       "summary-column": "Summary",
       "user": "User",
-      "no-members-found": "No members found"
+      "no-members-found": "No members found",
+      "assign-workspaces": "Assign knowledge bases",
+      "assign-workspaces-description": "Choose which knowledge bases {{username}} can access. Changes take effect immediately.",
+      "no-workspaces-to-assign": "No knowledge bases yet.",
+      "grant-role-viewer": "Viewer",
+      "grant-role-editor": "Editor",
+      "workspaces-column": "Knowledge bases"
     },
     "memo": {
       "add-reaction": "Add reaction",

@@ -14,7 +14,8 @@
 // hides a document's files along with its body, a comment answers to its parent as
 // well as to itself, and an admin gets no read privilege — the document side grants
 // none, so granting it here would let an admin download a private document they
-// cannot open.
+// cannot open — except for the team owner, whose access to every knowledge base
+// (and to PRIVATE documents in them) the document side does grant.
 package attachmentacl
 
 import (
@@ -152,7 +153,7 @@ func CheckReadAccess(ctx context.Context, req *Request, attachment *store.Attach
 		if m == nil {
 			continue
 		}
-		if err := checkVisibility(req, m, user); err != nil {
+		if err := checkVisibility(ctx, req, m, user); err != nil {
 			return err
 		}
 	}
@@ -180,7 +181,7 @@ func checkVaultAccess(req *Request, attachment *store.Attachment, user func() (*
 
 // checkVisibility is the document side's visibility rule, minus the recycle-bin branch
 // that CheckReadAccess already applied to the whole chain at once.
-func checkVisibility(req *Request, memo *store.Memo, user func() (*store.User, error)) error {
+func checkVisibility(ctx context.Context, req *Request, memo *store.Memo, user func() (*store.User, error)) error {
 	if memo.Visibility == store.Public && req.AllowAnonymous {
 		return nil
 	}
@@ -191,8 +192,18 @@ func checkVisibility(req *Request, memo *store.Memo, user func() (*store.User, e
 	if u == nil {
 		return ErrUnauthenticated
 	}
-	// No admin branch, on purpose: checkMemoReadAccess has none either.
-	if memo.Visibility == store.Private && memo.CreatorID != u.ID {
+	// The knowledge base gates the document, and therefore its files: otherwise
+	// holding an attachment URL would be a way around never having been granted the
+	// knowledge base it lives in.
+	access, err := req.Store.ResolveWorkspaceAccess(ctx, u, memo.WorkspaceID)
+	if err != nil {
+		return errors.Wrap(err, "failed to resolve workspace access")
+	}
+	if !access.CanRead() {
+		return ErrNotFound
+	}
+	// The team owner reads everything, matching checkMemoReadAccess's PRIVATE branch.
+	if memo.Visibility == store.Private && memo.CreatorID != u.ID && !store.IsTeamOwner(u) {
 		return ErrForbidden
 	}
 	return nil

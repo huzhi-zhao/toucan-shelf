@@ -30,6 +30,10 @@ const (
 	WorkspaceService_RenameWorkspaceFolder_FullMethodName = "/memos.api.v1.WorkspaceService/RenameWorkspaceFolder"
 	WorkspaceService_MoveWorkspaceFolder_FullMethodName   = "/memos.api.v1.WorkspaceService/MoveWorkspaceFolder"
 	WorkspaceService_DeleteWorkspaceFolder_FullMethodName = "/memos.api.v1.WorkspaceService/DeleteWorkspaceFolder"
+	WorkspaceService_ListWorkspaceGrants_FullMethodName   = "/memos.api.v1.WorkspaceService/ListWorkspaceGrants"
+	WorkspaceService_CreateWorkspaceGrant_FullMethodName  = "/memos.api.v1.WorkspaceService/CreateWorkspaceGrant"
+	WorkspaceService_UpdateWorkspaceGrant_FullMethodName  = "/memos.api.v1.WorkspaceService/UpdateWorkspaceGrant"
+	WorkspaceService_DeleteWorkspaceGrant_FullMethodName  = "/memos.api.v1.WorkspaceService/DeleteWorkspaceGrant"
 )
 
 // WorkspaceServiceClient is the client API for WorkspaceService service.
@@ -60,6 +64,14 @@ type WorkspaceServiceClient interface {
 	MoveWorkspaceFolder(ctx context.Context, in *MoveWorkspaceFolderRequest, opts ...grpc.CallOption) (*MoveWorkspaceFolderResponse, error)
 	// DeleteWorkspaceFolder deletes an empty folder.
 	DeleteWorkspaceFolder(ctx context.Context, in *DeleteWorkspaceFolderRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// ListWorkspaceGrants lists who has been given access to a workspace. Admin only.
+	ListWorkspaceGrants(ctx context.Context, in *ListWorkspaceGrantsRequest, opts ...grpc.CallOption) (*ListWorkspaceGrantsResponse, error)
+	// CreateWorkspaceGrant gives one member access to one workspace. Admin only.
+	CreateWorkspaceGrant(ctx context.Context, in *CreateWorkspaceGrantRequest, opts ...grpc.CallOption) (*WorkspaceGrant, error)
+	// UpdateWorkspaceGrant switches an existing grant between VIEWER and EDITOR. Admin only.
+	UpdateWorkspaceGrant(ctx context.Context, in *UpdateWorkspaceGrantRequest, opts ...grpc.CallOption) (*WorkspaceGrant, error)
+	// DeleteWorkspaceGrant revokes a member's access to a workspace. Admin only.
+	DeleteWorkspaceGrant(ctx context.Context, in *DeleteWorkspaceGrantRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type workspaceServiceClient struct {
@@ -170,6 +182,46 @@ func (c *workspaceServiceClient) DeleteWorkspaceFolder(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *workspaceServiceClient) ListWorkspaceGrants(ctx context.Context, in *ListWorkspaceGrantsRequest, opts ...grpc.CallOption) (*ListWorkspaceGrantsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListWorkspaceGrantsResponse)
+	err := c.cc.Invoke(ctx, WorkspaceService_ListWorkspaceGrants_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workspaceServiceClient) CreateWorkspaceGrant(ctx context.Context, in *CreateWorkspaceGrantRequest, opts ...grpc.CallOption) (*WorkspaceGrant, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WorkspaceGrant)
+	err := c.cc.Invoke(ctx, WorkspaceService_CreateWorkspaceGrant_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workspaceServiceClient) UpdateWorkspaceGrant(ctx context.Context, in *UpdateWorkspaceGrantRequest, opts ...grpc.CallOption) (*WorkspaceGrant, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WorkspaceGrant)
+	err := c.cc.Invoke(ctx, WorkspaceService_UpdateWorkspaceGrant_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workspaceServiceClient) DeleteWorkspaceGrant(ctx context.Context, in *DeleteWorkspaceGrantRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, WorkspaceService_DeleteWorkspaceGrant_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WorkspaceServiceServer is the server API for WorkspaceService service.
 // All implementations must embed UnimplementedWorkspaceServiceServer
 // for forward compatibility.
@@ -198,6 +250,14 @@ type WorkspaceServiceServer interface {
 	MoveWorkspaceFolder(context.Context, *MoveWorkspaceFolderRequest) (*MoveWorkspaceFolderResponse, error)
 	// DeleteWorkspaceFolder deletes an empty folder.
 	DeleteWorkspaceFolder(context.Context, *DeleteWorkspaceFolderRequest) (*emptypb.Empty, error)
+	// ListWorkspaceGrants lists who has been given access to a workspace. Admin only.
+	ListWorkspaceGrants(context.Context, *ListWorkspaceGrantsRequest) (*ListWorkspaceGrantsResponse, error)
+	// CreateWorkspaceGrant gives one member access to one workspace. Admin only.
+	CreateWorkspaceGrant(context.Context, *CreateWorkspaceGrantRequest) (*WorkspaceGrant, error)
+	// UpdateWorkspaceGrant switches an existing grant between VIEWER and EDITOR. Admin only.
+	UpdateWorkspaceGrant(context.Context, *UpdateWorkspaceGrantRequest) (*WorkspaceGrant, error)
+	// DeleteWorkspaceGrant revokes a member's access to a workspace. Admin only.
+	DeleteWorkspaceGrant(context.Context, *DeleteWorkspaceGrantRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedWorkspaceServiceServer()
 }
 
@@ -237,6 +297,18 @@ func (UnimplementedWorkspaceServiceServer) MoveWorkspaceFolder(context.Context, 
 }
 func (UnimplementedWorkspaceServiceServer) DeleteWorkspaceFolder(context.Context, *DeleteWorkspaceFolderRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteWorkspaceFolder not implemented")
+}
+func (UnimplementedWorkspaceServiceServer) ListWorkspaceGrants(context.Context, *ListWorkspaceGrantsRequest) (*ListWorkspaceGrantsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListWorkspaceGrants not implemented")
+}
+func (UnimplementedWorkspaceServiceServer) CreateWorkspaceGrant(context.Context, *CreateWorkspaceGrantRequest) (*WorkspaceGrant, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateWorkspaceGrant not implemented")
+}
+func (UnimplementedWorkspaceServiceServer) UpdateWorkspaceGrant(context.Context, *UpdateWorkspaceGrantRequest) (*WorkspaceGrant, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateWorkspaceGrant not implemented")
+}
+func (UnimplementedWorkspaceServiceServer) DeleteWorkspaceGrant(context.Context, *DeleteWorkspaceGrantRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteWorkspaceGrant not implemented")
 }
 func (UnimplementedWorkspaceServiceServer) mustEmbedUnimplementedWorkspaceServiceServer() {}
 func (UnimplementedWorkspaceServiceServer) testEmbeddedByValue()                          {}
@@ -439,6 +511,78 @@ func _WorkspaceService_DeleteWorkspaceFolder_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkspaceService_ListWorkspaceGrants_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListWorkspaceGrantsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkspaceServiceServer).ListWorkspaceGrants(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkspaceService_ListWorkspaceGrants_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkspaceServiceServer).ListWorkspaceGrants(ctx, req.(*ListWorkspaceGrantsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkspaceService_CreateWorkspaceGrant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateWorkspaceGrantRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkspaceServiceServer).CreateWorkspaceGrant(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkspaceService_CreateWorkspaceGrant_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkspaceServiceServer).CreateWorkspaceGrant(ctx, req.(*CreateWorkspaceGrantRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkspaceService_UpdateWorkspaceGrant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateWorkspaceGrantRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkspaceServiceServer).UpdateWorkspaceGrant(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkspaceService_UpdateWorkspaceGrant_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkspaceServiceServer).UpdateWorkspaceGrant(ctx, req.(*UpdateWorkspaceGrantRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkspaceService_DeleteWorkspaceGrant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteWorkspaceGrantRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkspaceServiceServer).DeleteWorkspaceGrant(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkspaceService_DeleteWorkspaceGrant_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkspaceServiceServer).DeleteWorkspaceGrant(ctx, req.(*DeleteWorkspaceGrantRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WorkspaceService_ServiceDesc is the grpc.ServiceDesc for WorkspaceService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -485,6 +629,22 @@ var WorkspaceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteWorkspaceFolder",
 			Handler:    _WorkspaceService_DeleteWorkspaceFolder_Handler,
+		},
+		{
+			MethodName: "ListWorkspaceGrants",
+			Handler:    _WorkspaceService_ListWorkspaceGrants_Handler,
+		},
+		{
+			MethodName: "CreateWorkspaceGrant",
+			Handler:    _WorkspaceService_CreateWorkspaceGrant_Handler,
+		},
+		{
+			MethodName: "UpdateWorkspaceGrant",
+			Handler:    _WorkspaceService_UpdateWorkspaceGrant_Handler,
+		},
+		{
+			MethodName: "DeleteWorkspaceGrant",
+			Handler:    _WorkspaceService_DeleteWorkspaceGrant_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
 	apiv1 "github.com/usememos/memos/proto/gen/api/v1"
@@ -129,7 +131,7 @@ func TestCreateUserRegistration(t *testing.T) {
 		require.Contains(t, err.Error(), "not allowed")
 	})
 
-	t.Run("CreateUser host can assign roles", func(t *testing.T) {
+	t.Run("CreateUser host can assign roles but not a second admin", func(t *testing.T) {
 		ts := NewTestService(t)
 		defer ts.Cleanup()
 
@@ -141,16 +143,40 @@ func TestCreateUserRegistration(t *testing.T) {
 		// Host user can create user with specific role - should succeed
 		createdUser, err := ts.Service.CreateUser(hostCtx, &apiv1.CreateUserRequest{
 			User: &apiv1.User{
+				Username: "newmember",
+				Email:    "newmember@example.com",
+				Password: "password123",
+				Role:     apiv1.User_USER,
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, "users/newmember", createdUser.Name)
+		require.Equal(t, apiv1.User_USER, createdUser.Role)
+
+		// ADMIN is a singleton: the team owner cannot mint a second one.
+		_, err = ts.Service.CreateUser(hostCtx, &apiv1.CreateUserRequest{
+			User: &apiv1.User{
 				Username: "newadmin",
 				Email:    "newadmin@example.com",
 				Password: "password123",
 				Role:     apiv1.User_ADMIN,
 			},
 		})
+		require.Equal(t, codes.PermissionDenied, status.Code(err))
+
+		// ...nor promote an existing member into one.
+		_, err = ts.Service.UpdateUser(hostCtx, &apiv1.UpdateUserRequest{
+			User:       &apiv1.User{Name: createdUser.Name, Role: apiv1.User_ADMIN},
+			UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"role"}},
+		})
+		require.Equal(t, codes.PermissionDenied, status.Code(err))
+
+		// The admin re-saving their own role is not a second admin.
+		_, err = ts.Service.UpdateUser(hostCtx, &apiv1.UpdateUserRequest{
+			User:       &apiv1.User{Name: "users/" + hostUser.Username, Role: apiv1.User_ADMIN},
+			UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"role"}},
+		})
 		require.NoError(t, err)
-		require.Equal(t, "users/newadmin", createdUser.Name)
-		require.NotNil(t, createdUser)
-		require.Equal(t, apiv1.User_ADMIN, createdUser.Role)
 	})
 
 	t.Run("CreateUser unauthenticated user can only create regular user", func(t *testing.T) {

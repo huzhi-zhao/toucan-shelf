@@ -25,6 +25,17 @@ func (d *DB) ListWorkspaces(ctx context.Context, find *store.FindWorkspace) ([]*
 	if v := find.ID; v != nil {
 		where, args = append(where, "id = ?"), append(args, *v)
 	}
+	if find.IDList != nil {
+		if len(find.IDList) == 0 {
+			return nil, nil
+		}
+		placeholders := make([]string, len(find.IDList))
+		for i, id := range find.IDList {
+			placeholders[i] = "?"
+			args = append(args, id)
+		}
+		where = append(where, fmt.Sprintf("id IN (%s)", strings.Join(placeholders, ",")))
+	}
 	if v := find.UID; v != nil {
 		where, args = append(where, "uid = ?"), append(args, *v)
 	}

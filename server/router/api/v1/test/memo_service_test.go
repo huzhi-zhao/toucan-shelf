@@ -24,17 +24,19 @@ func TestListMemos(t *testing.T) {
 	defer ts.Cleanup()
 
 	// Create userOne
-	userOne, err := ts.CreateRegularUser(ctx, "test-user-1")
+	userOne, workspace, err := ts.CreateRegularUserWithWorkspace(ctx, "test-user-1")
 	require.NoError(t, err)
 	require.NotNil(t, userOne)
 
 	// Create userOne context
 	userOneCtx := ts.CreateUserContext(ctx, userOne.ID)
 
-	// Create userTwo
-	userTwo, err := ts.CreateRegularUser(ctx, "test-user-2")
+	// Create userTwo, sharing userOne's knowledge base: the list is expected to span
+	// both users' documents, which only happens inside one library.
+	userTwo, err := ts.CreateUnassignedUser(ctx, "test-user-2")
 	require.NoError(t, err)
 	require.NotNil(t, userTwo)
+	require.NoError(t, ts.GrantWorkspace(ctx, workspace.ID, userTwo, store.WorkspaceGrantRoleEditor))
 
 	// Create userTwo context
 	userTwoCtx := ts.CreateUserContext(ctx, userTwo.ID)
@@ -578,12 +580,15 @@ func TestGetMemoCommentRequiresParentReadAccess(t *testing.T) {
 	ts := NewTestService(t)
 	defer ts.Cleanup()
 
-	owner, err := ts.CreateRegularUser(ctx, "legacy-comment-owner")
+	owner, workspace, err := ts.CreateRegularUserWithWorkspace(ctx, "legacy-comment-owner")
 	require.NoError(t, err)
 	ownerCtx := ts.CreateUserContext(ctx, owner.ID)
 
-	other, err := ts.CreateRegularUser(ctx, "legacy-comment-other")
+	// "other" shares the library, so what denies them here is the parent's PRIVATE
+	// visibility rather than the library gate in front of it.
+	other, err := ts.CreateUnassignedUser(ctx, "legacy-comment-other")
 	require.NoError(t, err)
+	require.NoError(t, ts.GrantWorkspace(ctx, workspace.ID, other, store.WorkspaceGrantRoleEditor))
 	otherCtx := ts.CreateUserContext(ctx, other.ID)
 
 	parent, err := ts.Service.CreateMemo(ownerCtx, &apiv1.CreateMemoRequest{

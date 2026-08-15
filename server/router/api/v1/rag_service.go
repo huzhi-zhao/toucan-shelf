@@ -173,6 +173,17 @@ func (s *APIV1Service) accessibleMemoIDs(ctx context.Context, user *store.User, 
 	if user == nil {
 		find.VisibilityList = []store.Visibility{store.Public}
 	} else {
+		// Knowledge-base access first: without it, PROTECTED would make every
+		// document on the instance searchable by every account, and a member could
+		// find their way into a knowledge base they were never assigned.
+		all, ids, err := s.accessibleWorkspaceIDs(ctx, user)
+		if err != nil {
+			return nil, err
+		}
+		if !all {
+			find.VisibleWorkspaceIDs = ids
+		}
+		// Within a knowledge base the caller can reach, PRIVATE stays the author's.
 		filter := fmt.Sprintf(`creator_id == %d || visibility in ["PUBLIC", "PROTECTED"]`, user.ID)
 		find.Filters = append(find.Filters, filter)
 	}

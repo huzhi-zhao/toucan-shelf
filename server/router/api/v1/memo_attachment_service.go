@@ -32,8 +32,8 @@ func (s *APIV1Service) SetMemoAttachments(ctx context.Context, request *v1pb.Set
 	if memo == nil {
 		return nil, status.Errorf(codes.NotFound, "memo not found")
 	}
-	if !canModifyMemo(user, memo) {
-		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+	if err := s.checkMemoWriteAccess(ctx, user, memo); err != nil {
+		return nil, err
 	}
 	if err := s.setMemoAttachmentsInternal(ctx, user, memo, request.Attachments); err != nil {
 		return nil, err
@@ -210,18 +210,10 @@ func (s *APIV1Service) ListMemoAttachments(ctx context.Context, request *v1pb.Li
 		return nil, status.Errorf(codes.NotFound, "memo not found")
 	}
 
-	// Check memo visibility.
-	if memo.Visibility != store.Public {
-		user, err := s.fetchCurrentUser(ctx)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to get user: %v", err)
-		}
-		if user == nil {
-			return nil, status.Errorf(codes.Unauthenticated, "user not authenticated")
-		}
-		if memo.Visibility == store.Private && memo.CreatorID != user.ID && !isSuperUser(user) {
-			return nil, status.Errorf(codes.PermissionDenied, "permission denied")
-		}
+	// The attachment list answers to the document it hangs on — knowledge base gate
+	// first, then visibility.
+	if err := s.checkMemoReadAccess(ctx, memo); err != nil {
+		return nil, err
 	}
 
 	attachments, err := s.Store.ListAttachments(ctx, &store.FindAttachment{

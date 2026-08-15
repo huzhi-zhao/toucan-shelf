@@ -491,14 +491,20 @@
       "delete-member": "删除成员",
       "delete-success": "{{username}} 删除成功",
       "delete-warning": "您确定要删除 {{username}} 吗？",
-      "delete-warning-description": "此操作不可逆",
+      "delete-warning-description": "账号将被删除且无法恢复。TA 创建的文档会保留在原知识库里，署名转给管理员。",
       "restore-success": "{{username}} 恢复成功",
       "user": "普通用户",
       "label": "成员",
       "list-title": "成员列表",
       "member-column": "成员",
       "summary-column": "摘要",
-      "no-members-found": "没有找到会员"
+      "no-members-found": "没有找到会员",
+      "assign-workspaces": "分配知识库",
+      "assign-workspaces-description": "选择 {{username}} 可以访问的知识库，改动立即生效。",
+      "no-workspaces-to-assign": "还没有知识库。",
+      "grant-role-viewer": "只读",
+      "grant-role-editor": "可编辑",
+      "workspaces-column": "知识库"
     },
     "my-account": {
       "label": "我的账号"

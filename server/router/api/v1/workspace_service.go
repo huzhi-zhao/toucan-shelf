@@ -26,11 +26,18 @@ func (s *APIV1Service) CreateWorkspace(ctx context.Context, request *v1pb.Create
 	if user == nil {
 		return nil, status.Errorf(codes.Unauthenticated, "user not authenticated")
 	}
+	// Knowledge bases are created by the team owner only; members work inside the
+	// ones they are granted.
+	if !isTeamOwner(user) {
+		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+	}
 	if request.Workspace == nil || strings.TrimSpace(request.Workspace.Title) == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "workspace title is required")
 	}
 
-	existing, err := s.Store.GetWorkspace(ctx, &store.FindWorkspace{CreatorID: &user.ID, Title: &request.Workspace.Title})
+	// Titles are globally unique, not per creator: a workspace is addressable by
+	// title, and every workspace has the same owner anyway.
+	existing, err := s.Store.GetWorkspace(ctx, &store.FindWorkspace{Title: &request.Workspace.Title})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to check workspace title: %v", err)
 	}
@@ -67,7 +74,16 @@ func (s *APIV1Service) ListWorkspaces(ctx context.Context, request *v1pb.ListWor
 		return nil, status.Errorf(codes.Unauthenticated, "user not authenticated")
 	}
 
-	find := &store.FindWorkspace{CreatorID: &user.ID}
+	// The team owner sees every knowledge base; a member sees exactly the ones
+	// granted to them, and an empty shelf when there are none.
+	all, ids, err := s.accessibleWorkspaceIDs(ctx, user)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to resolve accessible workspaces: %v", err)
+	}
+	find := &store.FindWorkspace{}
+	if !all {
+		find.IDList = ids
+	}
 	// Hidden workspaces are left out by default; only the bookshelf's restore view asks
 	// for them. Direct access by name (GetWorkspace) is deliberately not filtered — that
 	// is what keeps a hidden workspace restorable.
@@ -79,19 +95,27 @@ func (s *APIV1Service) ListWorkspaces(ctx context.Context, request *v1pb.ListWor
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list workspaces: %v", err)
 	}
+	creatorNames, err := s.workspaceCreatorUsernames(ctx, list)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to resolve workspace creators: %v", err)
+	}
 	workspaces := make([]*v1pb.Workspace, 0, len(list))
 	for _, w := range list {
-		workspaces = append(workspaces, convertWorkspaceFromStore(w, user.Username))
+		workspaces = append(workspaces, convertWorkspaceFromStore(w, creatorNames[w.CreatorID]))
 	}
 	return &v1pb.ListWorkspacesResponse{Workspaces: workspaces}, nil
 }
 
 func (s *APIV1Service) GetWorkspace(ctx context.Context, request *v1pb.GetWorkspaceRequest) (*v1pb.Workspace, error) {
-	workspace, user, err := s.getWorkspaceAndCheckOwnership(ctx, request.Name)
+	workspace, _, err := s.getWorkspaceWithAccess(ctx, request.Name, WorkspaceRoleViewer)
 	if err != nil {
 		return nil, err
 	}
-	return convertWorkspaceFromStore(workspace, user.Username), nil
+	creatorUsername, err := s.workspaceCreatorUsername(ctx, workspace)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to resolve workspace creator: %v", err)
+	}
+	return convertWorkspaceFromStore(workspace, creatorUsername), nil
 }
 
 func (s *APIV1Service) UpdateWorkspace(ctx context.Context, request *v1pb.UpdateWorkspaceRequest) (*v1pb.Workspace, error) {
@@ -101,7 +125,7 @@ func (s *APIV1Service) UpdateWorkspace(ctx context.Context, request *v1pb.Update
 	if request.UpdateMask == nil || len(request.UpdateMask.Paths) == 0 {
 		return nil, status.Errorf(codes.InvalidArgument, "update mask is required")
 	}
-	workspace, user, err := s.getWorkspaceAndCheckOwnership(ctx, request.Workspace.Name)
+	workspace, user, err := s.getWorkspaceWithAccess(ctx, request.Workspace.Name, WorkspaceRoleOwner)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +136,7 @@ func (s *APIV1Service) UpdateWorkspace(ctx context.Context, request *v1pb.Update
 			if strings.TrimSpace(request.Workspace.Title) == "" {
 				return nil, status.Errorf(codes.InvalidArgument, "workspace title cannot be empty")
 			}
-			existing, err := s.Store.GetWorkspace(ctx, &store.FindWorkspace{CreatorID: &user.ID, Title: &request.Workspace.Title})
+			existing, err := s.Store.GetWorkspace(ctx, &store.FindWorkspace{Title: &request.Workspace.Title})
 			if err != nil {
 				return nil, status.Errorf(codes.Internal, "failed to check workspace title: %v", err)
 			}
@@ -151,7 +175,7 @@ func (s *APIV1Service) UpdateWorkspace(ctx context.Context, request *v1pb.Update
 }
 
 func (s *APIV1Service) DeleteWorkspace(ctx context.Context, request *v1pb.DeleteWorkspaceRequest) (*emptypb.Empty, error) {
-	workspace, _, err := s.getWorkspaceAndCheckOwnership(ctx, request.Name)
+	workspace, _, err := s.getWorkspaceWithAccess(ctx, request.Name, WorkspaceRoleOwner)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +233,7 @@ func isHomeFolder(path string) bool {
 }
 
 func (s *APIV1Service) GetWorkspaceTree(ctx context.Context, request *v1pb.GetWorkspaceTreeRequest) (*v1pb.GetWorkspaceTreeResponse, error) {
-	workspace, _, err := s.getWorkspaceAndCheckOwnership(ctx, request.Name)
+	workspace, user, err := s.getWorkspaceWithAccess(ctx, request.Name, WorkspaceRoleViewer)
 	if err != nil {
 		return nil, err
 	}
@@ -237,6 +261,11 @@ func (s *APIV1Service) GetWorkspaceTree(ctx context.Context, request *v1pb.GetWo
 		if isHomeFolder(m.FolderPath) {
 			continue
 		}
+		// Workspace access is a gate, not a blanket read: a PRIVATE document stays
+		// its author's (and the team owner's) alone even inside a shared workspace.
+		if m.Visibility == store.Private && m.CreatorID != user.ID && !isTeamOwner(user) {
+			continue
+		}
 		var segments []string
 		if strings.TrimSpace(m.FolderPath) != "" {
 			segments = strings.Split(strings.Trim(m.FolderPath, "/"), "/")
@@ -249,7 +278,7 @@ func (s *APIV1Service) GetWorkspaceTree(ctx context.Context, request *v1pb.GetWo
 }
 
 func (s *APIV1Service) CreateWorkspaceFolder(ctx context.Context, request *v1pb.CreateWorkspaceFolderRequest) (*v1pb.WorkspaceFolder, error) {
-	workspace, _, err := s.getWorkspaceAndCheckOwnership(ctx, request.Parent)
+	workspace, _, err := s.getWorkspaceWithAccess(ctx, request.Parent, WorkspaceRoleOwner)
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +301,7 @@ func (s *APIV1Service) CreateWorkspaceFolder(ctx context.Context, request *v1pb.
 }
 
 func (s *APIV1Service) RenameWorkspaceFolder(ctx context.Context, request *v1pb.RenameWorkspaceFolderRequest) (*emptypb.Empty, error) {
-	workspace, _, err := s.getWorkspaceAndCheckOwnership(ctx, request.Parent)
+	workspace, _, err := s.getWorkspaceWithAccess(ctx, request.Parent, WorkspaceRoleOwner)
 	if err != nil {
 		return nil, err
 	}
@@ -446,11 +475,11 @@ func (s *APIV1Service) reindexFolder(ctx context.Context, workspaceID int32, pat
 // inherits the index refresh, the duplicate-title check and the updated_ts bump
 // that memo updates already get right.
 func (s *APIV1Service) MoveWorkspaceFolder(ctx context.Context, request *v1pb.MoveWorkspaceFolderRequest) (*v1pb.MoveWorkspaceFolderResponse, error) {
-	source, _, err := s.getWorkspaceAndCheckOwnership(ctx, request.Parent)
+	source, _, err := s.getWorkspaceWithAccess(ctx, request.Parent, WorkspaceRoleOwner)
 	if err != nil {
 		return nil, err
 	}
-	destination, _, err := s.getWorkspaceAndCheckOwnership(ctx, request.DestinationWorkspace)
+	destination, _, err := s.getWorkspaceWithAccess(ctx, request.DestinationWorkspace, WorkspaceRoleOwner)
 	if err != nil {
 		return nil, err
 	}
@@ -647,7 +676,7 @@ func movedFolderPath(path, oldRoot, newRoot string) string {
 }
 
 func (s *APIV1Service) DeleteWorkspaceFolder(ctx context.Context, request *v1pb.DeleteWorkspaceFolderRequest) (*emptypb.Empty, error) {
-	workspace, _, err := s.getWorkspaceAndCheckOwnership(ctx, request.Parent)
+	workspace, _, err := s.getWorkspaceWithAccess(ctx, request.Parent, WorkspaceRoleOwner)
 	if err != nil {
 		return nil, err
 	}
@@ -707,20 +736,43 @@ func (s *APIV1Service) DeleteWorkspaceFolder(ctx context.Context, request *v1pb.
 	return &emptypb.Empty{}, nil
 }
 
-// resolveOrCreateDefaultWorkspace returns the user's first workspace, creating a
-// "Default" one if they have none yet. It exists so legacy API clients that don't
-// pass a workspace on memo creation still get a valid, organized home for their memo.
-func (s *APIV1Service) resolveOrCreateDefaultWorkspace(ctx context.Context, userID int32) (*store.Workspace, error) {
+// resolveOrCreateDefaultWorkspace returns the first workspace the user may write
+// to, creating a "Default" one if the team owner has none yet. It exists so legacy
+// API clients that don't pass a workspace on memo creation still get a valid,
+// organized home for their memo.
+//
+// A member never gets a workspace created for them — knowledge bases are the team
+// owner's to create — so a member with no writable grant is refused outright rather
+// than silently given a private workspace of their own.
+func (s *APIV1Service) resolveOrCreateDefaultWorkspace(ctx context.Context, user *store.User) (*store.Workspace, error) {
+	all, ids, err := s.accessibleWorkspaceIDs(ctx, user)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to resolve accessible workspaces: %v", err)
+	}
 	// A hidden workspace must never become the implicit home for a new memo, so only
 	// visible ones count here — a user whose every workspace is hidden gets a fresh one.
 	visibleOnly := false
-	list, err := s.Store.ListWorkspaces(ctx, &store.FindWorkspace{CreatorID: &userID, Hidden: &visibleOnly})
+	find := &store.FindWorkspace{Hidden: &visibleOnly}
+	if !all {
+		find.IDList = ids
+	}
+	list, err := s.Store.ListWorkspaces(ctx, find)
 	if err != nil {
 		return nil, err
 	}
-	if len(list) > 0 {
-		return list[0], nil
+	for _, workspace := range list {
+		role, err := s.resolveWorkspaceAccess(ctx, user, workspace.ID)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to resolve workspace access: %v", err)
+		}
+		if role.CanWrite() {
+			return workspace, nil
+		}
 	}
+	if !isTeamOwner(user) {
+		return nil, status.Errorf(codes.PermissionDenied, "no writable knowledge base is assigned to you")
+	}
+
 	uid, err := ValidateAndGenerateUID("")
 	if err != nil {
 		return nil, err
@@ -731,7 +783,7 @@ func (s *APIV1Service) resolveOrCreateDefaultWorkspace(ctx context.Context, user
 	}
 	return s.Store.CreateWorkspace(ctx, &store.Workspace{
 		UID:         uid,
-		CreatorID:   userID,
+		CreatorID:   user.ID,
 		Title:       "Default",
 		StorageSlug: storageSlug,
 	})
@@ -740,11 +792,12 @@ func (s *APIV1Service) resolveOrCreateDefaultWorkspace(ctx context.Context, user
 // resolveWorkspaceForMemo resolves the target workspace for a create/update memo
 // request. The given value may be either a resource name ("workspaces/{uid}")
 // or, since callers don't necessarily know a workspace's UID, its display
-// title (unique per user). Falls back to (creating, if necessary) the user's
-// default workspace when empty.
-func (s *APIV1Service) resolveWorkspaceForMemo(ctx context.Context, userID int32, workspaceName string) (*store.Workspace, error) {
+// title (globally unique). Falls back to (creating, if necessary) the default
+// workspace when empty. The caller must hold write access in the resolved
+// workspace, since the point of resolving it is to put a document in it.
+func (s *APIV1Service) resolveWorkspaceForMemo(ctx context.Context, user *store.User, workspaceName string) (*store.Workspace, error) {
 	if strings.TrimSpace(workspaceName) == "" {
-		return s.resolveOrCreateDefaultWorkspace(ctx, userID)
+		return s.resolveOrCreateDefaultWorkspace(ctx, user)
 	}
 
 	var workspace *store.Workspace
@@ -755,7 +808,7 @@ func (s *APIV1Service) resolveWorkspaceForMemo(ctx context.Context, userID int32
 		}
 	} else {
 		var err error
-		workspace, err = s.Store.GetWorkspace(ctx, &store.FindWorkspace{CreatorID: &userID, Title: &workspaceName})
+		workspace, err = s.Store.GetWorkspace(ctx, &store.FindWorkspace{Title: &workspaceName})
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to get workspace: %v", err)
 		}
@@ -763,37 +816,19 @@ func (s *APIV1Service) resolveWorkspaceForMemo(ctx context.Context, userID int32
 	if workspace == nil {
 		return nil, status.Errorf(codes.NotFound, "workspace not found")
 	}
-	if workspace.CreatorID != userID {
+	role, err := s.resolveWorkspaceAccess(ctx, user, workspace.ID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to resolve workspace access: %v", err)
+	}
+	if role == WorkspaceRoleNone {
+		// Same reasoning as getWorkspaceWithAccess: an inaccessible workspace must
+		// not be distinguishable from one that does not exist.
+		return nil, status.Errorf(codes.NotFound, "workspace not found")
+	}
+	if !role.CanWrite() {
 		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
 	}
 	return workspace, nil
-}
-
-// getWorkspaceAndCheckOwnership resolves a workspace by resource name and ensures
-// the current authenticated user is its creator.
-func (s *APIV1Service) getWorkspaceAndCheckOwnership(ctx context.Context, name string) (*store.Workspace, *store.User, error) {
-	user, err := s.fetchCurrentUser(ctx)
-	if err != nil {
-		return nil, nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
-	}
-	if user == nil {
-		return nil, nil, status.Errorf(codes.Unauthenticated, "user not authenticated")
-	}
-	uid, err := ExtractWorkspaceUIDFromName(name)
-	if err != nil {
-		return nil, nil, status.Errorf(codes.InvalidArgument, "invalid workspace name: %v", err)
-	}
-	workspace, err := s.Store.GetWorkspace(ctx, &store.FindWorkspace{UID: &uid})
-	if err != nil {
-		return nil, nil, status.Errorf(codes.Internal, "failed to get workspace: %v", err)
-	}
-	if workspace == nil {
-		return nil, nil, status.Errorf(codes.NotFound, "workspace not found")
-	}
-	if workspace.CreatorID != user.ID {
-		return nil, nil, status.Errorf(codes.PermissionDenied, "permission denied")
-	}
-	return workspace, user, nil
 }
 
 func isValidWorkspaceSortField(field string) bool {
@@ -812,6 +847,36 @@ func isValidWorkspaceSortOrder(order string) bool {
 	default:
 		return false
 	}
+}
+
+// workspaceCreatorUsernames maps the creator id of each given workspace to that
+// user's username. A workspace's creator is no longer necessarily the caller —
+// members see workspaces created by the team owner — so the name has to be looked
+// up rather than assumed.
+func (s *APIV1Service) workspaceCreatorUsernames(ctx context.Context, list []*store.Workspace) (map[int32]string, error) {
+	names := make(map[int32]string, len(list))
+	for _, w := range list {
+		if _, ok := names[w.CreatorID]; ok {
+			continue
+		}
+		creator, err := s.Store.GetUser(ctx, &store.FindUser{ID: &w.CreatorID})
+		if err != nil {
+			return nil, err
+		}
+		if creator != nil {
+			names[w.CreatorID] = creator.Username
+		}
+	}
+	return names, nil
+}
+
+// workspaceCreatorUsername is the single-workspace form of workspaceCreatorUsernames.
+func (s *APIV1Service) workspaceCreatorUsername(ctx context.Context, workspace *store.Workspace) (string, error) {
+	names, err := s.workspaceCreatorUsernames(ctx, []*store.Workspace{workspace})
+	if err != nil {
+		return "", err
+	}
+	return names[workspace.CreatorID], nil
 }
 
 func convertWorkspaceFromStore(workspace *store.Workspace, creatorUsername string) *v1pb.Workspace {

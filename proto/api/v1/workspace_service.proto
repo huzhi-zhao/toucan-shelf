@@ -79,6 +79,30 @@ service WorkspaceService {
       body: "*"
     };
   }
+  // ListWorkspaceGrants lists who has been given access to a workspace. Admin only.
+  rpc ListWorkspaceGrants(ListWorkspaceGrantsRequest) returns (ListWorkspaceGrantsResponse) {
+    option (google.api.http) = {get: "/api/v1/{parent=workspaces/*}/grants"};
+  }
+  // CreateWorkspaceGrant gives one member access to one workspace. Admin only.
+  rpc CreateWorkspaceGrant(CreateWorkspaceGrantRequest) returns (WorkspaceGrant) {
+    option (google.api.http) = {
+      post: "/api/v1/{parent=workspaces/*}/grants"
+      body: "grant"
+    };
+  }
+  // UpdateWorkspaceGrant switches an existing grant between VIEWER and EDITOR. Admin only.
+  rpc UpdateWorkspaceGrant(UpdateWorkspaceGrantRequest) returns (WorkspaceGrant) {
+    option (google.api.http) = {
+      patch: "/api/v1/{grant.name=workspaces/*/grants/*}"
+      body: "grant"
+    };
+    option (google.api.method_signature) = "grant,update_mask";
+  }
+  // DeleteWorkspaceGrant revokes a member's access to a workspace. Admin only.
+  rpc DeleteWorkspaceGrant(DeleteWorkspaceGrantRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {delete: "/api/v1/{name=workspaces/*/grants/*}"};
+    option (google.api.method_signature) = "name";
+  }
 }
 
 message Workspace {
@@ -282,4 +306,71 @@ message DeleteWorkspaceFolderRequest {
 
   // Required. The folder path to delete. Must contain no memos or subfolders.
   string path = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+// WorkspaceGrant is one member's access to one knowledge base. The team owner (the
+// single ADMIN account) never has a grant: its access to every workspace is implicit.
+message WorkspaceGrant {
+  enum Role {
+    ROLE_UNSPECIFIED = 0;
+    // VIEWER may read the workspace's documents, subject to each document's visibility.
+    VIEWER = 1;
+    // EDITOR may additionally create, edit and delete documents. Workspace-level
+    // operations (rename, settings, folders, grants) stay admin-only either way.
+    EDITOR = 2;
+  }
+
+  // The resource name of the grant.
+  // Format: workspaces/{workspace}/grants/{grant}
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // Required. The member this grant is issued to. Format: users/{user}
+  string user = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // Required. The access level granted.
+  Role role = 3 [(google.api.field_behavior) = REQUIRED];
+
+  // Output only. The workspace this grant applies to. Format: workspaces/{workspace}
+  string workspace = 4 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Output only. Who issued the grant. Format: users/{user}
+  string granter = 5 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Output only. When the grant was issued.
+  google.protobuf.Timestamp create_time = 6 [(google.api.field_behavior) = OUTPUT_ONLY];
+}
+
+message ListWorkspaceGrantsRequest {
+  // Required. The workspace to list grants for. Format: workspaces/{workspace}.
+  // Use the wildcard "workspaces/-" together with `user` to list one member's
+  // grants across every workspace — that is what the member settings page needs.
+  string parent = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Optional. Only return grants issued to this member. Format: users/{user}
+  string user = 2 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message ListWorkspaceGrantsResponse {
+  repeated WorkspaceGrant grants = 1;
+}
+
+message CreateWorkspaceGrantRequest {
+  // Required. Format: workspaces/{workspace}
+  string parent = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Required. The grant to create.
+  WorkspaceGrant grant = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UpdateWorkspaceGrantRequest {
+  // Required. The grant which replaces the grant on the server.
+  WorkspaceGrant grant = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Required. The list of fields to update. Only "role" is updatable.
+  google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteWorkspaceGrantRequest {
+  // Required. Format: workspaces/{workspace}/grants/{grant}
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
 }

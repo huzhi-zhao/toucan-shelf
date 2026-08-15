@@ -85,9 +85,41 @@ func (s *APIV1Service) checkMemoReadAccess(ctx context.Context, memo *store.Memo
 		if user == nil {
 			return status.Errorf(codes.Unauthenticated, "user not authenticated")
 		}
-		if memo.Visibility == store.Private && memo.CreatorID != user.ID {
+		// The knowledge base is the outer gate: visibility only decides who inside a
+		// workspace can see the document, never who outside it can. Without this,
+		// PROTECTED would mean "any logged-in account on the instance", which would
+		// make assigning knowledge bases meaningless.
+		role, err := s.resolveWorkspaceAccess(ctx, user, memo.WorkspaceID)
+		if err != nil {
+			return status.Errorf(codes.Internal, "failed to resolve workspace access: %v", err)
+		}
+		if !role.CanRead() {
+			return status.Errorf(codes.NotFound, "memo not found")
+		}
+		if memo.Visibility == store.Private && memo.CreatorID != user.ID && !isTeamOwner(user) {
 			return status.Errorf(codes.PermissionDenied, "permission denied")
 		}
+	}
+	return nil
+}
+
+// checkMemoWriteAccess reports whether the user may create/edit/delete this
+// document. Being its author is not enough on its own: access flows from the
+// workspace grant, so an author who lost access to the knowledge base loses write
+// access to the documents left behind in it.
+func (s *APIV1Service) checkMemoWriteAccess(ctx context.Context, user *store.User, memo *store.Memo) error {
+	if user == nil {
+		return status.Errorf(codes.Unauthenticated, "user not authenticated")
+	}
+	role, err := s.resolveWorkspaceAccess(ctx, user, memo.WorkspaceID)
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to resolve workspace access: %v", err)
+	}
+	if !role.CanRead() {
+		return status.Errorf(codes.NotFound, "memo not found")
+	}
+	if !role.CanWrite() {
+		return status.Errorf(codes.PermissionDenied, "permission denied")
 	}
 	return nil
 }
@@ -106,7 +138,7 @@ func (s *APIV1Service) CreateMemo(ctx context.Context, request *v1pb.CreateMemoR
 		return nil, err
 	}
 
-	workspace, err := s.resolveWorkspaceForMemo(ctx, user.ID, request.Memo.Workspace)
+	workspace, err := s.resolveWorkspaceForMemo(ctx, user, request.Memo.Workspace)
 	if err != nil {
 		return nil, err
 	}
@@ -288,12 +320,34 @@ func (s *APIV1Service) ListMemos(ctx context.Context, request *v1pb.ListMemosReq
 		if workspace == nil {
 			return nil, status.Errorf(codes.NotFound, "workspace not found")
 		}
+		// A listing scoped to one knowledge base needs access to that knowledge base;
+		// an anonymous visitor keeps the PUBLIC-only view the visibility filter below
+		// gives them.
+		if currentUser != nil {
+			role, err := s.resolveWorkspaceAccess(ctx, currentUser, workspace.ID)
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "failed to resolve workspace access: %v", err)
+			}
+			if !role.CanRead() {
+				return nil, status.Errorf(codes.NotFound, "workspace not found")
+			}
+		}
 		memoFind.WorkspaceID = &workspace.ID
 	} else {
 		// Cross-workspace listings (Explore, Archived, the Home overview) must not surface
 		// documents from a hidden workspace. A listing scoped to one workspace by name is
 		// direct access and is left alone, so a hidden workspace stays browsable to restore.
 		memoFind.ExcludeHiddenWorkspaces = true
+		// ...nor documents from a knowledge base the caller was never assigned.
+		if currentUser != nil {
+			all, ids, err := s.accessibleWorkspaceIDs(ctx, currentUser)
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "failed to resolve accessible workspaces: %v", err)
+			}
+			if !all {
+				memoFind.VisibleWorkspaceIDs = ids
+			}
+		}
 	}
 
 	if currentUser == nil {
@@ -548,9 +602,10 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 	if user == nil {
 		return nil, status.Errorf(codes.Unauthenticated, "user not authenticated")
 	}
-	// Only the creator or admin can update the memo.
-	if memo.CreatorID != user.ID && !isSuperUser(user) {
-		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+	// Write access comes from the knowledge base the document lives in, not from
+	// authorship: an EDITOR may edit any document in their assigned workspace.
+	if err := s.checkMemoWriteAccess(ctx, user, memo); err != nil {
+		return nil, err
 	}
 
 	actorIsAgent := base.ActorKindFromContext(ctx).IsAgent()
@@ -690,7 +745,7 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 			docType := convertDocTypeToStore(request.Memo.DocType)
 			update.DocType = &docType
 		} else if path == "workspace" {
-			workspace, err := s.resolveWorkspaceForMemo(ctx, memo.CreatorID, request.Memo.Workspace)
+			workspace, err := s.resolveWorkspaceForMemo(ctx, user, request.Memo.Workspace)
 			if err != nil {
 				return nil, err
 			}
@@ -865,9 +920,10 @@ func (s *APIV1Service) DeleteMemo(ctx context.Context, request *v1pb.DeleteMemoR
 	if user == nil {
 		return nil, status.Errorf(codes.Unauthenticated, "user not authenticated")
 	}
-	// Only the creator or admin can update the memo.
-	if memo.CreatorID != user.ID && !isSuperUser(user) {
-		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+	// Same rule as UpdateMemo: deleting a document is a document-level write, gated
+	// by the workspace grant rather than by authorship.
+	if err := s.checkMemoWriteAccess(ctx, user, memo); err != nil {
+		return nil, err
 	}
 
 	// P1: reject a hard delete if other documents still link to this one.
@@ -950,8 +1006,8 @@ func (s *APIV1Service) CreateMemoComment(ctx context.Context, request *v1pb.Crea
 	if user == nil {
 		return nil, status.Errorf(codes.Unauthenticated, "user not authenticated")
 	}
-	if relatedMemo.Visibility == store.Private && relatedMemo.CreatorID != user.ID && !isSuperUser(user) {
-		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+	if err := s.checkMemoReadAccess(ctx, relatedMemo); err != nil {
+		return nil, err
 	}
 	if request.Comment == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "comment is required")

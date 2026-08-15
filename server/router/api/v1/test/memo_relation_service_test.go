@@ -118,7 +118,9 @@ func TestSetMemoRelations(t *testing.T) {
 			Relations: []*apiv1.MemoRelation{},
 		})
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "permission denied")
+		// A member outside the document's knowledge base is told it does not exist,
+		// rather than that they may not touch it.
+		require.Contains(t, err.Error(), "memo not found")
 	})
 
 	t.Run("SetMemoRelations unauthenticated", func(t *testing.T) {

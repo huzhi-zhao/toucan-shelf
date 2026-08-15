@@ -246,3 +246,114 @@ func TestDeleteUserCleansRelatedData(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, setting)
 }
+
+// Deleting a member must not take their documents down with them: the account goes
+// away, the documents stay in the knowledge base signed by the team owner (requirement
+// §4, "人可以走，文档留给团队").
+func TestDeleteMemberTransfersDocumentsToOwner(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	ts := NewTestingStore(ctx, t)
+	defer ts.Close()
+
+	admin, err := createTestingHostUser(ctx, ts)
+	require.NoError(t, err)
+	member, err := createTestingUserWithRole(ctx, ts, "transfer-member", store.RoleUser)
+	require.NoError(t, err)
+
+	workspace, err := ts.CreateWorkspace(ctx, &store.Workspace{
+		UID:       "transfer-workspace",
+		CreatorID: admin.ID,
+		Title:     "Transfer Workspace",
+	})
+	require.NoError(t, err)
+	grant, err := ts.CreateWorkspaceGrant(ctx, &store.WorkspaceGrant{
+		WorkspaceID: workspace.ID,
+		SubjectType: store.WorkspaceGrantSubjectUser,
+		SubjectID:   member.ID,
+		Role:        store.WorkspaceGrantRoleEditor,
+		GrantedBy:   admin.ID,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, grant)
+
+	memberMemo, err := ts.CreateMemo(ctx, &store.Memo{
+		UID:         "transfer-member-memo",
+		CreatorID:   member.ID,
+		Content:     "member memo",
+		Visibility:  store.Protected,
+		WorkspaceID: workspace.ID,
+	})
+	require.NoError(t, err)
+	adminComment, err := ts.CreateMemo(ctx, &store.Memo{
+		UID:         "transfer-admin-comment",
+		CreatorID:   admin.ID,
+		Content:     "admin comment on member memo",
+		Visibility:  store.Protected,
+		WorkspaceID: workspace.ID,
+	})
+	require.NoError(t, err)
+	_, err = ts.UpsertMemoRelation(ctx, &store.MemoRelation{
+		MemoID:        adminComment.ID,
+		RelatedMemoID: memberMemo.ID,
+		Type:          store.MemoRelationComment,
+	})
+	require.NoError(t, err)
+
+	attachedAttachment, err := ts.CreateAttachment(ctx, &store.Attachment{
+		UID:       "transfer-attached-attachment",
+		CreatorID: member.ID,
+		Filename:  "attached.txt",
+		Type:      "text/plain",
+		Size:      8,
+		Blob:      []byte("attached"),
+		MemoID:    &memberMemo.ID,
+	})
+	require.NoError(t, err)
+	standaloneAttachment, err := ts.CreateAttachment(ctx, &store.Attachment{
+		UID:       "transfer-standalone-attachment",
+		CreatorID: member.ID,
+		Filename:  "standalone.txt",
+		Type:      "text/plain",
+		Size:      10,
+		Blob:      []byte("standalone"),
+	})
+	require.NoError(t, err)
+
+	result, err := ts.DeleteUser(ctx, &store.DeleteUser{ID: member.ID})
+	require.NoError(t, err)
+	// Only the standalone upload is handed back for storage cleanup; the one attached to
+	// a surviving document must not have its bytes deleted.
+	require.Len(t, result.Attachments, 1)
+	require.Equal(t, standaloneAttachment.ID, result.Attachments[0].ID)
+
+	deletedUser, err := ts.GetUser(ctx, &store.FindUser{ID: &member.ID})
+	require.NoError(t, err)
+	require.Nil(t, deletedUser)
+
+	keptMemo, err := ts.GetMemo(ctx, &store.FindMemo{ID: &memberMemo.ID})
+	require.NoError(t, err)
+	require.NotNil(t, keptMemo)
+	require.Equal(t, admin.ID, keptMemo.CreatorID)
+	require.Equal(t, workspace.ID, keptMemo.WorkspaceID)
+
+	keptComment, err := ts.GetMemo(ctx, &store.FindMemo{ID: &adminComment.ID})
+	require.NoError(t, err)
+	require.NotNil(t, keptComment)
+	relations, err := ts.ListMemoRelations(ctx, &store.FindMemoRelation{MemoID: &adminComment.ID})
+	require.NoError(t, err)
+	require.Len(t, relations, 1)
+
+	keptAttachment, err := ts.GetAttachment(ctx, &store.FindAttachment{ID: &attachedAttachment.ID})
+	require.NoError(t, err)
+	require.NotNil(t, keptAttachment)
+	require.Equal(t, admin.ID, keptAttachment.CreatorID)
+	goneAttachment, err := ts.GetAttachment(ctx, &store.FindAttachment{ID: &standaloneAttachment.ID})
+	require.NoError(t, err)
+	require.Nil(t, goneAttachment)
+
+	grants, err := ts.ListWorkspaceGrants(ctx, &store.FindWorkspaceGrant{SubjectID: &member.ID})
+	require.NoError(t, err)
+	require.Empty(t, grants)
+}

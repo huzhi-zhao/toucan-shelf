@@ -39,8 +39,8 @@ func (s *APIV1Service) CreateMemoHistory(ctx context.Context, request *v1pb.Crea
 	if memo == nil {
 		return nil, status.Errorf(codes.NotFound, "memo not found")
 	}
-	if memo.CreatorID != user.ID && !isSuperUser(user) {
-		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+	if err := s.checkMemoWriteAccess(ctx, user, memo); err != nil {
+		return nil, err
 	}
 
 	attachments, err := s.Store.ListAttachments(ctx, &store.FindAttachment{MemoID: &memo.ID})
@@ -100,8 +100,8 @@ func (s *APIV1Service) ListMemoHistories(ctx context.Context, request *v1pb.List
 	if memo == nil {
 		return nil, status.Errorf(codes.NotFound, "memo not found")
 	}
-	if memo.CreatorID != user.ID && !isSuperUser(user) {
-		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+	if err := s.checkMemoWriteAccess(ctx, user, memo); err != nil {
+		return nil, err
 	}
 
 	histories, err := s.Store.ListMemoHistories(ctx, &store.FindMemoHistory{MemoID: &memo.ID})
@@ -143,8 +143,8 @@ func (s *APIV1Service) RestoreMemoHistory(ctx context.Context, request *v1pb.Res
 	if memo == nil {
 		return nil, status.Errorf(codes.NotFound, "memo not found")
 	}
-	if !canModifyMemo(user, memo) {
-		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+	if err := s.checkMemoWriteAccess(ctx, user, memo); err != nil {
+		return nil, err
 	}
 
 	histories, err := s.Store.ListMemoHistories(ctx, &store.FindMemoHistory{MemoID: &memo.ID})
