@@ -127,9 +127,10 @@ func CheckReadAccess(ctx context.Context, req *Request, attachment *store.Attach
 	chain := []*store.Memo{memo, parent}
 
 	// The recycle bin comes first, ahead of both visibility and the share token: a
-	// document in it is gone as far as anyone but its creator is concerned, and its
-	// files go with it. Without this a PUBLIC document deleted into the bin kept
-	// serving every file it carried.
+	// document in it is gone as far as anyone outside its knowledge base is concerned,
+	// and its files go with it. Without this a PUBLIC document deleted into the bin
+	// kept serving every file it carried. Members of the knowledge base still reach it,
+	// matching the recycle-bin view the workspace tree already shows them.
 	for _, m := range chain {
 		if m == nil || m.RowStatus != store.Archived {
 			continue
@@ -138,7 +139,14 @@ func CheckReadAccess(ctx context.Context, req *Request, attachment *store.Attach
 		if err != nil {
 			return err
 		}
-		if u == nil || m.CreatorID != u.ID {
+		if u == nil {
+			return ErrNotFound
+		}
+		access, err := req.Store.ResolveWorkspaceAccess(ctx, u, m.WorkspaceID)
+		if err != nil {
+			return errors.Wrap(err, "failed to resolve workspace access")
+		}
+		if !access.CanRead() {
 			return ErrNotFound
 		}
 	}
@@ -192,19 +200,16 @@ func checkVisibility(ctx context.Context, req *Request, memo *store.Memo, user f
 	if u == nil {
 		return ErrUnauthenticated
 	}
-	// The knowledge base gates the document, and therefore its files: otherwise
-	// holding an attachment URL would be a way around never having been granted the
-	// knowledge base it lives in.
+	// The knowledge base is the whole decision here, matching checkMemoReadAccess:
+	// a file belongs to its document, a document belongs to its knowledge base, and
+	// whoever was granted that knowledge base reads both — PRIVATE included.
+	// Visibility only widens access outward, to people with no grant at all.
 	access, err := req.Store.ResolveWorkspaceAccess(ctx, u, memo.WorkspaceID)
 	if err != nil {
 		return errors.Wrap(err, "failed to resolve workspace access")
 	}
 	if !access.CanRead() {
 		return ErrNotFound
-	}
-	// The team owner reads everything, matching checkMemoReadAccess's PRIVATE branch.
-	if memo.Visibility == store.Private && memo.CreatorID != u.ID && !store.IsTeamOwner(u) {
-		return ErrForbidden
 	}
 	return nil
 }

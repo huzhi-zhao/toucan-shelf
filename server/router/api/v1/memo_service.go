@@ -66,13 +66,22 @@ func (s *APIV1Service) checkMemoReadAccess(ctx context.Context, memo *store.Memo
 		return status.Errorf(codes.NotFound, "memo not found")
 	}
 
-	// Archived memos are only visible to their creator.
+	// Archived documents stay inside the knowledge base they were archived in: any
+	// member who can read the workspace can reach its recycle bin, not just the
+	// author.
 	if memo.RowStatus == store.Archived {
 		user, err := s.fetchCurrentUser(ctx)
 		if err != nil {
 			return status.Errorf(codes.Internal, "failed to get user")
 		}
-		if user == nil || memo.CreatorID != user.ID {
+		if user == nil {
+			return status.Errorf(codes.NotFound, "memo not found")
+		}
+		role, err := s.resolveWorkspaceAccess(ctx, user, memo.WorkspaceID)
+		if err != nil {
+			return status.Errorf(codes.Internal, "failed to resolve workspace access: %v", err)
+		}
+		if !role.CanRead() {
 			return status.Errorf(codes.NotFound, "memo not found")
 		}
 	}
@@ -85,19 +94,16 @@ func (s *APIV1Service) checkMemoReadAccess(ctx context.Context, memo *store.Memo
 		if user == nil {
 			return status.Errorf(codes.Unauthenticated, "user not authenticated")
 		}
-		// The knowledge base is the outer gate: visibility only decides who inside a
-		// workspace can see the document, never who outside it can. Without this,
-		// PROTECTED would mean "any logged-in account on the instance", which would
-		// make assigning knowledge bases meaningless.
+		// The knowledge base is the whole read decision. A document belongs to the
+		// knowledge base, not to whoever typed it, so being granted the knowledge base
+		// means reading everything in it — PRIVATE included. Visibility only widens
+		// access outward, to people who were never granted the workspace at all.
 		role, err := s.resolveWorkspaceAccess(ctx, user, memo.WorkspaceID)
 		if err != nil {
 			return status.Errorf(codes.Internal, "failed to resolve workspace access: %v", err)
 		}
 		if !role.CanRead() {
 			return status.Errorf(codes.NotFound, "memo not found")
-		}
-		if memo.Visibility == store.Private && memo.CreatorID != user.ID && !isTeamOwner(user) {
-			return status.Errorf(codes.PermissionDenied, "permission denied")
 		}
 	}
 	return nil
@@ -339,26 +345,15 @@ func (s *APIV1Service) ListMemos(ctx context.Context, request *v1pb.ListMemosReq
 		// direct access and is left alone, so a hidden workspace stays browsable to restore.
 		memoFind.ExcludeHiddenWorkspaces = true
 		// ...nor documents from a knowledge base the caller was never assigned.
-		if currentUser != nil {
-			all, ids, err := s.accessibleWorkspaceIDs(ctx, currentUser)
-			if err != nil {
-				return nil, status.Errorf(codes.Internal, "failed to resolve accessible workspaces: %v", err)
-			}
-			if !all {
-				memoFind.VisibleWorkspaceIDs = ids
-			}
+		if err := s.applyCrossWorkspaceReadScope(ctx, currentUser, memoFind); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to resolve accessible workspaces: %v", err)
 		}
 	}
 
+	// A listing scoped to one workspace has already passed the access check above, so
+	// an anonymous caller is the only one left needing a visibility filter here.
 	if currentUser == nil {
 		memoFind.VisibilityList = []store.Visibility{store.Public}
-	} else {
-		if memoFind.CreatorID == nil {
-			filter := fmt.Sprintf(`creator_id == %d || visibility in ["PUBLIC", "PROTECTED"]`, currentUser.ID)
-			memoFind.Filters = append(memoFind.Filters, filter)
-		} else if *memoFind.CreatorID != currentUser.ID {
-			memoFind.VisibilityList = []store.Visibility{store.Public, store.Protected}
-		}
 	}
 
 	var limit, offset int
@@ -1121,11 +1116,13 @@ func (s *APIV1Service) ListMemoComments(ctx context.Context, request *v1pb.ListM
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get user")
 	}
-	var memoFilter string
+	// checkMemoReadAccess above already granted this user the parent document, and a
+	// comment lives in the same knowledge base as the document it hangs off — so a
+	// signed-in reader sees every comment. Only anonymous callers are narrowed here.
+	var memoFilter *string
 	if currentUser == nil {
-		memoFilter = `visibility == "PUBLIC"`
-	} else {
-		memoFilter = fmt.Sprintf(`creator_id == %d || visibility in ["PUBLIC", "PROTECTED"]`, currentUser.ID)
+		anonymousFilter := `visibility == "PUBLIC"`
+		memoFilter = &anonymousFilter
 	}
 	memoRelationComment := store.MemoRelationComment
 	var limit, offset int
@@ -1143,7 +1140,7 @@ func (s *APIV1Service) ListMemoComments(ctx context.Context, request *v1pb.ListM
 	memoRelations, err := s.Store.ListMemoRelations(ctx, &store.FindMemoRelation{
 		RelatedMemoID: &memo.ID,
 		Type:          &memoRelationComment,
-		MemoFilter:    &memoFilter,
+		MemoFilter:    memoFilter,
 		Limit:         &limitPlusOne,
 		Offset:        &offset,
 	})

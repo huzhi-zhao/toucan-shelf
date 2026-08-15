@@ -62,6 +62,32 @@ func (s *APIV1Service) accessibleWorkspaceIDs(ctx context.Context, user *store.U
 	return false, ids, nil
 }
 
+// applyCrossWorkspaceReadScope narrows a listing that spans workspaces to what the
+// caller may read.
+//
+// The rule is the same one checkMemoReadAccess applies to a single document, in SQL
+// form: everything inside a granted knowledge base, plus PUBLIC documents anywhere.
+// There is deliberately no per-document visibility filter for a signed-in caller —
+// under the team model a document belongs to its knowledge base, so PRIVATE narrows
+// nothing for someone who was granted that knowledge base.
+//
+// Listings already scoped to one workspace must not call this: they check access to
+// that workspace directly and would otherwise pay for the grant lookup twice.
+func (s *APIV1Service) applyCrossWorkspaceReadScope(ctx context.Context, user *store.User, find *store.FindMemo) error {
+	if user == nil {
+		find.VisibilityList = []store.Visibility{store.Public}
+		return nil
+	}
+	all, ids, err := s.accessibleWorkspaceIDs(ctx, user)
+	if err != nil {
+		return err
+	}
+	if !all {
+		find.VisibleWorkspaceIDs = ids
+	}
+	return nil
+}
+
 // getWorkspaceWithAccess resolves a workspace by resource name and checks that the
 // current user holds at least minRole in it.
 //

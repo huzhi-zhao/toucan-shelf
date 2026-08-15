@@ -80,15 +80,12 @@ func (s *APIV1Service) ListAllUserStats(ctx context.Context, request *v1pb.ListA
 			return &v1pb.ListAllUserStatsResponse{}, nil
 		}
 		memoFind.CreatorID = &currentUser.ID
-	} else if currentUser == nil {
-		memoFind.VisibilityList = []store.Visibility{store.Public}
-	} else {
-		if memoFind.CreatorID == nil {
-			filter := fmt.Sprintf(`creator_id == %d || visibility in ["PUBLIC", "PROTECTED"]`, currentUser.ID)
-			memoFind.Filters = append(memoFind.Filters, filter)
-		} else if *memoFind.CreatorID != currentUser.ID {
-			memoFind.VisibilityList = []store.Visibility{store.Public, store.Protected}
-		}
+	}
+	// Same scope as the listings: granted knowledge bases plus PUBLIC documents. The
+	// archived branch above already narrowed to the caller's own documents, and adding
+	// the workspace scope on top of it only removes ones they can no longer reach.
+	if err := s.applyCrossWorkspaceReadScope(ctx, currentUser, memoFind); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to resolve accessible workspaces: %v", err)
 	}
 
 	userMemoStatMap := make(map[int32]*v1pb.UserStats)
@@ -214,10 +211,10 @@ func (s *APIV1Service) GetUserStats(ctx context.Context, request *v1pb.GetUserSt
 		RowStatus:       &normalStatus,
 	}
 
-	if currentUser == nil {
-		memoFind.VisibilityList = []store.Visibility{store.Public}
-	} else if currentUser.ID != userID {
-		memoFind.VisibilityList = []store.Visibility{store.Public, store.Protected}
+	// Another user's stats count only the documents this caller could open anyway:
+	// the knowledge bases they were granted, plus PUBLIC documents.
+	if err := s.applyCrossWorkspaceReadScope(ctx, currentUser, memoFind); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to resolve accessible workspaces: %v", err)
 	}
 
 	createdTimestamps := []*timestamppb.Timestamp{}

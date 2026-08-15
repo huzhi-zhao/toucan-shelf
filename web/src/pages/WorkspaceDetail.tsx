@@ -8,6 +8,7 @@ import WorkspaceSortMenuItems from "@/components/Notebook/WorkspaceSortMenu";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import useCurrentUser from "@/hooks/useCurrentUser";
 import usePageTitle from "@/hooks/usePageTitle";
 import {
   useCreateWorkspace,
@@ -20,6 +21,7 @@ import {
 import { ROUTES, workspaceDetailPath } from "@/router/routes";
 import { type WorkspaceTreeNode, WorkspaceTreeNode_NodeType } from "@/types/proto/api/v1/workspace_service_pb";
 import { useTranslate } from "@/utils/i18n";
+import { isSuperUser } from "@/utils/user";
 
 /** Walks the tree once, counting folders and documents at every depth. */
 function countTree(nodes: WorkspaceTreeNode[]): { folders: number; documents: number } {
@@ -60,6 +62,9 @@ const WorkspaceDetail = () => {
   const createWorkspace = useCreateWorkspace();
   const setHidden = useSetWorkspaceHidden();
   const setOrder = useSetWorkspaceOrder();
+  // Every mutation on this page (title, cover, sort, display order, hidden) is
+  // owner-only on the server; for a member the page is a read-only fact sheet.
+  const canManage = isSuperUser(useCurrentUser());
 
   const [renameOpen, setRenameOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -110,10 +115,12 @@ const WorkspaceDetail = () => {
           <h1 className="text-2xl font-medium break-all">{workspace.title}</h1>
           {workspace.hidden && <p className="mt-1 text-sm text-amber-600 dark:text-amber-500">{t("bookshelf.hidden-notice")}</p>}
         </div>
-        <Button variant="outline" size="sm" className="shrink-0" onClick={() => setCreateOpen(true)}>
-          <PlusIcon className="w-4 h-4 mr-1.5" />
-          {t("notebook.new-workspace")}
-        </Button>
+        {canManage && (
+          <Button variant="outline" size="sm" className="shrink-0" onClick={() => setCreateOpen(true)}>
+            <PlusIcon className="w-4 h-4 mr-1.5" />
+            {t("notebook.new-workspace")}
+          </Button>
+        )}
       </div>
 
       {/* Cover and facts sit side by side inside one self-contained panel, so the
@@ -133,93 +140,103 @@ const WorkspaceDetail = () => {
             <Row
               label={t("bookshelf.display-order")}
               value={
-                <span className="inline-flex items-center gap-2">
-                  <Input
-                    type="number"
-                    className="w-24 h-8 text-right"
-                    value={orderDraft ?? String(workspace.displayOrder)}
-                    onChange={(e) => setOrderDraft(e.target.value)}
-                    onBlur={commitOrder}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") e.currentTarget.blur();
-                      if (e.key === "Escape") setOrderDraft(null);
-                    }}
-                  />
-                </span>
+                !canManage ? (
+                  workspace.displayOrder
+                ) : (
+                  <span className="inline-flex items-center gap-2">
+                    <Input
+                      type="number"
+                      className="w-24 h-8 text-right"
+                      value={orderDraft ?? String(workspace.displayOrder)}
+                      onChange={(e) => setOrderDraft(e.target.value)}
+                      onBlur={commitOrder}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.currentTarget.blur();
+                        if (e.key === "Escape") setOrderDraft(null);
+                      }}
+                    />
+                  </span>
+                )
               }
             />
           </div>
-          <p className="text-xs text-muted-foreground">{t("bookshelf.display-order-hint")}</p>
+          {canManage && <p className="text-xs text-muted-foreground">{t("bookshelf.display-order-hint")}</p>}
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" onClick={() => setRenameOpen(true)}>
-          <PencilIcon className="w-4 h-4 mr-1.5" />
-          {t("notebook.rename-workspace")}
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setCoverColorOpen(true)}>
-          <PaletteIcon className="w-4 h-4 mr-1.5" />
-          {t("notebook.set-cover-color")}
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setCoverImageOpen(true)}>
-          <ImageIcon className="w-4 h-4 mr-1.5" />
-          {t("notebook.set-cover-image")}
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              <ArrowUpDownIcon className="w-4 h-4 mr-1.5" />
-              {t("notebook.sort-by")}
+      {canManage && (
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => setRenameOpen(true)}>
+            <PencilIcon className="w-4 h-4 mr-1.5" />
+            {t("notebook.rename-workspace")}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setCoverColorOpen(true)}>
+            <PaletteIcon className="w-4 h-4 mr-1.5" />
+            {t("notebook.set-cover-color")}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setCoverImageOpen(true)}>
+            <ImageIcon className="w-4 h-4 mr-1.5" />
+            {t("notebook.set-cover-image")}
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <ArrowUpDownIcon className="w-4 h-4 mr-1.5" />
+                {t("notebook.sort-by")}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <WorkspaceSortMenuItems workspace={workspace} />
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {workspace.hidden ? (
+            <Button variant="outline" size="sm" onClick={() => setHidden.mutateAsync({ workspace, hidden: false })}>
+              <RotateCcwIcon className="w-4 h-4 mr-1.5" />
+              {t("bookshelf.unhide")}
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <WorkspaceSortMenuItems workspace={workspace} />
-          </DropdownMenuContent>
-        </DropdownMenu>
-        {workspace.hidden ? (
-          <Button variant="outline" size="sm" onClick={() => setHidden.mutateAsync({ workspace, hidden: false })}>
-            <RotateCcwIcon className="w-4 h-4 mr-1.5" />
-            {t("bookshelf.unhide")}
-          </Button>
-        ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-destructive hover:text-destructive"
-            onClick={async () => {
-              if (!window.confirm(t("bookshelf.hide-confirm"))) return;
-              await setHidden.mutateAsync({ workspace, hidden: true });
-              navigate(ROUTES.SHELF);
-            }}
-          >
-            <EyeOffIcon className="w-4 h-4 mr-1.5" />
-            {t("bookshelf.hide")}
-          </Button>
-        )}
-      </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={async () => {
+                if (!window.confirm(t("bookshelf.hide-confirm"))) return;
+                await setHidden.mutateAsync({ workspace, hidden: true });
+                navigate(ROUTES.SHELF);
+              }}
+            >
+              <EyeOffIcon className="w-4 h-4 mr-1.5" />
+              {t("bookshelf.hide")}
+            </Button>
+          )}
+        </div>
+      )}
 
-      <PromptDialog
-        open={renameOpen}
-        onOpenChange={setRenameOpen}
-        title={t("notebook.rename-workspace")}
-        defaultValue={workspace.title}
-        onConfirm={async (title) => {
-          await updateWorkspace.mutateAsync({ workspace: { ...workspace, title }, updateMask: ["title"] });
-        }}
-      />
-      <PromptDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        title={t("notebook.new-workspace")}
-        placeholder={t("notebook.workspace-title-placeholder")}
-        onConfirm={async (title) => {
-          const created = await createWorkspace.mutateAsync(title);
-          navigate(workspaceDetailPath(created.name));
-        }}
-      />
-      <WorkspaceCoverColorDialog workspace={workspace} open={coverColorOpen} onOpenChange={setCoverColorOpen} />
-      <WorkspaceCoverImageDialog workspace={workspace} open={coverImageOpen} onOpenChange={setCoverImageOpen} />
+      {canManage && (
+        <>
+          <PromptDialog
+            open={renameOpen}
+            onOpenChange={setRenameOpen}
+            title={t("notebook.rename-workspace")}
+            defaultValue={workspace.title}
+            onConfirm={async (title) => {
+              await updateWorkspace.mutateAsync({ workspace: { ...workspace, title }, updateMask: ["title"] });
+            }}
+          />
+          <PromptDialog
+            open={createOpen}
+            onOpenChange={setCreateOpen}
+            title={t("notebook.new-workspace")}
+            placeholder={t("notebook.workspace-title-placeholder")}
+            onConfirm={async (title) => {
+              const created = await createWorkspace.mutateAsync(title);
+              navigate(workspaceDetailPath(created.name));
+            }}
+          />
+          <WorkspaceCoverColorDialog workspace={workspace} open={coverColorOpen} onOpenChange={setCoverColorOpen} />
+          <WorkspaceCoverImageDialog workspace={workspace} open={coverImageOpen} onOpenChange={setCoverImageOpen} />
+        </>
+      )}
     </div>
   );
 };

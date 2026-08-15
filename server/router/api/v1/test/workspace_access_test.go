@@ -17,6 +17,91 @@ import (
 // operation: a member reaches a document only through a knowledge base they were
 // assigned, and the document's own visibility only narrows things further. These
 // tests pin that gate on the paths a member can actually reach it from.
+//
+// The gate is also the whole decision: a document belongs to its knowledge base, not
+// to whoever typed it, so a grant carries read (and for EDITOR, write) over every
+// document in that knowledge base, PRIVATE ones included. Visibility only widens
+// access outward to people holding no grant at all.
+
+// TestGrantedMemberSeesPrivateDocuments pins the rule against the shape that first
+// exposed it: every document in a knowledge base predates sharing and so carries the
+// PRIVATE default, which used to leave a freshly assigned member staring at a tree of
+// empty folders.
+func TestGrantedMemberSeesPrivateDocuments(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestService(t)
+	defer ts.Cleanup()
+
+	owner, workspace, err := ts.CreateRegularUserWithWorkspace(ctx, "private-kb-owner")
+	require.NoError(t, err)
+	ownerCtx := ts.CreateUserContext(ctx, owner.ID)
+
+	member, err := ts.CreateUnassignedUser(ctx, "private-kb-member")
+	require.NoError(t, err)
+	require.NoError(t, ts.GrantWorkspace(ctx, workspace.ID, member, store.WorkspaceGrantRoleEditor))
+	memberCtx := ts.CreateUserContext(ctx, member.ID)
+
+	outsider, err := ts.CreateUnassignedUser(ctx, "private-kb-outsider")
+	require.NoError(t, err)
+	outsiderCtx := ts.CreateUserContext(ctx, outsider.ID)
+
+	memo, err := ts.Service.CreateMemo(ownerCtx, &apiv1.CreateMemoRequest{
+		Memo: &apiv1.Memo{
+			Workspace:  "workspaces/" + workspace.UID,
+			FolderPath: "notes",
+			Title:      "private doc",
+			Content:    "written before the knowledge base was shared",
+			Visibility: apiv1.Visibility_PRIVATE,
+		},
+	})
+	require.NoError(t, err)
+
+	got, err := ts.Service.GetMemo(memberCtx, &apiv1.GetMemoRequest{Name: memo.Name})
+	require.NoError(t, err)
+	require.Equal(t, memo.Name, got.Name)
+
+	// The sidebar tree is where the empty-shelf symptom showed up.
+	tree, err := ts.Service.GetWorkspaceTree(memberCtx, &apiv1.GetWorkspaceTreeRequest{
+		Name: "workspaces/" + workspace.UID,
+	})
+	require.NoError(t, err)
+	require.True(t, treeContainsDocument(tree.Nodes, memo.Name), "member should see the PRIVATE document in the tree")
+
+	listed, err := ts.Service.ListMemos(memberCtx, &apiv1.ListMemosRequest{
+		Workspace: "workspaces/" + workspace.UID,
+	})
+	require.NoError(t, err)
+	require.Len(t, listed.Memos, 1)
+	require.Equal(t, memo.Name, listed.Memos[0].Name)
+
+	// An EDITOR grant carries write over documents they did not author.
+	_, err = ts.Service.UpdateMemo(memberCtx, &apiv1.UpdateMemoRequest{
+		Memo:       &apiv1.Memo{Name: memo.Name, Content: "edited by the member"},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"content"}},
+	})
+	require.NoError(t, err)
+
+	// None of this reaches anyone without a grant.
+	_, err = ts.Service.GetMemo(outsiderCtx, &apiv1.GetMemoRequest{Name: memo.Name})
+	require.Equal(t, codes.NotFound, status.Code(err))
+
+	unscoped, err := ts.Service.ListMemos(outsiderCtx, &apiv1.ListMemosRequest{})
+	require.NoError(t, err)
+	require.Empty(t, unscoped.Memos)
+}
+
+// treeContainsDocument reports whether the tree holds a DOCUMENT node with this name.
+func treeContainsDocument(nodes []*apiv1.WorkspaceTreeNode, memoName string) bool {
+	for _, n := range nodes {
+		if n.Type == apiv1.WorkspaceTreeNode_DOCUMENT && n.Memo == memoName {
+			return true
+		}
+		if treeContainsDocument(n.Children, memoName) {
+			return true
+		}
+	}
+	return false
+}
 
 // TestMemberWithoutGrantIsShutOut covers the default state of a freshly invited
 // member: assigned to nothing, they can neither list, read, nor write anything.
@@ -116,6 +201,13 @@ func TestViewerCanReadButNotWrite(t *testing.T) {
 
 	_, err = ts.Service.DeleteMemo(viewerCtx, &apiv1.DeleteMemoRequest{Name: memo.Name})
 	require.Equal(t, codes.PermissionDenied, status.Code(err))
+
+	// Folder management follows document write access, so it stops at VIEWER too.
+	_, err = ts.Service.CreateWorkspaceFolder(viewerCtx, &apiv1.CreateWorkspaceFolderRequest{
+		Parent: "workspaces/" + workspace.UID,
+		Folder: &apiv1.WorkspaceFolder{Path: "notes"},
+	})
+	require.Equal(t, codes.PermissionDenied, status.Code(err))
 }
 
 // TestEditorWritesDocumentsButNotTheLibrary pins the line requirement §2 draws:
@@ -142,6 +234,27 @@ func TestEditorWritesDocumentsButNotTheLibrary(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "edited", updated.Content)
 
+	// Folders are contents, not library configuration: an editor organizes them
+	// the same way they organize the documents inside.
+	_, err = ts.Service.CreateWorkspaceFolder(editorCtx, &apiv1.CreateWorkspaceFolderRequest{
+		Parent: workspaceName,
+		Folder: &apiv1.WorkspaceFolder{Path: "notes"},
+	})
+	require.NoError(t, err)
+
+	_, err = ts.Service.RenameWorkspaceFolder(editorCtx, &apiv1.RenameWorkspaceFolderRequest{
+		Parent:  workspaceName,
+		OldPath: "notes",
+		NewPath: "notebook",
+	})
+	require.NoError(t, err)
+
+	_, err = ts.Service.DeleteWorkspaceFolder(editorCtx, &apiv1.DeleteWorkspaceFolderRequest{
+		Parent: workspaceName,
+		Path:   "notebook",
+	})
+	require.NoError(t, err)
+
 	// Library-level operations stay with the admin, even in a library the member
 	// holds EDITOR in and created themselves.
 	_, err = ts.Service.CreateWorkspace(editorCtx, &apiv1.CreateWorkspaceRequest{
@@ -152,12 +265,6 @@ func TestEditorWritesDocumentsButNotTheLibrary(t *testing.T) {
 	_, err = ts.Service.UpdateWorkspace(editorCtx, &apiv1.UpdateWorkspaceRequest{
 		Workspace:  &apiv1.Workspace{Name: workspaceName, Title: "Renamed"},
 		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"title"}},
-	})
-	require.Equal(t, codes.PermissionDenied, status.Code(err))
-
-	_, err = ts.Service.CreateWorkspaceFolder(editorCtx, &apiv1.CreateWorkspaceFolderRequest{
-		Parent: workspaceName,
-		Folder: &apiv1.WorkspaceFolder{Path: "notes"},
 	})
 	require.Equal(t, codes.PermissionDenied, status.Code(err))
 

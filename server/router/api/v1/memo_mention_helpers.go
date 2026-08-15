@@ -53,25 +53,24 @@ func (s *APIV1Service) resolveMentionTargets(ctx context.Context, content string
 	return targets, nil
 }
 
-func canUserAccessMentionContext(target *store.User, memo *store.Memo, relatedMemo *store.Memo) bool {
+// canUserAccessMentionContext reports whether the mentioned user could actually open
+// the document they were mentioned in (and its parent, for a comment). The rule is
+// the knowledge base grant, matching checkMemoReadAccess: mentioning someone does not
+// hand them a knowledge base, but a member mentioned inside one they hold reads the
+// document regardless of its visibility.
+func (s *APIV1Service) canUserAccessMentionContext(ctx context.Context, target *store.User, memo *store.Memo, relatedMemo *store.Memo) bool {
 	if target == nil || memo == nil {
 		return false
 	}
 
-	if relatedMemo != nil {
-		if relatedMemo.Visibility == store.Private && target.ID != relatedMemo.CreatorID {
-			return false
-		}
-	}
-
-	if memo.Visibility == store.Private && target.ID != memo.CreatorID {
+	if relatedMemo != nil && !s.canViewerAccessMemo(ctx, target, relatedMemo) {
 		return false
 	}
 
-	return true
+	return s.canViewerAccessMemo(ctx, target, memo)
 }
 
-func shouldSkipMentionInbox(target *store.User, memo *store.Memo, relatedMemo *store.Memo) bool {
+func (s *APIV1Service) shouldSkipMentionInbox(ctx context.Context, target *store.User, memo *store.Memo, relatedMemo *store.Memo) bool {
 	if target == nil || memo == nil {
 		return true
 	}
@@ -85,7 +84,7 @@ func shouldSkipMentionInbox(target *store.User, memo *store.Memo, relatedMemo *s
 		return true
 	}
 
-	return !canUserAccessMentionContext(target, memo, relatedMemo)
+	return !s.canUserAccessMentionContext(ctx, target, memo, relatedMemo)
 }
 
 func (s *APIV1Service) dispatchMemoMentionNotifications(ctx context.Context, memo *store.Memo, relatedMemo *store.Memo, previousContent string) error {
@@ -110,7 +109,7 @@ func (s *APIV1Service) dispatchMemoMentionNotifications(ctx context.Context, mem
 		if _, exists := previousTargets[userID]; exists {
 			continue
 		}
-		if shouldSkipMentionInbox(target, memo, relatedMemo) {
+		if s.shouldSkipMentionInbox(ctx, target, memo, relatedMemo) {
 			continue
 		}
 

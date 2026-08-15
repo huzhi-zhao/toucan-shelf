@@ -17,8 +17,8 @@ const (
 type WorkspaceGrantRole string
 
 const (
-	// WorkspaceGrantRoleViewer can read the workspace's documents (subject to each
-	// document's visibility) but cannot write.
+	// WorkspaceGrantRoleViewer can read every document in the workspace but cannot
+	// write.
 	WorkspaceGrantRoleViewer WorkspaceGrantRole = "VIEWER"
 	// WorkspaceGrantRoleEditor can additionally create, edit and delete documents.
 	// Workspace-level operations (rename, delete, settings, folders, grants) stay
@@ -37,14 +37,18 @@ const (
 	// WorkspaceAccessNone means the workspace is invisible to this user: it must not
 	// appear in listings, search results, or be reachable by id.
 	WorkspaceAccessNone WorkspaceAccess = iota
-	// WorkspaceAccessViewer may read documents in the workspace, subject to each
-	// document's visibility.
+	// WorkspaceAccessViewer may read every document in the workspace. Documents belong
+	// to the knowledge base rather than to their author, so a viewer's read is not
+	// narrowed by a document's visibility — visibility only widens access outward, to
+	// people holding no grant at all.
 	WorkspaceAccessViewer
-	// WorkspaceAccessEditor may additionally create, edit and delete documents.
+	// WorkspaceAccessEditor may additionally create, edit and delete documents, and
+	// organize them: folders are contents, not workspace-level configuration.
 	WorkspaceAccessEditor
-	// WorkspaceAccessOwner may additionally perform workspace-level operations:
-	// rename, delete, settings, folders, and managing grants. Only the team owner
-	// (the single ADMIN account) ever holds it.
+	// WorkspaceAccessOwner may additionally perform workspace-level operations on the
+	// knowledge base itself: rename, delete, settings (cover, sort, display order,
+	// hidden), and managing grants. Only the team owner (the single ADMIN account)
+	// ever holds it.
 	WorkspaceAccessOwner
 )
 

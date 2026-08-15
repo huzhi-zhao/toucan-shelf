@@ -181,6 +181,48 @@ RPC 的镜像，留给产品评审后再定，不影响后端。
 `server/router/api/v1/test/workspace_grant_service_test.go` 里的
 `TestDeleteMemberRevokesGrants` 钉住「授权清空 + 文档署名变 admin」。
 
+## 修订：visibility 的语义（2026-08-15 晚）
+
+上线自测发现的问题：admin 把库分给成员后，成员侧边栏只看得到文件夹、看不到任何文档。
+原因不是授权没生效，而是**两层门叠加**——文档创建时的默认可见性是 PRIVATE，
+而库内又按 PRIVATE 过滤了一遍非作者，于是「分了等于没分」。
+
+按 memos 时代的语义，memo 属于个人，PRIVATE = 仅作者。现在文档是团队资产：
+**admin 把库授权给谁，谁就能读写库里的全部文档**，PRIVATE/PROTECTED/PUBLIC 只用来
+描述**对库外人**的开放程度。据此改动：
+
+- 库授权是读的**唯一**判定，不再叠加文档 visibility。PUBLIC 是唯一能越过库闸门的
+  可见性（匿名可读），PROTECTED 仍然只对库内成员有意义。
+- 回收站同样按库判定（原来只有作者能进）：树里本来就把归档文档列给了全体成员，
+  `checkMemoReadAccess` 和附件 ACL 现在与之一致。
+- 涉及处：`checkMemoReadAccess`、`GetWorkspaceTree`、`ListMemos`、`ListMemoComments`、
+  `accessibleMemoIDs`（搜索）、`user_service_stats.go` 两处、
+  `attachmentacl.checkVisibility` 与其回收站分支，以及通知侧的
+  `canViewerAccessMemo`（api/v1 与 notification 各一份）、`canUserAccessMentionContext`。
+  后三者原来是纯函数，为了查库级授权改成带 `ctx` 的方法，调用链跟着补了 `ctx`。
+- 新增 `applyCrossWorkspaceReadScope(ctx, user, find)`：跨库列表的作用域只此一处，
+  防止「树里看得到、搜不出来」这类不一致再长出来。统计口径也接了同一个 helper
+  （原来完全没做库过滤，是个顺带修掉的泄漏）。
+- 测试：`TestGrantedMemberSeesPrivateDocuments` 钉住这次的现场（PRIVATE 文档 +
+  树 + 列表 + EDITOR 改他人文档 + 无授权者拿 NotFound）；
+  `TestGetMemoCommentRequiresParentReadAccess` 与附件矩阵里原先断言
+  「同库 other 被 PRIVATE 拒绝」的期望全部翻转成放行，拒绝方改由无授权者承担。
+
+**存量数据不用迁移**：老文档保持 PRIVATE 即可，语义变了而不是数据变了。
+
+### 界面文案
+
+语义收成一层之后，**PROTECTED 和 PRIVATE 效果完全一样**（读由库授权决定，只有
+PUBLIC 能越过库闸门），所以：
+
+- 编辑器的可见性选择器和设置里的「默认可见性」都**只在当前值就是 PROTECTED 时**
+  才列出这一项——老文档能照实显示自己的取值，新文档不会被引导去选一个不起作用的档。
+  枚举本身没动，后端也照旧接受 PROTECTED。
+- 三个选项都补了一行说明（`memo.visibility.*-description`，原来只有 zh-Hans 有这几个
+  key 且是旧口径「仅你可见」，已改）：私有=本知识库的成员可见，受保护=旧选项同私有，
+  公开=任何人可见含未登录访客。en / zh-Hans 两份，其余语言回落英文。
+- 「默认可见性」的说明改成「它决定的是知识库之外的人能不能读——库内成员始终可读」。
+
 ## 未完成 / 下个会话从这里接
 
 1. **P2：收紧粒度**（需求 §5），不在本期。

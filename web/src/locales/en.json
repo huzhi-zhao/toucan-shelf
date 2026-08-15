@@ -502,8 +502,11 @@
     "visibility": {
       "disabled": "Public memos are disabled",
       "private": "Private",
+      "private-description": "Visible to members of this knowledge base",
       "protected": "Protected",
-      "public": "Public"
+      "protected-description": "Legacy option, same effect as Private: members of this knowledge base",
+      "public": "Public",
+      "public-description": "Visible to anyone, including signed-out visitors"
     },
     "properties": {
       "edit": "Edit properties",
@@ -805,7 +808,7 @@
       "compact-reading-description": "Tightens line spacing in documents on this device. Off gives the roomier long-form rhythm.",
       "default-memo-sort-option": "Memo display time",
       "default-memo-visibility": "Default memo visibility",
-      "default-memo-visibility-description": "Visibility applied to newly created memos unless changed in the editor.",
+      "default-memo-visibility-description": "Visibility applied to newly created documents unless changed in the editor. It decides who outside the knowledge base can read them — its members always can.",
       "soft-line-breaks": "Soft line breaks",
       "soft-line-breaks-description": "Treat a single newline as a soft wrap, the way CommonMark does, instead of a line break. Applies to documents that have not set this themselves.",
       "label": "Preferences",

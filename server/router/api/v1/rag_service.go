@@ -170,23 +170,14 @@ func (s *APIV1Service) accessibleMemoIDs(ctx context.Context, user *store.User, 
 	}
 	normal := store.Normal
 	find.RowStatus = &normal
-	if user == nil {
-		find.VisibilityList = []store.Visibility{store.Public}
-	} else {
-		// Knowledge-base access first: without it, PROTECTED would make every
-		// document on the instance searchable by every account, and a member could
-		// find their way into a knowledge base they were never assigned.
-		all, ids, err := s.accessibleWorkspaceIDs(ctx, user)
-		if err != nil {
-			return nil, err
-		}
-		if !all {
-			find.VisibleWorkspaceIDs = ids
-		}
-		// Within a knowledge base the caller can reach, PRIVATE stays the author's.
-		filter := fmt.Sprintf(`creator_id == %d || visibility in ["PUBLIC", "PROTECTED"]`, user.ID)
-		find.Filters = append(find.Filters, filter)
+	// Search sees exactly what the document listings see: everything in the knowledge
+	// bases the caller was granted, plus PUBLIC documents anywhere. Keeping this in one
+	// helper is what stops "visible in the tree but unsearchable" from creeping back.
+	if err := s.applyCrossWorkspaceReadScope(ctx, user, find); err != nil {
+		return nil, err
 	}
+	// The scope applies even when workspaceID narrows the search to one knowledge
+	// base: naming a workspace must not be a way to search one you were never granted.
 	// Additional caller-supplied CEL filters (e.g. Explore's structured filters) are
 	// ANDed with the permission filter, so they can only narrow — never widen — access.
 	for _, f := range extraFilters {

@@ -204,20 +204,22 @@ func TestAttachmentAccessMatrix(t *testing.T) {
 		// Open instance (InstanceURL configured), documents in normal state.
 		{"public/active/open", apiv1.Visibility_PUBLIC, false, true, allowed, allowed, allowed, allowed},
 		{"protected/active/open", apiv1.Visibility_PROTECTED, false, true, unauthenticated, allowed, allowed, allowed},
-		{"private/active/open", apiv1.Visibility_PRIVATE, false, true, unauthenticated, allowed, forbidden, allowed},
+		{"private/active/open", apiv1.Visibility_PRIVATE, false, true, unauthenticated, allowed, allowed, allowed},
 
 		// Private instance (no InstanceURL): even a PUBLIC document needs a viewer.
 		{"public/active/private-instance", apiv1.Visibility_PUBLIC, false, false, unauthenticated, allowed, allowed, allowed},
 		{"protected/active/private-instance", apiv1.Visibility_PROTECTED, false, false, unauthenticated, allowed, allowed, allowed},
-		{"private/active/private-instance", apiv1.Visibility_PRIVATE, false, false, unauthenticated, allowed, forbidden, allowed},
+		{"private/active/private-instance", apiv1.Visibility_PRIVATE, false, false, unauthenticated, allowed, allowed, allowed},
 
-		// Recycle bin: creator only, whatever the visibility says.
-		{"public/archived/open", apiv1.Visibility_PUBLIC, true, true, notFound, allowed, notFound, notFound},
-		{"protected/archived/open", apiv1.Visibility_PROTECTED, true, true, notFound, allowed, notFound, notFound},
-		{"private/archived/open", apiv1.Visibility_PRIVATE, true, true, notFound, allowed, notFound, notFound},
-		{"public/archived/private-instance", apiv1.Visibility_PUBLIC, true, false, notFound, allowed, notFound, notFound},
-		{"protected/archived/private-instance", apiv1.Visibility_PROTECTED, true, false, notFound, allowed, notFound, notFound},
-		{"private/archived/private-instance", apiv1.Visibility_PRIVATE, true, false, notFound, allowed, notFound, notFound},
+		// Recycle bin: members of the knowledge base only, whatever the visibility says.
+		// The admin is the team owner and holds every knowledge base, so the bin is not
+		// closed to them either.
+		{"public/archived/open", apiv1.Visibility_PUBLIC, true, true, notFound, allowed, allowed, allowed},
+		{"protected/archived/open", apiv1.Visibility_PROTECTED, true, true, notFound, allowed, allowed, allowed},
+		{"private/archived/open", apiv1.Visibility_PRIVATE, true, true, notFound, allowed, allowed, allowed},
+		{"public/archived/private-instance", apiv1.Visibility_PUBLIC, true, false, notFound, allowed, allowed, allowed},
+		{"protected/archived/private-instance", apiv1.Visibility_PROTECTED, true, false, notFound, allowed, allowed, allowed},
+		{"private/archived/private-instance", apiv1.Visibility_PRIVATE, true, false, notFound, allowed, allowed, allowed},
 	}
 
 	for _, tc := range cases {
@@ -316,10 +318,12 @@ func TestAttachmentAccess_CommentInheritsParent(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, store.Public, commentMemo.Visibility, "comment is expected to keep its stale value for this test")
 
+	// "other" holds the knowledge base, so tightening the parent to PRIVATE no longer
+	// shuts them out — it shuts out anonymous readers, who hold no grant.
 	want := map[string]outcome{
 		"anonymous": unauthenticated,
 		"owner":     allowed,
-		"other":     forbidden,
+		"other":     allowed,
 		"admin":     allowed,
 	}
 	for _, v := range f.viewers() {

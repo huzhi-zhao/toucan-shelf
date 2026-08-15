@@ -275,7 +275,10 @@ const PreferencesSection = () => {
                 </div>
               </SelectTrigger>
               <SelectContent>
-                {[Visibility.PRIVATE, Visibility.PROTECTED, Visibility.PUBLIC]
+                {/* PROTECTED is offered only while it is the current default: it has the same
+                    effect as PRIVATE now that the knowledge base decides who may read a
+                    document, so it stays reachable to describe an old setting, not to pick. */}
+                {[Visibility.PRIVATE, ...(setting.memoVisibility === "PROTECTED" ? [Visibility.PROTECTED] : []), Visibility.PUBLIC]
                   .map((v) => convertVisibilityToString(v))
                   .map((item) => (
                     <SelectItem key={item} value={item} className="whitespace-nowrap">

@@ -351,11 +351,11 @@
     "visibility": {
       "disabled": "已禁用公开备忘录",
       "private": "私有",
-      "private-description": "仅你可见",
-      "protected": "工作区",
-      "protected-description": "对登录用户可见",
+      "private-description": "本知识库的成员可见",
+      "protected": "受保护",
+      "protected-description": "旧选项，效果同「私有」：本知识库的成员可见",
       "public": "公开",
-      "public-description": "对所有人可见"
+      "public-description": "任何人可见，包括未登录访客"
     },
     "outline": "概要",
     "share": {
@@ -580,7 +580,7 @@
       "compact-reading-description": "在本设备上收紧文档的行距与段落间距；关闭则使用更适合长文阅读的宽松排版。",
       "default-memo-sort-option": "备忘录显示时间",
       "default-memo-visibility": "默认备忘录可见性",
-      "default-memo-visibility-description": "创建新备忘录时默认使用的可见性，仍可在编辑器中调整。",
+      "default-memo-visibility-description": "新建文档时默认使用的可见性，仍可在编辑器中调整。它决定的是知识库之外的人能不能读——库内成员始终可读。",
       "soft-line-breaks": "单换行不断行",
       "soft-line-breaks-description": "按 CommonMark 的规则把段落内的单个换行当作软折行，而不是真的断行。仅对未单独设置过的文档生效。",
       "language-description": "立即更新界面语言，并保存到当前账号。",

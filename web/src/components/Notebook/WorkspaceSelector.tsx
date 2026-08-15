@@ -13,9 +13,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import useCurrentUser from "@/hooks/useCurrentUser";
 import { workspaceDetailPath } from "@/router/routes";
 import type { Workspace } from "@/types/proto/api/v1/workspace_service_pb";
 import { useTranslate } from "@/utils/i18n";
+import { isSuperUser } from "@/utils/user";
 import { WorkspaceCoverColorDialog, WorkspaceCoverImageDialog } from "./WorkspaceCoverDialogs";
 import WorkspaceSortMenuItems from "./WorkspaceSortMenu";
 
@@ -30,6 +32,9 @@ const WorkspaceSelector = ({ workspaces, value, onChange, onOpenInNewTab }: Prop
   const t = useTranslate();
   const [coverColorOpen, setCoverColorOpen] = useState(false);
   const [coverImageOpen, setCoverImageOpen] = useState(false);
+  // Cover and sort are stored on the workspace itself, and the server only lets
+  // its owner write them — a member gets the navigation entries alone.
+  const canManage = isSuperUser(useCurrentUser());
 
   const current = workspaces.find((w) => w.name === value);
 
@@ -82,7 +87,7 @@ const WorkspaceSelector = ({ workspaces, value, onChange, onOpenInNewTab }: Prop
               {t("notebook.open-in-new-tab")}
             </DropdownMenuItem>
           )}
-          {current && (
+          {current && canManage && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuSub>
@@ -106,8 +111,8 @@ const WorkspaceSelector = ({ workspaces, value, onChange, onOpenInNewTab }: Prop
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      {current && <WorkspaceCoverColorDialog workspace={current} open={coverColorOpen} onOpenChange={setCoverColorOpen} />}
-      {current && <WorkspaceCoverImageDialog workspace={current} open={coverImageOpen} onOpenChange={setCoverImageOpen} />}
+      {current && canManage && <WorkspaceCoverColorDialog workspace={current} open={coverColorOpen} onOpenChange={setCoverColorOpen} />}
+      {current && canManage && <WorkspaceCoverImageDialog workspace={current} open={coverImageOpen} onOpenChange={setCoverImageOpen} />}
     </div>
   );
 };

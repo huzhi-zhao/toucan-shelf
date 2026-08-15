@@ -233,7 +233,7 @@ func isHomeFolder(path string) bool {
 }
 
 func (s *APIV1Service) GetWorkspaceTree(ctx context.Context, request *v1pb.GetWorkspaceTreeRequest) (*v1pb.GetWorkspaceTreeResponse, error) {
-	workspace, user, err := s.getWorkspaceWithAccess(ctx, request.Name, WorkspaceRoleViewer)
+	workspace, _, err := s.getWorkspaceWithAccess(ctx, request.Name, WorkspaceRoleViewer)
 	if err != nil {
 		return nil, err
 	}
@@ -261,11 +261,9 @@ func (s *APIV1Service) GetWorkspaceTree(ctx context.Context, request *v1pb.GetWo
 		if isHomeFolder(m.FolderPath) {
 			continue
 		}
-		// Workspace access is a gate, not a blanket read: a PRIVATE document stays
-		// its author's (and the team owner's) alone even inside a shared workspace.
-		if m.Visibility == store.Private && m.CreatorID != user.ID && !isTeamOwner(user) {
-			continue
-		}
+		// No visibility filter here on purpose: getWorkspaceWithAccess already decided
+		// this user may read the knowledge base, and under the team model that means
+		// every document in it. Visibility only governs people outside the workspace.
 		var segments []string
 		if strings.TrimSpace(m.FolderPath) != "" {
 			segments = strings.Split(strings.Trim(m.FolderPath, "/"), "/")
@@ -277,8 +275,13 @@ func (s *APIV1Service) GetWorkspaceTree(ctx context.Context, request *v1pb.GetWo
 	return &v1pb.GetWorkspaceTreeResponse{Nodes: root.toNodes("")}, nil
 }
 
+// Folders are part of a knowledge base's contents, not of the knowledge base
+// itself: creating, renaming, moving and deleting them takes editor access, the
+// same level that already lets a member add and move the documents living in
+// them. Owner access stays reserved for the workspace-level operations
+// (title, cover, sort, display order, hidden, delete).
 func (s *APIV1Service) CreateWorkspaceFolder(ctx context.Context, request *v1pb.CreateWorkspaceFolderRequest) (*v1pb.WorkspaceFolder, error) {
-	workspace, _, err := s.getWorkspaceWithAccess(ctx, request.Parent, WorkspaceRoleOwner)
+	workspace, _, err := s.getWorkspaceWithAccess(ctx, request.Parent, WorkspaceRoleEditor)
 	if err != nil {
 		return nil, err
 	}
@@ -301,7 +304,7 @@ func (s *APIV1Service) CreateWorkspaceFolder(ctx context.Context, request *v1pb.
 }
 
 func (s *APIV1Service) RenameWorkspaceFolder(ctx context.Context, request *v1pb.RenameWorkspaceFolderRequest) (*emptypb.Empty, error) {
-	workspace, _, err := s.getWorkspaceWithAccess(ctx, request.Parent, WorkspaceRoleOwner)
+	workspace, _, err := s.getWorkspaceWithAccess(ctx, request.Parent, WorkspaceRoleEditor)
 	if err != nil {
 		return nil, err
 	}
@@ -475,11 +478,13 @@ func (s *APIV1Service) reindexFolder(ctx context.Context, workspaceID int32, pat
 // inherits the index refresh, the duplicate-title check and the updated_ts bump
 // that memo updates already get right.
 func (s *APIV1Service) MoveWorkspaceFolder(ctx context.Context, request *v1pb.MoveWorkspaceFolderRequest) (*v1pb.MoveWorkspaceFolderResponse, error) {
-	source, _, err := s.getWorkspaceWithAccess(ctx, request.Parent, WorkspaceRoleOwner)
+	// Editor on BOTH ends: a cross-workspace move is a write to each side, so
+	// write access to one of them is never enough on its own.
+	source, _, err := s.getWorkspaceWithAccess(ctx, request.Parent, WorkspaceRoleEditor)
 	if err != nil {
 		return nil, err
 	}
-	destination, _, err := s.getWorkspaceWithAccess(ctx, request.DestinationWorkspace, WorkspaceRoleOwner)
+	destination, _, err := s.getWorkspaceWithAccess(ctx, request.DestinationWorkspace, WorkspaceRoleEditor)
 	if err != nil {
 		return nil, err
 	}
@@ -676,7 +681,7 @@ func movedFolderPath(path, oldRoot, newRoot string) string {
 }
 
 func (s *APIV1Service) DeleteWorkspaceFolder(ctx context.Context, request *v1pb.DeleteWorkspaceFolderRequest) (*emptypb.Empty, error) {
-	workspace, _, err := s.getWorkspaceWithAccess(ctx, request.Parent, WorkspaceRoleOwner)
+	workspace, _, err := s.getWorkspaceWithAccess(ctx, request.Parent, WorkspaceRoleEditor)
 	if err != nil {
 		return nil, err
 	}

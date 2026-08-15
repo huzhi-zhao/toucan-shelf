@@ -78,7 +78,7 @@ func (d *EmailDispatcher) DispatchInboxEmail(ctx context.Context, inbox *store.I
 		return errors.Wrap(err, "failed to get notification memos")
 	}
 
-	message, err := d.buildInboxEmailMessage(inbox, receiver, sender, memosByID)
+	message, err := d.buildInboxEmailMessage(ctx, inbox, receiver, sender, memosByID)
 	if err != nil {
 		return err
 	}
@@ -133,26 +133,26 @@ func SendTestEmail(setting *storepb.InstanceNotificationSetting_EmailSetting, re
 	return email.Send(EmailConfigFromInstanceSetting(setting), NewTestEmailMessage(recipientEmail, setting.GetReplyTo()))
 }
 
-func (d *EmailDispatcher) buildInboxEmailMessage(inbox *store.Inbox, receiver *store.User, sender *store.User, memosByID map[int32]*store.Memo) (*email.Message, error) {
+func (d *EmailDispatcher) buildInboxEmailMessage(ctx context.Context, inbox *store.Inbox, receiver *store.User, sender *store.User, memosByID map[int32]*store.Memo) (*email.Message, error) {
 	senderName := displayNameForEmail(sender)
 	switch inbox.Message.Type {
 	case storepb.InboxMessage_MEMO_COMMENT:
-		return d.buildMemoCommentEmailMessage(inbox.Message, receiver, senderName, memosByID)
+		return d.buildMemoCommentEmailMessage(ctx, inbox.Message, receiver, senderName, memosByID)
 	case storepb.InboxMessage_MEMO_MENTION:
-		return d.buildMemoMentionEmailMessage(inbox.Message, receiver, senderName, memosByID)
+		return d.buildMemoMentionEmailMessage(ctx, inbox.Message, receiver, senderName, memosByID)
 	default:
 		return nil, nil
 	}
 }
 
-func (d *EmailDispatcher) buildMemoCommentEmailMessage(message *storepb.InboxMessage, receiver *store.User, senderName string, memosByID map[int32]*store.Memo) (*email.Message, error) {
+func (d *EmailDispatcher) buildMemoCommentEmailMessage(ctx context.Context, message *storepb.InboxMessage, receiver *store.User, senderName string, memosByID map[int32]*store.Memo) (*email.Message, error) {
 	payload := message.GetMemoComment()
 	if payload == nil {
 		return nil, nil
 	}
 	commentMemo := memosByID[payload.MemoId]
 	relatedMemo := memosByID[payload.RelatedMemoId]
-	if !canViewerAccessMemo(receiver, commentMemo) || !canViewerAccessMemo(receiver, relatedMemo) {
+	if !d.canViewerAccessMemo(ctx, receiver, commentMemo) || !d.canViewerAccessMemo(ctx, receiver, relatedMemo) {
 		return nil, nil
 	}
 	url := d.memoCommentURL(relatedMemo, commentMemo)
@@ -178,13 +178,13 @@ func (d *EmailDispatcher) buildMemoCommentEmailMessage(message *storepb.InboxMes
 	}, nil
 }
 
-func (d *EmailDispatcher) buildMemoMentionEmailMessage(message *storepb.InboxMessage, receiver *store.User, senderName string, memosByID map[int32]*store.Memo) (*email.Message, error) {
+func (d *EmailDispatcher) buildMemoMentionEmailMessage(ctx context.Context, message *storepb.InboxMessage, receiver *store.User, senderName string, memosByID map[int32]*store.Memo) (*email.Message, error) {
 	payload := message.GetMemoMention()
 	if payload == nil {
 		return nil, nil
 	}
 	memo := memosByID[payload.MemoId]
-	if !canViewerAccessMemo(receiver, memo) {
+	if !d.canViewerAccessMemo(ctx, receiver, memo) {
 		return nil, nil
 	}
 	url := d.memoURL(memo)
@@ -303,18 +303,21 @@ func (d *EmailDispatcher) memoCommentURL(relatedMemo *store.Memo, commentMemo *s
 	return fmt.Sprintf("%s/memos/%s#%s", baseURL, relatedMemo.UID, commentMemo.UID)
 }
 
-func canViewerAccessMemo(viewer *store.User, memo *store.Memo) bool {
+// canViewerAccessMemo decides whether an email may quote or link this document.
+// It follows the same rule as the API's read check: the knowledge base grant is the
+// decision, and PUBLIC is the only visibility that reaches past it. An error is
+// treated as no access — better a missing email than one that leaks a link.
+func (d *EmailDispatcher) canViewerAccessMemo(ctx context.Context, viewer *store.User, memo *store.Memo) bool {
 	if memo == nil {
 		return false
 	}
-	if viewer != nil && viewer.Role == store.RoleAdmin {
+	if memo.Visibility == store.Public {
 		return true
 	}
-	if memo.Visibility == store.Private {
-		return viewer != nil && viewer.ID == memo.CreatorID
+	access, err := d.store.ResolveWorkspaceAccess(ctx, viewer, memo.WorkspaceID)
+	if err != nil {
+		slog.Warn("failed to resolve workspace access for notification email", slog.String("error", err.Error()))
+		return false
 	}
-	if memo.Visibility == store.Protected {
-		return viewer != nil
-	}
-	return true
+	return access.CanRead()
 }

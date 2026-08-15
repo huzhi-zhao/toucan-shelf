@@ -584,12 +584,17 @@ func TestGetMemoCommentRequiresParentReadAccess(t *testing.T) {
 	require.NoError(t, err)
 	ownerCtx := ts.CreateUserContext(ctx, owner.ID)
 
-	// "other" shares the library, so what denies them here is the parent's PRIVATE
-	// visibility rather than the library gate in front of it.
-	other, err := ts.CreateUnassignedUser(ctx, "legacy-comment-other")
+	// "member" is granted the library, so the parent's PRIVATE visibility does not
+	// stand between them and it: the grant is the whole read decision.
+	member, err := ts.CreateUnassignedUser(ctx, "legacy-comment-member")
 	require.NoError(t, err)
-	require.NoError(t, ts.GrantWorkspace(ctx, workspace.ID, other, store.WorkspaceGrantRoleEditor))
-	otherCtx := ts.CreateUserContext(ctx, other.ID)
+	require.NoError(t, ts.GrantWorkspace(ctx, workspace.ID, member, store.WorkspaceGrantRoleEditor))
+	memberCtx := ts.CreateUserContext(ctx, member.ID)
+
+	// "outsider" holds no grant on this library at all, which is what denies them.
+	outsider, err := ts.CreateUnassignedUser(ctx, "legacy-comment-outsider")
+	require.NoError(t, err)
+	outsiderCtx := ts.CreateUserContext(ctx, outsider.ID)
 
 	parent, err := ts.Service.CreateMemo(ownerCtx, &apiv1.CreateMemoRequest{
 		Memo: &apiv1.Memo{
@@ -623,8 +628,13 @@ func TestGetMemoCommentRequiresParentReadAccess(t *testing.T) {
 	_, err = ts.Service.GetMemo(ctx, &apiv1.GetMemoRequest{Name: commentName})
 	require.Equal(t, codes.Unauthenticated, status.Code(err))
 
-	_, err = ts.Service.GetMemo(otherCtx, &apiv1.GetMemoRequest{Name: commentName})
-	require.Equal(t, codes.PermissionDenied, status.Code(err))
+	// The legacy comment itself is PUBLIC, so it stays readable by anyone signed in;
+	// what the grant decides is the PRIVATE parent below.
+	_, err = ts.Service.GetMemo(memberCtx, &apiv1.GetMemoRequest{Name: commentName})
+	require.NoError(t, err)
+
+	_, err = ts.Service.GetMemo(outsiderCtx, &apiv1.GetMemoRequest{Name: parent.Name})
+	require.Equal(t, codes.NotFound, status.Code(err))
 
 	comment, err := ts.Service.GetMemo(ownerCtx, &apiv1.GetMemoRequest{Name: commentName})
 	require.NoError(t, err)
@@ -633,8 +643,12 @@ func TestGetMemoCommentRequiresParentReadAccess(t *testing.T) {
 	_, err = ts.Service.ListMemoComments(ctx, &apiv1.ListMemoCommentsRequest{Name: parent.Name})
 	require.Equal(t, codes.Unauthenticated, status.Code(err))
 
-	_, err = ts.Service.ListMemoComments(otherCtx, &apiv1.ListMemoCommentsRequest{Name: parent.Name})
-	require.Equal(t, codes.PermissionDenied, status.Code(err))
+	memberComments, err := ts.Service.ListMemoComments(memberCtx, &apiv1.ListMemoCommentsRequest{Name: parent.Name})
+	require.NoError(t, err)
+	require.Len(t, memberComments.Memos, 1)
+
+	_, err = ts.Service.ListMemoComments(outsiderCtx, &apiv1.ListMemoCommentsRequest{Name: parent.Name})
+	require.Equal(t, codes.NotFound, status.Code(err))
 
 	comments, err := ts.Service.ListMemoComments(ownerCtx, &apiv1.ListMemoCommentsRequest{Name: parent.Name})
 	require.NoError(t, err)
