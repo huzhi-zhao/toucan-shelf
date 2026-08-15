@@ -77,7 +77,13 @@ export const DrawioEditorDialog = ({ open, onOpenChange, xml, onSave }: DrawioEd
         case "export": {
           const svgText = message.data ? decodeExportedSvg(message.data) : null;
           if (svgText) {
-            void Promise.resolve(onSaveRef.current(svgText)).then(() => onOpenChange(false));
+            // Close only once the write has actually landed. A rejected save keeps the editor
+            // (and the user's diagram) open so they can retry; the failure toast comes from the
+            // save handler, so there is nothing to report here.
+            void Promise.resolve(onSaveRef.current(svgText)).then(
+              () => onOpenChange(false),
+              () => {},
+            );
           }
           break;
         }

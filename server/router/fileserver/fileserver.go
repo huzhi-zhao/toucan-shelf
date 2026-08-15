@@ -46,8 +46,24 @@ const (
 	// maxConcurrentThumbnails limits concurrent thumbnail generation to prevent memory exhaustion.
 	maxConcurrentThumbnails = 3
 
-	// cacheMaxAge is the max-age value for Cache-Control headers (1 hour).
+	// cacheMaxAge is the max-age value for Cache-Control headers (1 hour). Used for
+	// attachments the instance never rewrites in place: PDFs, EPUBs, video/audio, and
+	// everything served as a download.
 	cacheMaxAge = "public, max-age=3600"
+
+	// cacheRevalidate is the Cache-Control value for images embedded in memo content.
+	//
+	// An attachment's URL is derived from its UID and filename, so it does not change when
+	// the bytes behind it do — and since ADR-0017 the bytes genuinely do change: saving a
+	// draw.io diagram overwrites the same object under the same key. A max-age would pin
+	// the pre-edit picture in the browser *and* in Cloudflare's edge for the whole window,
+	// which is exactly the stale-diagram-after-save symptom.
+	//
+	// `no-cache` does not mean "don't store" — both caches may still keep the response, they
+	// just have to revalidate before reusing it. Paired with the ETag below that turns repeat
+	// views into 304s: no bytes over the wire, no S3 GET, and an edited diagram shows up on
+	// the next load instead of an hour later.
+	cacheRevalidate = "public, no-cache"
 )
 
 // xssUnsafeTypes contains MIME types that could execute scripts if served directly.
@@ -217,7 +233,7 @@ func (s *FileServerService) serveUserAvatar(c *echo.Context) error {
 // serveMediaStream serves video/audio files using streaming to avoid memory exhaustion.
 func (s *FileServerService) serveMediaStream(c *echo.Context, attachment *store.Attachment, contentType string) error {
 	setSecurityHeaders(c)
-	setMediaHeaders(c, contentType, attachment.Type)
+	setMediaHeaders(c, contentType, attachment.Type, cacheMaxAge)
 
 	switch attachment.StorageType {
 	case storepb.AttachmentStorageType_LOCAL:
@@ -246,6 +262,15 @@ func (s *FileServerService) serveMediaStream(c *echo.Context, attachment *store.
 
 // serveStaticFile serves non-streaming files (images, documents, etc.).
 func (s *FileServerService) serveStaticFile(c *echo.Context, attachment *store.Attachment, contentType string, wantThumbnail bool) error {
+	// Images are the ones rendered inline in memo content, and the ones whose bytes can be
+	// replaced under an unchanged URL, so they revalidate instead of sitting in a max-age
+	// window. Documents (PDF, EPUB, …) and downloads keep the original hour.
+	isImage := strings.HasPrefix(contentType, "image/")
+	cacheControl := cacheMaxAge
+	if isImage {
+		cacheControl = cacheRevalidate
+	}
+
 	// Generate thumbnail for supported image types.
 	if wantThumbnail && thumbnailSupportedTypes[attachment.Type] {
 		if thumbnailBlob, err := s.getOrGenerateThumbnail(c.Request().Context(), attachment); err != nil {
@@ -254,17 +279,24 @@ func (s *FileServerService) serveStaticFile(c *echo.Context, attachment *store.A
 			}
 		} else {
 			setSecurityHeaders(c)
-			setMediaHeaders(c, "image/jpeg", attachment.Type)
+			setMediaHeaders(c, "image/jpeg", attachment.Type, cacheRevalidate)
+			if serveNotModified(c, attachmentETag(attachment, "thumb")) {
+				return nil
+			}
 			return c.Blob(http.StatusOK, "image/jpeg", thumbnailBlob)
 		}
 	}
 
 	setSecurityHeaders(c)
-	setMediaHeaders(c, contentType, attachment.Type)
+	setMediaHeaders(c, contentType, attachment.Type, cacheControl)
 
 	// Force download for non-media files to prevent XSS execution.
-	if !strings.HasPrefix(contentType, "image/") && contentType != "application/pdf" {
+	if !isImage && contentType != "application/pdf" {
 		c.Response().Header().Set(echo.HeaderContentDisposition, fmt.Sprintf("attachment; filename=%q", attachment.Filename))
+	}
+
+	if isImage && serveNotModified(c, attachmentETag(attachment, "full")) {
+		return nil
 	}
 
 	switch attachment.StorageType {
@@ -591,7 +623,7 @@ func (s *FileServerService) serveMotionClip(c *echo.Context, attachment *store.A
 	}
 
 	setSecurityHeaders(c)
-	setMediaHeaders(c, "video/mp4", "video/mp4")
+	setMediaHeaders(c, "video/mp4", "video/mp4", cacheMaxAge)
 	modTime := time.Unix(attachment.UpdatedTs, 0)
 	http.ServeContent(c.Response(), c.Request(), attachment.UID+".mp4", modTime, bytes.NewReader(clipBlob))
 	return nil
@@ -735,14 +767,56 @@ func setSecurityHeaders(c *echo.Context) {
 	h.Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline';")
 }
 
-// setMediaHeaders sets headers for media file responses.
-func setMediaHeaders(c *echo.Context, contentType, originalType string) {
+// setMediaHeaders sets headers for media file responses. cacheControl is the Cache-Control
+// value to advertise — cacheMaxAge for immutable attachments, cacheRevalidate for the ones
+// that can be rewritten under the same URL.
+func setMediaHeaders(c *echo.Context, contentType, originalType, cacheControl string) {
 	h := c.Response().Header()
 	h.Set(echo.HeaderContentType, contentType)
-	h.Set(echo.HeaderCacheControl, cacheMaxAge)
+	h.Set(echo.HeaderCacheControl, cacheControl)
 
 	// Support HDR/wide color gamut for images and videos.
 	if strings.HasPrefix(originalType, "image/") || strings.HasPrefix(originalType, "video/") {
 		h.Set("Color-Gamut", "srgb, p3, rec2020")
 	}
+}
+
+// attachmentETag derives a validator from the fields that change whenever an attachment's
+// bytes do: UpdateAttachment always bumps updated_ts, and a content overwrite also rewrites
+// size. variant separates representations served under the same URL (the thumbnail is a
+// different image than the original).
+func attachmentETag(attachment *store.Attachment, variant string) string {
+	return fmt.Sprintf("%q", fmt.Sprintf("%s-%d-%d-%s", attachment.UID, attachment.UpdatedTs, attachment.Size, variant))
+}
+
+// serveNotModified answers a conditional request when the client already holds the current
+// representation, reporting whether it did. Returning 304 here rather than leaving it to
+// http.ServeContent also skips the storage read: the S3 path would otherwise download the
+// whole object just to throw it away.
+func serveNotModified(c *echo.Context, etag string) bool {
+	c.Response().Header().Set("ETag", etag)
+	if !etagMatches(c.Request().Header.Get("If-None-Match"), etag) {
+		return false
+	}
+	// A 304 must not carry a body; Content-Type would contradict that.
+	c.Response().Header().Del(echo.HeaderContentType)
+	c.Response().WriteHeader(http.StatusNotModified)
+	return true
+}
+
+// etagMatches reports whether an If-None-Match header covers etag. Comparison is weak (RFC
+// 9110 §13.1.2): our validators are only ever compared for equality, never used to range-patch.
+func etagMatches(ifNoneMatch, etag string) bool {
+	if ifNoneMatch == "" {
+		return false
+	}
+	if strings.TrimSpace(ifNoneMatch) == "*" {
+		return true
+	}
+	for _, candidate := range strings.Split(ifNoneMatch, ",") {
+		if strings.TrimPrefix(strings.TrimSpace(candidate), "W/") == etag {
+			return true
+		}
+	}
+	return false
 }

@@ -18,6 +18,7 @@ import (
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/usememos/memos/internal/markdown"
@@ -289,6 +290,87 @@ func TestServeAttachmentFile_SVGThumbnailServedAsImageWithSecurityHeaders(t *tes
 	require.Equal(t, "nosniff", rec.Header().Get("X-Content-Type-Options"))
 	require.Equal(t, "default-src 'none'; style-src 'unsafe-inline';", rec.Header().Get("Content-Security-Policy"))
 	require.Equal(t, svgContent, rec.Body.Bytes())
+}
+
+// An image's URL does not change when its bytes do (a draw.io save overwrites the same
+// attachment), so images must revalidate rather than sit in a max-age window — otherwise both
+// the browser and the CDN keep serving the pre-edit picture. Documents keep the long max-age:
+// nothing rewrites them in place, and they are the expensive ones to re-fetch.
+func TestServeAttachmentFile_ImagesRevalidateWhileDocumentsStayCached(t *testing.T) {
+	ctx := context.Background()
+	svc, fs, _, cleanup := newShareAttachmentTestServices(ctx, t)
+	defer cleanup()
+
+	creator, err := svc.Store.CreateUser(ctx, &store.User{
+		Username: "cache-owner",
+		Role:     store.RoleUser,
+		Email:    "cache-owner@example.com",
+	})
+	require.NoError(t, err)
+	creatorCtx := context.WithValue(ctx, auth.UserIDContextKey, creator.ID)
+
+	svgContent := []byte(`<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"></svg>`)
+	svgAttachment, err := svc.CreateAttachment(creatorCtx, &apiv1.CreateAttachmentRequest{
+		Attachment: &apiv1.Attachment{Filename: "diagram.svg", Type: "image/svg+xml", Content: svgContent},
+	})
+	require.NoError(t, err)
+
+	pdfAttachment, err := svc.CreateAttachment(creatorCtx, &apiv1.CreateAttachmentRequest{
+		Attachment: &apiv1.Attachment{Filename: "paper.pdf", Type: "application/pdf", Content: []byte("%PDF-1.4\n%%EOF\n")},
+	})
+	require.NoError(t, err)
+
+	_, err = svc.CreateMemo(creatorCtx, &apiv1.CreateMemoRequest{
+		Memo: &apiv1.Memo{
+			Content:     "cache memo",
+			Visibility:  apiv1.Visibility_PUBLIC,
+			Attachments: []*apiv1.Attachment{{Name: svgAttachment.Name}, {Name: pdfAttachment.Name}},
+		},
+	})
+	require.NoError(t, err)
+
+	e := echo.New()
+	fs.RegisterRoutes(e)
+
+	get := func(name, filename string, headers map[string]string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/file/%s/%s", name, filename), nil)
+		for key, value := range headers {
+			req.Header.Set(key, value)
+		}
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		return rec
+	}
+
+	svgRec := get(svgAttachment.Name, svgAttachment.Filename, nil)
+	require.Equal(t, http.StatusOK, svgRec.Code)
+	require.Equal(t, "public, no-cache", svgRec.Header().Get("Cache-Control"))
+	etag := svgRec.Header().Get("ETag")
+	require.NotEmpty(t, etag)
+
+	pdfRec := get(pdfAttachment.Name, pdfAttachment.Filename, nil)
+	require.Equal(t, http.StatusOK, pdfRec.Code)
+	require.Equal(t, "public, max-age=3600", pdfRec.Header().Get("Cache-Control"))
+
+	// A revalidation of the unchanged image costs a 304 and no bytes.
+	cachedRec := get(svgAttachment.Name, svgAttachment.Filename, map[string]string{"If-None-Match": etag})
+	require.Equal(t, http.StatusNotModified, cachedRec.Code)
+	require.Empty(t, cachedRec.Body.Bytes())
+
+	// Overwriting the diagram must invalidate that validator, or the edit stays invisible.
+	updated, err := svc.UpdateAttachment(creatorCtx, &apiv1.UpdateAttachmentRequest{
+		Attachment: &apiv1.Attachment{
+			Name:    svgAttachment.Name,
+			Content: []byte(`<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20"/></svg>`),
+		},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"content"}},
+	})
+	require.NoError(t, err)
+
+	freshRec := get(updated.Name, updated.Filename, map[string]string{"If-None-Match": etag})
+	require.Equal(t, http.StatusOK, freshRec.Code)
+	require.NotEqual(t, etag, freshRec.Header().Get("ETag"))
+	require.Contains(t, freshRec.Body.String(), "<rect")
 }
 
 func TestServeAttachmentFile_ThumbnailWithSensitiveMetadataServesOriginal(t *testing.T) {

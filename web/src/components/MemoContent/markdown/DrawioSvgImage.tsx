@@ -4,13 +4,13 @@ import { CodeIcon, DownloadIcon, MaximizeIcon, PencilIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import DrawioEditorDialog from "@/components/DrawioEditorDialog";
-import PreviewImageDialog from "@/components/PreviewImageDialog";
 import { useMemoViewContextOptional } from "@/components/MemoView/MemoViewContext";
+import PreviewImageDialog from "@/components/PreviewImageDialog";
 import { attachmentServiceClient } from "@/connect";
 import { cn } from "@/lib/utils";
 import { AttachmentSchema } from "@/types/proto/api/v1/attachment_service_pb";
 import { getAttachmentNameFromUrl } from "@/utils/attachment";
-import { probeDrawioXml } from "@/utils/drawio";
+import { compactDrawioSvg, optimizeDrawioSvg, probeDrawioXml } from "@/utils/drawio";
 import { useTranslate } from "@/utils/i18n";
 
 interface DrawioSvgImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
@@ -45,8 +45,9 @@ export const DrawioSvgImage = ({ className, alt, src, sizeStyle, ...props }: Dra
   const [loaded, setLoaded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [previewing, setPreviewing] = useState(false);
-  // Bumped after a successful save: the attachment keeps its URL, so without a changed query
-  // string the browser would go on showing the cached pre-edit image.
+  // Bumped after a successful save. The attachment keeps its URL, and while images are now
+  // served with `no-cache` + an ETag (so a plain reload does pick the edit up), a fresh query
+  // string skips the revalidation round trip and makes the new diagram appear immediately.
   const [revision, setRevision] = useState(0);
 
   const attachmentName = getAttachmentNameFromUrl(src);
@@ -71,9 +72,13 @@ export const DrawioSvgImage = ({ className, alt, src, sizeStyle, ...props }: Dra
     return () => controller.abort();
   }, [loaded, displaySrc]);
 
+  // Downloads the picture, not the editable source: the embedded `<mxfile>` copy is typically
+  // most of the file's bytes and is useless to anything but draw.io. The original stays one
+  // "copy image URL" away for anyone who wants to re-import it.
   const handleDownloadSvg = useCallback(async () => {
     const response = await fetch(displaySrc);
-    downloadBlob(await response.blob(), `${baseFileName(src)}.svg`);
+    const optimized = optimizeDrawioSvg(await response.text());
+    downloadBlob(new Blob([optimized], { type: "image/svg+xml" }), `${baseFileName(src)}.svg`);
   }, [displaySrc, src]);
 
   const handleDownloadXml = useCallback(() => {
@@ -84,15 +89,21 @@ export const DrawioSvgImage = ({ className, alt, src, sizeStyle, ...props }: Dra
   const handleSave = useCallback(
     async (svgText: string) => {
       if (!attachmentName) return;
+      // draw.io re-adds the raster text fallbacks on every export, so the compaction has to run
+      // on each save, not just at upload time.
+      const stored = compactDrawioSvg(svgText) ?? svgText;
       try {
         await attachmentServiceClient.updateAttachment({
-          attachment: create(AttachmentSchema, { name: attachmentName, content: new TextEncoder().encode(svgText) }),
+          attachment: create(AttachmentSchema, { name: attachmentName, content: new TextEncoder().encode(stored) }),
           updateMask: create(FieldMaskSchema, { paths: ["content"] }),
         });
         setRevision((current) => current + 1);
         toast.success(t("drawio.saved"));
-      } catch {
+      } catch (error) {
         toast.error(t("drawio.save-failed"));
+        // Rethrow so the editor stays open: closing it on a failed save would look exactly
+        // like a successful one and throw away work the user can't get back.
+        throw error;
       }
     },
     [attachmentName, t],

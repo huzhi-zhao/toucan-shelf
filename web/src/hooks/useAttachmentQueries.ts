@@ -7,6 +7,7 @@ import {
   type ListAttachmentsRequest,
   ListAttachmentsRequestSchema,
 } from "@/types/proto/api/v1/attachment_service_pb";
+import { compactDrawioSvgBytes } from "@/utils/drawio";
 
 // Query keys factory
 export const attachmentKeys = {
@@ -66,7 +67,13 @@ export function useCreateAttachment() {
     // on S3. Pass it whenever the upload belongs to a known knowledge base — the server can't
     // infer it, since the attachment usually predates the memo that will reference it.
     mutationFn: async ({ attachment, workspace }: { attachment: Attachment; workspace?: string }) => {
-      const result = await attachmentServiceClient.createAttachment({ attachment, workspace });
+      // Strips the base64 raster text fallbacks out of draw.io SVGs (~90% of such a file, and
+      // dead weight in a browser). Leaves every other upload byte-for-byte.
+      const content = compactDrawioSvgBytes(attachment.content, attachment.type, attachment.filename);
+      const result = await attachmentServiceClient.createAttachment({
+        attachment: content === attachment.content ? attachment : { ...attachment, content, size: BigInt(content.byteLength) },
+        workspace,
+      });
       return result;
     },
     onSuccess: () => {
