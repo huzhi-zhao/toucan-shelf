@@ -28,7 +28,9 @@ export const CalendarDayCell = ({ day, items, dayEvents, events, showTaskDot, on
     "md:justify-start md:gap-1 md:p-1.5",
     isOutside && "border-border/15 bg-transparent opacity-50",
     isInteractive ? "cursor-pointer hover:bg-muted/40" : "cursor-default",
-    day.isToday && !isOutside && "ring-2 ring-inset ring-primary",
+    // 选中态用实心外框强调；今天的框减半淡化，两者同时出现时也能区分开
+    day.isSelected && !isOutside && "ring-2 ring-inset ring-primary",
+    day.isToday && !day.isSelected && !isOutside && "ring-2 ring-inset ring-primary/50",
   );
 
   const content = (
