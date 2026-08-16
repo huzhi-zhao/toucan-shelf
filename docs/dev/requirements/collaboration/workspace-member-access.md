@@ -79,3 +79,21 @@ admin 自己的密码在 my-account 里改，不在 Member 页里对自己操作
 形同虚设——一个只被分配了库 A 的成员，理论上仍能通过直接访问文档 ID
 或者搜索命中库 B 里的 PROTECTED 文档。这不是新增需求，是修复现状缺陷，
 纳入技术方案的第一阶段。
+
+## 7. 已知问题（暂不处理）
+
+**secret block（toucan-secret 加密块）与库级授权脱节**：被分配了知识库
+读写权限的 member，仍然读不到库内别人创建的 secret block，会报
+"This secret block does not exist in the current instance"。
+
+根因：secret block 的记录查询按 `creator_id` 过滤
+（`server/router/api/v1/secret_block_service.go`），完全不看调用方对
+所在知识库的访问权限；解密口令也是每用户各自的主密钥（PBKDF2 包裹，
+存在 `{user}/settings/SECRET_KEY`），不存在"库内共享口令"这一说。也就是
+说即使把 creator_id 过滤放开，member 也没有口令可解密——这是两层问题
+叠在一起：一是可见性按创建者而非库授权判断，二是加密模型本身是端到端
+的用户级密钥，没有库级共享密钥的设计。
+
+目前影响不大（secret block 使用场景有限），暂不处理，留到后续和 §5
+的文档级授权收紧一起考虑对策，届时需要重新设计密钥共享机制（比如库内
+成员间的密钥分发），而不只是放开查询过滤条件。
