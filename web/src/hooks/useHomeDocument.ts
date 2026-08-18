@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { emptyHomeConfig, serializeHomeViewConfig } from "@/components/GalleryView/home";
 import { State } from "@/types/proto/api/v1/common_pb";
 import { type Memo, Memo_DocType, MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
+import useCurrentUser from "./useCurrentUser";
 import { useCreateMemo, useMemos } from "./useMemoQueries";
 import { useWorkspaces } from "./useWorkspaceQueries";
 
@@ -17,9 +18,19 @@ export const HOME_FOLDER_PATH = ".home";
 /** Title of the Home document inside `HOME_FOLDER_PATH`. */
 export const HOME_DOC_TITLE = "Home";
 
-/** True for the reserved Home configuration document. */
-export function isHomeDocument(memo: Pick<Memo, "docType" | "folderPath">): boolean {
-  return memo.docType === Memo_DocType.VIEW && memo.folderPath === HOME_FOLDER_PATH;
+/**
+ * True for `viewer`'s own Home configuration document.
+ *
+ * The creator check is not redundant with the server's: the Home document is one
+ * per user, and a listing that spans users — the team owner sees every knowledge
+ * base — would otherwise let a stranger's Home document win the lookup below and
+ * render their (usually empty) configuration in place of the viewer's.
+ */
+export function isHomeDocument(memo: Pick<Memo, "docType" | "folderPath" | "creator">, viewer?: string): boolean {
+  if (memo.docType !== Memo_DocType.VIEW || memo.folderPath !== HOME_FOLDER_PATH) {
+    return false;
+  }
+  return !viewer || memo.creator === viewer;
 }
 
 /**
@@ -32,6 +43,7 @@ export function isHomeDocument(memo: Pick<Memo, "docType" | "folderPath">): bool
  * notebook tree.
  */
 export function useHomeDocument(defaultSectionTitle: string): { memo?: Memo; isLoading: boolean } {
+  const currentUser = useCurrentUser();
   const { data: workspaces = [], isLoading: workspacesLoading } = useWorkspaces();
   // VIEW documents are few, so listing them all and picking the Home one out is
   // cheaper than teaching the memo filter grammar about folder paths.
@@ -39,7 +51,7 @@ export function useHomeDocument(defaultSectionTitle: string): { memo?: Memo; isL
   const createMemo = useCreateMemo();
   const creating = useRef(false);
 
-  const memo = data?.memos.find((m) => isHomeDocument(m));
+  const memo = data?.memos.find((m) => isHomeDocument(m, currentUser?.name));
   const isLoading = workspacesLoading || memosLoading;
   const homeWorkspace = workspaces[0]?.name;
 

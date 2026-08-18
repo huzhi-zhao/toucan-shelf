@@ -225,7 +225,7 @@ func (s *APIV1Service) DeleteWorkspace(ctx context.Context, request *v1pb.Delete
 // document. It is not a real folder (no folder row is ever created for it) and
 // is hidden from the workspace tree, so the Home page's own configuration never
 // shows up as a document the user can stumble into.
-const HomeFolderPath = ".home"
+const HomeFolderPath = store.HomeFolderPath
 
 // isHomeFolder reports whether a memo's folder path is the reserved Home folder.
 func isHomeFolder(path string) bool {

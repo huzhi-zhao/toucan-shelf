@@ -127,6 +127,10 @@ func (d *DB) ListMemos(ctx context.Context, find *store.FindMemo) ([]*store.Memo
 			where = append(where, fmt.Sprintf("(`memo`.`workspace_id` IN (%s) OR `memo`.`visibility` = 'PUBLIC')", strings.Join(placeholders, ",")))
 		}
 	}
+	if v := find.HomeDocViewerID; v != nil {
+		where = append(where, "(`memo`.`folder_path` != ? OR `memo`.`creator_id` = ?)")
+		args = append(args, store.HomeFolderPath, *v)
+	}
 	if find.ExcludeHiddenWorkspaces {
 		where = append(where, "`memo`.`workspace_id` NOT IN (SELECT `id` FROM `workspace` WHERE `hidden` = 1)")
 	}

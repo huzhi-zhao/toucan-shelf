@@ -22,6 +22,11 @@ const (
 	Private Visibility = "PRIVATE"
 )
 
+// HomeFolderPath is the reserved folder holding a user's single Home
+// configuration document. It lives here, not only in the API layer, because the
+// query builder has to recognise the folder to filter on it.
+const HomeFolderPath = ".home"
+
 func (v Visibility) String() string {
 	switch v {
 	case Public:
@@ -102,6 +107,12 @@ type FindMemo struct {
 	// Listings already scoped to one workspace by ID leave it off: reaching a hidden
 	// workspace directly is what makes restoring it possible.
 	ExcludeHiddenWorkspaces bool
+	// HomeDocViewerID drops every other user's Home configuration document from the
+	// result, keeping only the viewer's own. The Home document is one-per-user by
+	// construction, so a listing that returns someone else's is never useful — and
+	// the team owner, who may read every knowledge base, would otherwise pick up all
+	// of them. Nil leaves home documents alone (the store's own callers, backfills).
+	HomeDocViewerID *int32
 
 	// Pagination
 	Limit  *int

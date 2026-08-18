@@ -354,6 +354,13 @@ func (s *APIV1Service) ListMemos(ctx context.Context, request *v1pb.ListMemosReq
 	// an anonymous caller is the only one left needing a visibility filter here.
 	if currentUser == nil {
 		memoFind.VisibilityList = []store.Visibility{store.Public}
+	} else {
+		// The Home configuration document is one per user, so no listing should ever
+		// hand a caller someone else's. Without this the team owner — who may read every
+		// knowledge base — collects every user's Home document, and the Home page, which
+		// picks the first one it finds, renders a stranger's (empty) configuration
+		// instead of the owner's.
+		memoFind.HomeDocViewerID = &currentUser.ID
 	}
 
 	var limit, offset int
