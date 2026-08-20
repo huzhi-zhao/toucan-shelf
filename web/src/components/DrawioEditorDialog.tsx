@@ -72,7 +72,14 @@ export const DrawioEditorDialog = ({ open, onOpenChange, xml, onSave }: DrawioEd
         case "save":
           // `xmlsvg` re-embeds the mxfile source in the exported SVG, so the saved file is
           // itself editable — the round trip can repeat indefinitely without degrading.
-          post({ action: "export", format: "xmlsvg" });
+          //
+          // `background: "none"` keeps the export transparent so a diagram sits on the memo's
+          // own surface and stays readable in dark mode. draw.io would otherwise fall back to
+          // the diagram's own page background, and a white rectangle baked into the file is
+          // not something the reader can undo. Note this overrides a background colour set in
+          // the editor's Format panel — deliberate, since the page around the diagram supplies
+          // the backdrop here.
+          post({ action: "export", format: "xmlsvg", background: "none" });
           break;
         case "export": {
           const svgText = message.data ? decodeExportedSvg(message.data) : null;
