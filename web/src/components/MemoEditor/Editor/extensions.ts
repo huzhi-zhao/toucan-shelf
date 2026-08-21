@@ -9,6 +9,7 @@ import { cjkEmphasis } from "./cjkEmphasis";
 import { type EmbedTarget, makeEmbedCompletionSource } from "./embedAutocomplete";
 import { createFormattingKeymap } from "./formatting";
 import { headingDecorations } from "./headingDecorations";
+import { htmlPaste } from "./htmlPaste";
 import { liftListItem, sinkListItem } from "./listIndent";
 import { makeTagCompletionSource } from "./tagAutocomplete";
 import { tagMentionDecorations } from "./tagMentionDecorations";
@@ -54,6 +55,8 @@ export function buildEditorExtensions({ placeholder, onChange, onUpdate, getTags
     cmPlaceholder(placeholder),
     tagMentionDecorations,
     headingDecorations,
+    // Before the keymap below: its Mod-Shift-V binding must not be shadowed.
+    htmlPaste(),
     // Must precede the editing keymap so the completion popup's Enter/Tab/arrow bindings win
     // while it is open. A single `autocompletion` instance with both sources: CodeMirror tries
     // each in turn and uses whichever matches the text before the cursor (`#tag` vs `![[doc`),

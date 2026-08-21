@@ -33,6 +33,16 @@
     "ai-formatting": "Formatting with AI…"
   },
   "attachment": {
+    "public": {
+      "make-public": "Make publicly linkable",
+      "make-private": "Remove public link",
+      "badge": "Public link",
+      "copy-link": "Copy public link",
+      "copy-success": "Public link copied.",
+      "error": "Could not change this attachment's public link.",
+      "needs-instance-url": "This instance has no public address configured, so a public link would not work.",
+      "explainer": "Anyone with the link can open this file, even without signing in. It stops working if the document is deleted."
+    },
     "vault": {
       "lock": "Lock",
       "locked": "Locked",
@@ -430,6 +440,7 @@
     "count-memos-updated-in-date": "{{count}} {{memos}} updated on {{date}}",
     "delete-confirm": "Are you sure you want to delete this memo?",
     "delete-confirm-description": "This action is irreversible. Attachments, links, and references will also be removed.",
+    "delete-confirm-public-attachments": "It also carries {{total}} file(s) with a public link; those links will stop working.",
     "direction": "Direction",
     "direction-asc": "Ascending",
     "direction-desc": "Descending",
@@ -1126,6 +1137,19 @@
         "wrong-passphrase": "Incorrect master passphrase.",
         "corrupted": "The stored key failed verification — it has been altered or truncated. The passphrase is not the problem."
       }
+    },
+    "public-attachment": {
+      "label": "Public links",
+      "title": "Publicly linkable attachments",
+      "description": "Files you have given a public link. Anyone holding the link can open them without signing in.",
+      "empty": "You have not made any attachment publicly linkable.",
+      "load-error": "Could not load your publicly linkable attachments.",
+      "open-document": "Open document",
+      "revoke": "Revoke link",
+      "revoke-success": "The public link has been revoked.",
+      "revoke-confirm-title": "Revoke this public link?",
+      "revoke-confirm-description": "\"{{filename}}\" will stop being reachable without signing in. Anyone who saved the link will get a 404.",
+      "no-instance-url": "This instance has no public address configured, so public links are not served at all right now. The files below stay flagged and will become reachable again once an address is set."
     }
   },
   "tag": {

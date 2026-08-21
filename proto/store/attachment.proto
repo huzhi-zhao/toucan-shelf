@@ -46,6 +46,26 @@ enum AttachmentOrigin {
   INLINE = 2;
 }
 
+// AttachmentAccess is the attachment-level override of the "an attachment is
+// exactly as reachable as the document it hangs on" default.
+enum AttachmentAccess {
+  // Inherit the document's visibility. The default for every attachment.
+  ACCESS_INHERIT = 0;
+
+  // Locked behind the creator's vault: only the creator, over a browser session
+  // holding a valid vault cookie, may read it. Share tokens, anonymous access
+  // and admin privilege are all refused, regardless of the document. The file
+  // itself is unencrypted at rest — this is a server-enforced gate, not
+  // encryption.
+  ACCESS_LOCKED = 1;
+
+  // Readable by anyone who has the URL, including anonymous visitors, even when
+  // the document and the knowledge base holding it are private. Still refused
+  // once the document is in the recycle bin, and still subject to the
+  // instance-level anonymous-access gate (Profile.AllowAnonymous).
+  ACCESS_PUBLIC = 2;
+}
+
 message AttachmentPayload {
   oneof payload {
     S3Object s3_object = 1;
@@ -59,13 +79,20 @@ message AttachmentPayload {
   // settings schema can evolve without proto changes; the server never interprets it.
   string reader_settings = 12;
 
-  // Whether this attachment is locked behind the user's vault (see
-  // docs/dev/requirements/attachments/access-control-and-private-files.md, part B).
-  // The file itself is unencrypted at rest — this is a server-enforced access gate,
-  // not encryption. Only the creator, over a browser session with a valid vault
-  // cookie, may read a locked attachment; share tokens, anonymous access, and admin
-  // privilege are all refused regardless of the document it hangs on.
+  // LEGACY-COMPAT: superseded by `access` below, kept as a mirror of
+  // `access == ACCESS_LOCKED` so a rollback to a binary that predates `access`
+  // still sees locked attachments as locked. Existing rows were converted by
+  // store/migration/sqlite/0.30/15__attachment_access.sql; the read side keeps a
+  // fallback for any row that escaped it. Never read this directly — go through
+  // attachmentacl.EffectiveAccess.
   bool locked = 13;
+
+  // How this attachment answers read requests, independent of the document it
+  // hangs on. See
+  // docs/dev/requirements/attachments/access-control-and-private-files.md,
+  // parts B and C. One field rather than two bools because "locked and public"
+  // must not be a representable state.
+  AttachmentAccess access = 14;
 
   message S3Object {
     StorageS3Config s3_config = 1;

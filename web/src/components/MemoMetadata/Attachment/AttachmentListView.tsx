@@ -1,7 +1,17 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 import copy from "copy-to-clipboard";
-import { DownloadIcon, ExternalLinkIcon, FileIcon, LockIcon, MoreVerticalIcon, PaperclipIcon, PlayIcon } from "lucide-react";
-import type { PropsWithChildren } from "react";
+import {
+  DownloadIcon,
+  ExternalLinkIcon,
+  FileIcon,
+  GlobeIcon,
+  GlobeLockIcon,
+  LockIcon,
+  MoreVerticalIcon,
+  PaperclipIcon,
+  PlayIcon,
+} from "lucide-react";
+import type { PropsWithChildren, ReactNode } from "react";
 import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import MetadataSection from "@/components/MemoMetadata/MetadataSection";
@@ -10,16 +20,23 @@ import UnlockMasterKeyDialog from "@/components/Secret/UnlockMasterKeyDialog";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import VideoPoster from "@/components/VideoPoster";
+import { useInstance } from "@/contexts/InstanceContext";
 import { extractAttachmentUidFromName } from "@/helpers/resource-names";
-import { useSetAttachmentLocked } from "@/hooks/useAttachmentLock";
+import { useSetAttachmentAccess } from "@/hooks/useAttachmentAccess";
 import { cn } from "@/lib/utils";
-import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
+import { type Attachment, AttachmentAccess } from "@/types/proto/api/v1/attachment_service_pb";
 import { getAttachmentUrl } from "@/utils/attachment";
 import { useTranslate } from "@/utils/i18n";
 import type { AttachmentVisualItem, PreviewMediaItem } from "@/utils/media-item";
 import { buildAttachmentVisualItems } from "@/utils/media-item";
 import AudioAttachmentItem from "./AudioAttachmentItem";
-import { getAttachmentMetadata, isAudioAttachment, isPreviewableAttachment, separateAttachments } from "./attachmentHelpers";
+import {
+  getAttachmentMetadata,
+  isAudioAttachment,
+  isPreviewableAttachment,
+  isPublicAttachment,
+  separateAttachments,
+} from "./attachmentHelpers";
 import {
   COLLAGE_VIDEO_PLAY_BADGE_CLASS,
   COVER_MEDIA_CLASS,
@@ -88,18 +105,38 @@ const VisualTile = ({
   className,
   onPreview,
   overlayLabel,
+  actions,
   children,
-}: PropsWithChildren<{ className?: string; onPreview?: () => void; overlayLabel?: string }>) => {
+}: PropsWithChildren<{ className?: string; onPreview?: () => void; overlayLabel?: string; actions?: ReactNode }>) => {
   return (
-    <div className={cn(VISUAL_TILE_BUTTON_CLASS, className)} onClick={onPreview}>
+    <div className={cn("group", VISUAL_TILE_BUTTON_CLASS, className)} onClick={onPreview}>
       <div className={MEDIA_HOVER_SURFACE_CLASS}>
         {children}
         <div className={MEDIA_HOVER_GRADIENT_CLASS} aria-hidden />
       </div>
       {overlayLabel && <div className={OVERFLOW_TILE_OVERLAY_CLASS}>{overlayLabel}</div>}
+      {/* The tile itself is the preview trigger, so the menu has to stop the click
+          from reaching it — otherwise every menu interaction also opens the lightbox. */}
+      {actions && (
+        <div className="absolute right-1 top-1 z-10" onClick={(event) => event.stopPropagation()}>
+          {actions}
+        </div>
+      )}
     </div>
   );
 };
+
+// Marks a tile whose file is readable by anyone holding its URL, so "this image is
+// on the open internet" is visible without opening a menu to find out.
+const PublicBadge = ({ label }: { label: string }) => (
+  <span
+    className="pointer-events-none absolute left-1 top-1 z-10 inline-flex items-center gap-1 rounded-full bg-background/85 px-2 py-0.5 text-[10px] font-medium text-muted-foreground shadow-sm backdrop-blur-sm"
+    title={label}
+  >
+    <GlobeIcon className="h-3 w-3" />
+    {label}
+  </span>
+);
 
 const VideoPlayBadge = ({ className, children }: PropsWithChildren<{ className?: string }>) => (
   <span
@@ -111,6 +148,27 @@ const VideoPlayBadge = ({ className, children }: PropsWithChildren<{ className?:
     {children}
   </span>
 );
+
+// The gallery renders media items, not attachments — a motion photo is one tile over
+// two files. Per-attachment actions only make sense where those coincide, so a motion
+// pair gets no menu rather than a menu that silently publishes half of it; its files
+// are still reachable from the attachment list below.
+const useVisualTileExtras = (item: VisualItem) => {
+  const t = useTranslate();
+  const attachment = item.attachments.length === 1 ? item.attachments[0] : undefined;
+  if (!attachment) {
+    return { actions: undefined, badge: undefined };
+  }
+  return {
+    actions: (
+      <AttachmentActionsMenu
+        attachment={attachment}
+        className="h-7 w-7 bg-background/80 text-muted-foreground opacity-0 shadow-sm backdrop-blur-sm transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+      />
+    ),
+    badge: isPublicAttachment(attachment) ? <PublicBadge label={t("attachment.public.badge")} /> : undefined,
+  };
+};
 
 const CollageVisualItem = ({
   item,
@@ -124,9 +182,11 @@ const CollageVisualItem = ({
   overlayLabel?: string;
 }) => {
   const motionPreviewProps = item.kind === "motion" ? getMotionPreviewProps(item) : undefined;
+  const { actions, badge } = useVisualTileExtras(item);
 
   return (
-    <VisualTile className={cn("block h-full w-full", className)} onPreview={onPreview} overlayLabel={overlayLabel}>
+    <VisualTile className={cn("block h-full w-full", className)} onPreview={onPreview} overlayLabel={overlayLabel} actions={actions}>
+      {badge}
       {item.kind === "video" ? (
         <>
           <VideoPoster sourceUrl={item.sourceUrl} posterUrl={item.posterUrl} alt={item.filename} className={COVER_MEDIA_CLASS} />
@@ -155,10 +215,12 @@ const CollageVisualItem = ({
 
 const SingleVisualItem = ({ item, onPreview }: { item: VisualItem; onPreview?: () => void }) => {
   const motionPreviewProps = item.kind === "motion" ? getMotionPreviewProps(item) : undefined;
+  const { actions, badge } = useVisualTileExtras(item);
 
   if (item.kind === "image") {
     return (
-      <VisualTile className="inline-block max-w-full" onPreview={onPreview}>
+      <VisualTile className="inline-block max-w-full" onPreview={onPreview} actions={actions}>
+        {badge}
         <img src={item.posterUrl} alt={item.filename} className={NATURAL_MEDIA_CLASS} loading="lazy" decoding="async" />
       </VisualTile>
     );
@@ -166,7 +228,8 @@ const SingleVisualItem = ({ item, onPreview }: { item: VisualItem; onPreview?: (
 
   if (item.kind === "motion" && motionPreviewProps) {
     return (
-      <VisualTile className="inline-block max-w-full" onPreview={onPreview}>
+      <VisualTile className="inline-block max-w-full" onPreview={onPreview} actions={actions}>
+        {badge}
         <MotionPhotoPreview
           posterUrl={item.posterUrl}
           motionUrl={motionPreviewProps.motionUrl}
@@ -182,7 +245,8 @@ const SingleVisualItem = ({ item, onPreview }: { item: VisualItem; onPreview?: (
   }
 
   return (
-    <VisualTile className={cn("block", SINGLE_VIDEO_CARD_WIDTH_CLASS)} onPreview={onPreview}>
+    <VisualTile className={cn("block", SINGLE_VIDEO_CARD_WIDTH_CLASS)} onPreview={onPreview} actions={actions}>
+      {badge}
       <div className="relative aspect-video bg-black/5">
         <VideoPoster sourceUrl={item.sourceUrl} posterUrl={item.posterUrl} alt={item.filename} className={COVER_MEDIA_CLASS} />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-black/5 to-transparent" />
@@ -242,10 +306,12 @@ const AudioList = ({ attachments, compact = false }: { attachments: Attachment[]
 // Trailing "⋮" menu for an attachment row. Offers copying the inline markdown
 // reference (`![filename](/file/attachments/…/name.ext)`) so the file can be
 // embedded into another document's content, and downloading the file.
-const AttachmentActionsMenu = ({ attachment }: { attachment: Attachment }) => {
+const AttachmentActionsMenu = ({ attachment, className }: { attachment: Attachment; className?: string }) => {
   const t = useTranslate();
-  const { mutateAsync: setLocked, isPending: lockPending } = useSetAttachmentLocked();
+  const { profile } = useInstance();
+  const { mutateAsync: setAccess, isPending: accessPending } = useSetAttachmentAccess();
   const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
+  const isPublic = isPublicAttachment(attachment);
 
   const handleCopyMdReference = () => {
     copy(`![${attachment.filename}](${getAttachmentUrl(attachment)})`);
@@ -268,9 +334,34 @@ const AttachmentActionsMenu = ({ attachment }: { attachment: Attachment }) => {
   // prove you hold". The full inline unlock-and-retry flow lives in
   // LockedAttachmentRow; here a locked attachment is one that's already
   // succeeded, so the only failure worth guiding is this one.
+  // The public link has to be absolute to be worth copying — it is going into a blog
+  // post or a chat window, not back into this app. `instanceUrl` is also what decides
+  // whether the server will accept the flag at all (决策 6), so an instance without one
+  // hides the entry instead of offering a link that would 401.
+  const publicLinkOrigin = profile.instanceUrl || window.location.origin;
+
+  const handleCopyPublicLink = () => {
+    copy(`${publicLinkOrigin}${getAttachmentUrl(attachment)}`);
+    toast.success(t("attachment.public.copy-success"));
+  };
+
+  const handleTogglePublic = async () => {
+    try {
+      await setAccess({
+        name: attachment.name,
+        access: isPublic ? AttachmentAccess.ACCESS_INHERIT : AttachmentAccess.ACCESS_PUBLIC,
+      });
+      if (!isPublic) {
+        handleCopyPublicLink();
+      }
+    } catch {
+      toast.error(t("attachment.public.error"));
+    }
+  };
+
   const handleToggleLocked = async () => {
     try {
-      await setLocked({ name: attachment.name, locked: true });
+      await setAccess({ name: attachment.name, access: AttachmentAccess.ACCESS_LOCKED });
     } catch (err) {
       if (err instanceof ConnectError && err.code === Code.FailedPrecondition) {
         // The account has never unlocked its master passphrase in this tab (or
@@ -291,7 +382,7 @@ const AttachmentActionsMenu = ({ attachment }: { attachment: Attachment }) => {
           <Button
             variant="ghost"
             size="icon"
-            className="shrink-0 text-muted-foreground/60 hover:text-foreground/70"
+            className={cn("shrink-0 text-muted-foreground/60 hover:text-foreground/70", className)}
             title={t("common.more")}
           >
             <MoreVerticalIcon className="h-4 w-4" />
@@ -303,10 +394,19 @@ const AttachmentActionsMenu = ({ attachment }: { attachment: Attachment }) => {
             {t("gallery.download")}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={handleCopyMdReference}>{t("gallery.copy-md-reference")}</DropdownMenuItem>
-          <DropdownMenuItem onClick={handleToggleLocked} disabled={lockPending}>
-            <LockIcon className="h-4 w-4" />
-            {t("attachment.vault.make-private")}
-          </DropdownMenuItem>
+          {profile.instanceUrl !== "" && (
+            <DropdownMenuItem onClick={handleTogglePublic} disabled={accessPending}>
+              {isPublic ? <GlobeLockIcon className="h-4 w-4" /> : <GlobeIcon className="h-4 w-4" />}
+              {isPublic ? t("attachment.public.make-private") : t("attachment.public.make-public")}
+            </DropdownMenuItem>
+          )}
+          {isPublic && <DropdownMenuItem onClick={handleCopyPublicLink}>{t("attachment.public.copy-link")}</DropdownMenuItem>}
+          {!isPublic && (
+            <DropdownMenuItem onClick={handleToggleLocked} disabled={accessPending}>
+              <LockIcon className="h-4 w-4" />
+              {t("attachment.vault.make-private")}
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
       <UnlockMasterKeyDialog
@@ -314,7 +414,7 @@ const AttachmentActionsMenu = ({ attachment }: { attachment: Attachment }) => {
         onOpenChange={setUnlockDialogOpen}
         onUnlocked={async () => {
           try {
-            await setLocked({ name: attachment.name, locked: true });
+            await setAccess({ name: attachment.name, access: AttachmentAccess.ACCESS_LOCKED });
           } catch {
             toast.error(t("attachment.vault.lock-error"));
           }

@@ -177,6 +177,65 @@ func (AttachmentOrigin) EnumDescriptor() ([]byte, []int) {
 	return file_api_v1_attachment_service_proto_rawDescGZIP(), []int{2}
 }
 
+// AttachmentAccess is the attachment-level override of the "an attachment is
+// exactly as reachable as the document it hangs on" default.
+type AttachmentAccess int32
+
+const (
+	// Inherit the document's visibility. The default for every attachment.
+	AttachmentAccess_ACCESS_INHERIT AttachmentAccess = 0
+	// Locked behind the creator's vault: readable only by the creator, over a
+	// browser session that has called UnlockVault. Not admins, not share links,
+	// not anonymous visitors.
+	AttachmentAccess_ACCESS_LOCKED AttachmentAccess = 1
+	// Readable by anyone holding the URL, anonymous visitors included, even when
+	// the document and its knowledge base are private. Still 404s once the
+	// document is in the recycle bin, and still requires the instance to allow
+	// anonymous access at all (i.e. to have an instance URL configured).
+	AttachmentAccess_ACCESS_PUBLIC AttachmentAccess = 2
+)
+
+// Enum value maps for AttachmentAccess.
+var (
+	AttachmentAccess_name = map[int32]string{
+		0: "ACCESS_INHERIT",
+		1: "ACCESS_LOCKED",
+		2: "ACCESS_PUBLIC",
+	}
+	AttachmentAccess_value = map[string]int32{
+		"ACCESS_INHERIT": 0,
+		"ACCESS_LOCKED":  1,
+		"ACCESS_PUBLIC":  2,
+	}
+)
+
+func (x AttachmentAccess) Enum() *AttachmentAccess {
+	p := new(AttachmentAccess)
+	*p = x
+	return p
+}
+
+func (x AttachmentAccess) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AttachmentAccess) Descriptor() protoreflect.EnumDescriptor {
+	return file_api_v1_attachment_service_proto_enumTypes[3].Descriptor()
+}
+
+func (AttachmentAccess) Type() protoreflect.EnumType {
+	return &file_api_v1_attachment_service_proto_enumTypes[3]
+}
+
+func (x AttachmentAccess) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AttachmentAccess.Descriptor instead.
+func (AttachmentAccess) EnumDescriptor() ([]byte, []int) {
+	return file_api_v1_attachment_service_proto_rawDescGZIP(), []int{3}
+}
+
 type MotionMedia struct {
 	state                   protoimpl.MessageState `protogen:"open.v1"`
 	Family                  MotionMediaFamily      `protobuf:"varint,1,opt,name=family,proto3,enum=memos.api.v1.MotionMediaFamily" json:"family,omitempty"`
@@ -282,13 +341,18 @@ type Attachment struct {
 	// verbatim and never interprets it. Updated via UpdateAttachment with the
 	// "reader_settings" field mask.
 	ReaderSettings string `protobuf:"bytes,11,opt,name=reader_settings,json=readerSettings,proto3" json:"reader_settings,omitempty"`
-	// Optional. Whether this attachment is locked behind the caller's vault. Only
-	// the creator, unlocked (AttachmentService.UnlockVault) in the current browser
-	// session, can read a locked attachment — not admins, not share links, not
-	// anonymous visitors. Updated via UpdateAttachment with the "locked" field
-	// mask; setting it to true requires the creator to have an unlock_verifier on
-	// file (see UserSetting.SecretKeySetting), or the update is rejected.
-	Locked        bool `protobuf:"varint,12,opt,name=locked,proto3" json:"locked,omitempty"`
+	// Output only. Mirror of `access == ACCESS_LOCKED`, kept so callers written
+	// against the two-state API keep working. Write through `access` instead.
+	Locked bool `protobuf:"varint,12,opt,name=locked,proto3" json:"locked,omitempty"`
+	// Optional. How this attachment answers read requests, independent of the
+	// document it hangs on. Updated via UpdateAttachment with the "access" field
+	// mask (the older "locked" mask still works and maps onto this field).
+	//
+	// ACCESS_LOCKED requires the creator to have an unlock_verifier on file (see
+	// UserSetting.SecretKeySetting) or the update is rejected; ACCESS_PUBLIC may
+	// only be set by the creator, never by an admin acting on their behalf. See
+	// docs/dev/requirements/attachments/access-control-and-private-files.md.
+	Access        AttachmentAccess `protobuf:"varint,13,opt,name=access,proto3,enum=memos.api.v1.AttachmentAccess" json:"access,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -407,6 +471,13 @@ func (x *Attachment) GetLocked() bool {
 	return false
 }
 
+func (x *Attachment) GetAccess() AttachmentAccess {
+	if x != nil {
+		return x.Access
+	}
+	return AttachmentAccess_ACCESS_INHERIT
+}
+
 type CreateAttachmentRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Required. The attachment to create.
@@ -488,7 +559,9 @@ type ListAttachmentsRequest struct {
 	// Optional. Filter to apply to the list results.
 	// Example: "mime_type==\"image/png\"" or "filename.contains(\"test\")"
 	// Supported operators: =, !=, <, <=, >, >=, : (contains), in
-	// Supported fields: filename, mime_type, create_time, memo
+	// Supported fields: filename, mime_type, create_time, memo_id, access
+	// `access` compares against the enum name, e.g. access == "ACCESS_PUBLIC" —
+	// which is how the settings list of publicly linkable attachments is built.
 	Filter string `protobuf:"bytes,3,opt,name=filter,proto3" json:"filter,omitempty"`
 	// Optional. The order to sort results by.
 	// Example: "create_time desc" or "filename asc"
@@ -939,7 +1012,7 @@ const file_api_v1_attachment_service_proto_rawDesc = "" +
 	"\x04role\x18\x02 \x01(\x0e2\x1d.memos.api.v1.MotionMediaRoleR\x04role\x12\x19\n" +
 	"\bgroup_id\x18\x03 \x01(\tR\agroupId\x12:\n" +
 	"\x19presentation_timestamp_us\x18\x04 \x01(\x03R\x17presentationTimestampUs\x12,\n" +
-	"\x12has_embedded_video\x18\x05 \x01(\bR\x10hasEmbeddedVideo\"\xc6\x04\n" +
+	"\x12has_embedded_video\x18\x05 \x01(\bR\x10hasEmbeddedVideo\"\x83\x05\n" +
 	"\n" +
 	"Attachment\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12@\n" +
@@ -955,7 +1028,8 @@ const file_api_v1_attachment_service_proto_rawDesc = "" +
 	"\x06origin\x18\n" +
 	" \x01(\x0e2\x1e.memos.api.v1.AttachmentOriginB\x03\xe0A\x01R\x06origin\x12,\n" +
 	"\x0freader_settings\x18\v \x01(\tB\x03\xe0A\x01R\x0ereaderSettings\x12\x1b\n" +
-	"\x06locked\x18\f \x01(\bB\x03\xe0A\x01R\x06locked:O\xeaAL\n" +
+	"\x06locked\x18\f \x01(\bB\x03\xe0A\x03R\x06locked\x12;\n" +
+	"\x06access\x18\r \x01(\x0e2\x1e.memos.api.v1.AttachmentAccessB\x03\xe0A\x01R\x06access:O\xeaAL\n" +
 	"\x17memos.api.v1/Attachment\x12\x18attachments/{attachment}*\vattachments2\n" +
 	"attachmentB\a\n" +
 	"\x05_memo\"\xa5\x01\n" +
@@ -1007,7 +1081,11 @@ const file_api_v1_attachment_service_proto_rawDesc = "" +
 	"\x1dATTACHMENT_ORIGIN_UNSPECIFIED\x10\x00\x12\v\n" +
 	"\aMOUNTED\x10\x01\x12\n" +
 	"\n" +
-	"\x06INLINE\x10\x022\xbb\t\n" +
+	"\x06INLINE\x10\x02*L\n" +
+	"\x10AttachmentAccess\x12\x12\n" +
+	"\x0eACCESS_INHERIT\x10\x00\x12\x11\n" +
+	"\rACCESS_LOCKED\x10\x01\x12\x11\n" +
+	"\rACCESS_PUBLIC\x10\x022\xbb\t\n" +
 	"\x11AttachmentService\x12\x89\x01\n" +
 	"\x10CreateAttachment\x12%.memos.api.v1.CreateAttachmentRequest\x1a\x18.memos.api.v1.Attachment\"4\xdaA\n" +
 	"attachment\x82\xd3\xe4\x93\x02!:\n" +
@@ -1035,61 +1113,63 @@ func file_api_v1_attachment_service_proto_rawDescGZIP() []byte {
 	return file_api_v1_attachment_service_proto_rawDescData
 }
 
-var file_api_v1_attachment_service_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_api_v1_attachment_service_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
 var file_api_v1_attachment_service_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_api_v1_attachment_service_proto_goTypes = []any{
 	(MotionMediaFamily)(0),                // 0: memos.api.v1.MotionMediaFamily
 	(MotionMediaRole)(0),                  // 1: memos.api.v1.MotionMediaRole
 	(AttachmentOrigin)(0),                 // 2: memos.api.v1.AttachmentOrigin
-	(*MotionMedia)(nil),                   // 3: memos.api.v1.MotionMedia
-	(*Attachment)(nil),                    // 4: memos.api.v1.Attachment
-	(*CreateAttachmentRequest)(nil),       // 5: memos.api.v1.CreateAttachmentRequest
-	(*ListAttachmentsRequest)(nil),        // 6: memos.api.v1.ListAttachmentsRequest
-	(*ListAttachmentsResponse)(nil),       // 7: memos.api.v1.ListAttachmentsResponse
-	(*GetAttachmentRequest)(nil),          // 8: memos.api.v1.GetAttachmentRequest
-	(*UpdateAttachmentRequest)(nil),       // 9: memos.api.v1.UpdateAttachmentRequest
-	(*UnlinkAttachmentRequest)(nil),       // 10: memos.api.v1.UnlinkAttachmentRequest
-	(*DeleteAttachmentRequest)(nil),       // 11: memos.api.v1.DeleteAttachmentRequest
-	(*BatchDeleteAttachmentsRequest)(nil), // 12: memos.api.v1.BatchDeleteAttachmentsRequest
-	(*UnlockVaultRequest)(nil),            // 13: memos.api.v1.UnlockVaultRequest
-	(*LockVaultRequest)(nil),              // 14: memos.api.v1.LockVaultRequest
-	(*timestamppb.Timestamp)(nil),         // 15: google.protobuf.Timestamp
-	(*fieldmaskpb.FieldMask)(nil),         // 16: google.protobuf.FieldMask
-	(*emptypb.Empty)(nil),                 // 17: google.protobuf.Empty
+	(AttachmentAccess)(0),                 // 3: memos.api.v1.AttachmentAccess
+	(*MotionMedia)(nil),                   // 4: memos.api.v1.MotionMedia
+	(*Attachment)(nil),                    // 5: memos.api.v1.Attachment
+	(*CreateAttachmentRequest)(nil),       // 6: memos.api.v1.CreateAttachmentRequest
+	(*ListAttachmentsRequest)(nil),        // 7: memos.api.v1.ListAttachmentsRequest
+	(*ListAttachmentsResponse)(nil),       // 8: memos.api.v1.ListAttachmentsResponse
+	(*GetAttachmentRequest)(nil),          // 9: memos.api.v1.GetAttachmentRequest
+	(*UpdateAttachmentRequest)(nil),       // 10: memos.api.v1.UpdateAttachmentRequest
+	(*UnlinkAttachmentRequest)(nil),       // 11: memos.api.v1.UnlinkAttachmentRequest
+	(*DeleteAttachmentRequest)(nil),       // 12: memos.api.v1.DeleteAttachmentRequest
+	(*BatchDeleteAttachmentsRequest)(nil), // 13: memos.api.v1.BatchDeleteAttachmentsRequest
+	(*UnlockVaultRequest)(nil),            // 14: memos.api.v1.UnlockVaultRequest
+	(*LockVaultRequest)(nil),              // 15: memos.api.v1.LockVaultRequest
+	(*timestamppb.Timestamp)(nil),         // 16: google.protobuf.Timestamp
+	(*fieldmaskpb.FieldMask)(nil),         // 17: google.protobuf.FieldMask
+	(*emptypb.Empty)(nil),                 // 18: google.protobuf.Empty
 }
 var file_api_v1_attachment_service_proto_depIdxs = []int32{
 	0,  // 0: memos.api.v1.MotionMedia.family:type_name -> memos.api.v1.MotionMediaFamily
 	1,  // 1: memos.api.v1.MotionMedia.role:type_name -> memos.api.v1.MotionMediaRole
-	15, // 2: memos.api.v1.Attachment.create_time:type_name -> google.protobuf.Timestamp
-	3,  // 3: memos.api.v1.Attachment.motion_media:type_name -> memos.api.v1.MotionMedia
+	16, // 2: memos.api.v1.Attachment.create_time:type_name -> google.protobuf.Timestamp
+	4,  // 3: memos.api.v1.Attachment.motion_media:type_name -> memos.api.v1.MotionMedia
 	2,  // 4: memos.api.v1.Attachment.origin:type_name -> memos.api.v1.AttachmentOrigin
-	4,  // 5: memos.api.v1.CreateAttachmentRequest.attachment:type_name -> memos.api.v1.Attachment
-	4,  // 6: memos.api.v1.ListAttachmentsResponse.attachments:type_name -> memos.api.v1.Attachment
-	4,  // 7: memos.api.v1.UpdateAttachmentRequest.attachment:type_name -> memos.api.v1.Attachment
-	16, // 8: memos.api.v1.UpdateAttachmentRequest.update_mask:type_name -> google.protobuf.FieldMask
-	5,  // 9: memos.api.v1.AttachmentService.CreateAttachment:input_type -> memos.api.v1.CreateAttachmentRequest
-	6,  // 10: memos.api.v1.AttachmentService.ListAttachments:input_type -> memos.api.v1.ListAttachmentsRequest
-	8,  // 11: memos.api.v1.AttachmentService.GetAttachment:input_type -> memos.api.v1.GetAttachmentRequest
-	9,  // 12: memos.api.v1.AttachmentService.UpdateAttachment:input_type -> memos.api.v1.UpdateAttachmentRequest
-	11, // 13: memos.api.v1.AttachmentService.DeleteAttachment:input_type -> memos.api.v1.DeleteAttachmentRequest
-	10, // 14: memos.api.v1.AttachmentService.UnlinkAttachment:input_type -> memos.api.v1.UnlinkAttachmentRequest
-	12, // 15: memos.api.v1.AttachmentService.BatchDeleteAttachments:input_type -> memos.api.v1.BatchDeleteAttachmentsRequest
-	13, // 16: memos.api.v1.AttachmentService.UnlockVault:input_type -> memos.api.v1.UnlockVaultRequest
-	14, // 17: memos.api.v1.AttachmentService.LockVault:input_type -> memos.api.v1.LockVaultRequest
-	4,  // 18: memos.api.v1.AttachmentService.CreateAttachment:output_type -> memos.api.v1.Attachment
-	7,  // 19: memos.api.v1.AttachmentService.ListAttachments:output_type -> memos.api.v1.ListAttachmentsResponse
-	4,  // 20: memos.api.v1.AttachmentService.GetAttachment:output_type -> memos.api.v1.Attachment
-	4,  // 21: memos.api.v1.AttachmentService.UpdateAttachment:output_type -> memos.api.v1.Attachment
-	17, // 22: memos.api.v1.AttachmentService.DeleteAttachment:output_type -> google.protobuf.Empty
-	4,  // 23: memos.api.v1.AttachmentService.UnlinkAttachment:output_type -> memos.api.v1.Attachment
-	17, // 24: memos.api.v1.AttachmentService.BatchDeleteAttachments:output_type -> google.protobuf.Empty
-	17, // 25: memos.api.v1.AttachmentService.UnlockVault:output_type -> google.protobuf.Empty
-	17, // 26: memos.api.v1.AttachmentService.LockVault:output_type -> google.protobuf.Empty
-	18, // [18:27] is the sub-list for method output_type
-	9,  // [9:18] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	3,  // 5: memos.api.v1.Attachment.access:type_name -> memos.api.v1.AttachmentAccess
+	5,  // 6: memos.api.v1.CreateAttachmentRequest.attachment:type_name -> memos.api.v1.Attachment
+	5,  // 7: memos.api.v1.ListAttachmentsResponse.attachments:type_name -> memos.api.v1.Attachment
+	5,  // 8: memos.api.v1.UpdateAttachmentRequest.attachment:type_name -> memos.api.v1.Attachment
+	17, // 9: memos.api.v1.UpdateAttachmentRequest.update_mask:type_name -> google.protobuf.FieldMask
+	6,  // 10: memos.api.v1.AttachmentService.CreateAttachment:input_type -> memos.api.v1.CreateAttachmentRequest
+	7,  // 11: memos.api.v1.AttachmentService.ListAttachments:input_type -> memos.api.v1.ListAttachmentsRequest
+	9,  // 12: memos.api.v1.AttachmentService.GetAttachment:input_type -> memos.api.v1.GetAttachmentRequest
+	10, // 13: memos.api.v1.AttachmentService.UpdateAttachment:input_type -> memos.api.v1.UpdateAttachmentRequest
+	12, // 14: memos.api.v1.AttachmentService.DeleteAttachment:input_type -> memos.api.v1.DeleteAttachmentRequest
+	11, // 15: memos.api.v1.AttachmentService.UnlinkAttachment:input_type -> memos.api.v1.UnlinkAttachmentRequest
+	13, // 16: memos.api.v1.AttachmentService.BatchDeleteAttachments:input_type -> memos.api.v1.BatchDeleteAttachmentsRequest
+	14, // 17: memos.api.v1.AttachmentService.UnlockVault:input_type -> memos.api.v1.UnlockVaultRequest
+	15, // 18: memos.api.v1.AttachmentService.LockVault:input_type -> memos.api.v1.LockVaultRequest
+	5,  // 19: memos.api.v1.AttachmentService.CreateAttachment:output_type -> memos.api.v1.Attachment
+	8,  // 20: memos.api.v1.AttachmentService.ListAttachments:output_type -> memos.api.v1.ListAttachmentsResponse
+	5,  // 21: memos.api.v1.AttachmentService.GetAttachment:output_type -> memos.api.v1.Attachment
+	5,  // 22: memos.api.v1.AttachmentService.UpdateAttachment:output_type -> memos.api.v1.Attachment
+	18, // 23: memos.api.v1.AttachmentService.DeleteAttachment:output_type -> google.protobuf.Empty
+	5,  // 24: memos.api.v1.AttachmentService.UnlinkAttachment:output_type -> memos.api.v1.Attachment
+	18, // 25: memos.api.v1.AttachmentService.BatchDeleteAttachments:output_type -> google.protobuf.Empty
+	18, // 26: memos.api.v1.AttachmentService.UnlockVault:output_type -> google.protobuf.Empty
+	18, // 27: memos.api.v1.AttachmentService.LockVault:output_type -> google.protobuf.Empty
+	19, // [19:28] is the sub-list for method output_type
+	10, // [10:19] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_api_v1_attachment_service_proto_init() }
@@ -1103,7 +1183,7 @@ func file_api_v1_attachment_service_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_v1_attachment_service_proto_rawDesc), len(file_api_v1_attachment_service_proto_rawDesc)),
-			NumEnums:      3,
+			NumEnums:      4,
 			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,

@@ -5,6 +5,7 @@ import {
   HeartHandshakeIcon,
   KeyIcon,
   LibraryIcon,
+  Link2Icon,
   type LucideIcon,
   MailIcon,
   Settings2Icon,
@@ -21,6 +22,7 @@ import MemoRelatedSettings from "@/components/Settings/MemoRelatedSettings";
 import MyAccountSection from "@/components/Settings/MyAccountSection";
 import NotificationSection from "@/components/Settings/NotificationSection";
 import PreferencesSection from "@/components/Settings/PreferencesSection";
+import PublicAttachmentsSection from "@/components/Settings/PublicAttachmentsSection";
 import ResourceStatsSection from "@/components/Settings/ResourceStatsSection";
 import SSOSection from "@/components/Settings/SSOSection";
 import StorageSection from "@/components/Settings/StorageSection";
@@ -32,6 +34,7 @@ export type SettingSectionKey =
   | "my-account"
   | "preference"
   | "webhook"
+  | "public-attachment"
   | "member"
   | "system"
   | "memo"
@@ -74,6 +77,13 @@ export const SETTINGS_SECTIONS: SettingSectionDefinition[] = [
     labelKey: "setting.webhook.label",
     icon: WebhookIcon,
     component: WebhookSection,
+  },
+  {
+    key: "public-attachment",
+    scope: "basic",
+    labelKey: "setting.public-attachment.label",
+    icon: Link2Icon,
+    component: PublicAttachmentsSection,
   },
   {
     key: "member",

@@ -151,7 +151,7 @@ design doc 是给三个月后的人读的，下面这四类内容三个月后全
 
 ### adr/ —— 为什么这么选（事件，不改名不删除）
 
-编号从 `0001` 起，一经分配不回收，当前已到 `0017`：
+编号从 `0001` 起，一经分配不回收，当前已到 `0018`：
 
 - [0001](adr/0001-attachment-proxy-not-presigned-url.md) 附件走服务端代理，不用 S3 预签名直连
 - [0002](adr/0002-private-attachments-reuse-master-passphrase.md) 私密附件复用账号主口令
@@ -170,6 +170,7 @@ design doc 是给三个月后的人读的，下面这四类内容三个月后全
 - [0015](adr/0015-no-litestream.md) 不引入 Litestream
 - [0016](adr/0016-no-multi-instance-lease.md) 不支持多端写入，靠文档约束
 - [0017](adr/0017-drawio-svg-with-embedded-xml.md) draw.io 图存成带内嵌 XML 的 SVG 附件
+- [0018](adr/0018-html-to-markdown-via-turndown.md) 粘贴的 HTML 用 turndown 转 Markdown
 
 ### design/ —— 一次变更打算怎么做（事件）
 

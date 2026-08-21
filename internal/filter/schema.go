@@ -289,6 +289,28 @@ func NewAttachmentSchema() Schema {
 				CompareNeq: true,
 			},
 		},
+		// AttachmentPayload.access, lifted out of the payload JSON so
+		// ListAttachments can answer "which of my files did I put on the open
+		// internet?" (the settings list behind 公开直链). The stored value is the
+		// protojson enum name, so filters compare against "ACCESS_PUBLIC" /
+		// "ACCESS_LOCKED" / "ACCESS_INHERIT" rather than a number.
+		//
+		// Rows written before the field existed have no `access` key at all and
+		// extract to NULL; `access == "ACCESS_INHERIT"` therefore does *not* match
+		// them. That is fine for the one caller there is — nothing legacy is
+		// public — but a "show me everything inherited" filter would need a
+		// COALESCE here first.
+		"access": {
+			Name:       "access",
+			Kind:       FieldKindScalar,
+			Type:       FieldTypeString,
+			Column:     Column{Table: "attachment", Name: "payload"},
+			Expression: "JSON_EXTRACT(%s, '$.access')",
+			AllowedComparisonOps: map[ComparisonOperator]bool{
+				CompareEq:  true,
+				CompareNeq: true,
+			},
+		},
 	}
 
 	envOptions := []cel.EnvOption{
@@ -296,6 +318,7 @@ func NewAttachmentSchema() Schema {
 		cel.Variable("mime_type", cel.StringType),
 		cel.Variable("create_time", cel.TimestampType),
 		cel.Variable("memo_id", cel.AnyType),
+		cel.Variable("access", cel.StringType),
 		cel.Variable("now", cel.TimestampType),
 		cel.ASTValidators(cel.ValidateRegexLiterals()),
 	}

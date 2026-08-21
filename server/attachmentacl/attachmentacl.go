@@ -24,6 +24,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	storepb "github.com/usememos/memos/proto/gen/store"
 	"github.com/usememos/memos/store"
 )
 
@@ -69,6 +70,33 @@ type Request struct {
 	// func fails closed: every locked attachment becomes unreadable rather than
 	// silently skipping the check.
 	VaultUnlocked func(userID int32) bool
+
+	// AllowPublicAttachment opens the ACCESS_PUBLIC branch below. Only the binary
+	// download path sets it. The metadata path deliberately does not: GetAttachment
+	// answers with the attachment's filename, size and — the part that matters —
+	// the `memo` it hangs on, and a public *file* is not a licence to enumerate the
+	// private document holding it. Public means "these bytes are readable", not
+	// "this attachment's record is readable" (决策 8).
+	AllowPublicAttachment bool
+}
+
+// EffectiveAccess reads an attachment's access mode, resolving the legacy
+// `locked` bool for rows that predate the `access` field.
+//
+// LEGACY-COMPAT: store/migration/sqlite/0.30/15__attachment_access.sql converts
+// every locked row, so this fallback only ever fires for a row written by an old
+// binary after the migration ran (or one hand-edited into the DB). Delete it once
+// there is no supported upgrade path from a pre-`access` release.
+func EffectiveAccess(attachment *store.Attachment) storepb.AttachmentAccess {
+	// The legacy bool is checked first and wins outright, so the one state the two
+	// fields can disagree about — locked here, public there — resolves to locked.
+	// The write path keeps them in step (it clears `locked` whenever it sets
+	// anything but ACCESS_LOCKED), so a disagreement means the row was written by
+	// something that isn't the write path, and that is not a moment to publish a file.
+	if attachment.Payload.GetLocked() {
+		return storepb.AttachmentAccess_ACCESS_LOCKED
+	}
+	return attachment.Payload.GetAccess()
 }
 
 // CheckReadAccess reports whether the request may read the attachment, returning nil
@@ -81,13 +109,20 @@ func CheckReadAccess(ctx context.Context, req *Request, attachment *store.Attach
 	// admin privilege. This has to run before every other branch below, including
 	// the unattached-attachment one, because "locked" overrides "unattached but
 	// owned by me" too.
-	if attachment.Payload.GetLocked() {
+	access := EffectiveAccess(attachment)
+	if access == storepb.AttachmentAccess_ACCESS_LOCKED {
 		return checkVaultAccess(req, attachment, user)
 	}
+	public := access == storepb.AttachmentAccess_ACCESS_PUBLIC && req.AllowPublicAttachment && req.AllowAnonymous
 
 	// An attachment not yet linked to a document has no visibility to inherit, so it
 	// belongs to whoever uploaded it and to nobody else.
 	if attachment.MemoID == nil {
+		// Nothing to inherit from and no recycle bin to fall into, so a public one
+		// is simply public.
+		if public {
+			return nil
+		}
 		u, err := user()
 		if err != nil {
 			return err
@@ -149,6 +184,17 @@ func CheckReadAccess(ctx context.Context, req *Request, attachment *store.Attach
 		if !access.CanRead() {
 			return ErrNotFound
 		}
+	}
+
+	// Public comes after the recycle-bin loop above and before everything below it,
+	// and that position is the whole decision (决策 7): archiving a document must
+	// keep taking its files off the public internet, which it would not if this
+	// branch sat next to the locked one at the top. Everything it *does* skip —
+	// the document's visibility, knowledge-base membership, even having a user at
+	// all — is the point: an anonymous visitor loading a public image costs no
+	// user lookup.
+	if public {
+		return nil
 	}
 
 	// A share token stands in for the reader's identity, but only for the exact

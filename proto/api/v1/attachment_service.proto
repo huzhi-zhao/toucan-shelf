@@ -152,13 +152,37 @@ message Attachment {
   // "reader_settings" field mask.
   string reader_settings = 11 [(google.api.field_behavior) = OPTIONAL];
 
-  // Optional. Whether this attachment is locked behind the caller's vault. Only
-  // the creator, unlocked (AttachmentService.UnlockVault) in the current browser
-  // session, can read a locked attachment — not admins, not share links, not
-  // anonymous visitors. Updated via UpdateAttachment with the "locked" field
-  // mask; setting it to true requires the creator to have an unlock_verifier on
-  // file (see UserSetting.SecretKeySetting), or the update is rejected.
-  bool locked = 12 [(google.api.field_behavior) = OPTIONAL];
+  // Output only. Mirror of `access == ACCESS_LOCKED`, kept so callers written
+  // against the two-state API keep working. Write through `access` instead.
+  bool locked = 12 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Optional. How this attachment answers read requests, independent of the
+  // document it hangs on. Updated via UpdateAttachment with the "access" field
+  // mask (the older "locked" mask still works and maps onto this field).
+  //
+  // ACCESS_LOCKED requires the creator to have an unlock_verifier on file (see
+  // UserSetting.SecretKeySetting) or the update is rejected; ACCESS_PUBLIC may
+  // only be set by the creator, never by an admin acting on their behalf. See
+  // docs/dev/requirements/attachments/access-control-and-private-files.md.
+  AttachmentAccess access = 13 [(google.api.field_behavior) = OPTIONAL];
+}
+
+// AttachmentAccess is the attachment-level override of the "an attachment is
+// exactly as reachable as the document it hangs on" default.
+enum AttachmentAccess {
+  // Inherit the document's visibility. The default for every attachment.
+  ACCESS_INHERIT = 0;
+
+  // Locked behind the creator's vault: readable only by the creator, over a
+  // browser session that has called UnlockVault. Not admins, not share links,
+  // not anonymous visitors.
+  ACCESS_LOCKED = 1;
+
+  // Readable by anyone holding the URL, anonymous visitors included, even when
+  // the document and its knowledge base are private. Still 404s once the
+  // document is in the recycle bin, and still requires the instance to allow
+  // anonymous access at all (i.e. to have an instance URL configured).
+  ACCESS_PUBLIC = 2;
 }
 
 message CreateAttachmentRequest {
@@ -191,7 +215,9 @@ message ListAttachmentsRequest {
   // Optional. Filter to apply to the list results.
   // Example: "mime_type==\"image/png\"" or "filename.contains(\"test\")"
   // Supported operators: =, !=, <, <=, >, >=, : (contains), in
-  // Supported fields: filename, mime_type, create_time, memo
+  // Supported fields: filename, mime_type, create_time, memo_id, access
+  // `access` compares against the enum name, e.g. access == "ACCESS_PUBLIC" —
+  // which is how the settings list of publicly linkable attachments is built.
   string filter = 3 [(google.api.field_behavior) = OPTIONAL];
 
   // Optional. The order to sort results by.

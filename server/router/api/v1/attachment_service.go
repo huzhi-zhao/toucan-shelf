@@ -437,19 +437,25 @@ func (s *APIV1Service) UpdateAttachment(ctx context.Context, request *v1pb.Updat
 			update.Filename = &request.Attachment.Filename
 		case "reader_settings":
 			ensurePayload().ReaderSettings = request.Attachment.ReaderSettings
-		case "locked":
-			if request.Attachment.Locked {
-				// R8: never let an attachment lock behind a passphrase the creator
-				// can't yet prove they hold — that's "locks, doesn't unlock".
-				canLock, err := s.canLockAttachment(ctx, attachment.CreatorID)
-				if err != nil {
-					return nil, status.Errorf(codes.Internal, "failed to check vault readiness: %v", err)
-				}
-				if !canLock {
-					return nil, status.Errorf(codes.FailedPrecondition, "the attachment owner must unlock their master passphrase once in Settings before attachments can be locked")
+		case "access", "locked":
+			// "locked" is the pre-三态 spelling of the same field and still arrives from
+			// clients built against it; it can only ever ask for LOCKED or INHERIT.
+			access := request.Attachment.Access
+			if field == "locked" {
+				access = v1pb.AttachmentAccess_ACCESS_INHERIT
+				if request.Attachment.Locked {
+					access = v1pb.AttachmentAccess_ACCESS_LOCKED
 				}
 			}
-			ensurePayload().Locked = request.Attachment.Locked
+			if err := s.authorizeAttachmentAccessUpdate(ctx, attachment, user, access); err != nil {
+				return nil, err
+			}
+			storeAccess := convertAttachmentAccessToStore(access)
+			payload := ensurePayload()
+			payload.Access = storeAccess
+			// LEGACY-COMPAT: keep the retired bool in step with the enum so rolling back
+			// to a binary that predates `access` still finds locked attachments locked.
+			payload.Locked = storeAccess == storepb.AttachmentAccess_ACCESS_LOCKED
 		case "content":
 			if err := s.applyAttachmentContentUpdate(ctx, attachment, request.Attachment.Content, update); err != nil {
 				return nil, err
@@ -496,7 +502,7 @@ func (s *APIV1Service) applyAttachmentContentUpdate(ctx context.Context, attachm
 	// Locked attachments are decrypted client-side; the server holds no key and can't tell a
 	// legitimate re-encryption from a destructive overwrite. The frontend hides the edit entry
 	// for these, but the frontend is not the security boundary.
-	if attachment.Payload.GetLocked() {
+	if attachmentacl.EffectiveAccess(attachment) == storepb.AttachmentAccess_ACCESS_LOCKED {
 		return status.Errorf(codes.FailedPrecondition, "locked attachments cannot be overwritten")
 	}
 	if attachment.StorageType == storepb.AttachmentStorageType_EXTERNAL {
@@ -699,8 +705,9 @@ func convertAttachmentFromStore(attachment *store.Attachment) *v1pb.Attachment {
 		MotionMedia:    convertMotionMediaFromStore(getAttachmentMotionMedia(attachment)),
 		Origin:         convertAttachmentOriginFromStore(attachment.Payload.GetOrigin()),
 		ReaderSettings: attachment.Payload.GetReaderSettings(),
-		Locked:         attachment.Payload.GetLocked(),
+		Access:         convertAttachmentAccessFromStore(attachmentacl.EffectiveAccess(attachment)),
 	}
+	attachmentMessage.Locked = attachmentMessage.Access == v1pb.AttachmentAccess_ACCESS_LOCKED
 	if attachment.MemoUID != nil && *attachment.MemoUID != "" {
 		memoName := fmt.Sprintf("%s%s", MemoNamePrefix, *attachment.MemoUID)
 		attachmentMessage.Memo = &memoName
@@ -1153,4 +1160,60 @@ func stripImageExif(imageData []byte, mimeType string) ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
+}
+
+// authorizeAttachmentAccessUpdate guards the two access modes that are more than a
+// display preference.
+//
+// ACCESS_PUBLIC puts the bytes on the open internet, so only the creator may set it:
+// UpdateAttachment otherwise lets an admin act on someone else's attachment, and
+// deciding to publish someone else's file is not an administrative act (决策 9). It
+// also needs the instance to serve anonymous visitors at all, which is exactly what
+// AllowAnonymous reports — without an instance URL there is no public link to hand
+// out, and silently storing the flag would promise something the server won't do.
+//
+// ACCESS_LOCKED carries R8: never let an attachment lock behind a passphrase its
+// owner can't yet prove they hold — that's "locks, doesn't unlock".
+func (s *APIV1Service) authorizeAttachmentAccessUpdate(ctx context.Context, attachment *store.Attachment, user *store.User, access v1pb.AttachmentAccess) error {
+	switch access {
+	case v1pb.AttachmentAccess_ACCESS_PUBLIC:
+		if attachment.CreatorID != user.ID {
+			return status.Errorf(codes.PermissionDenied, "only the attachment's owner can make it public")
+		}
+		if !s.Profile.AllowAnonymous() {
+			return status.Errorf(codes.FailedPrecondition, "this instance has no instance URL configured, so it serves no anonymous visitors and a public attachment link would not work")
+		}
+	case v1pb.AttachmentAccess_ACCESS_LOCKED:
+		canLock, err := s.canLockAttachment(ctx, attachment.CreatorID)
+		if err != nil {
+			return status.Errorf(codes.Internal, "failed to check vault readiness: %v", err)
+		}
+		if !canLock {
+			return status.Errorf(codes.FailedPrecondition, "the attachment owner must unlock their master passphrase once in Settings before attachments can be locked")
+		}
+	case v1pb.AttachmentAccess_ACCESS_INHERIT:
+	}
+	return nil
+}
+
+func convertAttachmentAccessFromStore(access storepb.AttachmentAccess) v1pb.AttachmentAccess {
+	switch access {
+	case storepb.AttachmentAccess_ACCESS_LOCKED:
+		return v1pb.AttachmentAccess_ACCESS_LOCKED
+	case storepb.AttachmentAccess_ACCESS_PUBLIC:
+		return v1pb.AttachmentAccess_ACCESS_PUBLIC
+	default:
+		return v1pb.AttachmentAccess_ACCESS_INHERIT
+	}
+}
+
+func convertAttachmentAccessToStore(access v1pb.AttachmentAccess) storepb.AttachmentAccess {
+	switch access {
+	case v1pb.AttachmentAccess_ACCESS_LOCKED:
+		return storepb.AttachmentAccess_ACCESS_LOCKED
+	case v1pb.AttachmentAccess_ACCESS_PUBLIC:
+		return storepb.AttachmentAccess_ACCESS_PUBLIC
+	default:
+		return storepb.AttachmentAccess_ACCESS_INHERIT
+	}
 }

@@ -142,7 +142,9 @@ paths:
                     Optional. Filter to apply to the list results.
                      Example: "mime_type==\"image/png\"" or "filename.contains(\"test\")"
                      Supported operators: =, !=, <, <=, >, >=, : (contains), in
-                     Supported fields: filename, mime_type, create_time, memo
+                     Supported fields: filename, mime_type, create_time, memo_id, access
+                     `access` compares against the enum name, e.g. access == "ACCESS_PUBLIC" —
+                     which is how the settings list of publicly linkable attachments is built.
                   schema:
                     type: string
                 - name: orderBy
@@ -3396,14 +3398,27 @@ components:
                          verbatim and never interprets it. Updated via UpdateAttachment with the
                          "reader_settings" field mask.
                 locked:
+                    readOnly: true
                     type: boolean
                     description: |-
-                        Optional. Whether this attachment is locked behind the caller's vault. Only
-                         the creator, unlocked (AttachmentService.UnlockVault) in the current browser
-                         session, can read a locked attachment — not admins, not share links, not
-                         anonymous visitors. Updated via UpdateAttachment with the "locked" field
-                         mask; setting it to true requires the creator to have an unlock_verifier on
-                         file (see UserSetting.SecretKeySetting), or the update is rejected.
+                        Output only. Mirror of `access == ACCESS_LOCKED`, kept so callers written
+                         against the two-state API keep working. Write through `access` instead.
+                access:
+                    enum:
+                        - ACCESS_INHERIT
+                        - ACCESS_LOCKED
+                        - ACCESS_PUBLIC
+                    type: string
+                    description: |-
+                        Optional. How this attachment answers read requests, independent of the
+                         document it hangs on. Updated via UpdateAttachment with the "access" field
+                         mask (the older "locked" mask still works and maps onto this field).
+
+                         ACCESS_LOCKED requires the creator to have an unlock_verifier on file (see
+                         UserSetting.SecretKeySetting) or the update is rejected; ACCESS_PUBLIC may
+                         only be set by the creator, never by an admin acting on their behalf. See
+                         docs/dev/requirements/attachments/access-control-and-private-files.md.
+                    format: enum
         BackupNowRequest:
             type: object
             properties: {}

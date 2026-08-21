@@ -229,6 +229,67 @@ func (AttachmentOrigin) EnumDescriptor() ([]byte, []int) {
 	return file_store_attachment_proto_rawDescGZIP(), []int{3}
 }
 
+// AttachmentAccess is the attachment-level override of the "an attachment is
+// exactly as reachable as the document it hangs on" default.
+type AttachmentAccess int32
+
+const (
+	// Inherit the document's visibility. The default for every attachment.
+	AttachmentAccess_ACCESS_INHERIT AttachmentAccess = 0
+	// Locked behind the creator's vault: only the creator, over a browser session
+	// holding a valid vault cookie, may read it. Share tokens, anonymous access
+	// and admin privilege are all refused, regardless of the document. The file
+	// itself is unencrypted at rest — this is a server-enforced gate, not
+	// encryption.
+	AttachmentAccess_ACCESS_LOCKED AttachmentAccess = 1
+	// Readable by anyone who has the URL, including anonymous visitors, even when
+	// the document and the knowledge base holding it are private. Still refused
+	// once the document is in the recycle bin, and still subject to the
+	// instance-level anonymous-access gate (Profile.AllowAnonymous).
+	AttachmentAccess_ACCESS_PUBLIC AttachmentAccess = 2
+)
+
+// Enum value maps for AttachmentAccess.
+var (
+	AttachmentAccess_name = map[int32]string{
+		0: "ACCESS_INHERIT",
+		1: "ACCESS_LOCKED",
+		2: "ACCESS_PUBLIC",
+	}
+	AttachmentAccess_value = map[string]int32{
+		"ACCESS_INHERIT": 0,
+		"ACCESS_LOCKED":  1,
+		"ACCESS_PUBLIC":  2,
+	}
+)
+
+func (x AttachmentAccess) Enum() *AttachmentAccess {
+	p := new(AttachmentAccess)
+	*p = x
+	return p
+}
+
+func (x AttachmentAccess) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AttachmentAccess) Descriptor() protoreflect.EnumDescriptor {
+	return file_store_attachment_proto_enumTypes[4].Descriptor()
+}
+
+func (AttachmentAccess) Type() protoreflect.EnumType {
+	return &file_store_attachment_proto_enumTypes[4]
+}
+
+func (x AttachmentAccess) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AttachmentAccess.Descriptor instead.
+func (AttachmentAccess) EnumDescriptor() ([]byte, []int) {
+	return file_store_attachment_proto_rawDescGZIP(), []int{4}
+}
+
 type MotionMedia struct {
 	state                   protoimpl.MessageState `protogen:"open.v1"`
 	Family                  MotionMediaFamily      `protobuf:"varint,1,opt,name=family,proto3,enum=memos.store.MotionMediaFamily" json:"family,omitempty"`
@@ -317,13 +378,19 @@ type AttachmentPayload struct {
 	// EPUB reader's theme/font/spacing settings). Stored as a string so the reader's
 	// settings schema can evolve without proto changes; the server never interprets it.
 	ReaderSettings string `protobuf:"bytes,12,opt,name=reader_settings,json=readerSettings,proto3" json:"reader_settings,omitempty"`
-	// Whether this attachment is locked behind the user's vault (see
-	// docs/dev/requirements/attachments/access-control-and-private-files.md, part B).
-	// The file itself is unencrypted at rest — this is a server-enforced access gate,
-	// not encryption. Only the creator, over a browser session with a valid vault
-	// cookie, may read a locked attachment; share tokens, anonymous access, and admin
-	// privilege are all refused regardless of the document it hangs on.
-	Locked        bool `protobuf:"varint,13,opt,name=locked,proto3" json:"locked,omitempty"`
+	// LEGACY-COMPAT: superseded by `access` below, kept as a mirror of
+	// `access == ACCESS_LOCKED` so a rollback to a binary that predates `access`
+	// still sees locked attachments as locked. Existing rows were converted by
+	// store/migration/sqlite/0.30/15__attachment_access.sql; the read side keeps a
+	// fallback for any row that escaped it. Never read this directly — go through
+	// attachmentacl.EffectiveAccess.
+	Locked bool `protobuf:"varint,13,opt,name=locked,proto3" json:"locked,omitempty"`
+	// How this attachment answers read requests, independent of the document it
+	// hangs on. See
+	// docs/dev/requirements/attachments/access-control-and-private-files.md,
+	// parts B and C. One field rather than two bools because "locked and public"
+	// must not be a representable state.
+	Access        AttachmentAccess `protobuf:"varint,14,opt,name=access,proto3,enum=memos.store.AttachmentAccess" json:"access,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -400,6 +467,13 @@ func (x *AttachmentPayload) GetLocked() bool {
 		return x.Locked
 	}
 	return false
+}
+
+func (x *AttachmentPayload) GetAccess() AttachmentAccess {
+	if x != nil {
+		return x.Access
+	}
+	return AttachmentAccess_ACCESS_INHERIT
 }
 
 type isAttachmentPayload_Payload interface {
@@ -485,14 +559,15 @@ const file_store_attachment_proto_rawDesc = "" +
 	"\x04role\x18\x02 \x01(\x0e2\x1c.memos.store.MotionMediaRoleR\x04role\x12\x19\n" +
 	"\bgroup_id\x18\x03 \x01(\tR\agroupId\x12:\n" +
 	"\x19presentation_timestamp_us\x18\x04 \x01(\x03R\x17presentationTimestampUs\x12,\n" +
-	"\x12has_embedded_video\x18\x05 \x01(\bR\x10hasEmbeddedVideo\"\xc1\x03\n" +
+	"\x12has_embedded_video\x18\x05 \x01(\bR\x10hasEmbeddedVideo\"\xf8\x03\n" +
 	"\x11AttachmentPayload\x12F\n" +
 	"\ts3_object\x18\x01 \x01(\v2'.memos.store.AttachmentPayload.S3ObjectH\x00R\bs3Object\x12;\n" +
 	"\fmotion_media\x18\n" +
 	" \x01(\v2\x18.memos.store.MotionMediaR\vmotionMedia\x125\n" +
 	"\x06origin\x18\v \x01(\x0e2\x1d.memos.store.AttachmentOriginR\x06origin\x12'\n" +
 	"\x0freader_settings\x18\f \x01(\tR\x0ereaderSettings\x12\x16\n" +
-	"\x06locked\x18\r \x01(\bR\x06locked\x1a\xa3\x01\n" +
+	"\x06locked\x18\r \x01(\bR\x06locked\x125\n" +
+	"\x06access\x18\x0e \x01(\x0e2\x1d.memos.store.AttachmentAccessR\x06access\x1a\xa3\x01\n" +
 	"\bS3Object\x129\n" +
 	"\ts3_config\x18\x01 \x01(\v2\x1c.memos.store.StorageS3ConfigR\bs3Config\x12\x10\n" +
 	"\x03key\x18\x02 \x01(\tR\x03key\x12J\n" +
@@ -516,7 +591,11 @@ const file_store_attachment_proto_rawDesc = "" +
 	"\x1dATTACHMENT_ORIGIN_UNSPECIFIED\x10\x00\x12\v\n" +
 	"\aMOUNTED\x10\x01\x12\n" +
 	"\n" +
-	"\x06INLINE\x10\x02B\x9a\x01\n" +
+	"\x06INLINE\x10\x02*L\n" +
+	"\x10AttachmentAccess\x12\x12\n" +
+	"\x0eACCESS_INHERIT\x10\x00\x12\x11\n" +
+	"\rACCESS_LOCKED\x10\x01\x12\x11\n" +
+	"\rACCESS_PUBLIC\x10\x02B\x9a\x01\n" +
 	"\x0fcom.memos.storeB\x0fAttachmentProtoP\x01Z)github.com/usememos/memos/proto/gen/store\xa2\x02\x03MSX\xaa\x02\vMemos.Store\xca\x02\vMemos\\Store\xe2\x02\x17Memos\\Store\\GPBMetadata\xea\x02\fMemos::Storeb\x06proto3"
 
 var (
@@ -531,32 +610,34 @@ func file_store_attachment_proto_rawDescGZIP() []byte {
 	return file_store_attachment_proto_rawDescData
 }
 
-var file_store_attachment_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_store_attachment_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
 var file_store_attachment_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_store_attachment_proto_goTypes = []any{
 	(AttachmentStorageType)(0),         // 0: memos.store.AttachmentStorageType
 	(MotionMediaFamily)(0),             // 1: memos.store.MotionMediaFamily
 	(MotionMediaRole)(0),               // 2: memos.store.MotionMediaRole
 	(AttachmentOrigin)(0),              // 3: memos.store.AttachmentOrigin
-	(*MotionMedia)(nil),                // 4: memos.store.MotionMedia
-	(*AttachmentPayload)(nil),          // 5: memos.store.AttachmentPayload
-	(*AttachmentPayload_S3Object)(nil), // 6: memos.store.AttachmentPayload.S3Object
-	(*StorageS3Config)(nil),            // 7: memos.store.StorageS3Config
-	(*timestamppb.Timestamp)(nil),      // 8: google.protobuf.Timestamp
+	(AttachmentAccess)(0),              // 4: memos.store.AttachmentAccess
+	(*MotionMedia)(nil),                // 5: memos.store.MotionMedia
+	(*AttachmentPayload)(nil),          // 6: memos.store.AttachmentPayload
+	(*AttachmentPayload_S3Object)(nil), // 7: memos.store.AttachmentPayload.S3Object
+	(*StorageS3Config)(nil),            // 8: memos.store.StorageS3Config
+	(*timestamppb.Timestamp)(nil),      // 9: google.protobuf.Timestamp
 }
 var file_store_attachment_proto_depIdxs = []int32{
 	1, // 0: memos.store.MotionMedia.family:type_name -> memos.store.MotionMediaFamily
 	2, // 1: memos.store.MotionMedia.role:type_name -> memos.store.MotionMediaRole
-	6, // 2: memos.store.AttachmentPayload.s3_object:type_name -> memos.store.AttachmentPayload.S3Object
-	4, // 3: memos.store.AttachmentPayload.motion_media:type_name -> memos.store.MotionMedia
+	7, // 2: memos.store.AttachmentPayload.s3_object:type_name -> memos.store.AttachmentPayload.S3Object
+	5, // 3: memos.store.AttachmentPayload.motion_media:type_name -> memos.store.MotionMedia
 	3, // 4: memos.store.AttachmentPayload.origin:type_name -> memos.store.AttachmentOrigin
-	7, // 5: memos.store.AttachmentPayload.S3Object.s3_config:type_name -> memos.store.StorageS3Config
-	8, // 6: memos.store.AttachmentPayload.S3Object.last_presigned_time:type_name -> google.protobuf.Timestamp
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	4, // 5: memos.store.AttachmentPayload.access:type_name -> memos.store.AttachmentAccess
+	8, // 6: memos.store.AttachmentPayload.S3Object.s3_config:type_name -> memos.store.StorageS3Config
+	9, // 7: memos.store.AttachmentPayload.S3Object.last_presigned_time:type_name -> google.protobuf.Timestamp
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_store_attachment_proto_init() }
@@ -573,7 +654,7 @@ func file_store_attachment_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_store_attachment_proto_rawDesc), len(file_store_attachment_proto_rawDesc)),
-			NumEnums:      4,
+			NumEnums:      5,
 			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,

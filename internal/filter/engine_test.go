@@ -151,3 +151,23 @@ func TestRenderAllRejectsUnsupportedPredicate(t *testing.T) {
 	_, err = engine.CompileToStatement(context.Background(), `tags.all(t, size(t) > 2)`, RenderOptions{Dialect: DialectSQLite})
 	require.Error(t, err)
 }
+
+// The settings list of publicly linkable attachments is built entirely out of this
+// filter, so the payload path it extracts is load-bearing: point it at the wrong key
+// and the list quietly comes back empty while files stay on the open internet.
+func TestCompileAttachmentAccessFilter(t *testing.T) {
+	t.Parallel()
+
+	engine, err := NewEngine(NewAttachmentSchema())
+	require.NoError(t, err)
+
+	stmt, err := engine.CompileToStatement(context.Background(), `access == "ACCESS_PUBLIC"`, RenderOptions{Dialect: DialectSQLite})
+	require.NoError(t, err)
+	require.Contains(t, stmt.SQL, "JSON_EXTRACT(`attachment`.`payload`, '$.access')")
+	require.Equal(t, []any{"ACCESS_PUBLIC"}, stmt.Args)
+
+	// Ordering comparisons on an enum name would compare strings alphabetically,
+	// which means nothing; only equality is exposed.
+	_, err = engine.Compile(context.Background(), `access > "ACCESS_INHERIT"`)
+	require.Error(t, err)
+}

@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { isPublicAttachment } from "@/components/MemoMetadata/Attachment/attachmentHelpers";
 import MoveDocumentDialog from "@/components/Notebook/MoveDocumentDialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,6 +55,7 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
 
   // Derived state
   const isComment = Boolean(memo.parent);
+  const publicAttachmentCount = memo.attachments.filter(isPublicAttachment).length;
   const isArchived = memo.state === State.ARCHIVED;
   const taskStats = countTasks(memo.content);
   const canMutateTasks = !readonly && !isArchived && taskStats.total > 0;
@@ -236,7 +238,15 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
         onOpenChange={setDeleteDialogOpen}
         title={t("memo.delete-confirm")}
         confirmLabel={t("common.delete")}
-        description={t("memo.delete-confirm-description")}
+        description={
+          // A public attachment's link is the one thing deleting this document breaks
+          // *outside* the app — it may be sitting in someone else's blog post. Deleting
+          // is still allowed (决策 7 makes it the reliable way to pull a file back), but
+          // it should not be a surprise.
+          publicAttachmentCount > 0
+            ? `${t("memo.delete-confirm-description")} ${t("memo.delete-confirm-public-attachments", { total: publicAttachmentCount })}`
+            : t("memo.delete-confirm-description")
+        }
         cancelLabel={t("common.cancel")}
         onConfirm={confirmDeleteMemo}
         confirmVariant="destructive"

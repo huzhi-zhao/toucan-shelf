@@ -1,4 +1,4 @@
-import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
+import { type Attachment, AttachmentAccess } from "@/types/proto/api/v1/attachment_service_pb";
 import { getAttachmentType } from "@/utils/attachment";
 import { formatFileSize, getFileTypeLabel } from "@/utils/format";
 
@@ -14,6 +14,8 @@ export interface AttachmentMetadata {
   fileSizeLabel?: string;
 }
 
+export const isLockedAttachment = (attachment: Attachment): boolean => attachment.access === AttachmentAccess.ACCESS_LOCKED;
+export const isPublicAttachment = (attachment: Attachment): boolean => attachment.access === AttachmentAccess.ACCESS_PUBLIC;
 export const isImageAttachment = (attachment: Attachment): boolean => getAttachmentType(attachment) === "image/*";
 export const isVideoAttachment = (attachment: Attachment): boolean => getAttachmentType(attachment) === "video/*";
 export const isAudioAttachment = (attachment: Attachment): boolean => getAttachmentType(attachment) === "audio/*";
@@ -31,7 +33,7 @@ export const isPreviewableAttachment = (attachment: Attachment): boolean =>
 export const separateAttachments = (attachments: Attachment[]): AttachmentGroups => {
   return attachments.reduce<AttachmentGroups>(
     (groups, attachment) => {
-      if (attachment.locked) {
+      if (isLockedAttachment(attachment)) {
         groups.locked.push(attachment);
       } else if (isImageAttachment(attachment) || isVideoAttachment(attachment)) {
         groups.visual.push(attachment);

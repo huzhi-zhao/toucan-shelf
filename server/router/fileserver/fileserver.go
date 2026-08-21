@@ -46,12 +46,17 @@ const (
 	// maxConcurrentThumbnails limits concurrent thumbnail generation to prevent memory exhaustion.
 	maxConcurrentThumbnails = 3
 
-	// cacheMaxAge is the max-age value for Cache-Control headers (1 hour). Used for
-	// attachments the instance never rewrites in place: PDFs, EPUBs, video/audio, and
-	// everything served as a download.
+	// cacheMaxAge is the Cache-Control value for user avatars, which have a gate of
+	// their own and are the same bytes for every viewer.
 	cacheMaxAge = "public, max-age=3600"
 
-	// cacheRevalidate is the Cache-Control value for images embedded in memo content.
+	// cacheFreshness values are the *freshness* half of an attachment's Cache-Control;
+	// attachmentCacheControl prepends the scope (public/private) that its access mode
+	// earns. An hour for the ones the instance never rewrites in place: PDFs, EPUBs,
+	// video/audio, and everything served as a download.
+	cacheFreshnessMaxAge = "max-age=3600"
+
+	// cacheFreshnessRevalidate is the freshness policy for images embedded in memo content.
 	//
 	// An attachment's URL is derived from its UID and filename, so it does not change when
 	// the bytes behind it do — and since ADR-0017 the bytes genuinely do change: saving a
@@ -63,7 +68,11 @@ const (
 	// just have to revalidate before reusing it. Paired with the ETag below that turns repeat
 	// views into 304s: no bytes over the wire, no S3 GET, and an edited diagram shows up on
 	// the next load instead of an hour later.
-	cacheRevalidate = "public, no-cache"
+	cacheFreshnessRevalidate = "no-cache"
+
+	// cacheLocked is the whole Cache-Control for a locked attachment: no shared cache,
+	// no disk copy in the browser, nothing left behind once the vault re-locks.
+	cacheLocked = "private, no-store"
 )
 
 // xssUnsafeTypes contains MIME types that could execute scripts if served directly.
@@ -163,22 +172,24 @@ func (s *FileServerService) serveAttachmentFile(c *echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "attachment not found")
 	}
 
-	if err := s.checkAttachmentPermission(ctx, c, attachment); err != nil {
+	identityUsed, err := s.checkAttachmentPermission(ctx, c, attachment)
+	if err != nil {
 		return err
 	}
+	scope := resolveCacheScope(attachment, identityUsed)
 
 	if wantMotion {
-		return s.serveMotionClip(c, attachment)
+		return s.serveMotionClip(c, attachment, scope)
 	}
 
 	contentType := s.sanitizeContentType(attachment.Type)
 
 	// Stream video/audio to avoid loading entire file into memory.
 	if isMediaType(attachment.Type) {
-		return s.serveMediaStream(c, attachment, contentType)
+		return s.serveMediaStream(c, attachment, contentType, scope)
 	}
 
-	return s.serveStaticFile(c, attachment, contentType, wantThumbnail)
+	return s.serveStaticFile(c, attachment, contentType, wantThumbnail, scope)
 }
 
 // serveUserAvatar serves user avatar images.
@@ -231,9 +242,9 @@ func (s *FileServerService) serveUserAvatar(c *echo.Context) error {
 // =============================================================================
 
 // serveMediaStream serves video/audio files using streaming to avoid memory exhaustion.
-func (s *FileServerService) serveMediaStream(c *echo.Context, attachment *store.Attachment, contentType string) error {
+func (s *FileServerService) serveMediaStream(c *echo.Context, attachment *store.Attachment, contentType string, scope cacheScope) error {
 	setSecurityHeaders(c)
-	setMediaHeaders(c, contentType, attachment.Type, cacheMaxAge)
+	setMediaHeaders(c, contentType, attachment.Type, scope.cacheControl(cacheFreshnessMaxAge))
 
 	switch attachment.StorageType {
 	case storepb.AttachmentStorageType_LOCAL:
@@ -261,15 +272,16 @@ func (s *FileServerService) serveMediaStream(c *echo.Context, attachment *store.
 }
 
 // serveStaticFile serves non-streaming files (images, documents, etc.).
-func (s *FileServerService) serveStaticFile(c *echo.Context, attachment *store.Attachment, contentType string, wantThumbnail bool) error {
+func (s *FileServerService) serveStaticFile(c *echo.Context, attachment *store.Attachment, contentType string, wantThumbnail bool, scope cacheScope) error {
 	// Images are the ones rendered inline in memo content, and the ones whose bytes can be
 	// replaced under an unchanged URL, so they revalidate instead of sitting in a max-age
 	// window. Documents (PDF, EPUB, …) and downloads keep the original hour.
 	isImage := strings.HasPrefix(contentType, "image/")
-	cacheControl := cacheMaxAge
+	freshness := cacheFreshnessMaxAge
 	if isImage {
-		cacheControl = cacheRevalidate
+		freshness = cacheFreshnessRevalidate
 	}
+	cacheControl := scope.cacheControl(freshness)
 
 	// Generate thumbnail for supported image types.
 	if wantThumbnail && thumbnailSupportedTypes[attachment.Type] {
@@ -279,7 +291,7 @@ func (s *FileServerService) serveStaticFile(c *echo.Context, attachment *store.A
 			}
 		} else {
 			setSecurityHeaders(c)
-			setMediaHeaders(c, "image/jpeg", attachment.Type, cacheRevalidate)
+			setMediaHeaders(c, "image/jpeg", attachment.Type, scope.cacheControl(cacheFreshnessRevalidate))
 			if serveNotModified(c, attachmentETag(attachment, "thumb")) {
 				return nil
 			}
@@ -611,7 +623,7 @@ func calculateThumbnailDimensions(width, height int) (int, int) {
 	return 0, thumbnailMaxSize // Portrait: constrain height.
 }
 
-func (s *FileServerService) serveMotionClip(c *echo.Context, attachment *store.Attachment) error {
+func (s *FileServerService) serveMotionClip(c *echo.Context, attachment *store.Attachment, scope cacheScope) error {
 	motionMedia := attachment.Payload.GetMotionMedia()
 	if motionMedia == nil || motionMedia.Family != storepb.MotionMediaFamily_ANDROID_MOTION_PHOTO || !motionMedia.HasEmbeddedVideo {
 		return echo.NewHTTPError(http.StatusBadRequest, "attachment does not have motion clip")
@@ -623,7 +635,7 @@ func (s *FileServerService) serveMotionClip(c *echo.Context, attachment *store.A
 	}
 
 	setSecurityHeaders(c)
-	setMediaHeaders(c, "video/mp4", "video/mp4", cacheMaxAge)
+	setMediaHeaders(c, "video/mp4", "video/mp4", scope.cacheControl(cacheFreshnessMaxAge))
 	modTime := time.Unix(attachment.UpdatedTs, 0)
 	http.ServeContent(c.Response(), c.Request(), attachment.UID+".mp4", modTime, bytes.NewReader(clipBlob))
 	return nil
@@ -672,18 +684,26 @@ func (s *FileServerService) getMotionPath(attachment *store.Attachment) (string,
 // checkAttachmentPermission verifies the user has permission to access the attachment.
 // The decision itself lives in attachmentacl, shared with the metadata path in
 // api/v1; this only supplies the echo-specific inputs and maps the answer onto HTTP.
-func (s *FileServerService) checkAttachmentPermission(ctx context.Context, c *echo.Context, attachment *store.Attachment) error {
+//
+// It also reports whether the decision needed to know who the viewer is, which is
+// what resolveCacheScope turns into the response's Cache-Control audience.
+func (s *FileServerService) checkAttachmentPermission(ctx context.Context, c *echo.Context, attachment *store.Attachment) (identityUsed bool, err error) {
 	// Populated by the CurrentUser resolver below, which attachmentacl guarantees
 	// to call (at most once) before VaultUnlocked ever runs — see checkVaultAccess.
 	var credentialKind auth.CredentialKind
-	err := attachmentacl.CheckReadAccess(ctx, &attachmentacl.Request{
+	err = attachmentacl.CheckReadAccess(ctx, &attachmentacl.Request{
 		Store: s.Store,
 		CurrentUser: func(ctx context.Context) (*store.User, error) {
+			identityUsed = true
 			user, kind, err := s.getCurrentUser(ctx, c)
 			credentialKind = kind
 			return user, err
 		},
 		AllowAnonymous: s.Profile.AllowAnonymous(),
+		// This is the bytes path, so an ACCESS_PUBLIC attachment is readable here
+		// even when the document holding it is not. The metadata path in api/v1
+		// leaves this false on purpose — see the field's comment.
+		AllowPublicAttachment: true,
 		// Requests made from a shared document page carry the token that page was
 		// opened with, which is how a private document's images load there.
 		ShareToken: c.QueryParam("share_token"),
@@ -695,15 +715,15 @@ func (s *FileServerService) checkAttachmentPermission(ctx context.Context, c *ec
 
 	switch {
 	case err == nil:
-		return nil
+		return identityUsed, nil
 	case errors.Is(err, attachmentacl.ErrNotFound):
-		return echo.NewHTTPError(http.StatusNotFound, "attachment not found")
+		return identityUsed, echo.NewHTTPError(http.StatusNotFound, "attachment not found")
 	case errors.Is(err, attachmentacl.ErrUnauthenticated):
-		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized access")
+		return identityUsed, echo.NewHTTPError(http.StatusUnauthorized, "unauthorized access")
 	case errors.Is(err, attachmentacl.ErrForbidden):
-		return echo.NewHTTPError(http.StatusForbidden, "forbidden access")
+		return identityUsed, echo.NewHTTPError(http.StatusForbidden, "forbidden access")
 	default:
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to check attachment permission").Wrap(err)
+		return identityUsed, echo.NewHTTPError(http.StatusInternalServerError, "failed to check attachment permission").Wrap(err)
 	}
 }
 
@@ -767,9 +787,55 @@ func setSecurityHeaders(c *echo.Context) {
 	h.Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline';")
 }
 
+// cacheScope is the audience half of a Cache-Control value: who, besides this one
+// browser, may hold these bytes.
+type cacheScope string
+
+const (
+	// cacheScopeShared allows CDNs and corporate proxies to store the response. It is
+	// only ever handed out when the read decision was reached *without* consulting who
+	// the viewer is — a public document on an open instance, or an ACCESS_PUBLIC
+	// attachment — because that is exactly the condition under which one cached copy
+	// answering everybody is correct.
+	cacheScopeShared cacheScope = "public"
+
+	// cacheScopePrivate keeps the response in the requesting browser only. Anything
+	// authorized by who the viewer is lands here: a shared cache holding it would be
+	// storing a file whose whole point is that the instance decides per request who
+	// gets it.
+	cacheScopePrivate cacheScope = "private"
+
+	// cacheScopeVault is a locked attachment: not stored anywhere, so nothing survives
+	// the vault re-locking.
+	cacheScopeVault cacheScope = "vault"
+)
+
+// cacheControl pairs the scope with a freshness policy into a Cache-Control value.
+func (s cacheScope) cacheControl(freshness string) string {
+	if s == cacheScopeVault {
+		return cacheLocked
+	}
+	return string(s) + ", " + freshness
+}
+
+// resolveCacheScope reads the audience off the decision that was just made.
+// identityUsed reports whether attachmentacl had to resolve the viewer to answer,
+// which is a more precise question than "is the document public": it also covers
+// share tokens, and it costs nothing extra to ask.
+func resolveCacheScope(attachment *store.Attachment, identityUsed bool) cacheScope {
+	if attachmentacl.EffectiveAccess(attachment) == storepb.AttachmentAccess_ACCESS_LOCKED {
+		return cacheScopeVault
+	}
+	if identityUsed {
+		return cacheScopePrivate
+	}
+	return cacheScopeShared
+}
+
 // setMediaHeaders sets headers for media file responses. cacheControl is the Cache-Control
-// value to advertise — cacheMaxAge for immutable attachments, cacheRevalidate for the ones
-// that can be rewritten under the same URL.
+// value to advertise; for attachments it comes from attachmentCacheControl, which pairs a
+// freshness policy (an hour for immutable bytes, revalidate for the ones that can be
+// rewritten under the same URL) with the scope the access mode earns.
 func setMediaHeaders(c *echo.Context, contentType, originalType, cacheControl string) {
 	h := c.Response().Header()
 	h.Set(echo.HeaderContentType, contentType)
