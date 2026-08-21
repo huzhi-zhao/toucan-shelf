@@ -7,19 +7,26 @@
 #   ./deploy.sh                # update + rebuild + restart in current checkout
 #   curl -fsSL <raw-url>/deploy.sh | bash -s -- --dir ~/memos --branch main
 #
+# MEMOS_INSTANCE_URL is the public URL users actually reach. It doubles as the
+# "is this instance public" switch: unset means anonymous visitors get nothing,
+# which also hides per-attachment public links. Override with --instance-url or
+# by exporting MEMOS_INSTANCE_URL before running.
+#
 set -euo pipefail
 
 REPO_URL="${REPO_URL:-https://github.com/huzhi-zhao/ToucanShelf.git}"
 BRANCH="${BRANCH:-main}"
 TARGET_DIR="${TARGET_DIR:-memos}"
+MEMOS_INSTANCE_URL="${MEMOS_INSTANCE_URL:-https://toucan.huzhi.dev}"
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --repo) REPO_URL="$2"; shift 2 ;;
     --branch) BRANCH="$2"; shift 2 ;;
     --dir) TARGET_DIR="$2"; shift 2 ;;
+    --instance-url) MEMOS_INSTANCE_URL="$2"; shift 2 ;;
     -h|--help)
-      echo "Usage: $0 [--repo <url>] [--branch <name>] [--dir <path>]"
+      echo "Usage: $0 [--repo <url>] [--branch <name>] [--dir <path>] [--instance-url <url>]"
       exit 0
       ;;
     *)
@@ -52,6 +59,11 @@ else
 fi
 
 cd "$TARGET_DIR"
+
+# docker-compose.yaml reads this from the environment; without exporting it the
+# variable stays shell-local and compose falls back to the empty default.
+export MEMOS_INSTANCE_URL
+echo "=======> Instance URL: ${MEMOS_INSTANCE_URL:-<unset, private mode>}"
 
 echo "=======> Building image and starting container"
 $COMPOSE up -d --build
