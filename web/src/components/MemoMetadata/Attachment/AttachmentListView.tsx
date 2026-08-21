@@ -8,6 +8,7 @@ import MotionPhotoPreview from "@/components/MotionPhotoPreview";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import VideoPoster from "@/components/VideoPoster";
+import { useInstance } from "@/contexts/InstanceContext";
 import { extractAttachmentUidFromName } from "@/helpers/resource-names";
 import { cn } from "@/lib/utils";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
@@ -33,6 +34,7 @@ import {
   SINGLE_MOTION_VIDEO_CLASS,
   SINGLE_VIDEO_CARD_WIDTH_CLASS,
   VISUAL_TILE_BUTTON_CLASS,
+  VISUAL_Z,
 } from "./attachmentVisualClasses";
 import LockedAttachmentRow from "./LockedAttachmentRow";
 import { resolveVisualGalleryLayout } from "./visualGalleryLayout";
@@ -113,16 +115,48 @@ const VisualTile = ({
 };
 
 // Marks a tile whose file is readable by anyone holding its URL, so "this image is
-// on the open internet" is visible without opening a menu to find out.
-const PublicBadge = ({ label }: { label: string }) => (
-  <span
-    className="pointer-events-none absolute left-1 top-1 z-10 inline-flex items-center gap-1 rounded-full bg-background/85 px-2 py-0.5 text-[10px] font-medium text-muted-foreground shadow-sm backdrop-blur-sm"
-    title={label}
-  >
-    <GlobeIcon className="h-3 w-3" />
-    {label}
-  </span>
-);
+// on the open internet" is visible without opening a menu to find out. Clicking it
+// copies that URL — the badge is the only place in the read-only view where the
+// public link is reachable at all.
+//
+// Deliberately quiet: a bare globe in the corner, faded in on hover, because most
+// tiles are not public and a permanent labelled pill taxes every image to annotate a
+// few. The label survives as the tooltip. `group/media` is the media surface rather
+// than the outer tile chrome (attachmentVisualClasses), so it tracks the same hover
+// as the gradient. Note this leaves the badge unreachable on touch, where there is no
+// hover — the editor's access menu stays the authoritative readout.
+const PublicBadge = ({ attachment, label }: { attachment: Attachment; label: string }) => {
+  const t = useTranslate();
+  const { profile } = useInstance();
+
+  return (
+    <button
+      type="button"
+      // The tile itself is the lightbox trigger, so the click must stop here —
+      // otherwise copying the link also opens the preview over it.
+      onClick={(event) => {
+        event.stopPropagation();
+        // A public attachment is worth an absolute URL, but a link that only works
+        // on this origin still beats copying nothing when instanceUrl is unset.
+        copy(`${profile.instanceUrl || window.location.origin}${getAttachmentUrl(attachment)}`);
+        toast.success(t("attachment.public.copy-success"));
+      }}
+      className={cn(
+        "absolute right-1 top-1 inline-flex h-4 w-4 items-center justify-center rounded-full",
+        "bg-background/85 text-muted-foreground shadow-sm backdrop-blur-sm",
+        "transition-opacity hover:text-foreground",
+        // Invisible must also mean unclickable, or the corner of every public tile
+        // swallows clicks meant for the preview.
+        "pointer-events-none opacity-0 group-hover/media:pointer-events-auto group-hover/media:opacity-100",
+        VISUAL_Z.badge,
+      )}
+      title={t("attachment.public.copy-link")}
+      aria-label={label}
+    >
+      <GlobeIcon className="h-2.5 w-2.5" />
+    </button>
+  );
+};
 
 const VideoPlayBadge = ({ className, children }: PropsWithChildren<{ className?: string }>) => (
   <span
@@ -145,7 +179,7 @@ const useVisualTileExtras = (item: VisualItem) => {
   const attachment = item.attachments.length === 1 ? item.attachments[0] : undefined;
   return {
     actions: undefined,
-    badge: attachment && isPublicAttachment(attachment) ? <PublicBadge label={t("attachment.public.badge")} /> : undefined,
+    badge: attachment && isPublicAttachment(attachment) ? <PublicBadge attachment={attachment} label={t("attachment.public.badge")} /> : undefined,
   };
 };
 
