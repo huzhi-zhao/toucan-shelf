@@ -1,9 +1,11 @@
-import { XIcon } from "lucide-react";
-import { useEffect, useRef } from "react";
+import copy from "copy-to-clipboard";
+import { CheckIcon, CopyIcon, XIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { MemoMarkdownRenderer } from "@/components/MemoContent/MemoMarkdownRenderer";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTranslate } from "@/utils/i18n";
+import { PDF_PAGE_SEPARATOR } from "./extractPdfText";
 import type { PdfTextBlock } from "./usePdfExtractedText";
 
 const NO_MENTIONS = new Set<string>();
@@ -28,6 +30,35 @@ interface Props {
 export const PdfTextSidebar = ({ blocks, formatting, error, onSelect, scrollToPage, onClose, className }: Props) => {
   const t = useTranslate();
   const blockRefs = useRef(new Map<number, HTMLDivElement>());
+  const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  // Clear any pending "Copied" feedback timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    };
+  }, []);
+
+  // Joins every page block with the same "---" separator the sidebar renders, so the
+  // clipboard content matches what the user sees (page breaks preserved).
+  const handleCopy = async () => {
+    if (!blocks) return;
+    const text = blocks.map((block) => block.content).join(PDF_PAGE_SEPARATOR);
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const success = copy(text);
+        if (!success) throw new Error("copy failed");
+      }
+      setCopied(true);
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.warn("Failed to copy PDF text:", err);
+    }
+  };
 
   // Scroll the requested page's block into view once it's clicked in the PDF. Depends on
   // `blocks` too so a click that arrives before the (async AI-formatted) text has loaded
@@ -40,7 +71,26 @@ export const PdfTextSidebar = ({ blocks, formatting, error, onSelect, scrollToPa
   return (
     <div className={cn("w-full h-full min-h-0 flex flex-col border-l border-t border-border bg-background", className)}>
       <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
-        <span className="text-sm font-medium text-foreground">{t("pdf.plain-text-view")}</span>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-sm font-medium text-foreground">{t("pdf.plain-text-view")}</span>
+          {blocks && blocks.length > 0 && (
+            <button
+              type="button"
+              onClick={handleCopy}
+              className={cn(
+                "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs",
+                "transition-colors duration-200",
+                "hover:bg-accent active:scale-95",
+                copied ? "text-primary" : "text-muted-foreground hover:text-foreground",
+              )}
+              aria-label={copied ? t("pdf.copy-text-success") : t("pdf.copy-text")}
+              title={copied ? t("pdf.copy-text-success") : t("pdf.copy-text")}
+            >
+              {copied ? <CheckIcon className="w-3.5 h-3.5" /> : <CopyIcon className="w-3.5 h-3.5" />}
+              <span>{copied ? t("pdf.copy-text-success") : t("pdf.copy-text")}</span>
+            </button>
+          )}
+        </div>
         {onClose && (
           <Button variant="ghost" size="icon" className="w-6 h-6" onClick={onClose}>
             <XIcon className="w-3.5 h-3.5" />

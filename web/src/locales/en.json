@@ -1329,7 +1329,9 @@
     "note-expand": "More",
     "note-collapse": "Less",
     "view-plain-text": "View plain text",
-    "plain-text-view": "Plain text"
+    "plain-text-view": "Plain text",
+    "copy-text": "Copy",
+    "copy-text-success": "Copied"
   },
   "epub": {
     "loading": "Loading…",
