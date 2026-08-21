@@ -38,7 +38,17 @@ import { useTranslate } from "@/utils/i18n";
 // master-passphrase dialog is standing in for a transition that has to wait for it.
 type PendingAccess = AttachmentAccess.ACCESS_INHERIT | AttachmentAccess.ACCESS_LOCKED;
 
-const AttachmentAccessMenu = ({ attachment }: { attachment: Attachment }) => {
+// The editor keeps its attachment list in reducer state rather than reading it from
+// react-query, so the mutation's cache invalidation never reaches this row. The parent
+// hands us a callback to write the server's updated copy back into that state —
+// without it the trigger icon keeps showing the old mode until the page is reloaded.
+const AttachmentAccessMenu = ({
+  attachment,
+  onAccessChange,
+}: {
+  attachment: Attachment;
+  onAccessChange?: (attachment: Attachment) => void;
+}) => {
   const t = useTranslate();
   const { profile } = useInstance();
   const vault = useAttachmentVault();
@@ -86,7 +96,7 @@ const AttachmentAccessMenu = ({ attachment }: { attachment: Attachment }) => {
       return;
     }
     try {
-      await setAccess({ name: attachment.name, access: next });
+      onAccessChange?.(await setAccess({ name: attachment.name, access: next }));
       if (next === AttachmentAccess.ACCESS_PUBLIC) {
         copyPublicLink();
       }
@@ -191,7 +201,7 @@ const AttachmentAccessMenu = ({ attachment }: { attachment: Attachment }) => {
             if (next !== AttachmentAccess.ACCESS_LOCKED) {
               await vault.unlock();
             }
-            await setAccess({ name: attachment.name, access: next });
+            onAccessChange?.(await setAccess({ name: attachment.name, access: next }));
           } catch {
             toast.error(t("attachment.public.error"));
           }

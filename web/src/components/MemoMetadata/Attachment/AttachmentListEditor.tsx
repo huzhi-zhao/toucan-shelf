@@ -56,14 +56,15 @@ const AttachmentItemActions: FC<{
   // that would publish half of it; a not-yet-uploaded local file has no server-side
   // record to set access on at all.
   accessAttachment?: Attachment;
-}> = ({ onRemove, onMoveUp, onMoveDown, canMoveUp = true, canMoveDown = true, accessAttachment }) => {
+  onAccessChange?: (attachment: Attachment) => void;
+}> = ({ onRemove, onMoveUp, onMoveDown, canMoveUp = true, canMoveDown = true, accessAttachment, onAccessChange }) => {
   const stopPropagation = (event: MouseEvent) => {
     event.stopPropagation();
   };
 
   return (
     <div className="shrink-0 flex items-center gap-0.5">
-      {accessAttachment && <AttachmentAccessMenu attachment={accessAttachment} />}
+      {accessAttachment && <AttachmentAccessMenu attachment={accessAttachment} onAccessChange={onAccessChange} />}
 
       {onMoveUp && (
         <Button
@@ -124,7 +125,8 @@ const AttachmentItemCard: FC<{
   canMoveUp?: boolean;
   canMoveDown?: boolean;
   accessAttachment?: Attachment;
-}> = ({ item, onPreview, onRemove, onMoveUp, onMoveDown, canMoveUp = true, canMoveDown = true, accessAttachment }) => {
+  onAccessChange?: (attachment: Attachment) => void;
+}> = ({ item, onPreview, onRemove, onMoveUp, onMoveDown, canMoveUp = true, canMoveDown = true, accessAttachment, onAccessChange }) => {
   const t = useTranslate();
   const { category, filename, thumbnailUrl, mimeType, size, sourceUrl, isVoiceNote, audioMeta } = item;
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -245,6 +247,7 @@ const AttachmentItemCard: FC<{
           canMoveUp={canMoveUp}
           canMoveDown={canMoveDown}
           accessAttachment={accessAttachment}
+          onAccessChange={onAccessChange}
         />
       </div>
     </div>
@@ -303,6 +306,13 @@ const AttachmentListEditor: FC<AttachmentListEditorProps> = ({
       }, []),
     [items],
   );
+
+  // The access menu writes straight to the server, but this list renders from the
+  // editor's reducer state — the mutation's query invalidation never reaches it. Swap
+  // in the server's updated copy so the row's icon reflects the new mode immediately.
+  const handleAccessChange = (updated: Attachment) => {
+    onAttachmentsChange?.(attachments.map((attachment) => (attachment.name === updated.name ? updated : attachment)));
+  };
 
   const handleMoveAttachments = (itemId: string, direction: -1 | 1) => {
     if (!onAttachmentsChange) return;
@@ -438,6 +448,7 @@ const AttachmentListEditor: FC<AttachmentListEditorProps> = ({
               key={item.id}
               item={item}
               accessAttachment={accessAttachment}
+              onAccessChange={handleAccessChange}
               onPreview={
                 item.category === "image" || item.category === "video" || item.category === "motion"
                   ? () => handlePreviewItem(item)
