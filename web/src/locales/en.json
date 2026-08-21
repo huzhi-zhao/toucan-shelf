@@ -41,7 +41,9 @@
       "copy-success": "Public link copied.",
       "error": "Could not change this attachment's public link.",
       "needs-instance-url": "This instance has no public address configured, so a public link would not work.",
-      "explainer": "Anyone with the link can open this file, even without signing in. It stops working if the document is deleted."
+      "explainer": "Anyone with the link can open this file, even without signing in. It stops working if the document is deleted.",
+      "leave-confirm-title": "Change this file's public link?",
+      "leave-confirm-description": "\"{{filename}}\" currently has a public link. Anyone who already saved that link — in a blog post, a chat, an email — will get a 404 once you change this."
     },
     "vault": {
       "lock": "Lock",
@@ -53,6 +55,10 @@
       "lock-error": "Could not lock this attachment.",
       "needs-master-key": "Unlock your master passphrase once to enable attachment locking.",
       "locked-attachments-hidden": "Locked attachments are only visible here — they are never rendered inline in a document, even for their owner."
+    },
+    "access": {
+      "menu": "Access",
+      "unset-private": "Remove private lock"
     }
   },
   "attachment-library": {

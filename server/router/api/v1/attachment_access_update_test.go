@@ -9,6 +9,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"google.golang.org/grpc/metadata"
+
 	"github.com/usememos/memos/internal/profile"
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
 	storepb "github.com/usememos/memos/proto/gen/store"
@@ -25,7 +27,21 @@ import (
 func newAccessUpdateService(ctx context.Context, t *testing.T, instanceURL string) (*APIV1Service, *store.Store) {
 	t.Helper()
 	ts := teststore.NewTestingStore(ctx, t)
-	return &APIV1Service{Store: ts, Profile: &profile.Profile{Data: t.TempDir(), InstanceURL: instanceURL}}, ts
+	return &APIV1Service{Store: ts, Profile: &profile.Profile{Data: t.TempDir(), InstanceURL: instanceURL}, Secret: accessTestSecret}, ts
+}
+
+const accessTestSecret = "access-update-test-secret"
+
+// vaultUnlockedCtx returns a context that looks like what a browser holding a valid
+// vault cookie produces: the cookie on the incoming metadata plus the session
+// credential kind. PAT/MCP callers never get here — auth.VaultUnlocked rejects any
+// kind but Session outright (ADR-0003).
+func vaultUnlockedCtx(t *testing.T, base context.Context, userID int32) context.Context {
+	t.Helper()
+	token, _, err := auth.GenerateVaultToken(userID, []byte(accessTestSecret))
+	require.NoError(t, err)
+	ctx := context.WithValue(base, auth.CredentialKindContextKey, auth.CredentialKindSession)
+	return metadata.NewIncomingContext(ctx, metadata.Pairs("cookie", auth.VaultCookieName+"="+token))
 }
 
 func createPlainAttachment(ctx context.Context, t *testing.T, ts *store.Store, creatorID int32, uid string) *store.Attachment {
@@ -123,7 +139,8 @@ func TestUpdateAttachmentAccess_LockedToPublicClearsLegacyBool(t *testing.T) {
 
 	_, err = setAccess(ownerCtx, svc, attachment, v1pb.AttachmentAccess_ACCESS_LOCKED)
 	require.NoError(t, err)
-	_, err = setAccess(ownerCtx, svc, attachment, v1pb.AttachmentAccess_ACCESS_PUBLIC)
+	// Leaving LOCKED needs the vault open — see TestUpdateAttachmentAccess_UnlockingNeedsOwnerAndVault.
+	_, err = setAccess(vaultUnlockedCtx(t, ownerCtx, owner.ID), svc, attachment, v1pb.AttachmentAccess_ACCESS_PUBLIC)
 	require.NoError(t, err)
 
 	stored, err := ts.GetAttachment(ctx, &store.FindAttachment{UID: &attachment.UID})
@@ -154,7 +171,7 @@ func TestUpdateAttachmentAccess_LegacyLockedMaskStillWorks(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, v1pb.AttachmentAccess_ACCESS_LOCKED, updated.Access)
 
-	updated, err = svc.UpdateAttachment(ownerCtx, &v1pb.UpdateAttachmentRequest{
+	updated, err = svc.UpdateAttachment(vaultUnlockedCtx(t, ownerCtx, owner.ID), &v1pb.UpdateAttachmentRequest{
 		Attachment: &v1pb.Attachment{Name: AttachmentNamePrefix + attachment.UID, Locked: false},
 		UpdateMask: &field_mask.FieldMask{Paths: []string{"locked"}},
 	})
@@ -190,4 +207,76 @@ func TestListAttachments_FilterByPublicAccess(t *testing.T) {
 	resp, err = svc.ListAttachments(ownerCtx, &v1pb.ListAttachmentsRequest{Filter: `access == "ACCESS_PUBLIC"`})
 	require.NoError(t, err)
 	require.Empty(t, resp.Attachments)
+}
+
+// Unlocking is the transition that undoes the passphrase gate, so it answers to the
+// same two conditions reading a locked attachment does. Both halves of this were
+// missing: UpdateAttachment's writer check admits admins, and ACCESS_INHERIT used to
+// carry no check at all — so an admin could unlock any user's file and read it, and a
+// stolen session could unlock-then-read without ever knowing the passphrase.
+func TestUpdateAttachmentAccess_UnlockingNeedsOwnerAndVault(t *testing.T) {
+	ctx := context.Background()
+	svc, ts := newAccessUpdateService(ctx, t, "https://notes.example.com")
+
+	owner := createTestUser(ctx, t, ts, "unlock-owner", store.RoleUser)
+	admin := createTestUser(ctx, t, ts, "unlock-admin", store.RoleAdmin)
+	ownerCtx := context.WithValue(ctx, auth.UserIDContextKey, owner.ID)
+	attachment := createPlainAttachment(ctx, t, ts, owner.ID, "acc-unlock")
+	_, err := ts.UpsertUserSetting(ctx, &storepb.UserSetting{
+		UserId: owner.ID,
+		Key:    storepb.UserSetting_SECRET_KEY,
+		Value:  &storepb.UserSetting_SecretKey{SecretKey: &storepb.SecretKeyUserSetting{UnlockVerifier: "verifier"}},
+	})
+	require.NoError(t, err)
+	_, err = setAccess(ownerCtx, svc, attachment, v1pb.AttachmentAccess_ACCESS_LOCKED)
+	require.NoError(t, err)
+
+	// An admin may still rename or delete this attachment; unlocking it is not among
+	// the things administrative privilege buys, exactly as reading it isn't.
+	adminCtx := vaultUnlockedCtx(t, context.WithValue(ctx, auth.UserIDContextKey, admin.ID), admin.ID)
+	_, err = setAccess(adminCtx, svc, attachment, v1pb.AttachmentAccess_ACCESS_INHERIT)
+	require.Equal(t, codes.PermissionDenied, status.Code(err))
+
+	// The owner on a session that has not proved it holds the passphrase is refused
+	// too — otherwise a stolen cookie is worth as much as the passphrase.
+	_, err = setAccess(ownerCtx, svc, attachment, v1pb.AttachmentAccess_ACCESS_INHERIT)
+	require.Equal(t, codes.FailedPrecondition, status.Code(err))
+
+	// A vault cookie belonging to someone else does not count either.
+	_, err = setAccess(vaultUnlockedCtx(t, ownerCtx, admin.ID), svc, attachment, v1pb.AttachmentAccess_ACCESS_INHERIT)
+	require.Equal(t, codes.FailedPrecondition, status.Code(err))
+
+	// Owner + open vault: the lock comes off, and the legacy mirror comes off with it.
+	updated, err := setAccess(vaultUnlockedCtx(t, ownerCtx, owner.ID), svc, attachment, v1pb.AttachmentAccess_ACCESS_INHERIT)
+	require.NoError(t, err)
+	require.Equal(t, v1pb.AttachmentAccess_ACCESS_INHERIT, updated.Access)
+	require.False(t, updated.Locked)
+}
+
+// A PAT or MCP token is not a browser session, so it can never unlock — even held by
+// the owner, even if it somehow carried a vault cookie (ADR-0003).
+func TestUpdateAttachmentAccess_UnlockingRejectsNonSessionCredential(t *testing.T) {
+	ctx := context.Background()
+	svc, ts := newAccessUpdateService(ctx, t, "https://notes.example.com")
+
+	owner := createTestUser(ctx, t, ts, "unlock-pat", store.RoleUser)
+	ownerCtx := context.WithValue(ctx, auth.UserIDContextKey, owner.ID)
+	attachment := createPlainAttachment(ctx, t, ts, owner.ID, "acc-unlock-pat")
+	_, err := ts.UpsertUserSetting(ctx, &storepb.UserSetting{
+		UserId: owner.ID,
+		Key:    storepb.UserSetting_SECRET_KEY,
+		Value:  &storepb.UserSetting_SecretKey{SecretKey: &storepb.SecretKeyUserSetting{UnlockVerifier: "verifier"}},
+	})
+	require.NoError(t, err)
+	_, err = setAccess(ownerCtx, svc, attachment, v1pb.AttachmentAccess_ACCESS_LOCKED)
+	require.NoError(t, err)
+
+	token, _, err := auth.GenerateVaultToken(owner.ID, []byte(accessTestSecret))
+	require.NoError(t, err)
+	patCtx := metadata.NewIncomingContext(
+		context.WithValue(ownerCtx, auth.CredentialKindContextKey, auth.CredentialKindPAT),
+		metadata.Pairs("cookie", auth.VaultCookieName+"="+token),
+	)
+	_, err = setAccess(patCtx, svc, attachment, v1pb.AttachmentAccess_ACCESS_INHERIT)
+	require.Equal(t, codes.FailedPrecondition, status.Code(err))
 }

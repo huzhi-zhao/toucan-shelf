@@ -1174,7 +1174,29 @@ func stripImageExif(imageData []byte, mimeType string) ([]byte, error) {
 //
 // ACCESS_LOCKED carries R8: never let an attachment lock behind a passphrase its
 // owner can't yet prove they hold — that's "locks, doesn't unlock".
+//
+// Leaving ACCESS_LOCKED is guarded separately, and more tightly than arriving at any
+// mode, because it is the one transition that *undoes* the passphrase gate.
 func (s *APIV1Service) authorizeAttachmentAccessUpdate(ctx context.Context, attachment *store.Attachment, user *store.User, access v1pb.AttachmentAccess) error {
+	// Unlocking is a read of the passphrase gate by another name: whoever can flip a
+	// locked attachment to INHERIT can then simply download it. So it answers to the
+	// same two things reading it would (attachmentacl.checkVaultAccess) — be the
+	// creator, and hold an unlocked vault on a browser session — rather than to
+	// UpdateAttachment's ordinary "creator or admin" writer check.
+	//
+	// Without this the lock is decorative twice over: an admin could unlock any user's
+	// attachment and read it, which part B's threat model explicitly promises to stop,
+	// and a stolen session with no vault cookie could unlock-then-read, skipping the
+	// passphrase the whole feature is built on.
+	if attachmentacl.EffectiveAccess(attachment) == storepb.AttachmentAccess_ACCESS_LOCKED && access != v1pb.AttachmentAccess_ACCESS_LOCKED {
+		if attachment.CreatorID != user.ID {
+			return status.Errorf(codes.PermissionDenied, "only the attachment's owner can unlock it")
+		}
+		if !auth.VaultUnlocked(cookieHeaderFromContext(ctx), []byte(s.Secret), user.ID, auth.GetCredentialKind(ctx)) {
+			return status.Errorf(codes.FailedPrecondition, "unlock your master passphrase before changing a locked attachment's access")
+		}
+	}
+
 	switch access {
 	case v1pb.AttachmentAccess_ACCESS_PUBLIC:
 		if attachment.CreatorID != user.ID {

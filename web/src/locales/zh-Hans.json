@@ -1048,7 +1048,9 @@
       "copy-success": "公开链接已复制。",
       "error": "修改公开直链失败。",
       "needs-instance-url": "本实例未配置对外地址，公开链接无法生效。",
-      "explainer": "拿到链接的人无需登录即可打开这个文件。文档被删除后链接会失效。"
+      "explainer": "拿到链接的人无需登录即可打开这个文件。文档被删除后链接会失效。",
+      "leave-confirm-title": "改变这个文件的公开直链？",
+      "leave-confirm-description": "“{{filename}}”当前有公开直链。已经把这个链接存到别处的人——博客、聊天、邮件里——改完之后都会拿到 404。"
     },
     "vault": {
       "lock": "锁定",
@@ -1060,6 +1062,10 @@
       "lock-error": "无法锁定此附件。",
       "needs-master-key": "请先解锁一次主口令，才能锁定附件。",
       "locked-attachments-hidden": "已锁定的附件仅在此处可见——不会在文档正文中渲染，即使是所有者本人。"
+    },
+    "access": {
+      "menu": "访问权限",
+      "unset-private": "取消设为私密"
     }
   },
   "attachment-library": {

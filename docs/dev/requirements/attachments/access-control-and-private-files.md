@@ -160,7 +160,15 @@ verifier = HMAC-SHA256(MK, "toucan-attach/unlock/v1")   ← 存 user_setting，�
    `public, max-age=3600`（图片是 `public, no-cache`）。`public` 的语义是允许共享缓存存储——
    前面挂 CDN/反代时，一个 locked 或 PRIVATE 文档的**非图片**附件字节可能被边缘缓存住，之后
    不带 vault cookie 也能取到。C 部分顺带修了这条（见"C 的实现要点"第 5 点）。
-2. **3 分钟窗口内没有续期，流式播放会中途断。**`serveMediaStream` 的每个 range 请求都重新过闸，
+2. ~~**解锁无人把关。**~~ 已修：写侧 `authorizeAttachmentAccessUpdate` 原来只检查"要变成
+   什么"，不检查"原来是什么"，而 `ACCESS_INHERIT` 这一支是空的——于是**离开 LOCKED 完全没有
+   闸门**。后果有两个，都直接推翻上面的威胁模型：`UpdateAttachment` 的写侧允许
+   `creator || isSuperUser`，所以**管理员可以把任何人的私密附件解锁再读**（威胁模型里明写
+   "挡得住……含管理员"）；而任何登录会话不带 vault cookie 也能先解锁再下载，**口令这一环整个
+   被绕过**。现在离开 LOCKED 要同时满足"是创建者"和"持有已解锁的 vault（浏览器会话）"，
+   与读侧 `checkVaultAccess` 完全对称——解锁本质上就是读闸的另一种写法。
+
+3. **3 分钟窗口内没有续期，流式播放会中途断。**`serveMediaStream` 的每个 range 请求都重新过闸，
    所以一个 locked 的长视频播到第 3 分钟会突然 403，大文件断点续传同理。已建立的单个 HTTP
    下载连接不受影响。要修就补 renew，不是把 TTL 调回 30 分钟。
 
@@ -266,7 +274,8 @@ LEGACY-COMPAT 兜底（`access` 缺省而 `locked` 为真时按 LOCKED 处理）
 | 写侧授权 | `authorizeAttachmentAccessUpdate`（owner-only + InstanceURL + R8） |
 | 缓存 scope | `resolveCacheScope` / `cacheScope.cacheControl` |
 | 前端写入 | [useAttachmentAccess.ts](../../../../web/src/hooks/useAttachmentAccess.ts) |
-| 前端菜单与角标 | [AttachmentListView.tsx](../../../../web/src/components/MemoMetadata/Attachment/AttachmentListView.tsx)（图片图块上的悬浮 ⋮ 菜单、`PublicBadge`） |
+| 前端设置入口 | [AttachmentAccessMenu.tsx](../../../../web/src/components/MemoMetadata/Attachment/AttachmentAccessMenu.tsx)，挂在 [AttachmentListEditor.tsx](../../../../web/src/components/MemoMetadata/Attachment/AttachmentListEditor.tsx) 的行操作区 |
+| 前端角标（仅显示） | [AttachmentListView.tsx](../../../../web/src/components/MemoMetadata/Attachment/AttachmentListView.tsx) 的 `PublicBadge` |
 | 按 access 过滤 | `NewAttachmentSchema` 的 `access` 字段（[internal/filter/schema.go](../../../../internal/filter/schema.go)） |
 | 清单页 | [PublicAttachmentsSection.tsx](../../../../web/src/components/Settings/PublicAttachmentsSection.tsx)（设置 → 公开直链） |
 | 测试 | [attachment_public_test.go](../../../../server/router/fileserver/attachment_public_test.go)、[attachment_access_update_test.go](../../../../server/router/api/v1/attachment_access_update_test.go) |
@@ -333,16 +342,53 @@ SQLite 跑一遍"设为公开 → 出现在清单 → 取消 → 从清单消失
 3. **盗链与流量**：不做 Referer 限制或速率限制，已知会被外站直接引用。这条是**决定不做**，
    不是排期，跟上面两条性质不同。
 
+### 入口只有一个：编辑器的附件行
+
+访问模式（INHERIT / LOCKED / PUBLIC）的设置入口是
+[AttachmentAccessMenu.tsx](../../../../web/src/components/MemoMetadata/Attachment/AttachmentAccessMenu.tsx)，
+挂在**编辑器**附件列表每一行的排序按钮左侧，阅读态（`AttachmentListView`）**不提供任何设置入口**。
+
+最初做反了：入口挂在阅读态的图块上，而那是唯一看不到最常见情况的地方——正文里插入的图片
+`origin = INLINE`，被 `partitionInlinedAttachments` 整个摘出附件列表，于是"给文档里的一张图
+开公开直链"这条路是彻底断的。编辑器的列表有 👁 开关能显示内联附件，是唯一每个附件都够得着的
+列表。（Notebook 的文档预览页还有第二层：`DocumentView` 里 `openPreview` 是空函数，点内联
+图片连灯箱都不开，所以把入口挂到灯箱上同样够不着。）
+
+菜单按状态机给选项，而不是给两个独立开关——后者能表达出 `locked && public`，正是决策 5
+要在类型层面消灭的：
+
+| 当前状态 | 提供的操作 |
+| --- | --- |
+| INHERIT | 设为私密 · 设为公开直链（未配 InstanceURL 时不出现） |
+| LOCKED | **只有**取消设为私密 |
+| PUBLIC | 复制链接 · 取消公开 · 设为私密（后两个都要确认） |
+
+三条边界值得单独说：
+
+- **LOCKED 不直接给"设为公开"**：一次点击里塞进两个相反的意图，必须先经 INHERIT 落地。
+- **离开 PUBLIC 一律弹窗确认**：这是唯一一个影响面在本应用之外的转换，链接可能已经躺在别人的
+  博客或聊天记录里。取消公开和转私密都会让那些链接 404，所以两条都确认，不只确认转私密的那条。
+- **离开 LOCKED 需要主口令**：服务端要求持有已解锁的 vault（见 B 部分已修缺口 2），所以菜单
+  会在必要时就地拉起解锁对话框并在解锁后重放这次操作，而不是报一个用户看不懂的错。
+
+设置访问模式是**立即写服务端**的，跟编辑器里其他改动"保存时才落库"的语义不同。这是附件元数据
+不是文档内容，`UpdateAttachment` 本来就独立于 `SetMemoAttachments`，属于有意为之。
+
+阅读态保留的是**显示**而非设置：公开附件的图块左上角仍有"公开直链"角标。
+
 ### 前端待手工验证的点
 
 后端矩阵有测试覆盖，下面这些是纯视觉/交互，需要人肉过一遍：
 
-1. 图片图块右上角的 ⋮ 菜单：鼠标移上去才出现，点它**不能**顺带打开灯箱预览。
-2. "设为公开直链"成功后会自动把绝对链接复制到剪贴板；退出登录或换个浏览器打开该链接应能直接看到图。
-3. 公开后图块左上角出现"公开直链"角标。
-4. 实例未配置 InstanceURL 时，菜单里不出现公开相关条目。
-5. 动态照片（motion photo）这类一个图块对应两个文件的项**没有** ⋮ 菜单，只能从下方附件列表操作。
-6. 已公开的附件菜单里不再提供"设为私密"，避免两个状态互相打架。
+1. 编辑器附件行的访问菜单在排序按钮左侧；图标随状态变（私密=锁、公开=地球、默认=⋮）。
+2. 正文里插入的图片：点 👁 展开内联附件后，能在它那一行找到访问菜单——这是本轮修的主要问题。
+3. "设为公开直链"成功后会自动把绝对链接复制到剪贴板；退出登录或换个浏览器打开该链接应能直接看到图。
+4. 公开后阅读态图块左上角出现"公开直链"角标；阅读态菜单里**没有**任何访问设置项。
+5. 实例未配置 InstanceURL 时，菜单里不出现公开相关条目。
+6. 动态照片（motion photo）这类一行对应两个文件的项**没有**访问菜单，未上传的本地文件同理。
+7. 私密附件的菜单里**只有**"取消设为私密"；取消后菜单才重新出现"设为公开直链"。
+8. 主口令未解锁时点"取消设为私密"，应弹出解锁框，解锁完自动完成这次取消（不用再点一遍）。
+9. 公开附件点"取消公开"或"设为私密"，都要先弹确认框说明外链会失效。
 7. 设置 → 公开直链：列表只出现自己公开过的文件；"取消公开"确认后该行立即消失（缓存失效
    靠 `useSetAttachmentAccess` 里对 `attachmentKeys.lists()` 的 invalidate，漏了的话会留着
    一行已经取消了的记录）。

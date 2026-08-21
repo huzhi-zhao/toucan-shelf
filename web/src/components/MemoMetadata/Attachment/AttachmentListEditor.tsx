@@ -24,6 +24,7 @@ import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 import { formatFileSize, getFileTypeLabel } from "@/utils/format";
 import { useTranslate } from "@/utils/i18n";
 import type { PreviewMediaItem } from "@/utils/media-item";
+import AttachmentAccessMenu from "./AttachmentAccessMenu";
 import AttachmentReferencedDialog from "./AttachmentReferencedDialog";
 import { formatAudioTime } from "./attachmentHelpers";
 
@@ -50,13 +51,20 @@ const AttachmentItemActions: FC<{
   onMoveDown?: () => void;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
-}> = ({ onRemove, onMoveUp, onMoveDown, canMoveUp = true, canMoveDown = true }) => {
+  // The saved attachment this row stands for, when there is exactly one. A motion
+  // photo is a single row over two files, so it gets no access menu rather than one
+  // that would publish half of it; a not-yet-uploaded local file has no server-side
+  // record to set access on at all.
+  accessAttachment?: Attachment;
+}> = ({ onRemove, onMoveUp, onMoveDown, canMoveUp = true, canMoveDown = true, accessAttachment }) => {
   const stopPropagation = (event: MouseEvent) => {
     event.stopPropagation();
   };
 
   return (
     <div className="shrink-0 flex items-center gap-0.5">
+      {accessAttachment && <AttachmentAccessMenu attachment={accessAttachment} />}
+
       {onMoveUp && (
         <Button
           variant="ghost"
@@ -115,7 +123,8 @@ const AttachmentItemCard: FC<{
   onMoveDown?: () => void;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
-}> = ({ item, onPreview, onRemove, onMoveUp, onMoveDown, canMoveUp = true, canMoveDown = true }) => {
+  accessAttachment?: Attachment;
+}> = ({ item, onPreview, onRemove, onMoveUp, onMoveDown, canMoveUp = true, canMoveDown = true, accessAttachment }) => {
   const t = useTranslate();
   const { category, filename, thumbnailUrl, mimeType, size, sourceUrl, isVoiceNote, audioMeta } = item;
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -235,6 +244,7 @@ const AttachmentItemCard: FC<{
           onMoveDown={onMoveDown}
           canMoveUp={canMoveUp}
           canMoveDown={canMoveDown}
+          accessAttachment={accessAttachment}
         />
       </div>
     </div>
@@ -418,11 +428,16 @@ const AttachmentListEditor: FC<AttachmentListEditorProps> = ({
         {items.map((item) => {
           const itemList = item.isLocal ? localItems : attachmentItems;
           const itemIndex = itemList.findIndex((entry) => entry.id === item.id);
+          const accessAttachment =
+            !item.isLocal && item.memberIds.length === 1
+              ? attachments.find((attachment) => attachment.name === item.memberIds[0])
+              : undefined;
 
           return (
             <AttachmentItemCard
               key={item.id}
               item={item}
+              accessAttachment={accessAttachment}
               onPreview={
                 item.category === "image" || item.category === "video" || item.category === "motion"
                   ? () => handlePreviewItem(item)
