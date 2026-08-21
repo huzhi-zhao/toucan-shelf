@@ -26,6 +26,7 @@ import GalleryViewRenderer from "@/components/GalleryView/GalleryViewRenderer";
 import { MARK_TOOLBAR_ATTR, MarkToolbar } from "@/components/MarkToolbar";
 import CreateVersionDialog from "@/components/MemoActionMenu/CreateVersionDialog";
 import MemoContent from "@/components/MemoContent";
+import { InlineAttachmentProvider } from "@/components/MemoContent/InlineAttachmentContext";
 import MemoEditor from "@/components/MemoEditor";
 import type { EditorController } from "@/components/MemoEditor/types/editorController";
 import { AttachmentListView } from "@/components/MemoMetadata";
@@ -1015,14 +1016,16 @@ const DocumentView = ({
                   the words rather than over them. */}
               <div className="relative z-10">
                 <MemoViewContext.Provider value={buildPreviewContext(memo)}>
-                  <MemoContent
-                    content={memo.content}
-                    memoName={memo.name}
-                    density={density}
-                    showProperties={docConfig.showProperties}
-                    softBreak={docConfig.softBreak}
-                    onPropertyChange={propertyChangeHandler}
-                  />
+                  <InlineAttachmentProvider attachments={memo.attachments}>
+                    <MemoContent
+                      content={memo.content}
+                      memoName={memo.name}
+                      density={density}
+                      showProperties={docConfig.showProperties}
+                      softBreak={docConfig.softBreak}
+                      onPropertyChange={propertyChangeHandler}
+                    />
+                  </InlineAttachmentProvider>
                 </MemoViewContext.Provider>
               </div>
               {remainingAttachments.length > 0 && (

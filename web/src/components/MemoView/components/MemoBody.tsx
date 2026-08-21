@@ -7,6 +7,7 @@ import { Memo_DocType, MemoRelation_Type } from "@/types/proto/api/v1/memo_servi
 import { getAttachmentUrl, partitionInlinedAttachments } from "@/utils/attachment";
 import { useTranslate } from "@/utils/i18n";
 import MemoContent from "../../MemoContent";
+import { InlineAttachmentProvider } from "../../MemoContent/InlineAttachmentContext";
 import { MemoReactionListView } from "../../MemoReactionListView";
 import { useMemoHandlers } from "../hooks";
 import { useMemoViewContext, useMemoViewDerived } from "../MemoViewContext";
@@ -53,23 +54,25 @@ const MemoBody: React.FC<MemoBodyProps> = ({ compact, autoFold }) => {
             <GalleryDocCard title={memo.title} memoName={memo.name} content={memo.content} />
           )
         ) : (
-          <MemoContent
-            key={memo.name}
-            memoName={memo.name}
-            content={memo.content}
-            isHtml={memo.docType === Memo_DocType.HTML}
-            softBreak={memo.docConfig?.softBreak}
-            isPdf={isPdf}
-            pdfTitle={memo.title}
-            pdfUrl={pdfAttachment ? getAttachmentUrl(pdfAttachment) : undefined}
-            pdfAttachment={pdfAttachment}
-            pdfDetailView={isInMemoDetailPage}
-            onClick={handleMemoContentClick}
-            onDoubleClick={handleMemoContentDoubleClick}
-            compact={memo.pinned ? false : compact} // Always show full content when pinned
-            autoFold={autoFold}
-            alwaysExpanded={memo.pinned}
-          />
+          <InlineAttachmentProvider attachments={memo.attachments}>
+            <MemoContent
+              key={memo.name}
+              memoName={memo.name}
+              content={memo.content}
+              isHtml={memo.docType === Memo_DocType.HTML}
+              softBreak={memo.docConfig?.softBreak}
+              isPdf={isPdf}
+              pdfTitle={memo.title}
+              pdfUrl={pdfAttachment ? getAttachmentUrl(pdfAttachment) : undefined}
+              pdfAttachment={pdfAttachment}
+              pdfDetailView={isInMemoDetailPage}
+              onClick={handleMemoContentClick}
+              onDoubleClick={handleMemoContentDoubleClick}
+              compact={memo.pinned ? false : compact} // Always show full content when pinned
+              autoFold={autoFold}
+              alwaysExpanded={memo.pinned}
+            />
+          </InlineAttachmentProvider>
         )}
         {!isPdf && !isView && <AttachmentListView attachments={nonInlinedAttachments} onImagePreview={openPreview} />}
         <RelationListView relations={referencedMemos} currentMemoName={memo.name} parentPage={parentPage} />
