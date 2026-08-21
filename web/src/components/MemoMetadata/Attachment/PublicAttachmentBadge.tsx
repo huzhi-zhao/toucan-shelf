@@ -56,4 +56,23 @@ const PublicAttachmentBadge = ({ attachment, label }: { attachment: Attachment; 
   );
 };
 
+// Wraps a single inline media element so the badge has something positioned to sit in.
+// `inline-block` with no width of its own keeps the frame on the media's own box —
+// anything wider would strand the badge beside a narrow or centered picture. Renders the
+// child untouched when there is nothing to mark, so private media keeps its exact DOM.
+export const PublicMediaFrame = ({ attachment, children }: { attachment: Attachment | undefined; children: React.ReactNode }) => {
+  const t = useTranslate();
+
+  if (!attachment) {
+    return <>{children}</>;
+  }
+
+  return (
+    <span className="group/media relative inline-block max-w-full leading-none">
+      {children}
+      <PublicAttachmentBadge attachment={attachment} label={t("attachment.public.badge")} />
+    </span>
+  );
+};
+
 export default PublicAttachmentBadge;

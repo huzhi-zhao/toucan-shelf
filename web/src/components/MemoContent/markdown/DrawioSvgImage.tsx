@@ -4,6 +4,8 @@ import { CodeIcon, DownloadIcon, MaximizeIcon, PencilIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import DrawioEditorDialog from "@/components/DrawioEditorDialog";
+import { usePublicInlineAttachment } from "@/components/MemoContent/InlineAttachmentContext";
+import { PublicMediaFrame } from "@/components/MemoMetadata/Attachment/PublicAttachmentBadge";
 import { useMemoViewContextOptional } from "@/components/MemoView/MemoViewContext";
 import PreviewImageDialog from "@/components/PreviewImageDialog";
 import { attachmentServiceClient } from "@/connect";
@@ -51,6 +53,9 @@ export const DrawioSvgImage = ({ className, alt, src, sizeStyle, ...props }: Dra
   const [revision, setRevision] = useState(0);
 
   const attachmentName = getAttachmentNameFromUrl(src);
+  // Keyed off the original `src`: `displaySrc` grows a cache-busting query string after a
+  // save, which the attachment lookup would not recognise.
+  const publicAttachment = usePublicInlineAttachment(src);
   const readonly = useMemoViewContextOptional()?.readonly ?? true;
   // The server is the real gate (creator or admin, and never for locked attachments); this only
   // keeps the button off diagrams the reader plainly can't change.
@@ -110,14 +115,16 @@ export const DrawioSvgImage = ({ className, alt, src, sizeStyle, ...props }: Dra
   );
 
   const image = (
-    <img
-      className={cn("max-w-full my-2", !sizeStyle.height && "h-auto", className)}
-      alt={alt}
-      style={sizeStyle}
-      src={displaySrc}
-      onLoad={() => setLoaded(true)}
-      {...props}
-    />
+    <PublicMediaFrame attachment={publicAttachment}>
+      <img
+        className={cn("max-w-full my-2", !sizeStyle.height && "h-auto", className)}
+        alt={alt}
+        style={sizeStyle}
+        src={displaySrc}
+        onLoad={() => setLoaded(true)}
+        {...props}
+      />
+    </PublicMediaFrame>
   );
 
   if (!xml) {
