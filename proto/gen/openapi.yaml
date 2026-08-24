@@ -1346,6 +1346,35 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/v1/memos/{memo}/publications:
+        get:
+            tags:
+                - SiteService
+            description: |-
+                ListMemoPublications lists every site a document is published to, which is
+                 what tells the editor whether the live document has moved ahead of what
+                 readers see.
+            operationId: SiteService_ListMemoPublications
+            parameters:
+                - name: memo
+                  in: path
+                  description: The memo id.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListMemoPublicationsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/memos/{memo}/reactions:
         get:
             tags:
@@ -1599,6 +1628,140 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/v1/public/docs/{docId}:
+        get:
+            tags:
+                - PublicSiteService
+            description: |-
+                ResolvePublicDoc maps the permanent short link /d/{doc-id} to the page's
+                 current slug. It resolves only within the site being visited: a document
+                 published to another site, or not published at all, is not found here.
+            operationId: PublicSiteService_ResolvePublicDoc
+            parameters:
+                - name: docId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: site
+                  in: query
+                  description: 'Optional explicit site for platform-path access. Format: sites/{site}'
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ResolvePublicDocResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/public/pages:
+        get:
+            tags:
+                - PublicSiteService
+            description: |-
+                ListPublicPages lists the site's published pages. This is the only source a
+                 outward-facing listing may draw from.
+            operationId: PublicSiteService_ListPublicPages
+            parameters:
+                - name: site
+                  in: query
+                  description: 'Optional explicit site for platform-path access. Format: sites/{site}'
+                  schema:
+                    type: string
+                - name: tags
+                  in: query
+                  description: When set, only pages carrying every one of these tags are returned.
+                  schema:
+                    type: array
+                    items:
+                        type: string
+                - name: pageSize
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListPublicPagesResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/public/pages/{slug}:
+        get:
+            tags:
+                - PublicSiteService
+            description: GetPublicPage returns one published page by slug.
+            operationId: PublicSiteService_GetPublicPage
+            parameters:
+                - name: slug
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: site
+                  in: query
+                  description: 'Optional explicit site for platform-path access. Format: sites/{site}'
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PublicPage'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/public/site:
+        get:
+            tags:
+                - PublicSiteService
+            description: |-
+                GetPublicSiteProfile returns the branding of the site the request landed on.
+                 The site is resolved from the request's Host header, falling back to an
+                 explicit site name for platform-path access.
+            operationId: PublicSiteService_GetPublicSiteProfile
+            parameters:
+                - name: site
+                  in: query
+                  description: 'Optional explicit site for platform-path access. Format: sites/{site}'
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PublicSiteProfile'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/rag/indexStatus:
         get:
             tags:
@@ -1833,6 +1996,325 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Memo'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/sites:
+        get:
+            tags:
+                - SiteService
+            description: ListSites returns the sites of the caller's team.
+            operationId: SiteService_ListSites
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListSitesResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        post:
+            tags:
+                - SiteService
+            description: |-
+                CreateSite creates a site. Admin only: standing up an outward-facing site
+                 is a team-level action.
+            operationId: SiteService_CreateSite
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/Site'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Site'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/sites/{site}:
+        get:
+            tags:
+                - SiteService
+            description: GetSite gets a site by name.
+            operationId: SiteService_GetSite
+            parameters:
+                - name: site
+                  in: path
+                  description: The site id.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Site'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        delete:
+            tags:
+                - SiteService
+            description: DeleteSite deletes a site and everything published to it.
+            operationId: SiteService_DeleteSite
+            parameters:
+                - name: site
+                  in: path
+                  description: The site id.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        patch:
+            tags:
+                - SiteService
+            description: UpdateSite updates a site.
+            operationId: SiteService_UpdateSite
+            parameters:
+                - name: site
+                  in: path
+                  description: The site id.
+                  required: true
+                  schema:
+                    type: string
+                - name: updateMask
+                  in: query
+                  schema:
+                    type: string
+                    format: field-mask
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/Site'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Site'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/sites/{site}/publications:
+        get:
+            tags:
+                - SiteService
+            description: ListPublications lists the publication records of a site.
+            operationId: SiteService_ListPublications
+            parameters:
+                - name: site
+                  in: path
+                  description: The site id.
+                  required: true
+                  schema:
+                    type: string
+                - name: state
+                  in: query
+                  description: When set, only publications in this state are returned.
+                  schema:
+                    enum:
+                        - PUBLICATION_STATE_UNSPECIFIED
+                        - PUBLISHED
+                        - UNPUBLISHED
+                        - PENDING
+                    type: string
+                    format: enum
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListPublicationsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        post:
+            tags:
+                - SiteService
+            description: |-
+                PublishMemo publishes a document to a site, or refreshes the snapshot of one
+                 already published there. Every check runs on every call — there is no
+                 "checked on first publish" shortcut.
+
+                 Publishing moves content only. It never changes an attachment's access:
+                 opening a file to the world stays a separate, deliberate act by whoever owns
+                 the file.
+            operationId: SiteService_PublishMemo
+            parameters:
+                - name: site
+                  in: path
+                  description: The site id.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/PublishMemoRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Publication'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/sites/{site}/publications/{publication}:
+        delete:
+            tags:
+                - SiteService
+            description: |-
+                UnpublishMemo takes a page down: the snapshot stops being served, and pages
+                 that linked to it are reported back so the author knows what now points at
+                 nothing.
+            operationId: SiteService_UnpublishMemo
+            parameters:
+                - name: site
+                  in: path
+                  description: The site id.
+                  required: true
+                  schema:
+                    type: string
+                - name: publication
+                  in: path
+                  description: The publication id.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnpublishMemoResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        patch:
+            tags:
+                - SiteService
+            description: |-
+                UpdatePublication updates the editable fields of a publication, currently
+                 its slug.
+            operationId: SiteService_UpdatePublication
+            parameters:
+                - name: site
+                  in: path
+                  description: The site id.
+                  required: true
+                  schema:
+                    type: string
+                - name: publication
+                  in: path
+                  description: The publication id.
+                  required: true
+                  schema:
+                    type: string
+                - name: updateMask
+                  in: query
+                  schema:
+                    type: string
+                    format: field-mask
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/Publication'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Publication'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/sites/{site}/publications:preview:
+        post:
+            tags:
+                - SiteService
+            description: |-
+                PreviewPublish runs the publish pipeline's checks without writing anything.
+                 It is what lets the client show "these N attachments will be made public"
+                 before the author commits, and it reports blocking problems the same way
+                 PublishMemo would.
+            operationId: SiteService_PreviewPublish
+            parameters:
+                - name: site
+                  in: path
+                  description: The site id.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/PreviewPublishRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PreviewPublishResponse'
                 default:
                     description: Default error response
                     content:
@@ -3419,6 +3901,19 @@ components:
                          only be set by the creator, never by an admin acting on their behalf. See
                          docs/dev/requirements/attachments/access-control-and-private-files.md.
                     format: enum
+        AttachmentNotice:
+            type: object
+            properties:
+                attachment:
+                    type: string
+                    description: 'Format: attachments/{attachment}'
+                filename:
+                    type: string
+                mimeType:
+                    type: string
+            description: |-
+                AttachmentNotice is one attachment the page references that anonymous readers
+                 cannot fetch yet.
         BackupNowRequest:
             type: object
             properties: {}
@@ -4400,6 +4895,18 @@ components:
                     items:
                         $ref: '#/components/schemas/MemoHistory'
                     description: The list of versions, newest first.
+        ListMemoPublicationsResponse:
+            type: object
+            properties:
+                publications:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Publication'
+                sites:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Site'
+                    description: The sites each publication belongs to, in the same order.
         ListMemoReactionsResponse:
             type: object
             properties:
@@ -4454,6 +4961,22 @@ components:
                 nextPageToken:
                     type: string
                     description: A token for the next page of results.
+        ListPublicPagesResponse:
+            type: object
+            properties:
+                pages:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/PublicPage'
+                nextPageToken:
+                    type: string
+        ListPublicationsResponse:
+            type: object
+            properties:
+                publications:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Publication'
         ListSecretBlocksResponse:
             type: object
             properties:
@@ -4470,6 +4993,13 @@ components:
                     items:
                         $ref: '#/components/schemas/Shortcut'
                     description: The list of shortcuts.
+        ListSitesResponse:
+            type: object
+            properties:
+                sites:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Site'
         ListUserNotificationsResponse:
             type: object
             properties:
@@ -5050,6 +5580,183 @@ components:
                 text:
                     type: string
                     description: The rewritten text.
+        PreviewPublishRequest:
+            required:
+                - parent
+                - memo
+            type: object
+            properties:
+                parent:
+                    type: string
+                    description: 'Format: sites/{site}'
+                memo:
+                    type: string
+                    description: 'The document to publish. Format: memos/{memo}'
+        PreviewPublishResponse:
+            type: object
+            properties:
+                attachmentsNotPublic:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/AttachmentNotice'
+                    description: |-
+                        Attachments the document pulls in that are not public yet. Publishing does
+                         not touch attachment permissions, so these are reported for the author to
+                         act on: either make the file public themselves, or take it out of the page.
+                blockers:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/PublishBlocker'
+                    description: Problems that block publishing. Empty means the publish would go through.
+                secretBlocksRemoved:
+                    type: integer
+                    description: How many secret blocks would be dropped from the snapshot.
+                    format: int32
+                proposedSlug:
+                    type: string
+                    description: |-
+                        The slug the page would get. Empty when the document is already published
+                         here, since an existing slug is never regenerated.
+        PublicPage:
+            type: object
+            properties:
+                slug:
+                    type: string
+                title:
+                    type: string
+                summary:
+                    type: string
+                content:
+                    type: string
+                    description: The snapshot body. Omitted from list responses.
+                tags:
+                    type: array
+                    items:
+                        type: string
+                updateTime:
+                    type: string
+                    description: |-
+                        When the snapshot was last refreshed. This is the "last updated" shown at
+                         the foot of a page.
+                    format: date-time
+                docId:
+                    type: string
+                    description: The document id backing the permanent short link /d/{doc_id}.
+            description: |-
+                PublicPage is a published page as an anonymous reader sees it: the frozen
+                 snapshot, with no author account, comment, history or internal metadata
+                 attached. Fields are added here by whitelist — missing one field shows less,
+                 while leaking one is a disclosure.
+        PublicSiteProfile:
+            type: object
+            properties:
+                displayName:
+                    type: string
+                description:
+                    type: string
+                theme:
+                    type: string
+                    description: Theme configuration as JSON.
+                dashboardSlug:
+                    type: string
+                    description: The slug of the site's home page, empty when no dashboard is published yet.
+            description: PublicSiteProfile is what an anonymous reader may know about a site.
+        Publication:
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: |-
+                        The resource name of the publication.
+                         Format: sites/{site}/publications/{publication}
+                memo:
+                    readOnly: true
+                    type: string
+                    description: 'The source document. Format: memos/{memo}'
+                slug:
+                    type: string
+                    description: |-
+                        The page's path under the site. Generated once on first publish and frozen
+                         afterwards; an author may still change it by hand.
+                title:
+                    readOnly: true
+                    type: string
+                summary:
+                    readOnly: true
+                    type: string
+                content:
+                    readOnly: true
+                    type: string
+                    description: The snapshot body. Omitted from list responses.
+                tags:
+                    readOnly: true
+                    type: array
+                    items:
+                        type: string
+                    description: Outward-facing tags carried by the snapshot.
+                state:
+                    readOnly: true
+                    enum:
+                        - PUBLICATION_STATE_UNSPECIFIED
+                        - PUBLISHED
+                        - UNPUBLISHED
+                        - PENDING
+                    type: string
+                    format: enum
+                publisher:
+                    readOnly: true
+                    type: string
+                    description: 'Who published this snapshot. Format: users/{user}'
+                publishTime:
+                    readOnly: true
+                    type: string
+                    format: date-time
+                updateTime:
+                    readOnly: true
+                    type: string
+                    format: date-time
+                outdated:
+                    readOnly: true
+                    type: boolean
+                    description: |-
+                        Whether the source document has been edited since this snapshot was taken.
+                         Readers keep seeing the snapshot until the author explicitly republishes, so
+                         without this the author has no way to tell that their edit is not live.
+            description: |-
+                Publication is one read-only snapshot: the publish pipeline's output for one
+                 document on one site.
+        PublishBlocker:
+            type: object
+            properties:
+                type:
+                    enum:
+                        - BLOCKER_TYPE_UNSPECIFIED
+                        - UNPUBLISHED_REFERENCE
+                        - PRIVATE_ATTACHMENT
+                    type: string
+                    format: enum
+                reference:
+                    type: string
+                    description: The reference that caused it — a link href, or an attachment filename.
+                detail:
+                    type: string
+                    description: A human-readable explanation.
+            description: |-
+                PublishBlocker is one reason a publish cannot go through. Blockers name the
+                 exact offending reference: an author who is told only "there is a problem"
+                 cannot fix it.
+        PublishMemoRequest:
+            required:
+                - parent
+                - memo
+            type: object
+            properties:
+                parent:
+                    type: string
+                    description: 'Format: sites/{site}'
+                memo:
+                    type: string
+                    description: 'The document to publish. Format: memos/{memo}'
         Reaction:
             required:
                 - contentId
@@ -5121,6 +5828,11 @@ components:
                 newPath:
                     type: string
                     description: Required. The new folder path.
+        ResolvePublicDocResponse:
+            type: object
+            properties:
+                slug:
+                    type: string
         RestoreMemoHistoryRequest:
             required:
                 - name
@@ -5428,6 +6140,72 @@ components:
                         When the access token expires.
                          Client should call RefreshToken before this time.
                     format: date-time
+        Site:
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: 'The resource name of the site. Format: sites/{site}'
+                displayName:
+                    type: string
+                    description: The site's display name.
+                description:
+                    type: string
+                    description: A short description shown on the site.
+                domain:
+                    type: string
+                    description: The custom domain bound to the site, empty when none is bound.
+                domainVerified:
+                    readOnly: true
+                    type: boolean
+                    description: Whether ownership of the domain has been verified.
+                canonical:
+                    enum:
+                        - SITE_CANONICAL_UNSPECIFIED
+                        - PLATFORM
+                        - DOMAIN
+                    type: string
+                    description: Which of the two entry points search engines should treat as canonical.
+                    format: enum
+                status:
+                    enum:
+                        - SITE_STATUS_UNSPECIFIED
+                        - DRAFT
+                        - ONLINE
+                        - OFFLINE
+                    type: string
+                    description: |-
+                        The site's own online switch. A site is only readable by anonymous visitors
+                         while it is ONLINE, independent of whether the instance allows anonymous
+                         access to the main application.
+                    format: enum
+                dashboard:
+                    type: string
+                    description: |-
+                        The `.view` document rendered at the site root.
+                         Format: memos/{memo}
+                theme:
+                    type: string
+                    description: |-
+                        Theme configuration as JSON. Restricted to known configuration keys — no
+                         raw HTML or scripts.
+                searchMode:
+                    type: string
+                    description: |-
+                        The site-level search mode. Anonymous readers have no preferences of their
+                         own, so this is site configuration rather than a user setting.
+                createTime:
+                    readOnly: true
+                    type: string
+                    format: date-time
+                updateTime:
+                    readOnly: true
+                    type: string
+                    format: date-time
+            description: |-
+                Site is a blog space: an outward-facing site with its own name, domain, theme
+                 and home page. A site belongs to a team, not to a workspace — which documents
+                 it carries is decided article by article.
         Status:
             type: object
             properties:
@@ -5570,6 +6348,17 @@ components:
                         Required. HMAC-SHA256(master key, "toucan-attach/unlock/v1"), base64-encoded,
                          computed client-side from the unwrapped master key. Compared against the
                          caller's stored unlock_verifier in constant time.
+        UnpublishMemoResponse:
+            type: object
+            properties:
+                affectedPublications:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Publication'
+                    description: |-
+                        Published pages on this site that linked to the page just taken down. Their
+                         snapshots keep the now-dead link until they are republished, which is the
+                         price the snapshot model pays.
         UpsertMemoReactionRequest:
             required:
                 - name
@@ -6132,6 +6921,14 @@ tags:
     - name: IdentityProviderService
     - name: InstanceService
     - name: MemoService
+    - name: PublicSiteService
+      description: |-
+        PublicSiteService is the anonymous read path for published sites.
+
+         It is deliberately a separate service that only ever queries the publication
+         tables. Unpublished content is not filtered out here — it is not in the query
+         range at all, which is a stronger guarantee than remembering to add a
+         condition. See docs/dev/requirements/20260823-public-blog-publishing.md §6.
     - name: RagService
     - name: SecretBlockService
       description: |-
@@ -6145,5 +6942,14 @@ tags:
          references it. Documents reference a secret by uid from their markdown body; a
          secret is never deleted as a side effect of deleting or copying a document.
     - name: ShortcutService
+    - name: SiteService
+      description: |-
+        SiteService manages blog spaces and the documents published to them.
+
+         Publishing is a separate link from sharing: a share hands one document to
+         people who already have the link, while publishing pushes a snapshot of a
+         document out to an audience that has to be able to find it. The two never
+         share state — see
+         docs/dev/requirements/20260823-public-blog-publishing.md §1.
     - name: UserService
     - name: WorkspaceService

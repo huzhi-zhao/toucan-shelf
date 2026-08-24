@@ -1,0 +1,379 @@
+syntax = "proto3";
+
+package memos.api.v1;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/field_behavior.proto";
+import "google/api/resource.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "gen/api/v1";
+
+// SiteService manages blog spaces and the documents published to them.
+//
+// Publishing is a separate link from sharing: a share hands one document to
+// people who already have the link, while publishing pushes a snapshot of a
+// document out to an audience that has to be able to find it. The two never
+// share state — see
+// docs/dev/requirements/20260823-public-blog-publishing.md §1.
+service SiteService {
+  // ListSites returns the sites of the caller's team.
+  rpc ListSites(ListSitesRequest) returns (ListSitesResponse) {
+    option (google.api.http) = {get: "/api/v1/sites"};
+  }
+
+  // GetSite gets a site by name.
+  rpc GetSite(GetSiteRequest) returns (Site) {
+    option (google.api.http) = {get: "/api/v1/{name=sites/*}"};
+    option (google.api.method_signature) = "name";
+  }
+
+  // CreateSite creates a site. Admin only: standing up an outward-facing site
+  // is a team-level action.
+  rpc CreateSite(CreateSiteRequest) returns (Site) {
+    option (google.api.http) = {
+      post: "/api/v1/sites"
+      body: "site"
+    };
+    option (google.api.method_signature) = "site";
+  }
+
+  // UpdateSite updates a site.
+  rpc UpdateSite(UpdateSiteRequest) returns (Site) {
+    option (google.api.http) = {
+      patch: "/api/v1/{site.name=sites/*}"
+      body: "site"
+    };
+    option (google.api.method_signature) = "site,update_mask";
+  }
+
+  // DeleteSite deletes a site and everything published to it.
+  rpc DeleteSite(DeleteSiteRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {delete: "/api/v1/{name=sites/*}"};
+    option (google.api.method_signature) = "name";
+  }
+
+  // ListPublications lists the publication records of a site.
+  rpc ListPublications(ListPublicationsRequest) returns (ListPublicationsResponse) {
+    option (google.api.http) = {get: "/api/v1/{parent=sites/*}/publications"};
+    option (google.api.method_signature) = "parent";
+  }
+
+  // ListMemoPublications lists every site a document is published to, which is
+  // what tells the editor whether the live document has moved ahead of what
+  // readers see.
+  rpc ListMemoPublications(ListMemoPublicationsRequest) returns (ListMemoPublicationsResponse) {
+    option (google.api.http) = {get: "/api/v1/{parent=memos/*}/publications"};
+    option (google.api.method_signature) = "parent";
+  }
+
+  // PreviewPublish runs the publish pipeline's checks without writing anything.
+  // It is what lets the client show "these N attachments will be made public"
+  // before the author commits, and it reports blocking problems the same way
+  // PublishMemo would.
+  rpc PreviewPublish(PreviewPublishRequest) returns (PreviewPublishResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/{parent=sites/*}/publications:preview"
+      body: "*"
+    };
+  }
+
+  // PublishMemo publishes a document to a site, or refreshes the snapshot of one
+  // already published there. Every check runs on every call — there is no
+  // "checked on first publish" shortcut.
+  //
+  // Publishing moves content only. It never changes an attachment's access:
+  // opening a file to the world stays a separate, deliberate act by whoever owns
+  // the file.
+  rpc PublishMemo(PublishMemoRequest) returns (Publication) {
+    option (google.api.http) = {
+      post: "/api/v1/{parent=sites/*}/publications"
+      body: "*"
+    };
+  }
+
+  // UpdatePublication updates the editable fields of a publication, currently
+  // its slug.
+  rpc UpdatePublication(UpdatePublicationRequest) returns (Publication) {
+    option (google.api.http) = {
+      patch: "/api/v1/{publication.name=sites/*/publications/*}"
+      body: "publication"
+    };
+    option (google.api.method_signature) = "publication,update_mask";
+  }
+
+  // UnpublishMemo takes a page down: the snapshot stops being served, and pages
+  // that linked to it are reported back so the author knows what now points at
+  // nothing.
+  rpc UnpublishMemo(UnpublishMemoRequest) returns (UnpublishMemoResponse) {
+    option (google.api.http) = {delete: "/api/v1/{name=sites/*/publications/*}"};
+    option (google.api.method_signature) = "name";
+  }
+}
+
+// Site is a blog space: an outward-facing site with its own name, domain, theme
+// and home page. A site belongs to a team, not to a workspace — which documents
+// it carries is decided article by article.
+message Site {
+  option (google.api.resource) = {
+    type: "memos.api.v1/Site"
+    pattern: "sites/{site}"
+    singular: "site"
+    plural: "sites"
+  };
+
+  // The resource name of the site. Format: sites/{site}
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // The site's display name.
+  string display_name = 2;
+
+  // A short description shown on the site.
+  string description = 3;
+
+  // The custom domain bound to the site, empty when none is bound.
+  string domain = 4;
+
+  // Whether ownership of the domain has been verified.
+  bool domain_verified = 5 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Which of the two entry points search engines should treat as canonical.
+  SiteCanonical canonical = 6;
+
+  // The site's own online switch. A site is only readable by anonymous visitors
+  // while it is ONLINE, independent of whether the instance allows anonymous
+  // access to the main application.
+  SiteStatus status = 7;
+
+  // The `.view` document rendered at the site root.
+  // Format: memos/{memo}
+  string dashboard = 8;
+
+  // Theme configuration as JSON. Restricted to known configuration keys — no
+  // raw HTML or scripts.
+  string theme = 9;
+
+  // The site-level search mode. Anonymous readers have no preferences of their
+  // own, so this is site configuration rather than a user setting.
+  string search_mode = 10;
+
+  google.protobuf.Timestamp create_time = 11 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  google.protobuf.Timestamp update_time = 12 [(google.api.field_behavior) = OUTPUT_ONLY];
+}
+
+// SiteCanonical selects the entry point search engines should index.
+enum SiteCanonical {
+  SITE_CANONICAL_UNSPECIFIED = 0;
+  // The platform path is canonical.
+  PLATFORM = 1;
+  // The custom domain is canonical.
+  DOMAIN = 2;
+}
+
+// SiteStatus is the site-level online switch.
+enum SiteStatus {
+  SITE_STATUS_UNSPECIFIED = 0;
+  // Being set up; not reachable from outside.
+  DRAFT = 1;
+  // Reachable by anonymous readers.
+  ONLINE = 2;
+  // Taken down; the whole site 404s.
+  OFFLINE = 3;
+}
+
+// Publication is one read-only snapshot: the publish pipeline's output for one
+// document on one site.
+message Publication {
+  option (google.api.resource) = {
+    type: "memos.api.v1/Publication"
+    pattern: "sites/{site}/publications/{publication}"
+    singular: "publication"
+    plural: "publications"
+  };
+
+  // The resource name of the publication.
+  // Format: sites/{site}/publications/{publication}
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // The source document. Format: memos/{memo}
+  string memo = 2 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // The page's path under the site. Generated once on first publish and frozen
+  // afterwards; an author may still change it by hand.
+  string slug = 3;
+
+  string title = 4 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  string summary = 5 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // The snapshot body. Omitted from list responses.
+  string content = 6 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Outward-facing tags carried by the snapshot.
+  repeated string tags = 7 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  PublicationState state = 8 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Who published this snapshot. Format: users/{user}
+  string publisher = 9 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  google.protobuf.Timestamp publish_time = 10 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  google.protobuf.Timestamp update_time = 11 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Whether the source document has been edited since this snapshot was taken.
+  // Readers keep seeing the snapshot until the author explicitly republishes, so
+  // without this the author has no way to tell that their edit is not live.
+  bool outdated = 12 [(google.api.field_behavior) = OUTPUT_ONLY];
+}
+
+// PublicationState is an enum rather than a bool so a review step can be added
+// later without a schema change.
+enum PublicationState {
+  PUBLICATION_STATE_UNSPECIFIED = 0;
+  // Live on the site.
+  PUBLISHED = 1;
+  // Taken down.
+  UNPUBLISHED = 2;
+  // Awaiting review. Reserved; nothing produces this state yet.
+  PENDING = 3;
+}
+
+message ListSitesRequest {}
+
+message ListSitesResponse {
+  repeated Site sites = 1;
+}
+
+message GetSiteRequest {
+  // Format: sites/{site}
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message CreateSiteRequest {
+  Site site = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UpdateSiteRequest {
+  Site site = 1 [(google.api.field_behavior) = REQUIRED];
+
+  google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteSiteRequest {
+  // Format: sites/{site}
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListPublicationsRequest {
+  // Format: sites/{site}
+  string parent = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // When set, only publications in this state are returned.
+  PublicationState state = 2;
+}
+
+message ListPublicationsResponse {
+  repeated Publication publications = 1;
+}
+
+message ListMemoPublicationsRequest {
+  // Format: memos/{memo}
+  string parent = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListMemoPublicationsResponse {
+  repeated Publication publications = 1;
+
+  // The sites each publication belongs to, in the same order.
+  repeated Site sites = 2;
+}
+
+message PreviewPublishRequest {
+  // Format: sites/{site}
+  string parent = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // The document to publish. Format: memos/{memo}
+  string memo = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PreviewPublishResponse {
+  // Attachments the document pulls in that are not public yet. Publishing does
+  // not touch attachment permissions, so these are reported for the author to
+  // act on: either make the file public themselves, or take it out of the page.
+  repeated AttachmentNotice attachments_not_public = 1;
+
+  // Problems that block publishing. Empty means the publish would go through.
+  repeated PublishBlocker blockers = 2;
+
+  // How many secret blocks would be dropped from the snapshot.
+  int32 secret_blocks_removed = 3;
+
+  // The slug the page would get. Empty when the document is already published
+  // here, since an existing slug is never regenerated.
+  string proposed_slug = 4;
+}
+
+// AttachmentNotice is one attachment the page references that anonymous readers
+// cannot fetch yet.
+message AttachmentNotice {
+  // Format: attachments/{attachment}
+  string attachment = 1;
+
+  string filename = 2;
+
+  string mime_type = 3;
+}
+
+// PublishBlocker is one reason a publish cannot go through. Blockers name the
+// exact offending reference: an author who is told only "there is a problem"
+// cannot fix it.
+message PublishBlocker {
+  BlockerType type = 1;
+
+  // The reference that caused it — a link href, or an attachment filename.
+  string reference = 2;
+
+  // A human-readable explanation.
+  string detail = 3;
+}
+
+enum BlockerType {
+  BLOCKER_TYPE_UNSPECIFIED = 0;
+  // The document links to a document that is not published to this site.
+  // Linking a reader to a 404 is an outright error, never a downgrade.
+  UNPUBLISHED_REFERENCE = 1;
+  // The document embeds an attachment the author put behind a passphrase.
+  // Publishing must not overturn that decision on their behalf.
+  PRIVATE_ATTACHMENT = 2;
+}
+
+message PublishMemoRequest {
+  // Format: sites/{site}
+  string parent = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // The document to publish. Format: memos/{memo}
+  string memo = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UpdatePublicationRequest {
+  Publication publication = 1 [(google.api.field_behavior) = REQUIRED];
+
+  google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UnpublishMemoRequest {
+  // Format: sites/{site}/publications/{publication}
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UnpublishMemoResponse {
+  // Published pages on this site that linked to the page just taken down. Their
+  // snapshots keep the now-dead link until they are republished, which is the
+  // price the snapshot model pays.
+  repeated Publication affected_publications = 1;
+}

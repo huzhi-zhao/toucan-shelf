@@ -42,6 +42,13 @@ var PublicMethods = map[string]struct{}{
 	// Attachment Service - metadata for attachments linked to public memos; actual
 	// access is still gated in the handler by the linked memo's visibility.
 	"/memos.api.v1.AttachmentService/GetAttachment": {},
+
+	// Public sites - anonymous readers of a published site. These only ever query
+	// the publication tables, and each one refuses a site that is not ONLINE.
+	"/memos.api.v1.PublicSiteService/GetPublicSiteProfile": {},
+	"/memos.api.v1.PublicSiteService/GetPublicPage":        {},
+	"/memos.api.v1.PublicSiteService/ResolvePublicDoc":     {},
+	"/memos.api.v1.PublicSiteService/ListPublicPages":      {},
 }
 
 // IsPublicMethod checks if a procedure path is public (no authentication required).
@@ -79,6 +86,15 @@ var AuthBootstrapMethods = map[string]struct{}{
 	"/memos.api.v1.MemoService/GetMemo":             {},
 	"/memos.api.v1.MemoService/ListMemoComments":    {},
 	"/memos.api.v1.AttachmentService/GetAttachment": {},
+
+	// Published sites - a site's readability is decided by the site's own status,
+	// never by whether the main application serves anonymous visitors. Tying the
+	// two together would mean a private instance either cannot publish at all, or
+	// has to open its whole app up to publish one article.
+	"/memos.api.v1.PublicSiteService/GetPublicSiteProfile": {},
+	"/memos.api.v1.PublicSiteService/GetPublicPage":        {},
+	"/memos.api.v1.PublicSiteService/ResolvePublicDoc":     {},
+	"/memos.api.v1.PublicSiteService/ListPublicPages":      {},
 }
 
 // createUserProcedure is the CreateUser endpoint. On a private instance it is

@@ -872,3 +872,127 @@ func (s *ConnectServiceHandler) DeleteWorkspaceGrant(ctx context.Context, req *c
 	}
 	return connect.NewResponse(resp), nil
 }
+
+// SiteService
+
+func (s *ConnectServiceHandler) ListSites(ctx context.Context, req *connect.Request[v1pb.ListSitesRequest]) (*connect.Response[v1pb.ListSitesResponse], error) {
+	resp, err := s.APIV1Service.ListSites(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) GetSite(ctx context.Context, req *connect.Request[v1pb.GetSiteRequest]) (*connect.Response[v1pb.Site], error) {
+	resp, err := s.APIV1Service.GetSite(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) CreateSite(ctx context.Context, req *connect.Request[v1pb.CreateSiteRequest]) (*connect.Response[v1pb.Site], error) {
+	resp, err := s.APIV1Service.CreateSite(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) UpdateSite(ctx context.Context, req *connect.Request[v1pb.UpdateSiteRequest]) (*connect.Response[v1pb.Site], error) {
+	resp, err := s.APIV1Service.UpdateSite(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) DeleteSite(ctx context.Context, req *connect.Request[v1pb.DeleteSiteRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := s.APIV1Service.DeleteSite(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) ListPublications(ctx context.Context, req *connect.Request[v1pb.ListPublicationsRequest]) (*connect.Response[v1pb.ListPublicationsResponse], error) {
+	resp, err := s.APIV1Service.ListPublications(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) ListMemoPublications(ctx context.Context, req *connect.Request[v1pb.ListMemoPublicationsRequest]) (*connect.Response[v1pb.ListMemoPublicationsResponse], error) {
+	resp, err := s.APIV1Service.ListMemoPublications(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) PreviewPublish(ctx context.Context, req *connect.Request[v1pb.PreviewPublishRequest]) (*connect.Response[v1pb.PreviewPublishResponse], error) {
+	resp, err := s.APIV1Service.PreviewPublish(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) PublishMemo(ctx context.Context, req *connect.Request[v1pb.PublishMemoRequest]) (*connect.Response[v1pb.Publication], error) {
+	resp, err := s.APIV1Service.PublishMemo(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) UpdatePublication(ctx context.Context, req *connect.Request[v1pb.UpdatePublicationRequest]) (*connect.Response[v1pb.Publication], error) {
+	resp, err := s.APIV1Service.UpdatePublication(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) UnpublishMemo(ctx context.Context, req *connect.Request[v1pb.UnpublishMemoRequest]) (*connect.Response[v1pb.UnpublishMemoResponse], error) {
+	resp, err := s.APIV1Service.UnpublishMemo(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// PublicSiteService
+
+func (s *ConnectServiceHandler) GetPublicSiteProfile(ctx context.Context, req *connect.Request[v1pb.GetPublicSiteProfileRequest]) (*connect.Response[v1pb.PublicSiteProfile], error) {
+	resp, err := s.APIV1Service.GetPublicSiteProfile(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) GetPublicPage(ctx context.Context, req *connect.Request[v1pb.GetPublicPageRequest]) (*connect.Response[v1pb.PublicPage], error) {
+	resp, err := s.APIV1Service.GetPublicPage(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) ResolvePublicDoc(ctx context.Context, req *connect.Request[v1pb.ResolvePublicDocRequest]) (*connect.Response[v1pb.ResolvePublicDocResponse], error) {
+	resp, err := s.APIV1Service.ResolvePublicDoc(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) ListPublicPages(ctx context.Context, req *connect.Request[v1pb.ListPublicPagesRequest]) (*connect.Response[v1pb.ListPublicPagesResponse], error) {
+	resp, err := s.APIV1Service.ListPublicPages(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}

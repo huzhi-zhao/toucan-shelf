@@ -115,6 +115,22 @@ type Driver interface {
 	GetMemoShare(ctx context.Context, find *FindMemoShare) (*MemoShare, error)
 	DeleteMemoShare(ctx context.Context, delete *DeleteMemoShare) error
 
+	// Site model related methods (public publishing target).
+	CreateSite(ctx context.Context, create *Site) (*Site, error)
+	ListSites(ctx context.Context, find *FindSite) ([]*Site, error)
+	UpdateSite(ctx context.Context, update *UpdateSite) (*Site, error)
+	DeleteSite(ctx context.Context, delete *DeleteSite) error
+
+	// SitePublication model related methods (read-only published snapshots).
+	CreateSitePublication(ctx context.Context, create *SitePublication) (*SitePublication, error)
+	ListSitePublications(ctx context.Context, find *FindSitePublication) ([]*SitePublication, error)
+	UpdateSitePublication(ctx context.Context, update *UpdateSitePublication) (*SitePublication, error)
+	DeleteSitePublication(ctx context.Context, delete *DeleteSitePublication) error
+	ReplaceSitePublicationAttachments(ctx context.Context, publicationID int32, refs []*SitePublicationAttachment) error
+	ListSitePublicationAttachments(ctx context.Context, find *FindSitePublicationAttachment) ([]*SitePublicationAttachment, error)
+	ReplaceSitePublicationLinks(ctx context.Context, publicationID int32, links []*SitePublicationLink) error
+	ListSitePublicationLinks(ctx context.Context, find *FindSitePublicationLink) ([]*SitePublicationLink, error)
+
 	// UserIdentity model related methods.
 	CreateUserIdentity(ctx context.Context, create *UserIdentity) (*UserIdentity, error)
 	ListUserIdentities(ctx context.Context, find *FindUserIdentity) ([]*UserIdentity, error)

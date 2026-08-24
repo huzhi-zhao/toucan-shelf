@@ -59,6 +59,20 @@ type Service interface {
 	// never emits Link nodes for it.
 	ExtractLinks(content []byte) ([]LinkRef, error)
 
+	// ExtractImages returns every markdown image (![alt](src)) found in
+	// content, in document order. Images are separate AST nodes from links,
+	// so ExtractLinks does not cover them; the publish pipeline needs both
+	// to find every attachment a document pulls in.
+	ExtractImages(content []byte) ([]LinkRef, error)
+
+	// RewriteMediaSources walks every markdown image in content and, for
+	// each one, calls decide with its source. When decide returns
+	// (newSrc, true) the image's source is replaced. Images are separate
+	// AST nodes from links, so RewriteLinks does not reach them; the
+	// publish pipeline needs both to move every attachment reference onto
+	// the site's own origin.
+	RewriteMediaSources(content []byte, decide func(src string) (string, bool)) (newContent string, changed bool, err error)
+
 	// RewriteLinkAnchors walks all markdown links in content and, for each
 	// one, calls decide with the link's href and its current anchor text.
 	// If decide returns (newText, true), the link's anchor text is replaced
@@ -500,6 +514,69 @@ func (s *service) ExtractLinks(content []byte) ([]LinkRef, error) {
 	}
 
 	return links, nil
+}
+
+// RewriteMediaSources rewrites the source of every markdown image for which
+// decide returns true. As with RewriteLinks, a call that rewrites nothing
+// returns the original content byte-for-byte.
+func (s *service) RewriteMediaSources(content []byte, decide func(src string) (string, bool)) (string, bool, error) {
+	root, err := s.parse(content)
+	if err != nil {
+		return "", false, err
+	}
+
+	changed := false
+	err = gast.Walk(root, func(n gast.Node, entering bool) (gast.WalkStatus, error) {
+		if !entering {
+			return gast.WalkContinue, nil
+		}
+		image, ok := n.(*gast.Image)
+		if !ok {
+			return gast.WalkContinue, nil
+		}
+		newSrc, rewrite := decide(string(image.Destination))
+		if rewrite && newSrc != string(image.Destination) {
+			image.Destination = []byte(newSrc)
+			changed = true
+		}
+		return gast.WalkSkipChildren, nil
+	})
+	if err != nil {
+		return "", false, err
+	}
+	if !changed {
+		return string(content), false, nil
+	}
+
+	mdRenderer := renderer.NewMarkdownRenderer()
+	return mdRenderer.Render(root, content), true, nil
+}
+
+// ExtractImages returns every markdown image found in content, in document
+// order. Href carries the image source and Text its alt text.
+func (s *service) ExtractImages(content []byte) ([]LinkRef, error) {
+	root, err := s.parse(content)
+	if err != nil {
+		return nil, err
+	}
+
+	var images []LinkRef
+	err = gast.Walk(root, func(n gast.Node, entering bool) (gast.WalkStatus, error) {
+		if !entering {
+			return gast.WalkContinue, nil
+		}
+		if image, ok := n.(*gast.Image); ok {
+			var buf strings.Builder
+			extractTextFromNode(image, content, &buf)
+			images = append(images, LinkRef{Href: string(image.Destination), Text: buf.String()})
+		}
+		return gast.WalkContinue, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return images, nil
 }
 
 // RewriteLinkAnchors walks all markdown links in content, replacing the

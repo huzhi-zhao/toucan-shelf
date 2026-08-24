@@ -43,9 +43,9 @@ docs/dev/
 
 | **常青** —— 描述现状，原地反复改写 | **事件** —— 描述一次性事件，写完冻结、只追加不修订 |
 |---|---|
-| `roadmap.md` 交付路线与能力阶段 | `adr/` 一个**选型**的取舍 |
+| [roadmap.md](roadmap.md) 交付路线与能力阶段 | `adr/` 一个**选型**的取舍 |
 | `platform-architecture.md` 系统长什么样 | [design/](design/) 一次变更**打算**怎么做 |
-| [requirements/](requirements/README.md) 要做什么 + 事实依据 | `launch/` 一次变更**实际**怎么上的线 |
+| [requirements/](requirements/README.md) 要做什么 + 事实依据 | [launch/](launch/) 一次变更**怎么上线、怎么验收** |
 | | `postmortem/` 已造成影响的故障复盘 |
 
 > 表中未加链接的是**尚未落地的目录/文件**——按"目录只给会增长的东西"，
@@ -63,7 +63,7 @@ docs/dev/
    不会（它记录的是某个时刻发生的事）→ 继续。
 2. 它记录的是一个**技术选型的取舍**，且这个取舍以后可能被推翻？→ `adr/`
 3. 它记录的是**一次变更打算怎么做**？→ `design/`
-4. 它记录的是**一次变更实际上线的过程与验收**？→ `launch/`
+4. 它记录的是**一次变更怎么上线、上线后怎么验收**？→ `launch/`
 5. 它记录的是**出了事之后的复盘**？→ `postmortem/`
 6. 都不是 → **它多半不该进本仓库**，见第三节的路由表。
 
@@ -92,6 +92,25 @@ docs/dev/
 
 ---
 
+## 二之二、launch/ 写什么
+
+`launch/` 是**上线这件事本身**的文档，一次变更一篇，固定五段：
+
+1. **前置准备** —— 上线前必须先就位的东西：备份与恢复演练、迁移脚本预演、
+   配置与依赖、内容与人、开关与回滚方案。
+2. **实操步骤** —— 按顺序执行的操作，每步做完确认再进下一步。
+3. **重点盯盘** —— 上线后一段时间内盯哪几项指标/日志，异常时的处置动作。
+4. **后置条件** —— 满足哪些条件才算这次上线完成。
+5. **上线后的需求验证标准** —— 逐条对照需求文档的**人工验收清单**，
+   每条写明怎么验、看到什么算通过。
+
+与 `design/` 的分工：**方案取舍、被否决的选项、分阶段怎么切风险**写在 design；
+**这次上线怎么执行、盯什么、上完怎么验**写在 launch。分阶段实施的能力，
+每个阶段各走一遍本篇流程，用 `[P0]`/`[P1]` 之类标注哪些项属于哪个阶段。
+
+写作时机是**上线前**（它是计划，不是事后记录），上线过程中改掉的方案内容回写到
+design、改掉的产品结论回写到需求文档，上线完成后本篇冻结。
+
 ## 三、不要写进 design doc 的东西
 
 design doc 被污染的方式从来不是"写错了"，而是"写多了"——把本该在别处、
@@ -111,7 +130,8 @@ design doc 是给三个月后的人读的，下面这四类内容三个月后全
 三条推论：
 
 - **进度不进文档。** 本目录任何文档都不写"✅ 已完成 / ⏸️ 待办"。
-  例外只有 `roadmap.md` 的阶段标记，它的对象是**能力阶段**不是任务。
+  例外只有 [roadmap.md](roadmap.md)：它是"已定但未做"的**唯一索引**，
+  只写一行指回定论所在的文档，不写排期、负责人、当前状态。
 - **文件级清单不进 design doc。** 逐文件的改动清单属于 PR 描述。
   分阶段实施计划是例外——它描述的是"怎么切分风险"，不是"改了哪些文件"。
 - **"我踩了个坑"不进文档。** 先判断：是**一次性的**（环境、手滑）→ 丢进
@@ -129,9 +149,11 @@ design doc 是给三个月后的人读的，下面这四类内容三个月后全
 - [standalone-local-deploy.md](standalone-local-deploy.md) —— 单机本地部署：打包、S3 备份
   现状与已知问题、首启引导
 
+- [roadmap.md](roadmap.md) —— 能力阶段与未竟事项索引。**本目录唯一允许写
+  "还没做"的地方**：一行一条指回定论所在的文档，不复述方案、不记排期与状态
+
 规划中：
 
-- `roadmap.md` —— 能力阶段与优先级
 - `platform-architecture.md` —— 分层设计意图、部署拓扑与关键设计考虑
 
 **顶层的准入判据**：只收**当前系统的可证伪属性**——能通过读代码、跑一次、
@@ -147,7 +169,8 @@ design doc 是给三个月后的人读的，下面这四类内容三个月后全
 
 域一览（详细文档清单见 [requirements/README.md](requirements/README.md)）：
 `knowledge-base/`、`views/`、`editor/`、`attachments/`、`collaboration/`、`storage/`，
-外加根下平铺的 [cross-reference-repair-on-move-rename.md](requirements/cross-reference-repair-on-move-rename.md)。
+外加根下平铺的 [cross-reference-repair-on-move-rename.md](requirements/cross-reference-repair-on-move-rename.md)
+与 [20260823-public-blog-publishing.md](requirements/20260823-public-blog-publishing.md)。
 
 ### adr/ —— 为什么这么选（事件，不改名不删除）
 
@@ -206,16 +229,22 @@ design doc 是给三个月后的人读的，下面这四类内容三个月后全
   —— 附件判定收敛（含两处越权修复）与私密附件的分阶段实施计划、风险登记
 - [20260814-drawio-svg-round-trip.md](design/20260814-drawio-svg-round-trip.md)
   —— draw.io SVG 图的渲染与回写的分阶段实施计划
+- [20260823-public-publishing/](design/20260823-public-publishing/)
+  —— 对外发布：快照模型的数据表、发布管线、站点搜索索引、分阶段切分与风险登记
 
 > `docs/plans/` 下 2026-07-03 及之后的方案文档已按上述计划拆入本目录并从 `docs/plans/`
 > 删除（原文保留在 git history）。2026-03～2026-04 的 6 个方案目录判定与本 fork 增量
 > 无关，原地归档、不迁移、不建议阅读；`docs/plans/`、`docs/superpowers/` 整体归档见
 > [../README.md](../README.md)。
 
-### launch/ —— 一次变更实际怎么上的线（事件）
+### launch/ —— 一次变更怎么上线、怎么验收（事件）
+
+写法见上文《二之二、launch/ 写什么》。
 
 - [20260803-obsidian-kb-migration.md](launch/20260803-obsidian-kb-migration.md)
   —— Obsidian 知识库迁移上线记录：空跑实测数据、执行中改掉的方案内容
+- [20260823-public-publishing.md](launch/20260823-public-publishing.md)
+  —— 对外发布分阶段上线：前置准备、实操步骤、盯盘项、后置条件与人工验收清单
 
 ### postmortem/ —— 事件
 
@@ -225,12 +254,21 @@ design doc 是给三个月后的人读的，下面这四类内容三个月后全
 
 ## 五、写作规则
 
-- 目录名用语义，不用数字前缀；数字只用于 ADR 编号与事件文档的日期前缀。
+- **`docs/dev/` 下的文档默认带日期前缀**：`YYYYMMDD-english-kebab-case.md`。
+  事件类（design / launch / postmortem）本来就按日期排；`requirements/` 下的
+  常青文档同样带前缀，便于按时间定位一块能力是什么时候立的。
+  - **前缀是这篇文档的创建日期，原地改写时不更新**。常青文档的正文描述的永远
+    是当前状态，前缀只用来排序和定位，不代表内容的新鲜度——看正文，别看文件名。
+  - 例外是**本目录的索引与总览类文档**（`README.md`、`roadmap.md`、
+    `platform-architecture.md`）和 `adr/`：ADR 用自己的编号，不用日期。
+- 目录名用语义，不用数字前缀；`design/` 下按变更建的子目录沿用日期前缀。
 - 文件名一律 English kebab-case，**语言差异只体现在正文**。
 - 每篇文档必须被本索引（或 `requirements/README.md`）恰好链接一次；
   没被链接的应当删除。
 - 宁可合并不要拆分。**目录只给会增长的东西**——两三篇文档不配一个目录。
 - **事件类文档（adr / design / launch / postmortem）写完即冻结**，
   发现结论错了写新的一篇并在旧篇标注被取代，不原地改写。
+  唯一的例外是 `launch/`：它写在上线前，允许在上线过程中勾选清单、回填实际
+  情况，**这次上线结束后冻结**。
 - **常青类文档（requirements/ 与顶层单篇）原地改写**，不留"v1/v2"痕迹，
   历史交给 git。

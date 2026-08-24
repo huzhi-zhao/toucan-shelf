@@ -25,6 +25,8 @@
 
 ## 规划中的域
 
+- `publishing/` —— 对外发布、站点与域名。目前唯一一篇
+  （[20260823-public-blog-publishing.md](20260823-public-blog-publishing.md)）未满 3 篇准入线，平铺根下。
 - `search/` —— RAG 混合检索、FTS。目前唯一一篇（[rag-search.md](../rag-search.md)）
   未满 3 篇准入线，平铺在 `docs/dev/` 顶层而非 `requirements/` 下。
 
@@ -81,3 +83,6 @@
 
 - [cross-reference-repair-on-move-rename.md](cross-reference-repair-on-move-rename.md)
   —— 知识库内文档引用在移动/重命名/删除时的完整性维护（`knowledge-base` 域相关）
+- [20260823-public-blog-publishing.md](20260823-public-blog-publishing.md)
+  —— 对外发布：单篇文档发布到对外站点、与"分享"的边界、站点模型与可见性检查
+  （未来若增至 3 篇可独立成 `publishing/` 域）

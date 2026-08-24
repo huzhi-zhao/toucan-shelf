@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package memos.api.v1;
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "gen/api/v1";
+
+// PublicSiteService is the anonymous read path for published sites.
+//
+// It is deliberately a separate service that only ever queries the publication
+// tables. Unpublished content is not filtered out here — it is not in the query
+// range at all, which is a stronger guarantee than remembering to add a
+// condition. See docs/dev/requirements/20260823-public-blog-publishing.md §6.
+service PublicSiteService {
+  // GetPublicSiteProfile returns the branding of the site the request landed on.
+  // The site is resolved from the request's Host header, falling back to an
+  // explicit site name for platform-path access.
+  rpc GetPublicSiteProfile(GetPublicSiteProfileRequest) returns (PublicSiteProfile) {
+    option (google.api.http) = {get: "/api/v1/public/site"};
+  }
+
+  // GetPublicPage returns one published page by slug.
+  rpc GetPublicPage(GetPublicPageRequest) returns (PublicPage) {
+    option (google.api.http) = {get: "/api/v1/public/pages/{slug}"};
+  }
+
+  // ResolvePublicDoc maps the permanent short link /d/{doc-id} to the page's
+  // current slug. It resolves only within the site being visited: a document
+  // published to another site, or not published at all, is not found here.
+  rpc ResolvePublicDoc(ResolvePublicDocRequest) returns (ResolvePublicDocResponse) {
+    option (google.api.http) = {get: "/api/v1/public/docs/{doc_id}"};
+  }
+
+  // ListPublicPages lists the site's published pages. This is the only source a
+  // outward-facing listing may draw from.
+  rpc ListPublicPages(ListPublicPagesRequest) returns (ListPublicPagesResponse) {
+    option (google.api.http) = {get: "/api/v1/public/pages"};
+  }
+}
+
+// PublicSiteProfile is what an anonymous reader may know about a site.
+message PublicSiteProfile {
+  string display_name = 1;
+
+  string description = 2;
+
+  // Theme configuration as JSON.
+  string theme = 3;
+
+  // The slug of the site's home page, empty when no dashboard is published yet.
+  string dashboard_slug = 4;
+}
+
+// PublicPage is a published page as an anonymous reader sees it: the frozen
+// snapshot, with no author account, comment, history or internal metadata
+// attached. Fields are added here by whitelist — missing one field shows less,
+// while leaking one is a disclosure.
+message PublicPage {
+  string slug = 1;
+
+  string title = 2;
+
+  string summary = 3;
+
+  // The snapshot body. Omitted from list responses.
+  string content = 4;
+
+  repeated string tags = 5;
+
+  // When the snapshot was last refreshed. This is the "last updated" shown at
+  // the foot of a page.
+  google.protobuf.Timestamp update_time = 6;
+
+  // The document id backing the permanent short link /d/{doc_id}.
+  string doc_id = 7;
+}
+
+message GetPublicSiteProfileRequest {
+  // Optional explicit site for platform-path access. Format: sites/{site}
+  string site = 1;
+}
+
+message GetPublicPageRequest {
+  string slug = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Optional explicit site for platform-path access. Format: sites/{site}
+  string site = 2;
+}
+
+message ResolvePublicDocRequest {
+  string doc_id = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Optional explicit site for platform-path access. Format: sites/{site}
+  string site = 2;
+}
+
+message ResolvePublicDocResponse {
+  string slug = 1;
+}
+
+message ListPublicPagesRequest {
+  // Optional explicit site for platform-path access. Format: sites/{site}
+  string site = 1;
+
+  // When set, only pages carrying every one of these tags are returned.
+  repeated string tags = 2;
+
+  int32 page_size = 3;
+
+  string page_token = 4;
+}
+
+message ListPublicPagesResponse {
+  repeated PublicPage pages = 1;
+
+  string next_page_token = 2;
+}
