@@ -145,11 +145,23 @@ func (s *APIV1Service) CreateSite(ctx context.Context, request *v1pb.CreateSiteR
 		Theme:      "{}",
 		SearchMode: "HYBRID",
 	}
+	menu, err := encodeSiteMenu(defaultSiteMenu())
+	if err != nil {
+		return nil, err
+	}
+	create.Menu = menu
 	if request.Site.Theme != "" {
 		if err := validateSiteTheme(request.Site.Theme); err != nil {
 			return nil, err
 		}
 		create.Theme = request.Site.Theme
+	}
+	if len(request.Site.Menu) > 0 {
+		menu, err := encodeSiteMenu(request.Site.Menu)
+		if err != nil {
+			return nil, err
+		}
+		create.Menu = menu
 	}
 
 	site, err := s.Store.CreateSite(ctx, create)
@@ -209,6 +221,12 @@ func (s *APIV1Service) UpdateSite(ctx context.Context, request *v1pb.UpdateSiteR
 				return nil, err
 			}
 			update.Theme = &request.Site.Theme
+		case "menu":
+			menu, err := encodeSiteMenu(request.Site.Menu)
+			if err != nil {
+				return nil, err
+			}
+			update.Menu = &menu
 		case "search_mode":
 			update.SearchMode = &request.Site.SearchMode
 		default:
@@ -258,27 +276,6 @@ func (s *APIV1Service) resolveDashboardMemoID(ctx context.Context, name string) 
 	return &memo.ID, nil
 }
 
-// validateSiteTheme keeps a theme to configuration only. A theme that could
-// carry arbitrary HTML or scripts would be stored XSS on a page served to
-// anonymous readers, so the value must be a plain JSON object of scalars.
-func validateSiteTheme(theme string) error {
-	if strings.TrimSpace(theme) == "" {
-		return nil
-	}
-	var parsed map[string]any
-	if err := json.Unmarshal([]byte(theme), &parsed); err != nil {
-		return status.Errorf(codes.InvalidArgument, "theme must be a JSON object")
-	}
-	for key, value := range parsed {
-		switch value.(type) {
-		case string, float64, bool, nil:
-		default:
-			return status.Errorf(codes.InvalidArgument, "theme key %q must be a string, number or boolean", key)
-		}
-	}
-	return nil
-}
-
 func (s *APIV1Service) convertSiteFromStore(ctx context.Context, site *store.Site) (*v1pb.Site, error) {
 	converted := &v1pb.Site{
 		Name:           SiteNamePrefix + site.UID,
@@ -289,6 +286,7 @@ func (s *APIV1Service) convertSiteFromStore(ctx context.Context, site *store.Sit
 		Canonical:      convertSiteCanonicalFromStore(site.Canonical),
 		Status:         convertSiteStatusFromStore(site.Status),
 		Theme:          site.Theme,
+		Menu:           decodeSiteMenu(site.Menu),
 		SearchMode:     site.SearchMode,
 		CreateTime:     timestamppb.New(time.Unix(site.CreatedTs, 0)),
 		UpdateTime:     timestamppb.New(time.Unix(site.UpdatedTs, 0)),

@@ -130,12 +130,18 @@ dashboard 是这条规则的一个例外，见 §6。
 
 每个站点有一篇 dashboard 文档作为首页，访问站点根路径 `/` 落在这里。
 
-**dashboard 就是一篇 `.view` 文档**，复用 gallery view 那套配置驱动渲染
+**dashboard 就是一篇 `.view` 文档**，沿用 gallery view 那套**配置驱动**的做法
 （见 [views/gallery-view.md](views/gallery-view.md)）：content 只存结构化配置，
-不存渲染产物，条目由渲染时查出来。好处是首页的排版能力（相册块、说明文字块）
-现成，作者用编辑站点内容的同一套编辑器就能改首页。
+不存渲染产物，条目由渲染时查出来。好处是作者用编辑站点内容的同一套编辑器就能
+改首页。
 
-为它新增一种 block：**feed layout**，与 gallery layout 同一类，区别只在呈现——
+> 与早期方案的差异：这里原先写的是"复用 gallery view 那套渲染"。复用的只有
+> **配置驱动这个做法**，不是同一套渲染组件——对外的块类型、配置项和呈现都是
+> 另一套，理由见 [public-site-front-end.md](public-site-front-end.md) §4 §5。
+
+首页具体有哪些块、导航和主题怎么定，都在
+[public-site-front-end.md](public-site-front-end.md)；本节只保留与发布语义相关的
+那部分。其中一种块是 **feed layout**，与 gallery layout 同一类，区别只在呈现——
 
 - gallery 是卡片网格，feed 是纵向条目列表（标题 + 摘要 + tags + 最后更新时间）。
 - **数据来源是本站点的发布记录集合**（§5 的快照表），不是知识库的文档表。这是它跟

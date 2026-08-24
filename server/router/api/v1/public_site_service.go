@@ -97,6 +97,7 @@ func (s *APIV1Service) GetPublicSiteProfile(ctx context.Context, request *v1pb.G
 		DisplayName: site.Name,
 		Description: site.Description,
 		Theme:       site.Theme,
+		Menu:        decodeSiteMenu(site.Menu),
 	}
 	if site.DashboardMemoID != nil && *site.DashboardMemoID != 0 {
 		published := store.SitePublicationStatePublished

@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file api/v1/site_service.proto.
  */
 export const file_api_v1_site_service: GenFile = /*@__PURE__*/
-  fileDesc("ChlhcGkvdjEvc2l0ZV9zZXJ2aWNlLnByb3RvEgxtZW1vcy5hcGkudjEiogMKBFNpdGUSEQoEbmFtZRgBIAEoCUID4EEIEhQKDGRpc3BsYXlfbmFtZRgCIAEoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRIOCgZkb21haW4YBCABKAkSHAoPZG9tYWluX3ZlcmlmaWVkGAUgASgIQgPgQQMSLgoJY2Fub25pY2FsGAYgASgOMhsubWVtb3MuYXBpLnYxLlNpdGVDYW5vbmljYWwSKAoGc3RhdHVzGAcgASgOMhgubWVtb3MuYXBpLnYxLlNpdGVTdGF0dXMSEQoJZGFzaGJvYXJkGAggASgJEg0KBXRoZW1lGAkgASgJEhMKC3NlYXJjaF9tb2RlGAogASgJEjQKC2NyZWF0ZV90aW1lGAsgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEjQKC3VwZGF0ZV90aW1lGAwgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDOjHqQS4KEW1lbW9zLmFwaS52MS9TaXRlEgxzaXRlcy97c2l0ZX0qBXNpdGVzMgRzaXRlIscDCgtQdWJsaWNhdGlvbhIRCgRuYW1lGAEgASgJQgPgQQgSEQoEbWVtbxgCIAEoCUID4EEDEgwKBHNsdWcYAyABKAkSEgoFdGl0bGUYBCABKAlCA+BBAxIUCgdzdW1tYXJ5GAUgASgJQgPgQQMSFAoHY29udGVudBgGIAEoCUID4EEDEhEKBHRhZ3MYByADKAlCA+BBAxIyCgVzdGF0ZRgIIAEoDjIeLm1lbW9zLmFwaS52MS5QdWJsaWNhdGlvblN0YXRlQgPgQQMSFgoJcHVibGlzaGVyGAkgASgJQgPgQQMSNQoMcHVibGlzaF90aW1lGAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEjQKC3VwZGF0ZV90aW1lGAsgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEhUKCG91dGRhdGVkGAwgASgIQgPgQQM6YepBXgoYbWVtb3MuYXBpLnYxL1B1YmxpY2F0aW9uEidzaXRlcy97c2l0ZX0vcHVibGljYXRpb25zL3twdWJsaWNhdGlvbn0qDHB1YmxpY2F0aW9uczILcHVibGljYXRpb24iEgoQTGlzdFNpdGVzUmVxdWVzdCI2ChFMaXN0U2l0ZXNSZXNwb25zZRIhCgVzaXRlcxgBIAMoCzISLm1lbW9zLmFwaS52MS5TaXRlIiMKDkdldFNpdGVSZXF1ZXN0EhEKBG5hbWUYASABKAlCA+BBAiI6ChFDcmVhdGVTaXRlUmVxdWVzdBIlCgRzaXRlGAEgASgLMhIubWVtb3MuYXBpLnYxLlNpdGVCA+BBAiJwChFVcGRhdGVTaXRlUmVxdWVzdBIlCgRzaXRlGAEgASgLMhIubWVtb3MuYXBpLnYxLlNpdGVCA+BBAhI0Cgt1cGRhdGVfbWFzaxgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5GaWVsZE1hc2tCA+BBAiImChFEZWxldGVTaXRlUmVxdWVzdBIRCgRuYW1lGAEgASgJQgPgQQIiXQoXTGlzdFB1YmxpY2F0aW9uc1JlcXVlc3QSEwoGcGFyZW50GAEgASgJQgPgQQISLQoFc3RhdGUYAiABKA4yHi5tZW1vcy5hcGkudjEuUHVibGljYXRpb25TdGF0ZSJLChhMaXN0UHVibGljYXRpb25zUmVzcG9uc2USLwoMcHVibGljYXRpb25zGAEgAygLMhkubWVtb3MuYXBpLnYxLlB1YmxpY2F0aW9uIjIKG0xpc3RNZW1vUHVibGljYXRpb25zUmVxdWVzdBITCgZwYXJlbnQYASABKAlCA+BBAiJyChxMaXN0TWVtb1B1YmxpY2F0aW9uc1Jlc3BvbnNlEi8KDHB1YmxpY2F0aW9ucxgBIAMoCzIZLm1lbW9zLmFwaS52MS5QdWJsaWNhdGlvbhIhCgVzaXRlcxgCIAMoCzISLm1lbW9zLmFwaS52MS5TaXRlIj8KFVByZXZpZXdQdWJsaXNoUmVxdWVzdBITCgZwYXJlbnQYASABKAlCA+BBAhIRCgRtZW1vGAIgASgJQgPgQQIivgEKFlByZXZpZXdQdWJsaXNoUmVzcG9uc2USPgoWYXR0YWNobWVudHNfbm90X3B1YmxpYxgBIAMoCzIeLm1lbW9zLmFwaS52MS5BdHRhY2htZW50Tm90aWNlEi4KCGJsb2NrZXJzGAIgAygLMhwubWVtb3MuYXBpLnYxLlB1Ymxpc2hCbG9ja2VyEh0KFXNlY3JldF9ibG9ja3NfcmVtb3ZlZBgDIAEoBRIVCg1wcm9wb3NlZF9zbHVnGAQgASgJIksKEEF0dGFjaG1lbnROb3RpY2USEgoKYXR0YWNobWVudBgBIAEoCRIQCghmaWxlbmFtZRgCIAEoCRIRCgltaW1lX3R5cGUYAyABKAkiXAoOUHVibGlzaEJsb2NrZXISJwoEdHlwZRgBIAEoDjIZLm1lbW9zLmFwaS52MS5CbG9ja2VyVHlwZRIRCglyZWZlcmVuY2UYAiABKAkSDgoGZGV0YWlsGAMgASgJIjwKElB1Ymxpc2hNZW1vUmVxdWVzdBITCgZwYXJlbnQYASABKAlCA+BBAhIRCgRtZW1vGAIgASgJQgPgQQIihQEKGFVwZGF0ZVB1YmxpY2F0aW9uUmVxdWVzdBIzCgtwdWJsaWNhdGlvbhgBIAEoCzIZLm1lbW9zLmFwaS52MS5QdWJsaWNhdGlvbkID4EECEjQKC3VwZGF0ZV9tYXNrGAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLkZpZWxkTWFza0ID4EECIikKFFVucHVibGlzaE1lbW9SZXF1ZXN0EhEKBG5hbWUYASABKAlCA+BBAiJRChVVbnB1Ymxpc2hNZW1vUmVzcG9uc2USOAoVYWZmZWN0ZWRfcHVibGljYXRpb25zGAEgAygLMhkubWVtb3MuYXBpLnYxLlB1YmxpY2F0aW9uKkkKDVNpdGVDYW5vbmljYWwSHgoaU0lURV9DQU5PTklDQUxfVU5TUEVDSUZJRUQQABIMCghQTEFURk9STRABEgoKBkRPTUFJThACKk0KClNpdGVTdGF0dXMSGwoXU0lURV9TVEFUVVNfVU5TUEVDSUZJRUQQABIJCgVEUkFGVBABEgoKBk9OTElORRACEgsKB09GRkxJTkUQAypiChBQdWJsaWNhdGlvblN0YXRlEiEKHVBVQkxJQ0FUSU9OX1NUQVRFX1VOU1BFQ0lGSUVEEAASDQoJUFVCTElTSEVEEAESDwoLVU5QVUJMSVNIRUQQAhILCgdQRU5ESU5HEAMqXgoLQmxvY2tlclR5cGUSHAoYQkxPQ0tFUl9UWVBFX1VOU1BFQ0lGSUVEEAASGQoVVU5QVUJMSVNIRURfUkVGRVJFTkNFEAESFgoSUFJJVkFURV9BVFRBQ0hNRU5UEAIy0gsKC1NpdGVTZXJ2aWNlEmMKCUxpc3RTaXRlcxIeLm1lbW9zLmFwaS52MS5MaXN0U2l0ZXNSZXF1ZXN0Gh8ubWVtb3MuYXBpLnYxLkxpc3RTaXRlc1Jlc3BvbnNlIhWC0+STAg8SDS9hcGkvdjEvc2l0ZXMSYgoHR2V0U2l0ZRIcLm1lbW9zLmFwaS52MS5HZXRTaXRlUmVxdWVzdBoSLm1lbW9zLmFwaS52MS5TaXRlIiXaQQRuYW1lgtPkkwIYEhYvYXBpL3YxL3tuYW1lPXNpdGVzLyp9EmUKCkNyZWF0ZVNpdGUSHy5tZW1vcy5hcGkudjEuQ3JlYXRlU2l0ZVJlcXVlc3QaEi5tZW1vcy5hcGkudjEuU2l0ZSIi2kEEc2l0ZYLT5JMCFToEc2l0ZSINL2FwaS92MS9zaXRlcxJ/CgpVcGRhdGVTaXRlEh8ubWVtb3MuYXBpLnYxLlVwZGF0ZVNpdGVSZXF1ZXN0GhIubWVtb3MuYXBpLnYxLlNpdGUiPNpBEHNpdGUsdXBkYXRlX21hc2uC0+STAiM6BHNpdGUyGy9hcGkvdjEve3NpdGUubmFtZT1zaXRlcy8qfRJsCgpEZWxldGVTaXRlEh8ubWVtb3MuYXBpLnYxLkRlbGV0ZVNpdGVSZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5IiXaQQRuYW1lgtPkkwIYKhYvYXBpL3YxL3tuYW1lPXNpdGVzLyp9EpkBChBMaXN0UHVibGljYXRpb25zEiUubWVtb3MuYXBpLnYxLkxpc3RQdWJsaWNhdGlvbnNSZXF1ZXN0GiYubWVtb3MuYXBpLnYxLkxpc3RQdWJsaWNhdGlvbnNSZXNwb25zZSI22kEGcGFyZW50gtPkkwInEiUvYXBpL3YxL3twYXJlbnQ9c2l0ZXMvKn0vcHVibGljYXRpb25zEqUBChRMaXN0TWVtb1B1YmxpY2F0aW9ucxIpLm1lbW9zLmFwaS52MS5MaXN0TWVtb1B1YmxpY2F0aW9uc1JlcXVlc3QaKi5tZW1vcy5hcGkudjEuTGlzdE1lbW9QdWJsaWNhdGlvbnNSZXNwb25zZSI22kEGcGFyZW50gtPkkwInEiUvYXBpL3YxL3twYXJlbnQ9bWVtb3MvKn0vcHVibGljYXRpb25zEpUBCg5QcmV2aWV3UHVibGlzaBIjLm1lbW9zLmFwaS52MS5QcmV2aWV3UHVibGlzaFJlcXVlc3QaJC5tZW1vcy5hcGkudjEuUHJldmlld1B1Ymxpc2hSZXNwb25zZSI4gtPkkwIyOgEqIi0vYXBpL3YxL3twYXJlbnQ9c2l0ZXMvKn0vcHVibGljYXRpb25zOnByZXZpZXcSfAoLUHVibGlzaE1lbW8SIC5tZW1vcy5hcGkudjEuUHVibGlzaE1lbW9SZXF1ZXN0GhkubWVtb3MuYXBpLnYxLlB1YmxpY2F0aW9uIjCC0+STAio6ASoiJS9hcGkvdjEve3BhcmVudD1zaXRlcy8qfS9wdWJsaWNhdGlvbnMSuAEKEVVwZGF0ZVB1YmxpY2F0aW9uEiYubWVtb3MuYXBpLnYxLlVwZGF0ZVB1YmxpY2F0aW9uUmVxdWVzdBoZLm1lbW9zLmFwaS52MS5QdWJsaWNhdGlvbiJg2kEXcHVibGljYXRpb24sdXBkYXRlX21hc2uC0+STAkA6C3B1YmxpY2F0aW9uMjEvYXBpL3YxL3twdWJsaWNhdGlvbi5uYW1lPXNpdGVzLyovcHVibGljYXRpb25zLyp9Eo4BCg1VbnB1Ymxpc2hNZW1vEiIubWVtb3MuYXBpLnYxLlVucHVibGlzaE1lbW9SZXF1ZXN0GiMubWVtb3MuYXBpLnYxLlVucHVibGlzaE1lbW9SZXNwb25zZSI02kEEbmFtZYLT5JMCJyolL2FwaS92MS97bmFtZT1zaXRlcy8qL3B1YmxpY2F0aW9ucy8qfUKoAQoQY29tLm1lbW9zLmFwaS52MUIQU2l0ZVNlcnZpY2VQcm90b1ABWjBnaXRodWIuY29tL3VzZW1lbW9zL21lbW9zL3Byb3RvL2dlbi9hcGkvdjE7YXBpdjGiAgNNQViqAgxNZW1vcy5BcGkuVjHKAgxNZW1vc1xBcGlcVjHiAhhNZW1vc1xBcGlcVjFcR1BCTWV0YWRhdGHqAg5NZW1vczo6QXBpOjpWMWIGcHJvdG8z", [file_google_api_annotations, file_google_api_client, file_google_api_field_behavior, file_google_api_resource, file_google_protobuf_empty, file_google_protobuf_field_mask, file_google_protobuf_timestamp]);
+  fileDesc("ChlhcGkvdjEvc2l0ZV9zZXJ2aWNlLnByb3RvEgxtZW1vcy5hcGkudjEizAMKBFNpdGUSEQoEbmFtZRgBIAEoCUID4EEIEhQKDGRpc3BsYXlfbmFtZRgCIAEoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRIOCgZkb21haW4YBCABKAkSHAoPZG9tYWluX3ZlcmlmaWVkGAUgASgIQgPgQQMSLgoJY2Fub25pY2FsGAYgASgOMhsubWVtb3MuYXBpLnYxLlNpdGVDYW5vbmljYWwSKAoGc3RhdHVzGAcgASgOMhgubWVtb3MuYXBpLnYxLlNpdGVTdGF0dXMSEQoJZGFzaGJvYXJkGAggASgJEg0KBXRoZW1lGAkgASgJEigKBG1lbnUYDSADKAsyGi5tZW1vcy5hcGkudjEuU2l0ZU1lbnVJdGVtEhMKC3NlYXJjaF9tb2RlGAogASgJEjQKC2NyZWF0ZV90aW1lGAsgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEjQKC3VwZGF0ZV90aW1lGAwgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDOjHqQS4KEW1lbW9zLmFwaS52MS9TaXRlEgxzaXRlcy97c2l0ZX0qBXNpdGVzMgRzaXRlIisKDFNpdGVNZW51SXRlbRINCgVsYWJlbBgBIAEoCRIMCgRwYXRoGAIgASgJIscDCgtQdWJsaWNhdGlvbhIRCgRuYW1lGAEgASgJQgPgQQgSEQoEbWVtbxgCIAEoCUID4EEDEgwKBHNsdWcYAyABKAkSEgoFdGl0bGUYBCABKAlCA+BBAxIUCgdzdW1tYXJ5GAUgASgJQgPgQQMSFAoHY29udGVudBgGIAEoCUID4EEDEhEKBHRhZ3MYByADKAlCA+BBAxIyCgVzdGF0ZRgIIAEoDjIeLm1lbW9zLmFwaS52MS5QdWJsaWNhdGlvblN0YXRlQgPgQQMSFgoJcHVibGlzaGVyGAkgASgJQgPgQQMSNQoMcHVibGlzaF90aW1lGAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEjQKC3VwZGF0ZV90aW1lGAsgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEhUKCG91dGRhdGVkGAwgASgIQgPgQQM6YepBXgoYbWVtb3MuYXBpLnYxL1B1YmxpY2F0aW9uEidzaXRlcy97c2l0ZX0vcHVibGljYXRpb25zL3twdWJsaWNhdGlvbn0qDHB1YmxpY2F0aW9uczILcHVibGljYXRpb24iEgoQTGlzdFNpdGVzUmVxdWVzdCI2ChFMaXN0U2l0ZXNSZXNwb25zZRIhCgVzaXRlcxgBIAMoCzISLm1lbW9zLmFwaS52MS5TaXRlIiMKDkdldFNpdGVSZXF1ZXN0EhEKBG5hbWUYASABKAlCA+BBAiI6ChFDcmVhdGVTaXRlUmVxdWVzdBIlCgRzaXRlGAEgASgLMhIubWVtb3MuYXBpLnYxLlNpdGVCA+BBAiJwChFVcGRhdGVTaXRlUmVxdWVzdBIlCgRzaXRlGAEgASgLMhIubWVtb3MuYXBpLnYxLlNpdGVCA+BBAhI0Cgt1cGRhdGVfbWFzaxgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5GaWVsZE1hc2tCA+BBAiImChFEZWxldGVTaXRlUmVxdWVzdBIRCgRuYW1lGAEgASgJQgPgQQIiXQoXTGlzdFB1YmxpY2F0aW9uc1JlcXVlc3QSEwoGcGFyZW50GAEgASgJQgPgQQISLQoFc3RhdGUYAiABKA4yHi5tZW1vcy5hcGkudjEuUHVibGljYXRpb25TdGF0ZSJLChhMaXN0UHVibGljYXRpb25zUmVzcG9uc2USLwoMcHVibGljYXRpb25zGAEgAygLMhkubWVtb3MuYXBpLnYxLlB1YmxpY2F0aW9uIjIKG0xpc3RNZW1vUHVibGljYXRpb25zUmVxdWVzdBITCgZwYXJlbnQYASABKAlCA+BBAiJyChxMaXN0TWVtb1B1YmxpY2F0aW9uc1Jlc3BvbnNlEi8KDHB1YmxpY2F0aW9ucxgBIAMoCzIZLm1lbW9zLmFwaS52MS5QdWJsaWNhdGlvbhIhCgVzaXRlcxgCIAMoCzISLm1lbW9zLmFwaS52MS5TaXRlIj8KFVByZXZpZXdQdWJsaXNoUmVxdWVzdBITCgZwYXJlbnQYASABKAlCA+BBAhIRCgRtZW1vGAIgASgJQgPgQQIivgEKFlByZXZpZXdQdWJsaXNoUmVzcG9uc2USPgoWYXR0YWNobWVudHNfbm90X3B1YmxpYxgBIAMoCzIeLm1lbW9zLmFwaS52MS5BdHRhY2htZW50Tm90aWNlEi4KCGJsb2NrZXJzGAIgAygLMhwubWVtb3MuYXBpLnYxLlB1Ymxpc2hCbG9ja2VyEh0KFXNlY3JldF9ibG9ja3NfcmVtb3ZlZBgDIAEoBRIVCg1wcm9wb3NlZF9zbHVnGAQgASgJIksKEEF0dGFjaG1lbnROb3RpY2USEgoKYXR0YWNobWVudBgBIAEoCRIQCghmaWxlbmFtZRgCIAEoCRIRCgltaW1lX3R5cGUYAyABKAkiXAoOUHVibGlzaEJsb2NrZXISJwoEdHlwZRgBIAEoDjIZLm1lbW9zLmFwaS52MS5CbG9ja2VyVHlwZRIRCglyZWZlcmVuY2UYAiABKAkSDgoGZGV0YWlsGAMgASgJIjwKElB1Ymxpc2hNZW1vUmVxdWVzdBITCgZwYXJlbnQYASABKAlCA+BBAhIRCgRtZW1vGAIgASgJQgPgQQIihQEKGFVwZGF0ZVB1YmxpY2F0aW9uUmVxdWVzdBIzCgtwdWJsaWNhdGlvbhgBIAEoCzIZLm1lbW9zLmFwaS52MS5QdWJsaWNhdGlvbkID4EECEjQKC3VwZGF0ZV9tYXNrGAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLkZpZWxkTWFza0ID4EECIikKFFVucHVibGlzaE1lbW9SZXF1ZXN0EhEKBG5hbWUYASABKAlCA+BBAiJRChVVbnB1Ymxpc2hNZW1vUmVzcG9uc2USOAoVYWZmZWN0ZWRfcHVibGljYXRpb25zGAEgAygLMhkubWVtb3MuYXBpLnYxLlB1YmxpY2F0aW9uKkkKDVNpdGVDYW5vbmljYWwSHgoaU0lURV9DQU5PTklDQUxfVU5TUEVDSUZJRUQQABIMCghQTEFURk9STRABEgoKBkRPTUFJThACKk0KClNpdGVTdGF0dXMSGwoXU0lURV9TVEFUVVNfVU5TUEVDSUZJRUQQABIJCgVEUkFGVBABEgoKBk9OTElORRACEgsKB09GRkxJTkUQAypiChBQdWJsaWNhdGlvblN0YXRlEiEKHVBVQkxJQ0FUSU9OX1NUQVRFX1VOU1BFQ0lGSUVEEAASDQoJUFVCTElTSEVEEAESDwoLVU5QVUJMSVNIRUQQAhILCgdQRU5ESU5HEAMqXgoLQmxvY2tlclR5cGUSHAoYQkxPQ0tFUl9UWVBFX1VOU1BFQ0lGSUVEEAASGQoVVU5QVUJMSVNIRURfUkVGRVJFTkNFEAESFgoSUFJJVkFURV9BVFRBQ0hNRU5UEAIy0gsKC1NpdGVTZXJ2aWNlEmMKCUxpc3RTaXRlcxIeLm1lbW9zLmFwaS52MS5MaXN0U2l0ZXNSZXF1ZXN0Gh8ubWVtb3MuYXBpLnYxLkxpc3RTaXRlc1Jlc3BvbnNlIhWC0+STAg8SDS9hcGkvdjEvc2l0ZXMSYgoHR2V0U2l0ZRIcLm1lbW9zLmFwaS52MS5HZXRTaXRlUmVxdWVzdBoSLm1lbW9zLmFwaS52MS5TaXRlIiXaQQRuYW1lgtPkkwIYEhYvYXBpL3YxL3tuYW1lPXNpdGVzLyp9EmUKCkNyZWF0ZVNpdGUSHy5tZW1vcy5hcGkudjEuQ3JlYXRlU2l0ZVJlcXVlc3QaEi5tZW1vcy5hcGkudjEuU2l0ZSIi2kEEc2l0ZYLT5JMCFToEc2l0ZSINL2FwaS92MS9zaXRlcxJ/CgpVcGRhdGVTaXRlEh8ubWVtb3MuYXBpLnYxLlVwZGF0ZVNpdGVSZXF1ZXN0GhIubWVtb3MuYXBpLnYxLlNpdGUiPNpBEHNpdGUsdXBkYXRlX21hc2uC0+STAiM6BHNpdGUyGy9hcGkvdjEve3NpdGUubmFtZT1zaXRlcy8qfRJsCgpEZWxldGVTaXRlEh8ubWVtb3MuYXBpLnYxLkRlbGV0ZVNpdGVSZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5IiXaQQRuYW1lgtPkkwIYKhYvYXBpL3YxL3tuYW1lPXNpdGVzLyp9EpkBChBMaXN0UHVibGljYXRpb25zEiUubWVtb3MuYXBpLnYxLkxpc3RQdWJsaWNhdGlvbnNSZXF1ZXN0GiYubWVtb3MuYXBpLnYxLkxpc3RQdWJsaWNhdGlvbnNSZXNwb25zZSI22kEGcGFyZW50gtPkkwInEiUvYXBpL3YxL3twYXJlbnQ9c2l0ZXMvKn0vcHVibGljYXRpb25zEqUBChRMaXN0TWVtb1B1YmxpY2F0aW9ucxIpLm1lbW9zLmFwaS52MS5MaXN0TWVtb1B1YmxpY2F0aW9uc1JlcXVlc3QaKi5tZW1vcy5hcGkudjEuTGlzdE1lbW9QdWJsaWNhdGlvbnNSZXNwb25zZSI22kEGcGFyZW50gtPkkwInEiUvYXBpL3YxL3twYXJlbnQ9bWVtb3MvKn0vcHVibGljYXRpb25zEpUBCg5QcmV2aWV3UHVibGlzaBIjLm1lbW9zLmFwaS52MS5QcmV2aWV3UHVibGlzaFJlcXVlc3QaJC5tZW1vcy5hcGkudjEuUHJldmlld1B1Ymxpc2hSZXNwb25zZSI4gtPkkwIyOgEqIi0vYXBpL3YxL3twYXJlbnQ9c2l0ZXMvKn0vcHVibGljYXRpb25zOnByZXZpZXcSfAoLUHVibGlzaE1lbW8SIC5tZW1vcy5hcGkudjEuUHVibGlzaE1lbW9SZXF1ZXN0GhkubWVtb3MuYXBpLnYxLlB1YmxpY2F0aW9uIjCC0+STAio6ASoiJS9hcGkvdjEve3BhcmVudD1zaXRlcy8qfS9wdWJsaWNhdGlvbnMSuAEKEVVwZGF0ZVB1YmxpY2F0aW9uEiYubWVtb3MuYXBpLnYxLlVwZGF0ZVB1YmxpY2F0aW9uUmVxdWVzdBoZLm1lbW9zLmFwaS52MS5QdWJsaWNhdGlvbiJg2kEXcHVibGljYXRpb24sdXBkYXRlX21hc2uC0+STAkA6C3B1YmxpY2F0aW9uMjEvYXBpL3YxL3twdWJsaWNhdGlvbi5uYW1lPXNpdGVzLyovcHVibGljYXRpb25zLyp9Eo4BCg1VbnB1Ymxpc2hNZW1vEiIubWVtb3MuYXBpLnYxLlVucHVibGlzaE1lbW9SZXF1ZXN0GiMubWVtb3MuYXBpLnYxLlVucHVibGlzaE1lbW9SZXNwb25zZSI02kEEbmFtZYLT5JMCJyolL2FwaS92MS97bmFtZT1zaXRlcy8qL3B1YmxpY2F0aW9ucy8qfUKoAQoQY29tLm1lbW9zLmFwaS52MUIQU2l0ZVNlcnZpY2VQcm90b1ABWjBnaXRodWIuY29tL3VzZW1lbW9zL21lbW9zL3Byb3RvL2dlbi9hcGkvdjE7YXBpdjGiAgNNQViqAgxNZW1vcy5BcGkuVjHKAgxNZW1vc1xBcGlcVjHiAhhNZW1vc1xBcGlcVjFcR1BCTWV0YWRhdGHqAg5NZW1vczo6QXBpOjpWMWIGcHJvdG8z", [file_google_api_annotations, file_google_api_client, file_google_api_field_behavior, file_google_api_resource, file_google_protobuf_empty, file_google_protobuf_field_mask, file_google_protobuf_timestamp]);
 
 /**
  * Site is a blog space: an outward-facing site with its own name, domain, theme
@@ -94,6 +94,15 @@ export type Site = Message<"memos.api.v1.Site"> & {
   theme: string;
 
   /**
+   * The site's top menu, in the order it is drawn. Authored, not derived from
+   * the content: a menu inferred from what happens to be published is always a
+   * little off, and this is the first thing a reader sees.
+   *
+   * @generated from field: repeated memos.api.v1.SiteMenuItem menu = 13;
+   */
+  menu: SiteMenuItem[];
+
+  /**
    * The site-level search mode. Anonymous readers have no preferences of their
    * own, so this is site configuration rather than a user setting.
    *
@@ -118,6 +127,36 @@ export type Site = Message<"memos.api.v1.Site"> & {
  */
 export const SiteSchema: GenMessage<Site> = /*@__PURE__*/
   messageDesc(file_api_v1_site_service, 0);
+
+/**
+ * SiteMenuItem is one entry of the site's top menu.
+ *
+ * @generated from message memos.api.v1.SiteMenuItem
+ */
+export type SiteMenuItem = Message<"memos.api.v1.SiteMenuItem"> & {
+  /**
+   * What the reader sees.
+   *
+   * @generated from field: string label = 1;
+   */
+  label: string;
+
+  /**
+   * Where it goes, relative to the site root: "" for the home page, "search"
+   * for the search page, or a page's slug. Never an absolute URL — the menu is
+   * in-site navigation, not a link list.
+   *
+   * @generated from field: string path = 2;
+   */
+  path: string;
+};
+
+/**
+ * Describes the message memos.api.v1.SiteMenuItem.
+ * Use `create(SiteMenuItemSchema)` to create a new message.
+ */
+export const SiteMenuItemSchema: GenMessage<SiteMenuItem> = /*@__PURE__*/
+  messageDesc(file_api_v1_site_service, 1);
 
 /**
  * Publication is one read-only snapshot: the publish pipeline's output for one
@@ -210,7 +249,7 @@ export type Publication = Message<"memos.api.v1.Publication"> & {
  * Use `create(PublicationSchema)` to create a new message.
  */
 export const PublicationSchema: GenMessage<Publication> = /*@__PURE__*/
-  messageDesc(file_api_v1_site_service, 1);
+  messageDesc(file_api_v1_site_service, 2);
 
 /**
  * @generated from message memos.api.v1.ListSitesRequest
@@ -223,7 +262,7 @@ export type ListSitesRequest = Message<"memos.api.v1.ListSitesRequest"> & {
  * Use `create(ListSitesRequestSchema)` to create a new message.
  */
 export const ListSitesRequestSchema: GenMessage<ListSitesRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_site_service, 2);
+  messageDesc(file_api_v1_site_service, 3);
 
 /**
  * @generated from message memos.api.v1.ListSitesResponse
@@ -240,7 +279,7 @@ export type ListSitesResponse = Message<"memos.api.v1.ListSitesResponse"> & {
  * Use `create(ListSitesResponseSchema)` to create a new message.
  */
 export const ListSitesResponseSchema: GenMessage<ListSitesResponse> = /*@__PURE__*/
-  messageDesc(file_api_v1_site_service, 3);
+  messageDesc(file_api_v1_site_service, 4);
 
 /**
  * @generated from message memos.api.v1.GetSiteRequest
@@ -259,7 +298,7 @@ export type GetSiteRequest = Message<"memos.api.v1.GetSiteRequest"> & {
  * Use `create(GetSiteRequestSchema)` to create a new message.
  */
 export const GetSiteRequestSchema: GenMessage<GetSiteRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_site_service, 4);
+  messageDesc(file_api_v1_site_service, 5);
 
 /**
  * @generated from message memos.api.v1.CreateSiteRequest
@@ -276,7 +315,7 @@ export type CreateSiteRequest = Message<"memos.api.v1.CreateSiteRequest"> & {
  * Use `create(CreateSiteRequestSchema)` to create a new message.
  */
 export const CreateSiteRequestSchema: GenMessage<CreateSiteRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_site_service, 5);
+  messageDesc(file_api_v1_site_service, 6);
 
 /**
  * @generated from message memos.api.v1.UpdateSiteRequest
@@ -298,7 +337,7 @@ export type UpdateSiteRequest = Message<"memos.api.v1.UpdateSiteRequest"> & {
  * Use `create(UpdateSiteRequestSchema)` to create a new message.
  */
 export const UpdateSiteRequestSchema: GenMessage<UpdateSiteRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_site_service, 6);
+  messageDesc(file_api_v1_site_service, 7);
 
 /**
  * @generated from message memos.api.v1.DeleteSiteRequest
@@ -317,7 +356,7 @@ export type DeleteSiteRequest = Message<"memos.api.v1.DeleteSiteRequest"> & {
  * Use `create(DeleteSiteRequestSchema)` to create a new message.
  */
 export const DeleteSiteRequestSchema: GenMessage<DeleteSiteRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_site_service, 7);
+  messageDesc(file_api_v1_site_service, 8);
 
 /**
  * @generated from message memos.api.v1.ListPublicationsRequest
@@ -343,7 +382,7 @@ export type ListPublicationsRequest = Message<"memos.api.v1.ListPublicationsRequ
  * Use `create(ListPublicationsRequestSchema)` to create a new message.
  */
 export const ListPublicationsRequestSchema: GenMessage<ListPublicationsRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_site_service, 8);
+  messageDesc(file_api_v1_site_service, 9);
 
 /**
  * @generated from message memos.api.v1.ListPublicationsResponse
@@ -360,7 +399,7 @@ export type ListPublicationsResponse = Message<"memos.api.v1.ListPublicationsRes
  * Use `create(ListPublicationsResponseSchema)` to create a new message.
  */
 export const ListPublicationsResponseSchema: GenMessage<ListPublicationsResponse> = /*@__PURE__*/
-  messageDesc(file_api_v1_site_service, 9);
+  messageDesc(file_api_v1_site_service, 10);
 
 /**
  * @generated from message memos.api.v1.ListMemoPublicationsRequest
@@ -379,7 +418,7 @@ export type ListMemoPublicationsRequest = Message<"memos.api.v1.ListMemoPublicat
  * Use `create(ListMemoPublicationsRequestSchema)` to create a new message.
  */
 export const ListMemoPublicationsRequestSchema: GenMessage<ListMemoPublicationsRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_site_service, 10);
+  messageDesc(file_api_v1_site_service, 11);
 
 /**
  * @generated from message memos.api.v1.ListMemoPublicationsResponse
@@ -403,7 +442,7 @@ export type ListMemoPublicationsResponse = Message<"memos.api.v1.ListMemoPublica
  * Use `create(ListMemoPublicationsResponseSchema)` to create a new message.
  */
 export const ListMemoPublicationsResponseSchema: GenMessage<ListMemoPublicationsResponse> = /*@__PURE__*/
-  messageDesc(file_api_v1_site_service, 11);
+  messageDesc(file_api_v1_site_service, 12);
 
 /**
  * @generated from message memos.api.v1.PreviewPublishRequest
@@ -429,7 +468,7 @@ export type PreviewPublishRequest = Message<"memos.api.v1.PreviewPublishRequest"
  * Use `create(PreviewPublishRequestSchema)` to create a new message.
  */
 export const PreviewPublishRequestSchema: GenMessage<PreviewPublishRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_site_service, 12);
+  messageDesc(file_api_v1_site_service, 13);
 
 /**
  * @generated from message memos.api.v1.PreviewPublishResponse
@@ -472,7 +511,7 @@ export type PreviewPublishResponse = Message<"memos.api.v1.PreviewPublishRespons
  * Use `create(PreviewPublishResponseSchema)` to create a new message.
  */
 export const PreviewPublishResponseSchema: GenMessage<PreviewPublishResponse> = /*@__PURE__*/
-  messageDesc(file_api_v1_site_service, 13);
+  messageDesc(file_api_v1_site_service, 14);
 
 /**
  * AttachmentNotice is one attachment the page references that anonymous readers
@@ -504,7 +543,7 @@ export type AttachmentNotice = Message<"memos.api.v1.AttachmentNotice"> & {
  * Use `create(AttachmentNoticeSchema)` to create a new message.
  */
 export const AttachmentNoticeSchema: GenMessage<AttachmentNotice> = /*@__PURE__*/
-  messageDesc(file_api_v1_site_service, 14);
+  messageDesc(file_api_v1_site_service, 15);
 
 /**
  * PublishBlocker is one reason a publish cannot go through. Blockers name the
@@ -539,7 +578,7 @@ export type PublishBlocker = Message<"memos.api.v1.PublishBlocker"> & {
  * Use `create(PublishBlockerSchema)` to create a new message.
  */
 export const PublishBlockerSchema: GenMessage<PublishBlocker> = /*@__PURE__*/
-  messageDesc(file_api_v1_site_service, 15);
+  messageDesc(file_api_v1_site_service, 16);
 
 /**
  * @generated from message memos.api.v1.PublishMemoRequest
@@ -565,7 +604,7 @@ export type PublishMemoRequest = Message<"memos.api.v1.PublishMemoRequest"> & {
  * Use `create(PublishMemoRequestSchema)` to create a new message.
  */
 export const PublishMemoRequestSchema: GenMessage<PublishMemoRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_site_service, 16);
+  messageDesc(file_api_v1_site_service, 17);
 
 /**
  * @generated from message memos.api.v1.UpdatePublicationRequest
@@ -587,7 +626,7 @@ export type UpdatePublicationRequest = Message<"memos.api.v1.UpdatePublicationRe
  * Use `create(UpdatePublicationRequestSchema)` to create a new message.
  */
 export const UpdatePublicationRequestSchema: GenMessage<UpdatePublicationRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_site_service, 17);
+  messageDesc(file_api_v1_site_service, 18);
 
 /**
  * @generated from message memos.api.v1.UnpublishMemoRequest
@@ -606,7 +645,7 @@ export type UnpublishMemoRequest = Message<"memos.api.v1.UnpublishMemoRequest"> 
  * Use `create(UnpublishMemoRequestSchema)` to create a new message.
  */
 export const UnpublishMemoRequestSchema: GenMessage<UnpublishMemoRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_site_service, 18);
+  messageDesc(file_api_v1_site_service, 19);
 
 /**
  * @generated from message memos.api.v1.UnpublishMemoResponse
@@ -627,7 +666,7 @@ export type UnpublishMemoResponse = Message<"memos.api.v1.UnpublishMemoResponse"
  * Use `create(UnpublishMemoResponseSchema)` to create a new message.
  */
 export const UnpublishMemoResponseSchema: GenMessage<UnpublishMemoResponse> = /*@__PURE__*/
-  messageDesc(file_api_v1_site_service, 19);
+  messageDesc(file_api_v1_site_service, 20);
 
 /**
  * SiteCanonical selects the entry point search engines should index.

@@ -5660,6 +5660,14 @@ components:
                 dashboardSlug:
                     type: string
                     description: The slug of the site's home page, empty when no dashboard is published yet.
+                menu:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/SiteMenuItem'
+                    description: |-
+                        The top menu, in the order it is drawn. It is served with the profile
+                         rather than read off the home page document because it renders on every
+                         page of the site, most of which never load that document.
             description: PublicSiteProfile is what an anonymous reader may know about a site.
         Publication:
             type: object
@@ -6189,6 +6197,14 @@ components:
                     description: |-
                         Theme configuration as JSON. Restricted to known configuration keys — no
                          raw HTML or scripts.
+                menu:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/SiteMenuItem'
+                    description: |-
+                        The site's top menu, in the order it is drawn. Authored, not derived from
+                         the content: a menu inferred from what happens to be published is always a
+                         little off, and this is the first thing a reader sees.
                 searchMode:
                     type: string
                     description: |-
@@ -6206,6 +6222,19 @@ components:
                 Site is a blog space: an outward-facing site with its own name, domain, theme
                  and home page. A site belongs to a team, not to a workspace — which documents
                  it carries is decided article by article.
+        SiteMenuItem:
+            type: object
+            properties:
+                label:
+                    type: string
+                    description: What the reader sees.
+                path:
+                    type: string
+                    description: |-
+                        Where it goes, relative to the site root: "" for the home page, "search"
+                         for the search page, or a page's slug. Never an absolute URL — the menu is
+                         in-site navigation, not a link list.
+            description: SiteMenuItem is one entry of the site's top menu.
         Status:
             type: object
             properties:

@@ -156,6 +156,11 @@ message Site {
   // raw HTML or scripts.
   string theme = 9;
 
+  // The site's top menu, in the order it is drawn. Authored, not derived from
+  // the content: a menu inferred from what happens to be published is always a
+  // little off, and this is the first thing a reader sees.
+  repeated SiteMenuItem menu = 13;
+
   // The site-level search mode. Anonymous readers have no preferences of their
   // own, so this is site configuration rather than a user setting.
   string search_mode = 10;
@@ -163,6 +168,17 @@ message Site {
   google.protobuf.Timestamp create_time = 11 [(google.api.field_behavior) = OUTPUT_ONLY];
 
   google.protobuf.Timestamp update_time = 12 [(google.api.field_behavior) = OUTPUT_ONLY];
+}
+
+// SiteMenuItem is one entry of the site's top menu.
+message SiteMenuItem {
+  // What the reader sees.
+  string label = 1;
+
+  // Where it goes, relative to the site root: "" for the home page, "search"
+  // for the search page, or a page's slug. Never an absolute URL — the menu is
+  // in-site navigation, not a link list.
+  string path = 2;
 }
 
 // SiteCanonical selects the entry point search engines should index.

@@ -32,6 +32,10 @@ type PublicSiteProfile struct {
 	Theme string `protobuf:"bytes,3,opt,name=theme,proto3" json:"theme,omitempty"`
 	// The slug of the site's home page, empty when no dashboard is published yet.
 	DashboardSlug string `protobuf:"bytes,4,opt,name=dashboard_slug,json=dashboardSlug,proto3" json:"dashboard_slug,omitempty"`
+	// The top menu, in the order it is drawn. It is served with the profile
+	// rather than read off the home page document because it renders on every
+	// page of the site, most of which never load that document.
+	Menu          []*SiteMenuItem `protobuf:"bytes,5,rep,name=menu,proto3" json:"menu,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -92,6 +96,13 @@ func (x *PublicSiteProfile) GetDashboardSlug() string {
 		return x.DashboardSlug
 	}
 	return ""
+}
+
+func (x *PublicSiteProfile) GetMenu() []*SiteMenuItem {
+	if x != nil {
+		return x.Menu
+	}
+	return nil
 }
 
 // PublicPage is a published page as an anonymous reader sees it: the frozen
@@ -515,12 +526,13 @@ var File_api_v1_public_site_service_proto protoreflect.FileDescriptor
 
 const file_api_v1_public_site_service_proto_rawDesc = "" +
 	"\n" +
-	" api/v1/public_site_service.proto\x12\fmemos.api.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x95\x01\n" +
+	" api/v1/public_site_service.proto\x12\fmemos.api.v1\x1a\x19api/v1/site_service.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc5\x01\n" +
 	"\x11PublicSiteProfile\x12!\n" +
 	"\fdisplay_name\x18\x01 \x01(\tR\vdisplayName\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x14\n" +
 	"\x05theme\x18\x03 \x01(\tR\x05theme\x12%\n" +
-	"\x0edashboard_slug\x18\x04 \x01(\tR\rdashboardSlug\"\xd2\x01\n" +
+	"\x0edashboard_slug\x18\x04 \x01(\tR\rdashboardSlug\x12.\n" +
+	"\x04menu\x18\x05 \x03(\v2\x1a.memos.api.v1.SiteMenuItemR\x04menu\"\xd2\x01\n" +
 	"\n" +
 	"PublicPage\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x14\n" +
@@ -579,24 +591,26 @@ var file_api_v1_public_site_service_proto_goTypes = []any{
 	(*ResolvePublicDocResponse)(nil),    // 5: memos.api.v1.ResolvePublicDocResponse
 	(*ListPublicPagesRequest)(nil),      // 6: memos.api.v1.ListPublicPagesRequest
 	(*ListPublicPagesResponse)(nil),     // 7: memos.api.v1.ListPublicPagesResponse
-	(*timestamppb.Timestamp)(nil),       // 8: google.protobuf.Timestamp
+	(*SiteMenuItem)(nil),                // 8: memos.api.v1.SiteMenuItem
+	(*timestamppb.Timestamp)(nil),       // 9: google.protobuf.Timestamp
 }
 var file_api_v1_public_site_service_proto_depIdxs = []int32{
-	8, // 0: memos.api.v1.PublicPage.update_time:type_name -> google.protobuf.Timestamp
-	1, // 1: memos.api.v1.ListPublicPagesResponse.pages:type_name -> memos.api.v1.PublicPage
-	2, // 2: memos.api.v1.PublicSiteService.GetPublicSiteProfile:input_type -> memos.api.v1.GetPublicSiteProfileRequest
-	3, // 3: memos.api.v1.PublicSiteService.GetPublicPage:input_type -> memos.api.v1.GetPublicPageRequest
-	4, // 4: memos.api.v1.PublicSiteService.ResolvePublicDoc:input_type -> memos.api.v1.ResolvePublicDocRequest
-	6, // 5: memos.api.v1.PublicSiteService.ListPublicPages:input_type -> memos.api.v1.ListPublicPagesRequest
-	0, // 6: memos.api.v1.PublicSiteService.GetPublicSiteProfile:output_type -> memos.api.v1.PublicSiteProfile
-	1, // 7: memos.api.v1.PublicSiteService.GetPublicPage:output_type -> memos.api.v1.PublicPage
-	5, // 8: memos.api.v1.PublicSiteService.ResolvePublicDoc:output_type -> memos.api.v1.ResolvePublicDocResponse
-	7, // 9: memos.api.v1.PublicSiteService.ListPublicPages:output_type -> memos.api.v1.ListPublicPagesResponse
-	6, // [6:10] is the sub-list for method output_type
-	2, // [2:6] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	8, // 0: memos.api.v1.PublicSiteProfile.menu:type_name -> memos.api.v1.SiteMenuItem
+	9, // 1: memos.api.v1.PublicPage.update_time:type_name -> google.protobuf.Timestamp
+	1, // 2: memos.api.v1.ListPublicPagesResponse.pages:type_name -> memos.api.v1.PublicPage
+	2, // 3: memos.api.v1.PublicSiteService.GetPublicSiteProfile:input_type -> memos.api.v1.GetPublicSiteProfileRequest
+	3, // 4: memos.api.v1.PublicSiteService.GetPublicPage:input_type -> memos.api.v1.GetPublicPageRequest
+	4, // 5: memos.api.v1.PublicSiteService.ResolvePublicDoc:input_type -> memos.api.v1.ResolvePublicDocRequest
+	6, // 6: memos.api.v1.PublicSiteService.ListPublicPages:input_type -> memos.api.v1.ListPublicPagesRequest
+	0, // 7: memos.api.v1.PublicSiteService.GetPublicSiteProfile:output_type -> memos.api.v1.PublicSiteProfile
+	1, // 8: memos.api.v1.PublicSiteService.GetPublicPage:output_type -> memos.api.v1.PublicPage
+	5, // 9: memos.api.v1.PublicSiteService.ResolvePublicDoc:output_type -> memos.api.v1.ResolvePublicDocResponse
+	7, // 10: memos.api.v1.PublicSiteService.ListPublicPages:output_type -> memos.api.v1.ListPublicPagesResponse
+	7, // [7:11] is the sub-list for method output_type
+	3, // [3:7] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_api_v1_public_site_service_proto_init() }
@@ -604,6 +618,7 @@ func file_api_v1_public_site_service_proto_init() {
 	if File_api_v1_public_site_service_proto != nil {
 		return
 	}
+	file_api_v1_site_service_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

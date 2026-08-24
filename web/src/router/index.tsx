@@ -27,6 +27,7 @@ const MemoReader = lazyWithReload(() => import("@/pages/MemoReader"));
 const AttachmentPreview = lazyWithReload(() => import("@/pages/AttachmentPreview"));
 const AttachmentTextPreview = lazyWithReload(() => import("@/pages/AttachmentTextPreview"));
 const NotFound = lazyWithReload(() => import("@/pages/NotFound"));
+const BlogPreview = lazyWithReload(() => import("@/pages/BlogPreview"));
 const PublicSiteLayout = lazyWithReload(() => import("@/pages/PublicSiteLayout"));
 const PublicSiteHome = lazyWithReload(() => import("@/pages/PublicSiteHome"));
 const PublicSitePage = lazyWithReload(() => import("@/pages/PublicSitePage"));
@@ -80,6 +81,10 @@ export const routeConfig: RouteObject[] = [
       // Bare reader for a memo — content only, sized for reading and for the
       // browser's own print-to-PDF. Kept out of RootLayout so no app chrome renders.
       { path: "memos/:uid/reader", element: <MemoReader /> },
+      // Preview of the outward-facing blog skin, rendered from fixtures so the
+      // look can be judged before it is wired to publication records. Touches no
+      // API. Remove this route together with `previewFixtures.ts`.
+      { path: "blog-preview/*", element: <BlogPreview /> },
       // A published site. Deliberately outside RootLayout: it renders no app
       // chrome, requires no session, and its data comes only from
       // PublicSiteService. On a custom domain the same site is served from the

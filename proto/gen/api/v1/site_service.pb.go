@@ -270,6 +270,10 @@ type Site struct {
 	// Theme configuration as JSON. Restricted to known configuration keys — no
 	// raw HTML or scripts.
 	Theme string `protobuf:"bytes,9,opt,name=theme,proto3" json:"theme,omitempty"`
+	// The site's top menu, in the order it is drawn. Authored, not derived from
+	// the content: a menu inferred from what happens to be published is always a
+	// little off, and this is the first thing a reader sees.
+	Menu []*SiteMenuItem `protobuf:"bytes,13,rep,name=menu,proto3" json:"menu,omitempty"`
 	// The site-level search mode. Anonymous readers have no preferences of their
 	// own, so this is site configuration rather than a user setting.
 	SearchMode    string                 `protobuf:"bytes,10,opt,name=search_mode,json=searchMode,proto3" json:"search_mode,omitempty"`
@@ -372,6 +376,13 @@ func (x *Site) GetTheme() string {
 	return ""
 }
 
+func (x *Site) GetMenu() []*SiteMenuItem {
+	if x != nil {
+		return x.Menu
+	}
+	return nil
+}
+
 func (x *Site) GetSearchMode() string {
 	if x != nil {
 		return x.SearchMode
@@ -391,6 +402,63 @@ func (x *Site) GetUpdateTime() *timestamppb.Timestamp {
 		return x.UpdateTime
 	}
 	return nil
+}
+
+// SiteMenuItem is one entry of the site's top menu.
+type SiteMenuItem struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// What the reader sees.
+	Label string `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
+	// Where it goes, relative to the site root: "" for the home page, "search"
+	// for the search page, or a page's slug. Never an absolute URL — the menu is
+	// in-site navigation, not a link list.
+	Path          string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SiteMenuItem) Reset() {
+	*x = SiteMenuItem{}
+	mi := &file_api_v1_site_service_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SiteMenuItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SiteMenuItem) ProtoMessage() {}
+
+func (x *SiteMenuItem) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_site_service_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SiteMenuItem.ProtoReflect.Descriptor instead.
+func (*SiteMenuItem) Descriptor() ([]byte, []int) {
+	return file_api_v1_site_service_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *SiteMenuItem) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+func (x *SiteMenuItem) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
 }
 
 // Publication is one read-only snapshot: the publish pipeline's output for one
@@ -426,7 +494,7 @@ type Publication struct {
 
 func (x *Publication) Reset() {
 	*x = Publication{}
-	mi := &file_api_v1_site_service_proto_msgTypes[1]
+	mi := &file_api_v1_site_service_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -438,7 +506,7 @@ func (x *Publication) String() string {
 func (*Publication) ProtoMessage() {}
 
 func (x *Publication) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_site_service_proto_msgTypes[1]
+	mi := &file_api_v1_site_service_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -451,7 +519,7 @@ func (x *Publication) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Publication.ProtoReflect.Descriptor instead.
 func (*Publication) Descriptor() ([]byte, []int) {
-	return file_api_v1_site_service_proto_rawDescGZIP(), []int{1}
+	return file_api_v1_site_service_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Publication) GetName() string {
@@ -546,7 +614,7 @@ type ListSitesRequest struct {
 
 func (x *ListSitesRequest) Reset() {
 	*x = ListSitesRequest{}
-	mi := &file_api_v1_site_service_proto_msgTypes[2]
+	mi := &file_api_v1_site_service_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -558,7 +626,7 @@ func (x *ListSitesRequest) String() string {
 func (*ListSitesRequest) ProtoMessage() {}
 
 func (x *ListSitesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_site_service_proto_msgTypes[2]
+	mi := &file_api_v1_site_service_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -571,7 +639,7 @@ func (x *ListSitesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSitesRequest.ProtoReflect.Descriptor instead.
 func (*ListSitesRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_site_service_proto_rawDescGZIP(), []int{2}
+	return file_api_v1_site_service_proto_rawDescGZIP(), []int{3}
 }
 
 type ListSitesResponse struct {
@@ -583,7 +651,7 @@ type ListSitesResponse struct {
 
 func (x *ListSitesResponse) Reset() {
 	*x = ListSitesResponse{}
-	mi := &file_api_v1_site_service_proto_msgTypes[3]
+	mi := &file_api_v1_site_service_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -595,7 +663,7 @@ func (x *ListSitesResponse) String() string {
 func (*ListSitesResponse) ProtoMessage() {}
 
 func (x *ListSitesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_site_service_proto_msgTypes[3]
+	mi := &file_api_v1_site_service_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -608,7 +676,7 @@ func (x *ListSitesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSitesResponse.ProtoReflect.Descriptor instead.
 func (*ListSitesResponse) Descriptor() ([]byte, []int) {
-	return file_api_v1_site_service_proto_rawDescGZIP(), []int{3}
+	return file_api_v1_site_service_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ListSitesResponse) GetSites() []*Site {
@@ -628,7 +696,7 @@ type GetSiteRequest struct {
 
 func (x *GetSiteRequest) Reset() {
 	*x = GetSiteRequest{}
-	mi := &file_api_v1_site_service_proto_msgTypes[4]
+	mi := &file_api_v1_site_service_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -640,7 +708,7 @@ func (x *GetSiteRequest) String() string {
 func (*GetSiteRequest) ProtoMessage() {}
 
 func (x *GetSiteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_site_service_proto_msgTypes[4]
+	mi := &file_api_v1_site_service_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -653,7 +721,7 @@ func (x *GetSiteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSiteRequest.ProtoReflect.Descriptor instead.
 func (*GetSiteRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_site_service_proto_rawDescGZIP(), []int{4}
+	return file_api_v1_site_service_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetSiteRequest) GetName() string {
@@ -672,7 +740,7 @@ type CreateSiteRequest struct {
 
 func (x *CreateSiteRequest) Reset() {
 	*x = CreateSiteRequest{}
-	mi := &file_api_v1_site_service_proto_msgTypes[5]
+	mi := &file_api_v1_site_service_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -684,7 +752,7 @@ func (x *CreateSiteRequest) String() string {
 func (*CreateSiteRequest) ProtoMessage() {}
 
 func (x *CreateSiteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_site_service_proto_msgTypes[5]
+	mi := &file_api_v1_site_service_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -697,7 +765,7 @@ func (x *CreateSiteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSiteRequest.ProtoReflect.Descriptor instead.
 func (*CreateSiteRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_site_service_proto_rawDescGZIP(), []int{5}
+	return file_api_v1_site_service_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *CreateSiteRequest) GetSite() *Site {
@@ -717,7 +785,7 @@ type UpdateSiteRequest struct {
 
 func (x *UpdateSiteRequest) Reset() {
 	*x = UpdateSiteRequest{}
-	mi := &file_api_v1_site_service_proto_msgTypes[6]
+	mi := &file_api_v1_site_service_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -729,7 +797,7 @@ func (x *UpdateSiteRequest) String() string {
 func (*UpdateSiteRequest) ProtoMessage() {}
 
 func (x *UpdateSiteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_site_service_proto_msgTypes[6]
+	mi := &file_api_v1_site_service_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -742,7 +810,7 @@ func (x *UpdateSiteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSiteRequest.ProtoReflect.Descriptor instead.
 func (*UpdateSiteRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_site_service_proto_rawDescGZIP(), []int{6}
+	return file_api_v1_site_service_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *UpdateSiteRequest) GetSite() *Site {
@@ -769,7 +837,7 @@ type DeleteSiteRequest struct {
 
 func (x *DeleteSiteRequest) Reset() {
 	*x = DeleteSiteRequest{}
-	mi := &file_api_v1_site_service_proto_msgTypes[7]
+	mi := &file_api_v1_site_service_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -781,7 +849,7 @@ func (x *DeleteSiteRequest) String() string {
 func (*DeleteSiteRequest) ProtoMessage() {}
 
 func (x *DeleteSiteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_site_service_proto_msgTypes[7]
+	mi := &file_api_v1_site_service_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -794,7 +862,7 @@ func (x *DeleteSiteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSiteRequest.ProtoReflect.Descriptor instead.
 func (*DeleteSiteRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_site_service_proto_rawDescGZIP(), []int{7}
+	return file_api_v1_site_service_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *DeleteSiteRequest) GetName() string {
@@ -816,7 +884,7 @@ type ListPublicationsRequest struct {
 
 func (x *ListPublicationsRequest) Reset() {
 	*x = ListPublicationsRequest{}
-	mi := &file_api_v1_site_service_proto_msgTypes[8]
+	mi := &file_api_v1_site_service_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -828,7 +896,7 @@ func (x *ListPublicationsRequest) String() string {
 func (*ListPublicationsRequest) ProtoMessage() {}
 
 func (x *ListPublicationsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_site_service_proto_msgTypes[8]
+	mi := &file_api_v1_site_service_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -841,7 +909,7 @@ func (x *ListPublicationsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPublicationsRequest.ProtoReflect.Descriptor instead.
 func (*ListPublicationsRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_site_service_proto_rawDescGZIP(), []int{8}
+	return file_api_v1_site_service_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ListPublicationsRequest) GetParent() string {
@@ -867,7 +935,7 @@ type ListPublicationsResponse struct {
 
 func (x *ListPublicationsResponse) Reset() {
 	*x = ListPublicationsResponse{}
-	mi := &file_api_v1_site_service_proto_msgTypes[9]
+	mi := &file_api_v1_site_service_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -879,7 +947,7 @@ func (x *ListPublicationsResponse) String() string {
 func (*ListPublicationsResponse) ProtoMessage() {}
 
 func (x *ListPublicationsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_site_service_proto_msgTypes[9]
+	mi := &file_api_v1_site_service_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -892,7 +960,7 @@ func (x *ListPublicationsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPublicationsResponse.ProtoReflect.Descriptor instead.
 func (*ListPublicationsResponse) Descriptor() ([]byte, []int) {
-	return file_api_v1_site_service_proto_rawDescGZIP(), []int{9}
+	return file_api_v1_site_service_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ListPublicationsResponse) GetPublications() []*Publication {
@@ -912,7 +980,7 @@ type ListMemoPublicationsRequest struct {
 
 func (x *ListMemoPublicationsRequest) Reset() {
 	*x = ListMemoPublicationsRequest{}
-	mi := &file_api_v1_site_service_proto_msgTypes[10]
+	mi := &file_api_v1_site_service_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -924,7 +992,7 @@ func (x *ListMemoPublicationsRequest) String() string {
 func (*ListMemoPublicationsRequest) ProtoMessage() {}
 
 func (x *ListMemoPublicationsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_site_service_proto_msgTypes[10]
+	mi := &file_api_v1_site_service_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -937,7 +1005,7 @@ func (x *ListMemoPublicationsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMemoPublicationsRequest.ProtoReflect.Descriptor instead.
 func (*ListMemoPublicationsRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_site_service_proto_rawDescGZIP(), []int{10}
+	return file_api_v1_site_service_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ListMemoPublicationsRequest) GetParent() string {
@@ -958,7 +1026,7 @@ type ListMemoPublicationsResponse struct {
 
 func (x *ListMemoPublicationsResponse) Reset() {
 	*x = ListMemoPublicationsResponse{}
-	mi := &file_api_v1_site_service_proto_msgTypes[11]
+	mi := &file_api_v1_site_service_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -970,7 +1038,7 @@ func (x *ListMemoPublicationsResponse) String() string {
 func (*ListMemoPublicationsResponse) ProtoMessage() {}
 
 func (x *ListMemoPublicationsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_site_service_proto_msgTypes[11]
+	mi := &file_api_v1_site_service_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -983,7 +1051,7 @@ func (x *ListMemoPublicationsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMemoPublicationsResponse.ProtoReflect.Descriptor instead.
 func (*ListMemoPublicationsResponse) Descriptor() ([]byte, []int) {
-	return file_api_v1_site_service_proto_rawDescGZIP(), []int{11}
+	return file_api_v1_site_service_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ListMemoPublicationsResponse) GetPublications() []*Publication {
@@ -1012,7 +1080,7 @@ type PreviewPublishRequest struct {
 
 func (x *PreviewPublishRequest) Reset() {
 	*x = PreviewPublishRequest{}
-	mi := &file_api_v1_site_service_proto_msgTypes[12]
+	mi := &file_api_v1_site_service_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1024,7 +1092,7 @@ func (x *PreviewPublishRequest) String() string {
 func (*PreviewPublishRequest) ProtoMessage() {}
 
 func (x *PreviewPublishRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_site_service_proto_msgTypes[12]
+	mi := &file_api_v1_site_service_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1037,7 +1105,7 @@ func (x *PreviewPublishRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviewPublishRequest.ProtoReflect.Descriptor instead.
 func (*PreviewPublishRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_site_service_proto_rawDescGZIP(), []int{12}
+	return file_api_v1_site_service_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *PreviewPublishRequest) GetParent() string {
@@ -1073,7 +1141,7 @@ type PreviewPublishResponse struct {
 
 func (x *PreviewPublishResponse) Reset() {
 	*x = PreviewPublishResponse{}
-	mi := &file_api_v1_site_service_proto_msgTypes[13]
+	mi := &file_api_v1_site_service_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1085,7 +1153,7 @@ func (x *PreviewPublishResponse) String() string {
 func (*PreviewPublishResponse) ProtoMessage() {}
 
 func (x *PreviewPublishResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_site_service_proto_msgTypes[13]
+	mi := &file_api_v1_site_service_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1098,7 +1166,7 @@ func (x *PreviewPublishResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviewPublishResponse.ProtoReflect.Descriptor instead.
 func (*PreviewPublishResponse) Descriptor() ([]byte, []int) {
-	return file_api_v1_site_service_proto_rawDescGZIP(), []int{13}
+	return file_api_v1_site_service_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *PreviewPublishResponse) GetAttachmentsNotPublic() []*AttachmentNotice {
@@ -1143,7 +1211,7 @@ type AttachmentNotice struct {
 
 func (x *AttachmentNotice) Reset() {
 	*x = AttachmentNotice{}
-	mi := &file_api_v1_site_service_proto_msgTypes[14]
+	mi := &file_api_v1_site_service_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1155,7 +1223,7 @@ func (x *AttachmentNotice) String() string {
 func (*AttachmentNotice) ProtoMessage() {}
 
 func (x *AttachmentNotice) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_site_service_proto_msgTypes[14]
+	mi := &file_api_v1_site_service_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1168,7 +1236,7 @@ func (x *AttachmentNotice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttachmentNotice.ProtoReflect.Descriptor instead.
 func (*AttachmentNotice) Descriptor() ([]byte, []int) {
-	return file_api_v1_site_service_proto_rawDescGZIP(), []int{14}
+	return file_api_v1_site_service_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *AttachmentNotice) GetAttachment() string {
@@ -1208,7 +1276,7 @@ type PublishBlocker struct {
 
 func (x *PublishBlocker) Reset() {
 	*x = PublishBlocker{}
-	mi := &file_api_v1_site_service_proto_msgTypes[15]
+	mi := &file_api_v1_site_service_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1220,7 +1288,7 @@ func (x *PublishBlocker) String() string {
 func (*PublishBlocker) ProtoMessage() {}
 
 func (x *PublishBlocker) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_site_service_proto_msgTypes[15]
+	mi := &file_api_v1_site_service_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1233,7 +1301,7 @@ func (x *PublishBlocker) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PublishBlocker.ProtoReflect.Descriptor instead.
 func (*PublishBlocker) Descriptor() ([]byte, []int) {
-	return file_api_v1_site_service_proto_rawDescGZIP(), []int{15}
+	return file_api_v1_site_service_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *PublishBlocker) GetType() BlockerType {
@@ -1269,7 +1337,7 @@ type PublishMemoRequest struct {
 
 func (x *PublishMemoRequest) Reset() {
 	*x = PublishMemoRequest{}
-	mi := &file_api_v1_site_service_proto_msgTypes[16]
+	mi := &file_api_v1_site_service_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1281,7 +1349,7 @@ func (x *PublishMemoRequest) String() string {
 func (*PublishMemoRequest) ProtoMessage() {}
 
 func (x *PublishMemoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_site_service_proto_msgTypes[16]
+	mi := &file_api_v1_site_service_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1294,7 +1362,7 @@ func (x *PublishMemoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PublishMemoRequest.ProtoReflect.Descriptor instead.
 func (*PublishMemoRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_site_service_proto_rawDescGZIP(), []int{16}
+	return file_api_v1_site_service_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *PublishMemoRequest) GetParent() string {
@@ -1321,7 +1389,7 @@ type UpdatePublicationRequest struct {
 
 func (x *UpdatePublicationRequest) Reset() {
 	*x = UpdatePublicationRequest{}
-	mi := &file_api_v1_site_service_proto_msgTypes[17]
+	mi := &file_api_v1_site_service_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1333,7 +1401,7 @@ func (x *UpdatePublicationRequest) String() string {
 func (*UpdatePublicationRequest) ProtoMessage() {}
 
 func (x *UpdatePublicationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_site_service_proto_msgTypes[17]
+	mi := &file_api_v1_site_service_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1346,7 +1414,7 @@ func (x *UpdatePublicationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdatePublicationRequest.ProtoReflect.Descriptor instead.
 func (*UpdatePublicationRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_site_service_proto_rawDescGZIP(), []int{17}
+	return file_api_v1_site_service_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *UpdatePublicationRequest) GetPublication() *Publication {
@@ -1373,7 +1441,7 @@ type UnpublishMemoRequest struct {
 
 func (x *UnpublishMemoRequest) Reset() {
 	*x = UnpublishMemoRequest{}
-	mi := &file_api_v1_site_service_proto_msgTypes[18]
+	mi := &file_api_v1_site_service_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1385,7 +1453,7 @@ func (x *UnpublishMemoRequest) String() string {
 func (*UnpublishMemoRequest) ProtoMessage() {}
 
 func (x *UnpublishMemoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_site_service_proto_msgTypes[18]
+	mi := &file_api_v1_site_service_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1398,7 +1466,7 @@ func (x *UnpublishMemoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnpublishMemoRequest.ProtoReflect.Descriptor instead.
 func (*UnpublishMemoRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_site_service_proto_rawDescGZIP(), []int{18}
+	return file_api_v1_site_service_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *UnpublishMemoRequest) GetName() string {
@@ -1420,7 +1488,7 @@ type UnpublishMemoResponse struct {
 
 func (x *UnpublishMemoResponse) Reset() {
 	*x = UnpublishMemoResponse{}
-	mi := &file_api_v1_site_service_proto_msgTypes[19]
+	mi := &file_api_v1_site_service_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1432,7 +1500,7 @@ func (x *UnpublishMemoResponse) String() string {
 func (*UnpublishMemoResponse) ProtoMessage() {}
 
 func (x *UnpublishMemoResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_site_service_proto_msgTypes[19]
+	mi := &file_api_v1_site_service_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1445,7 +1513,7 @@ func (x *UnpublishMemoResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnpublishMemoResponse.ProtoReflect.Descriptor instead.
 func (*UnpublishMemoResponse) Descriptor() ([]byte, []int) {
-	return file_api_v1_site_service_proto_rawDescGZIP(), []int{19}
+	return file_api_v1_site_service_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *UnpublishMemoResponse) GetAffectedPublications() []*Publication {
@@ -1459,7 +1527,7 @@ var File_api_v1_site_service_proto protoreflect.FileDescriptor
 
 const file_api_v1_site_service_proto_rawDesc = "" +
 	"\n" +
-	"\x19api/v1/site_service.proto\x12\fmemos.api.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa3\x04\n" +
+	"\x19api/v1/site_service.proto\x12\fmemos.api.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd3\x04\n" +
 	"\x04Site\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12 \n" +
@@ -1469,7 +1537,8 @@ const file_api_v1_site_service_proto_rawDesc = "" +
 	"\tcanonical\x18\x06 \x01(\x0e2\x1b.memos.api.v1.SiteCanonicalR\tcanonical\x120\n" +
 	"\x06status\x18\a \x01(\x0e2\x18.memos.api.v1.SiteStatusR\x06status\x12\x1c\n" +
 	"\tdashboard\x18\b \x01(\tR\tdashboard\x12\x14\n" +
-	"\x05theme\x18\t \x01(\tR\x05theme\x12\x1f\n" +
+	"\x05theme\x18\t \x01(\tR\x05theme\x12.\n" +
+	"\x04menu\x18\r \x03(\v2\x1a.memos.api.v1.SiteMenuItemR\x04menu\x12\x1f\n" +
 	"\vsearch_mode\x18\n" +
 	" \x01(\tR\n" +
 	"searchMode\x12@\n" +
@@ -1477,7 +1546,10 @@ const file_api_v1_site_service_proto_rawDesc = "" +
 	"createTime\x12@\n" +
 	"\vupdate_time\x18\f \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
 	"updateTime:1\xeaA.\n" +
-	"\x11memos.api.v1/Site\x12\fsites/{site}*\x05sites2\x04site\"\xad\x04\n" +
+	"\x11memos.api.v1/Site\x12\fsites/{site}*\x05sites2\x04site\"8\n" +
+	"\fSiteMenuItem\x12\x14\n" +
+	"\x05label\x18\x01 \x01(\tR\x05label\x12\x12\n" +
+	"\x04path\x18\x02 \x01(\tR\x04path\"\xad\x04\n" +
 	"\vPublication\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12\x17\n" +
 	"\x04memo\x18\x02 \x01(\tB\x03\xe0A\x03R\x04memo\x12\x12\n" +
@@ -1597,85 +1669,87 @@ func file_api_v1_site_service_proto_rawDescGZIP() []byte {
 }
 
 var file_api_v1_site_service_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_api_v1_site_service_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_api_v1_site_service_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_api_v1_site_service_proto_goTypes = []any{
 	(SiteCanonical)(0),                   // 0: memos.api.v1.SiteCanonical
 	(SiteStatus)(0),                      // 1: memos.api.v1.SiteStatus
 	(PublicationState)(0),                // 2: memos.api.v1.PublicationState
 	(BlockerType)(0),                     // 3: memos.api.v1.BlockerType
 	(*Site)(nil),                         // 4: memos.api.v1.Site
-	(*Publication)(nil),                  // 5: memos.api.v1.Publication
-	(*ListSitesRequest)(nil),             // 6: memos.api.v1.ListSitesRequest
-	(*ListSitesResponse)(nil),            // 7: memos.api.v1.ListSitesResponse
-	(*GetSiteRequest)(nil),               // 8: memos.api.v1.GetSiteRequest
-	(*CreateSiteRequest)(nil),            // 9: memos.api.v1.CreateSiteRequest
-	(*UpdateSiteRequest)(nil),            // 10: memos.api.v1.UpdateSiteRequest
-	(*DeleteSiteRequest)(nil),            // 11: memos.api.v1.DeleteSiteRequest
-	(*ListPublicationsRequest)(nil),      // 12: memos.api.v1.ListPublicationsRequest
-	(*ListPublicationsResponse)(nil),     // 13: memos.api.v1.ListPublicationsResponse
-	(*ListMemoPublicationsRequest)(nil),  // 14: memos.api.v1.ListMemoPublicationsRequest
-	(*ListMemoPublicationsResponse)(nil), // 15: memos.api.v1.ListMemoPublicationsResponse
-	(*PreviewPublishRequest)(nil),        // 16: memos.api.v1.PreviewPublishRequest
-	(*PreviewPublishResponse)(nil),       // 17: memos.api.v1.PreviewPublishResponse
-	(*AttachmentNotice)(nil),             // 18: memos.api.v1.AttachmentNotice
-	(*PublishBlocker)(nil),               // 19: memos.api.v1.PublishBlocker
-	(*PublishMemoRequest)(nil),           // 20: memos.api.v1.PublishMemoRequest
-	(*UpdatePublicationRequest)(nil),     // 21: memos.api.v1.UpdatePublicationRequest
-	(*UnpublishMemoRequest)(nil),         // 22: memos.api.v1.UnpublishMemoRequest
-	(*UnpublishMemoResponse)(nil),        // 23: memos.api.v1.UnpublishMemoResponse
-	(*timestamppb.Timestamp)(nil),        // 24: google.protobuf.Timestamp
-	(*fieldmaskpb.FieldMask)(nil),        // 25: google.protobuf.FieldMask
-	(*emptypb.Empty)(nil),                // 26: google.protobuf.Empty
+	(*SiteMenuItem)(nil),                 // 5: memos.api.v1.SiteMenuItem
+	(*Publication)(nil),                  // 6: memos.api.v1.Publication
+	(*ListSitesRequest)(nil),             // 7: memos.api.v1.ListSitesRequest
+	(*ListSitesResponse)(nil),            // 8: memos.api.v1.ListSitesResponse
+	(*GetSiteRequest)(nil),               // 9: memos.api.v1.GetSiteRequest
+	(*CreateSiteRequest)(nil),            // 10: memos.api.v1.CreateSiteRequest
+	(*UpdateSiteRequest)(nil),            // 11: memos.api.v1.UpdateSiteRequest
+	(*DeleteSiteRequest)(nil),            // 12: memos.api.v1.DeleteSiteRequest
+	(*ListPublicationsRequest)(nil),      // 13: memos.api.v1.ListPublicationsRequest
+	(*ListPublicationsResponse)(nil),     // 14: memos.api.v1.ListPublicationsResponse
+	(*ListMemoPublicationsRequest)(nil),  // 15: memos.api.v1.ListMemoPublicationsRequest
+	(*ListMemoPublicationsResponse)(nil), // 16: memos.api.v1.ListMemoPublicationsResponse
+	(*PreviewPublishRequest)(nil),        // 17: memos.api.v1.PreviewPublishRequest
+	(*PreviewPublishResponse)(nil),       // 18: memos.api.v1.PreviewPublishResponse
+	(*AttachmentNotice)(nil),             // 19: memos.api.v1.AttachmentNotice
+	(*PublishBlocker)(nil),               // 20: memos.api.v1.PublishBlocker
+	(*PublishMemoRequest)(nil),           // 21: memos.api.v1.PublishMemoRequest
+	(*UpdatePublicationRequest)(nil),     // 22: memos.api.v1.UpdatePublicationRequest
+	(*UnpublishMemoRequest)(nil),         // 23: memos.api.v1.UnpublishMemoRequest
+	(*UnpublishMemoResponse)(nil),        // 24: memos.api.v1.UnpublishMemoResponse
+	(*timestamppb.Timestamp)(nil),        // 25: google.protobuf.Timestamp
+	(*fieldmaskpb.FieldMask)(nil),        // 26: google.protobuf.FieldMask
+	(*emptypb.Empty)(nil),                // 27: google.protobuf.Empty
 }
 var file_api_v1_site_service_proto_depIdxs = []int32{
 	0,  // 0: memos.api.v1.Site.canonical:type_name -> memos.api.v1.SiteCanonical
 	1,  // 1: memos.api.v1.Site.status:type_name -> memos.api.v1.SiteStatus
-	24, // 2: memos.api.v1.Site.create_time:type_name -> google.protobuf.Timestamp
-	24, // 3: memos.api.v1.Site.update_time:type_name -> google.protobuf.Timestamp
-	2,  // 4: memos.api.v1.Publication.state:type_name -> memos.api.v1.PublicationState
-	24, // 5: memos.api.v1.Publication.publish_time:type_name -> google.protobuf.Timestamp
-	24, // 6: memos.api.v1.Publication.update_time:type_name -> google.protobuf.Timestamp
-	4,  // 7: memos.api.v1.ListSitesResponse.sites:type_name -> memos.api.v1.Site
-	4,  // 8: memos.api.v1.CreateSiteRequest.site:type_name -> memos.api.v1.Site
-	4,  // 9: memos.api.v1.UpdateSiteRequest.site:type_name -> memos.api.v1.Site
-	25, // 10: memos.api.v1.UpdateSiteRequest.update_mask:type_name -> google.protobuf.FieldMask
-	2,  // 11: memos.api.v1.ListPublicationsRequest.state:type_name -> memos.api.v1.PublicationState
-	5,  // 12: memos.api.v1.ListPublicationsResponse.publications:type_name -> memos.api.v1.Publication
-	5,  // 13: memos.api.v1.ListMemoPublicationsResponse.publications:type_name -> memos.api.v1.Publication
-	4,  // 14: memos.api.v1.ListMemoPublicationsResponse.sites:type_name -> memos.api.v1.Site
-	18, // 15: memos.api.v1.PreviewPublishResponse.attachments_not_public:type_name -> memos.api.v1.AttachmentNotice
-	19, // 16: memos.api.v1.PreviewPublishResponse.blockers:type_name -> memos.api.v1.PublishBlocker
-	3,  // 17: memos.api.v1.PublishBlocker.type:type_name -> memos.api.v1.BlockerType
-	5,  // 18: memos.api.v1.UpdatePublicationRequest.publication:type_name -> memos.api.v1.Publication
-	25, // 19: memos.api.v1.UpdatePublicationRequest.update_mask:type_name -> google.protobuf.FieldMask
-	5,  // 20: memos.api.v1.UnpublishMemoResponse.affected_publications:type_name -> memos.api.v1.Publication
-	6,  // 21: memos.api.v1.SiteService.ListSites:input_type -> memos.api.v1.ListSitesRequest
-	8,  // 22: memos.api.v1.SiteService.GetSite:input_type -> memos.api.v1.GetSiteRequest
-	9,  // 23: memos.api.v1.SiteService.CreateSite:input_type -> memos.api.v1.CreateSiteRequest
-	10, // 24: memos.api.v1.SiteService.UpdateSite:input_type -> memos.api.v1.UpdateSiteRequest
-	11, // 25: memos.api.v1.SiteService.DeleteSite:input_type -> memos.api.v1.DeleteSiteRequest
-	12, // 26: memos.api.v1.SiteService.ListPublications:input_type -> memos.api.v1.ListPublicationsRequest
-	14, // 27: memos.api.v1.SiteService.ListMemoPublications:input_type -> memos.api.v1.ListMemoPublicationsRequest
-	16, // 28: memos.api.v1.SiteService.PreviewPublish:input_type -> memos.api.v1.PreviewPublishRequest
-	20, // 29: memos.api.v1.SiteService.PublishMemo:input_type -> memos.api.v1.PublishMemoRequest
-	21, // 30: memos.api.v1.SiteService.UpdatePublication:input_type -> memos.api.v1.UpdatePublicationRequest
-	22, // 31: memos.api.v1.SiteService.UnpublishMemo:input_type -> memos.api.v1.UnpublishMemoRequest
-	7,  // 32: memos.api.v1.SiteService.ListSites:output_type -> memos.api.v1.ListSitesResponse
-	4,  // 33: memos.api.v1.SiteService.GetSite:output_type -> memos.api.v1.Site
-	4,  // 34: memos.api.v1.SiteService.CreateSite:output_type -> memos.api.v1.Site
-	4,  // 35: memos.api.v1.SiteService.UpdateSite:output_type -> memos.api.v1.Site
-	26, // 36: memos.api.v1.SiteService.DeleteSite:output_type -> google.protobuf.Empty
-	13, // 37: memos.api.v1.SiteService.ListPublications:output_type -> memos.api.v1.ListPublicationsResponse
-	15, // 38: memos.api.v1.SiteService.ListMemoPublications:output_type -> memos.api.v1.ListMemoPublicationsResponse
-	17, // 39: memos.api.v1.SiteService.PreviewPublish:output_type -> memos.api.v1.PreviewPublishResponse
-	5,  // 40: memos.api.v1.SiteService.PublishMemo:output_type -> memos.api.v1.Publication
-	5,  // 41: memos.api.v1.SiteService.UpdatePublication:output_type -> memos.api.v1.Publication
-	23, // 42: memos.api.v1.SiteService.UnpublishMemo:output_type -> memos.api.v1.UnpublishMemoResponse
-	32, // [32:43] is the sub-list for method output_type
-	21, // [21:32] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	5,  // 2: memos.api.v1.Site.menu:type_name -> memos.api.v1.SiteMenuItem
+	25, // 3: memos.api.v1.Site.create_time:type_name -> google.protobuf.Timestamp
+	25, // 4: memos.api.v1.Site.update_time:type_name -> google.protobuf.Timestamp
+	2,  // 5: memos.api.v1.Publication.state:type_name -> memos.api.v1.PublicationState
+	25, // 6: memos.api.v1.Publication.publish_time:type_name -> google.protobuf.Timestamp
+	25, // 7: memos.api.v1.Publication.update_time:type_name -> google.protobuf.Timestamp
+	4,  // 8: memos.api.v1.ListSitesResponse.sites:type_name -> memos.api.v1.Site
+	4,  // 9: memos.api.v1.CreateSiteRequest.site:type_name -> memos.api.v1.Site
+	4,  // 10: memos.api.v1.UpdateSiteRequest.site:type_name -> memos.api.v1.Site
+	26, // 11: memos.api.v1.UpdateSiteRequest.update_mask:type_name -> google.protobuf.FieldMask
+	2,  // 12: memos.api.v1.ListPublicationsRequest.state:type_name -> memos.api.v1.PublicationState
+	6,  // 13: memos.api.v1.ListPublicationsResponse.publications:type_name -> memos.api.v1.Publication
+	6,  // 14: memos.api.v1.ListMemoPublicationsResponse.publications:type_name -> memos.api.v1.Publication
+	4,  // 15: memos.api.v1.ListMemoPublicationsResponse.sites:type_name -> memos.api.v1.Site
+	19, // 16: memos.api.v1.PreviewPublishResponse.attachments_not_public:type_name -> memos.api.v1.AttachmentNotice
+	20, // 17: memos.api.v1.PreviewPublishResponse.blockers:type_name -> memos.api.v1.PublishBlocker
+	3,  // 18: memos.api.v1.PublishBlocker.type:type_name -> memos.api.v1.BlockerType
+	6,  // 19: memos.api.v1.UpdatePublicationRequest.publication:type_name -> memos.api.v1.Publication
+	26, // 20: memos.api.v1.UpdatePublicationRequest.update_mask:type_name -> google.protobuf.FieldMask
+	6,  // 21: memos.api.v1.UnpublishMemoResponse.affected_publications:type_name -> memos.api.v1.Publication
+	7,  // 22: memos.api.v1.SiteService.ListSites:input_type -> memos.api.v1.ListSitesRequest
+	9,  // 23: memos.api.v1.SiteService.GetSite:input_type -> memos.api.v1.GetSiteRequest
+	10, // 24: memos.api.v1.SiteService.CreateSite:input_type -> memos.api.v1.CreateSiteRequest
+	11, // 25: memos.api.v1.SiteService.UpdateSite:input_type -> memos.api.v1.UpdateSiteRequest
+	12, // 26: memos.api.v1.SiteService.DeleteSite:input_type -> memos.api.v1.DeleteSiteRequest
+	13, // 27: memos.api.v1.SiteService.ListPublications:input_type -> memos.api.v1.ListPublicationsRequest
+	15, // 28: memos.api.v1.SiteService.ListMemoPublications:input_type -> memos.api.v1.ListMemoPublicationsRequest
+	17, // 29: memos.api.v1.SiteService.PreviewPublish:input_type -> memos.api.v1.PreviewPublishRequest
+	21, // 30: memos.api.v1.SiteService.PublishMemo:input_type -> memos.api.v1.PublishMemoRequest
+	22, // 31: memos.api.v1.SiteService.UpdatePublication:input_type -> memos.api.v1.UpdatePublicationRequest
+	23, // 32: memos.api.v1.SiteService.UnpublishMemo:input_type -> memos.api.v1.UnpublishMemoRequest
+	8,  // 33: memos.api.v1.SiteService.ListSites:output_type -> memos.api.v1.ListSitesResponse
+	4,  // 34: memos.api.v1.SiteService.GetSite:output_type -> memos.api.v1.Site
+	4,  // 35: memos.api.v1.SiteService.CreateSite:output_type -> memos.api.v1.Site
+	4,  // 36: memos.api.v1.SiteService.UpdateSite:output_type -> memos.api.v1.Site
+	27, // 37: memos.api.v1.SiteService.DeleteSite:output_type -> google.protobuf.Empty
+	14, // 38: memos.api.v1.SiteService.ListPublications:output_type -> memos.api.v1.ListPublicationsResponse
+	16, // 39: memos.api.v1.SiteService.ListMemoPublications:output_type -> memos.api.v1.ListMemoPublicationsResponse
+	18, // 40: memos.api.v1.SiteService.PreviewPublish:output_type -> memos.api.v1.PreviewPublishResponse
+	6,  // 41: memos.api.v1.SiteService.PublishMemo:output_type -> memos.api.v1.Publication
+	6,  // 42: memos.api.v1.SiteService.UpdatePublication:output_type -> memos.api.v1.Publication
+	24, // 43: memos.api.v1.SiteService.UnpublishMemo:output_type -> memos.api.v1.UnpublishMemoResponse
+	33, // [33:44] is the sub-list for method output_type
+	22, // [22:33] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_api_v1_site_service_proto_init() }
@@ -1689,7 +1763,7 @@ func file_api_v1_site_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_v1_site_service_proto_rawDesc), len(file_api_v1_site_service_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   20,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

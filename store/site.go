@@ -37,7 +37,12 @@ type Site struct {
 	// Nil until the author picks one.
 	DashboardMemoID *int32
 	Theme           string
-	SearchMode      string
+	// Menu is the site's top menu as a JSON array of {label, path}. It is site
+	// configuration rather than part of the home `.view` document because it has
+	// to render on every outward-facing page, and those pages never read that
+	// document.
+	Menu       string
+	SearchMode string
 	CreatedTs       int64
 	UpdatedTs       int64
 }
@@ -65,6 +70,7 @@ type UpdateSite struct {
 	Status          *string
 	DashboardMemoID *int32
 	Theme           *string
+	Menu            *string
 	SearchMode      *string
 }
 

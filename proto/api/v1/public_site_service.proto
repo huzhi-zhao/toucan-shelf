@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package memos.api.v1;
 
+import "api/v1/site_service.proto";
 import "google/api/annotations.proto";
 import "google/api/field_behavior.proto";
 import "google/protobuf/timestamp.proto";
@@ -52,6 +53,11 @@ message PublicSiteProfile {
 
   // The slug of the site's home page, empty when no dashboard is published yet.
   string dashboard_slug = 4;
+
+  // The top menu, in the order it is drawn. It is served with the profile
+  // rather than read off the home page document because it renders on every
+  // page of the site, most of which never load that document.
+  repeated SiteMenuItem menu = 5;
 }
 
 // PublicPage is a published page as an anonymous reader sees it: the frozen

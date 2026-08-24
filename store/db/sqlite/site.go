@@ -8,8 +8,8 @@ import (
 )
 
 func (d *DB) CreateSite(ctx context.Context, create *store.Site) (*store.Site, error) {
-	stmt := "INSERT INTO `site` (`uid`, `team_id`, `creator_id`, `name`, `description`, `domain`, `domain_verified`, `canonical`, `status`, `dashboard_memo_id`, `theme`, `search_mode`) " +
-		"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING `id`, `created_ts`, `updated_ts`"
+	stmt := "INSERT INTO `site` (`uid`, `team_id`, `creator_id`, `name`, `description`, `domain`, `domain_verified`, `canonical`, `status`, `dashboard_memo_id`, `theme`, `menu`, `search_mode`) " +
+		"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING `id`, `created_ts`, `updated_ts`"
 	if err := d.db.QueryRowContext(ctx, stmt,
 		create.UID,
 		create.TeamID,
@@ -22,6 +22,7 @@ func (d *DB) CreateSite(ctx context.Context, create *store.Site) (*store.Site, e
 		create.Status,
 		create.DashboardMemoID,
 		create.Theme,
+		create.Menu,
 		create.SearchMode,
 	).Scan(&create.ID, &create.CreatedTs, &create.UpdatedTs); err != nil {
 		return nil, err
@@ -65,6 +66,7 @@ func (d *DB) ListSites(ctx context.Context, find *store.FindSite) ([]*store.Site
 			status,
 			dashboard_memo_id,
 			theme,
+			menu,
 			search_mode,
 			created_ts,
 			updated_ts
@@ -94,6 +96,7 @@ func (d *DB) ListSites(ctx context.Context, find *store.FindSite) ([]*store.Site
 			&site.Status,
 			&site.DashboardMemoID,
 			&site.Theme,
+			&site.Menu,
 			&site.SearchMode,
 			&site.CreatedTs,
 			&site.UpdatedTs,
@@ -134,6 +137,9 @@ func (d *DB) UpdateSite(ctx context.Context, update *store.UpdateSite) (*store.S
 	}
 	if update.Theme != nil {
 		set, args = append(set, "`theme` = ?"), append(args, *update.Theme)
+	}
+	if update.Menu != nil {
+		set, args = append(set, "`menu` = ?"), append(args, *update.Menu)
 	}
 	if update.SearchMode != nil {
 		set, args = append(set, "`search_mode` = ?"), append(args, *update.SearchMode)

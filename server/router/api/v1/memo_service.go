@@ -643,6 +643,7 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 	titleUpdated := false
 	var previousFolderPath string
 	folderPathUpdated := false
+	memoArchived := false
 	previousVisibility := memo.Visibility
 	for _, path := range request.UpdateMask.Paths {
 		if path == "content" {
@@ -689,6 +690,12 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 				if len(refs) > 0 {
 					return nil, referenceDependencyError(refs)
 				}
+				// A site's home page cannot go into the recycle bin: the site
+				// keeps only a pointer to it and would be left with no front door.
+				if err := s.guardMemoIsNotSiteDashboard(ctx, memo.ID); err != nil {
+					return nil, err
+				}
+				memoArchived = true
 			}
 			update.RowStatus = &rowStatus
 		} else if path == "create_time" {
@@ -837,6 +844,12 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 		}
 		s.repairInboundLinksBestEffort(ctx, memo, previousTitle, previousFolderPath)
 	}
+	// Archiving equals a takedown (publish requirement §9): the public read path
+	// only checks publication state, so a document left in the recycle bin would
+	// otherwise stay readable on every site it was published to.
+	if memoArchived {
+		s.takeDownPublicationsForMemoBestEffort(ctx, memo.ID)
+	}
 	// P6, the other direction: the check above guards documents linking INTO
 	// this one, but this one's own root-relative hrefs name paths in the
 	// workspace it just left and would go dead. Pin them to uid form instead.
@@ -935,6 +948,10 @@ func (s *APIV1Service) DeleteMemo(ctx context.Context, request *v1pb.DeleteMemoR
 	}
 	if len(refs) > 0 {
 		return nil, referenceDependencyError(refs)
+	}
+	// Same rule for a site home page: the site holds a pointer, not a copy.
+	if err := s.guardMemoIsNotSiteDashboard(ctx, memo.ID); err != nil {
+		return nil, err
 	}
 
 	reactions, err := s.Store.ListReactions(ctx, &store.FindReaction{

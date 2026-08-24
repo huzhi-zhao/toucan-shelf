@@ -26,8 +26,17 @@
   技术方案与分阶段切分见
   [design/20260823-public-publishing/](design/20260823-public-publishing/tech-design.md)，
   上线与验收清单见 [launch/20260823-public-publishing.md](launch/20260823-public-publishing.md)。
-  P0 的后端已落地（四张新表、发布管线、按 Host 的对外只读接口）；P0 剩前端
-  （站点管理、编辑器发布入口、对外 `/<slug>` 页面），P1～P4 未开工。
+  门面（外壳、首页编排、主题、皮肤）单独一套文档：需求
+  [public-site-front-end.md](requirements/public-site-front-end.md)、方案
+  [design/20260823-public-publishing/front-end.md](design/20260823-public-publishing/front-end.md)、
+  上线 [launch/20260824-public-site-front-end.md](launch/20260824-public-site-front-end.md)。
+  P0 的后端与前端已落地（四张新表、发布管线、按 Host 的对外只读接口、站点管理、
+  编辑器发布入口、对外 `/<slug>` 页面）。P1 一致性也已完成：撤下、归档等同撤下、
+  站点首页文档不许归档/删除、编辑器里的"线上落后于当前版本"提示与死链页面清单。
+  P2a 外壳换皮已完成：对外三个页面换成 `BlogSite/` 皮肤、站点配置里的顶部菜单
+  （新表字段 `site.menu`）、主题白名单**在服务端校验**后才落库。首页此时仍是一条
+  平铺 feed。走 fixture 的预览原型还在（`/blog-preview`，P2b 一并删掉），
+  P2b/P2c、P3、P4 未开工。
 
 ### Next —— 定了、下一步做
 

@@ -34,6 +34,7 @@ import { type Publication, type Site, SiteStatus } from "@/types/proto/api/v1/si
 import { useTranslate } from "@/utils/i18n";
 import { SettingList, SettingListItem } from "./SettingList";
 import SettingSection from "./SettingSection";
+import SiteChromeEditor from "./SiteChromeEditor";
 
 const STATUS_OPTIONS: SiteStatus[] = [SiteStatus.DRAFT, SiteStatus.ONLINE, SiteStatus.OFFLINE];
 
@@ -279,6 +280,8 @@ const SiteCard = ({ site }: { site: Site }) => {
       </div>
 
       {site.status !== SiteStatus.ONLINE && <p className="text-xs text-muted-foreground">{t("setting.site.offline-hint")}</p>}
+
+      <SiteChromeEditor site={site} />
 
       <div className="flex flex-col gap-2">
         <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60">

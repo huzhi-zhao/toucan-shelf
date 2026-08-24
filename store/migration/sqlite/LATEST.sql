@@ -300,6 +300,10 @@ CREATE TABLE site (
   -- page. NULL until one is chosen.
   dashboard_memo_id INTEGER,
   theme TEXT NOT NULL DEFAULT '{}',
+  -- menu is the site's top menu: an ordered JSON array of {label, path}. It is
+  -- site configuration rather than part of the home `.view` because it renders
+  -- on every outward-facing page, and those pages do not read that document.
+  menu TEXT NOT NULL DEFAULT '[]',
   search_mode TEXT NOT NULL DEFAULT 'HYBRID',
   created_ts BIGINT NOT NULL DEFAULT (strftime('%s', 'now')),
   updated_ts BIGINT NOT NULL DEFAULT (strftime('%s', 'now'))

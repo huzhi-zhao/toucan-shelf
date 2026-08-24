@@ -1,41 +1,35 @@
-// The site's index. P0 has no dashboard `.view` yet, so this is a plain listing
-// of the site's published pages — drawn from ListPublicPages, the only source an
-// outward-facing listing may draw from.
+// The site's index.
+//
+// Until P2b lets the author compose the home page out of blocks, this is one
+// flat feed of everything published to the site — drawn from ListPublicPages,
+// the only source an outward-facing listing may draw from.
 
-import { timestampDate } from "@bufbuild/protobuf/wkt";
-import { Loader2Icon } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { toBlogPost } from "@/components/BlogSite/adapt";
+import BlogFeed, { ALL_TOPICS } from "@/components/BlogSite/BlogFeed";
+import { COPY } from "@/components/BlogSite/copy";
 import { usePublicSite } from "@/components/PublicSite/PublicSiteContext";
 import { usePublicPages } from "@/hooks/usePublicSiteQueries";
 
 const PublicSiteHome = () => {
-  const { siteName, basePath } = usePublicSite();
-  const { data: pages, isLoading, isError } = usePublicPages(siteName);
+  const { siteName, basePath, profile } = usePublicSite();
+  const { data: pages, isLoading } = usePublicPages(siteName);
+  const [topic, setTopic] = useState(ALL_TOPICS);
+
+  const posts = useMemo(() => (pages ?? []).map((page) => toBlogPost(page, profile.displayName)), [pages, profile.displayName]);
+  // Tags are the only grouping a snapshot carries: it has no folder and no
+  // frontmatter properties, so there is nothing else to filter on out here.
+  const topics = useMemo(() => [...new Set(posts.flatMap((post) => post.tags))].sort(), [posts]);
+  const visible = useMemo(() => (topic === ALL_TOPICS ? posts : posts.filter((post) => post.tags.includes(topic))), [posts, topic]);
 
   if (isLoading) {
-    return <Loader2Icon className="h-5 w-5 animate-spin text-muted-foreground" />;
-  }
-  if (isError || !pages || pages.length === 0) {
-    return <p className="text-sm text-muted-foreground">还没有发布任何内容。</p>;
+    return <p className="blog-shell blog-muted py-16 text-sm">{COPY.loading}</p>;
   }
 
   return (
-    <ul className="flex flex-col divide-y divide-border">
-      {pages.map((page) => (
-        <li key={page.slug} className="py-4">
-          <Link to={`${basePath}/${page.slug}`} className="text-lg font-medium hover:underline">
-            {page.title || page.slug}
-          </Link>
-          {page.summary && <p className="mt-1 text-sm leading-6 text-muted-foreground">{page.summary}</p>}
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            {page.updateTime && <span>{timestampDate(page.updateTime).toLocaleDateString()}</span>}
-            {page.tags.map((tag) => (
-              <span key={tag}>#{tag}</span>
-            ))}
-          </div>
-        </li>
-      ))}
-    </ul>
+    <div className="blog-shell py-16">
+      <BlogFeed title={COPY.feedTitle} topics={topics} activeTopic={topic} onTopicChange={setTopic} posts={visible} basePath={basePath} />
+    </div>
   );
 };
 

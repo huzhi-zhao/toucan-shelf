@@ -3,14 +3,15 @@
 //
 // The body is the frozen snapshot the publish pipeline produced — secret blocks
 // already stripped, in-site links already rewritten — rendered through the same
-// markdown renderer the app uses, in its public mode (PublicSiteRenderProvider):
-// same typography, none of the behaviours that only make sense while signed in.
+// markdown renderer the app uses, in its public mode: same typography, none of
+// the behaviours that only make sense while signed in. The skin changes the page
+// around the text, not the text itself.
 
-import { timestampDate } from "@bufbuild/protobuf/wkt";
-import { Loader2Icon } from "lucide-react";
-import { useParams } from "react-router-dom";
-import MemoContent from "@/components/MemoContent";
-import { PublicSiteRenderProvider } from "@/components/MemoContent/PublicSiteRenderContext";
+import { useMemo } from "react";
+import { Link, useParams } from "react-router-dom";
+import { toBlogPost } from "@/components/BlogSite/adapt";
+import BlogArticle from "@/components/BlogSite/BlogArticle";
+import { COPY } from "@/components/BlogSite/copy";
 import { usePublicSite } from "@/components/PublicSite/PublicSiteContext";
 import usePageTitle from "@/hooks/usePageTitle";
 import { usePublicPage } from "@/hooks/usePublicSiteQueries";
@@ -22,34 +23,23 @@ const PublicSitePage = () => {
 
   usePageTitle(page?.title ? `${page.title} - ${profile.displayName}` : profile.displayName);
 
+  const post = useMemo(() => (page ? toBlogPost(page, profile.displayName) : null), [page, profile.displayName]);
+
   if (isLoading) {
-    return <Loader2Icon className="h-5 w-5 animate-spin text-muted-foreground" />;
+    return <p className="blog-shell blog-muted py-16 text-sm">{COPY.loading}</p>;
   }
-  if (isError || !page) {
+  if (isError || !post) {
     return (
-      <div className="flex flex-col items-center gap-2 py-20 text-muted-foreground">
-        <p className="text-lg font-medium">404</p>
-        <p className="text-sm">Not found</p>
+      <div className="blog-shell py-32 text-center">
+        <p className="blog-display text-2xl">{COPY.notFoundTitle}</p>
+        <Link to={basePath || "/"} className="blog-muted mt-4 inline-block text-sm hover:text-[color:var(--blog-ink)]">
+          {COPY.notFoundBack}
+        </Link>
       </div>
     );
   }
 
-  return (
-    <article className="flex flex-col gap-4">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">{page.title || page.slug}</h1>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-          {page.updateTime && <span>{timestampDate(page.updateTime).toLocaleDateString()}</span>}
-          {page.tags.map((tag) => (
-            <span key={tag}>#{tag}</span>
-          ))}
-        </div>
-      </header>
-      <PublicSiteRenderProvider basePath={basePath}>
-        <MemoContent content={page.content} density="reading" alwaysExpanded />
-      </PublicSiteRenderProvider>
-    </article>
-  );
+  return <BlogArticle post={post} basePath={basePath} />;
 };
 
 export default PublicSitePage;

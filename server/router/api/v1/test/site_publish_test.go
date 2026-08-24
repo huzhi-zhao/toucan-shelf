@@ -437,3 +437,78 @@ func attachmentUIDFromName(t *testing.T, name string) string {
 	require.Greater(t, len(name), len(prefix))
 	return name[len(prefix):]
 }
+
+// TestArchiveTakesPageDown covers the other half of a takedown: an author who
+// puts a published document in the recycle bin has pulled it, and the site has
+// to agree. The public read path only looks at publication state, so without the
+// cascade the page stays up while the author believes it is gone.
+func TestArchiveTakesPageDown(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestService(t)
+	defer ts.Cleanup()
+
+	admin, err := ts.CreateHostUser(ctx, "admin")
+	require.NoError(t, err)
+	adminCtx := ts.CreateUserContext(ctx, admin.ID)
+	site := newTestSite(ctx, t, ts, adminCtx, "Docs")
+
+	memo, err := ts.Service.CreateMemo(adminCtx, &apiv1.CreateMemoRequest{
+		Memo: &apiv1.Memo{Title: "Doomed", Content: "still here"},
+	})
+	require.NoError(t, err)
+	pub, err := ts.Service.PublishMemo(adminCtx, &apiv1.PublishMemoRequest{Parent: site.Name, Memo: memo.Name})
+	require.NoError(t, err)
+
+	page, err := ts.Service.GetPublicPage(ctx, &apiv1.GetPublicPageRequest{Site: site.Name, Slug: pub.Slug})
+	require.NoError(t, err)
+	require.Equal(t, "Doomed", page.Title)
+
+	_, err = ts.Service.UpdateMemo(adminCtx, &apiv1.UpdateMemoRequest{
+		Memo:       &apiv1.Memo{Name: memo.Name, State: apiv1.State_ARCHIVED},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"state"}},
+	})
+	require.NoError(t, err)
+
+	_, err = ts.Service.GetPublicPage(ctx, &apiv1.GetPublicPageRequest{Site: site.Name, Slug: pub.Slug})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "page not found")
+
+	// The short link has to go down with it, not just the slug.
+	_, err = ts.Service.ResolvePublicDoc(ctx, &apiv1.ResolvePublicDocRequest{Site: site.Name, DocId: page.DocId})
+	require.Error(t, err)
+}
+
+// TestSiteDashboardCannotBeArchivedOrDeleted covers the pointer, not the copy:
+// a site records which document is its home page, so losing that document would
+// leave the site with no front door and nothing to fall back to.
+func TestSiteDashboardCannotBeArchivedOrDeleted(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestService(t)
+	defer ts.Cleanup()
+
+	admin, err := ts.CreateHostUser(ctx, "admin")
+	require.NoError(t, err)
+	adminCtx := ts.CreateUserContext(ctx, admin.ID)
+	site := newTestSite(ctx, t, ts, adminCtx, "Docs")
+
+	home, err := ts.Service.CreateMemo(adminCtx, &apiv1.CreateMemoRequest{
+		Memo: &apiv1.Memo{Title: "Home", Content: "{}"},
+	})
+	require.NoError(t, err)
+	_, err = ts.Service.UpdateSite(adminCtx, &apiv1.UpdateSiteRequest{
+		Site:       &apiv1.Site{Name: site.Name, Dashboard: home.Name},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"dashboard"}},
+	})
+	require.NoError(t, err)
+
+	_, err = ts.Service.UpdateMemo(adminCtx, &apiv1.UpdateMemoRequest{
+		Memo:       &apiv1.Memo{Name: home.Name, State: apiv1.State_ARCHIVED},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"state"}},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "home page")
+
+	_, err = ts.Service.DeleteMemo(adminCtx, &apiv1.DeleteMemoRequest{Name: home.Name})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "home page")
+}

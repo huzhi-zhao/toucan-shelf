@@ -60,7 +60,11 @@ const PreviewReport = ({ preview }: { preview: PreviewPublishResponse }) => {
         </div>
       )}
       {preview.secretBlocksRemoved > 0 && (
-        <p className="text-xs text-muted-foreground">{t("memo.publish.secret-blocks-removed", { count: preview.secretBlocksRemoved })}</p>
+        <p className="text-xs text-muted-foreground">
+          {t("memo.publish.secret-blocks-removed", {
+            count: preview.secretBlocksRemoved,
+          })}
+        </p>
       )}
       {preview.proposedSlug && (
         <p className="text-xs text-muted-foreground">
@@ -80,6 +84,10 @@ interface SiteRowProps {
 const SiteRow = ({ site, memoName, publication }: SiteRowProps) => {
   const t = useTranslate();
   const [preview, setPreview] = useState<PreviewPublishResponse | undefined>();
+  // Pages that linked to the one just taken down. A snapshot does not follow a
+  // takedown, so those pages keep a dead link until someone republishes them —
+  // which is a list the author has to work through, not a toast that scrolls away.
+  const [deadLinkPages, setDeadLinkPages] = useState<Publication[]>([]);
   const previewPublish = usePreviewPublish();
   const publishMemo = usePublishMemo();
   const unpublishMemo = useUnpublishMemo();
@@ -118,14 +126,8 @@ const SiteRow = ({ site, memoName, publication }: SiteRowProps) => {
     if (!publication) return;
     try {
       const response = await unpublishMemo.mutateAsync(publication.name);
-      if (response.affectedPublications.length > 0) {
-        toast(
-          t("memo.publish.unpublish-affected", {
-            titles: response.affectedPublications.map((p) => p.title || p.slug).join("、"),
-          }),
-          { duration: 8000 },
-        );
-      } else {
+      setDeadLinkPages(response.affectedPublications);
+      if (response.affectedPublications.length === 0) {
         toast.success(t("memo.publish.unpublished"));
       }
     } catch (e) {
@@ -170,6 +172,25 @@ const SiteRow = ({ site, memoName, publication }: SiteRowProps) => {
         <p className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-xs text-amber-700 dark:text-amber-400">
           {t("memo.publish.outdated-hint")}
         </p>
+      )}
+
+      {deadLinkPages.length > 0 && (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-400">
+          <p className="mb-1 flex items-center gap-1 font-medium">
+            <AlertTriangleIcon className="h-3.5 w-3.5" />
+            {t("memo.publish.unpublish-affected-title")}
+          </p>
+          <ul className="list-disc space-y-0.5 pl-4">
+            {deadLinkPages.map((page) => (
+              <li key={page.name}>
+                <a href={publicPagePath(site.name, page.slug)} target="_blank" rel="noreferrer" className="hover:underline">
+                  {page.title || page.slug}
+                </a>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1">{t("memo.publish.unpublish-affected-hint")}</p>
+        </div>
       )}
 
       {previewPublish.isPending && !preview ? (
