@@ -200,6 +200,12 @@ func TestPublishDropsSecretBlocks(t *testing.T) {
 
 // TestPublicReadRequiresOnlineSite covers the site-level switch, and that it is
 // the site's status alone that decides.
+// TestPublicReadRequiresOnlineSite is what carries the "a site that is not
+// ONLINE is indistinguishable from one that does not exist" guarantee, now that
+// there is no instance-level kill switch behind it (see the launch doc, §一).
+// Every method of PublicSiteService is checked, not just the page one: the
+// failure this guards against is a newly added public endpoint that forgets to
+// call resolveSiteForReader. Add the new endpoint here when you add one.
 func TestPublicReadRequiresOnlineSite(t *testing.T) {
 	ctx := context.Background()
 	ts := NewTestService(t)
@@ -226,7 +232,21 @@ func TestPublicReadRequiresOnlineSite(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	// Every public entry point, not only the one that serves the body: a doc id
+	// or a listing that survived the site going offline leaks just as much.
 	_, err = ts.Service.GetPublicPage(ctx, &apiv1.GetPublicPageRequest{Site: site.Name, Slug: pub.Slug})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "site not found")
+
+	_, err = ts.Service.GetPublicSiteProfile(ctx, &apiv1.GetPublicSiteProfileRequest{Site: site.Name})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "site not found")
+
+	_, err = ts.Service.ListPublicPages(ctx, &apiv1.ListPublicPagesRequest{Site: site.Name})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "site not found")
+
+	_, err = ts.Service.ResolvePublicDoc(ctx, &apiv1.ResolvePublicDocRequest{Site: site.Name, DocId: memoUIDFromName(t, memo.Name)})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "site not found")
 }
