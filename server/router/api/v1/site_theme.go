@@ -99,8 +99,19 @@ func validateSiteTheme(theme string) error {
 // built-in string on a published site (requirements §9) — and only a starting
 // point: the author may delete or add entries.
 func defaultSiteMenu() []*v1pb.SiteMenuItem {
+	// "Home" rather than "Latest": the site root is whatever layout the author
+	// arranged, which is not necessarily a list of recent posts, and a tab that
+	// promises recency while showing a curated front page is a small lie.
+	//
+	// "Archive" is the conventional name for the complete list — Ghost, Hugo and
+	// Jekyll themes all use it — and it is the one page the home page cannot
+	// replace, since a front door is scoped and capped by design.
+	// "Latest" is its own tab because Home stops being a list the moment the
+	// author arranges a front page: the recency question then has nowhere to go.
 	return []*v1pb.SiteMenuItem{
-		{Label: "Latest", Path: ""},
+		{Label: "Home", Path: ""},
+		{Label: "Latest", Path: "latest"},
+		{Label: "Archive", Path: "archive"},
 		{Label: "Search", Path: "search"},
 	}
 }

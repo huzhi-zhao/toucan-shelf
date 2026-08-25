@@ -23,8 +23,8 @@ vi.mock("@/contexts/ViewContext", async () => {
   };
 });
 
-import { useAllUserStats, useUserStats } from "@/hooks/useUserQueries";
 import { useFilteredMemoStats } from "@/hooks/useFilteredMemoStats";
+import { useAllUserStats, useUserStats } from "@/hooks/useUserQueries";
 
 const wrapper = ({ children }: { children: ReactNode }) => children as never;
 

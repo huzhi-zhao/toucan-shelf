@@ -9,7 +9,7 @@
 
 import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
-import { toBlogPost } from "@/components/BlogSite/adapt";
+import { siteByline, toBlogPost } from "@/components/BlogSite/adapt";
 import BlogArticle from "@/components/BlogSite/BlogArticle";
 import { COPY } from "@/components/BlogSite/copy";
 import { usePublicSite } from "@/components/PublicSite/PublicSiteContext";
@@ -19,11 +19,12 @@ import { usePublicPage } from "@/hooks/usePublicSiteQueries";
 const PublicSitePage = () => {
   const { slug = "" } = useParams();
   const { siteName, basePath, profile } = usePublicSite();
+  const byline = siteByline(profile);
   const { data: page, isLoading, isError } = usePublicPage(siteName, slug);
 
   usePageTitle(page?.title ? `${page.title} - ${profile.displayName}` : profile.displayName);
 
-  const post = useMemo(() => (page ? toBlogPost(page, profile.displayName) : null), [page, profile.displayName]);
+  const post = useMemo(() => (page ? toBlogPost(page, byline) : null), [page, byline]);
 
   if (isLoading) {
     return <p className="blog-shell blog-muted py-16 text-sm">{COPY.loading}</p>;

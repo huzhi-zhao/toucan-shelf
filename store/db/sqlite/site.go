@@ -8,8 +8,8 @@ import (
 )
 
 func (d *DB) CreateSite(ctx context.Context, create *store.Site) (*store.Site, error) {
-	stmt := "INSERT INTO `site` (`uid`, `team_id`, `creator_id`, `name`, `description`, `domain`, `domain_verified`, `canonical`, `status`, `dashboard_memo_id`, `theme`, `menu`, `search_mode`) " +
-		"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING `id`, `created_ts`, `updated_ts`"
+	stmt := "INSERT INTO `site` (`uid`, `team_id`, `creator_id`, `name`, `description`, `domain`, `domain_verified`, `canonical`, `status`, `dashboard_memo_id`, `dashboard_snapshot`, `theme`, `author_name`, `menu`, `nav`, `search_mode`) " +
+		"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING `id`, `created_ts`, `updated_ts`"
 	if err := d.db.QueryRowContext(ctx, stmt,
 		create.UID,
 		create.TeamID,
@@ -21,8 +21,11 @@ func (d *DB) CreateSite(ctx context.Context, create *store.Site) (*store.Site, e
 		create.Canonical,
 		create.Status,
 		create.DashboardMemoID,
+		create.DashboardSnapshot,
 		create.Theme,
+		create.AuthorName,
 		create.Menu,
+		create.Nav,
 		create.SearchMode,
 	).Scan(&create.ID, &create.CreatedTs, &create.UpdatedTs); err != nil {
 		return nil, err
@@ -65,8 +68,11 @@ func (d *DB) ListSites(ctx context.Context, find *store.FindSite) ([]*store.Site
 			canonical,
 			status,
 			dashboard_memo_id,
+			dashboard_snapshot,
 			theme,
+			author_name,
 			menu,
+			nav,
 			search_mode,
 			created_ts,
 			updated_ts
@@ -95,8 +101,11 @@ func (d *DB) ListSites(ctx context.Context, find *store.FindSite) ([]*store.Site
 			&site.Canonical,
 			&site.Status,
 			&site.DashboardMemoID,
+			&site.DashboardSnapshot,
 			&site.Theme,
+			&site.AuthorName,
 			&site.Menu,
+			&site.Nav,
 			&site.SearchMode,
 			&site.CreatedTs,
 			&site.UpdatedTs,
@@ -132,11 +141,20 @@ func (d *DB) UpdateSite(ctx context.Context, update *store.UpdateSite) (*store.S
 	if update.Status != nil {
 		set, args = append(set, "`status` = ?"), append(args, *update.Status)
 	}
+	if update.DashboardSnapshot != nil {
+		set, args = append(set, "`dashboard_snapshot` = ?"), append(args, *update.DashboardSnapshot)
+	}
 	if update.DashboardMemoID != nil {
 		set, args = append(set, "`dashboard_memo_id` = ?"), append(args, *update.DashboardMemoID)
 	}
 	if update.Theme != nil {
 		set, args = append(set, "`theme` = ?"), append(args, *update.Theme)
+	}
+	if update.AuthorName != nil {
+		set, args = append(set, "`author_name` = ?"), append(args, *update.AuthorName)
+	}
+	if update.Nav != nil {
+		set, args = append(set, "`nav` = ?"), append(args, *update.Nav)
 	}
 	if update.Menu != nil {
 		set, args = append(set, "`menu` = ?"), append(args, *update.Menu)

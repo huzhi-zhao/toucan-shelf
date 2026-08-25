@@ -10,7 +10,8 @@
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 import type { CSSProperties } from "react";
 import type { PublicPage, PublicSiteProfile } from "@/types/proto/api/v1/public_site_service_pb";
-import type { BlogMenuItem, BlogPost, BlogSiteChrome } from "./types";
+import type { SiteNavItem } from "@/types/proto/api/v1/site_service_pb";
+import type { BlogMenuItem, BlogNavNode, BlogPost, BlogSiteChrome } from "./types";
 
 export function toBlogPost(page: PublicPage, byline?: string): BlogPost {
   return {
@@ -20,14 +21,41 @@ export function toBlogPost(page: PublicPage, byline?: string): BlogPost {
     title: page.title || page.slug,
     summary: page.summary || undefined,
     tags: page.tags,
+    // Frozen with the snapshot, never re-derived from the source document.
+    coverUrl: page.coverUrl || undefined,
     updatedAt: page.updateTime ? timestampDate(page.updateTime) : undefined,
     byline,
     content: page.content || undefined,
   };
 }
 
+/**
+ * The name a page is attributed to.
+ *
+ * The server already resolves this (author name, falling back to the site's own
+ * name), so the fallback repeated here is only for a profile served by an older
+ * server — not a second opinion about what the byline should be.
+ */
+export const siteByline = (profile: PublicSiteProfile) => profile.authorName || profile.displayName;
+
 /** The path of a published page. Flat: the site's URLs carry no hierarchy. */
 export const blogPostPath = (basePath: string, slug: string) => `${basePath}/${slug}`;
+
+/**
+ * The navigation tree as the skin renders it.
+ *
+ * The server has already pruned it to what is published: a node pointing at a
+ * page that is not published on this site arrives here with an empty slug, and
+ * one with nothing left under it does not arrive at all. So there is no "is this
+ * link dead" check to make out here — the pruning is what keeps the tree from
+ * naming a document a reader cannot open.
+ */
+export const toBlogNav = (nav: SiteNavItem[]): BlogNavNode[] =>
+  nav.map((node) => ({
+    label: node.label,
+    slug: node.slug || undefined,
+    children: node.children.length > 0 ? toBlogNav(node.children) : undefined,
+  }));
 
 export function toBlogChrome(profile: PublicSiteProfile): BlogSiteChrome {
   const menu: BlogMenuItem[] = profile.menu.map((item) => ({ label: item.label, to: item.path }));

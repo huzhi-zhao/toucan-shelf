@@ -14,9 +14,12 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { useUpdateSite } from "@/hooks/useSiteQueries";
 import type { Site } from "@/types/proto/api/v1/site_service_pb";
 import { useTranslate } from "@/utils/i18n";
+import SiteHomeEditor from "./SiteHomeEditor";
+import SiteNavEditor from "./SiteNavEditor";
 
 /** The theme keys, grouped the way an author thinks about them. */
 const THEME_FIELDS: { key: string; placeholder: string }[] = [
@@ -51,18 +54,32 @@ interface MenuRow {
   path: string;
 }
 
+/**
+ * The two built-in listing pages, which every site has whether or not it links
+ * to them. They are toggles rather than rows the author types because the paths
+ * are the site's own — a typo in "archive" is a dead tab, not a custom page.
+ *
+ * `order` is where the entry goes back when it is switched on: after Home, and
+ * before whatever the author added, so turning a tab off and on again does not
+ * quietly move it to the end of the menu.
+ */
+const BUILTIN_TABS = [
+  { path: "latest", label: "Latest", order: 1, key: "setting.site.menu-show-latest" },
+  { path: "archive", label: "Archive", order: 2, key: "setting.site.menu-show-archive" },
+] as const;
+
 const SiteChromeEditor = ({ site }: { site: Site }) => {
   const t = useTranslate();
   const updateSite = useUpdateSite();
   const [menu, setMenu] = useState<MenuRow[]>(site.menu.map((item) => ({ label: item.label, path: item.path })));
   const [theme, setTheme] = useState<Record<string, string>>(parseTheme(site.theme));
 
-  const save = async (paths: string[]) => {
+  const save = async (paths: string[], rows: MenuRow[] = menu) => {
     try {
       await updateSite.mutateAsync({
         site: {
           name: site.name,
-          menu: menu.map((row) => ({ label: row.label.trim(), path: row.path.trim() })),
+          menu: rows.map((row) => ({ label: row.label.trim(), path: row.path.trim() })),
           // Only the values the author actually set are stored; a blank field
           // means "use the skin's default", not "the empty string".
           theme: JSON.stringify(Object.fromEntries(Object.entries(theme).filter(([, value]) => value.trim() !== ""))),
@@ -75,11 +92,39 @@ const SiteChromeEditor = ({ site }: { site: Site }) => {
     }
   };
 
+  // Switched off, the entry leaves the menu; switched on, it goes back where it
+  // belongs. Saved immediately: a switch that needs a separate Save button reads
+  // as already applied, and the author would leave the page believing it was.
+  const toggleBuiltin = async (tab: (typeof BUILTIN_TABS)[number]) => {
+    const on = menu.some((row) => row.path === tab.path);
+    let next: MenuRow[];
+    if (on) {
+      next = menu.filter((row) => row.path !== tab.path);
+    } else {
+      // Past the home entry and past any built-in tab that sorts before this
+      // one; everything the author added stays after them.
+      const before = new Set(["", ...BUILTIN_TABS.filter((other) => other.order < tab.order).map((other) => other.path)]);
+      let at = 0;
+      while (at < menu.length && before.has(menu[at].path)) at++;
+      next = [...menu.slice(0, at), { label: tab.label, path: tab.path }, ...menu.slice(at)];
+    }
+    setMenu(next);
+    await save(["menu"], next);
+  };
+
   return (
     <div className="flex flex-col gap-4 border-t border-border pt-4">
+      <SiteHomeEditor site={site} />
+
       <div className="flex flex-col gap-2">
         <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60">{t("setting.site.menu")}</p>
         <p className="text-xs text-muted-foreground">{t("setting.site.menu-description")}</p>
+        {BUILTIN_TABS.map((tab) => (
+          <label key={tab.path} className="flex items-center gap-2 text-sm">
+            <Switch checked={menu.some((row) => row.path === tab.path)} onCheckedChange={() => void toggleBuiltin(tab)} />
+            <span>{t(tab.key)}</span>
+          </label>
+        ))}
         {menu.map((row, index) => (
           // The rows have no identity of their own — the menu is an ordered list,
           // and an entry is only ever "the nth one".
@@ -111,6 +156,8 @@ const SiteChromeEditor = ({ site }: { site: Site }) => {
           </Button>
         </div>
       </div>
+
+      <SiteNavEditor site={site} />
 
       <div className="flex flex-col gap-2">
         <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60">{t("setting.site.theme")}</p>

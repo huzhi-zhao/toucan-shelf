@@ -10,7 +10,7 @@
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 import { ConnectError } from "@connectrpc/connect";
 import { ExternalLinkIcon, GlobeIcon, Loader2Icon, PlusIcon, Trash2Icon } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -97,6 +97,9 @@ const CreateSiteDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange:
     </Dialog>
   );
 };
+
+/** How many published pages the site card lists before the rest need naming. */
+const PUBLICATION_ROWS = 5;
 
 const PublicationRow = ({ site, publication }: { site: Site; publication: Publication }) => {
   const t = useTranslate();
@@ -202,17 +205,31 @@ const SiteCard = ({ site }: { site: Site }) => {
   const [displayName, setDisplayName] = useState(site.displayName);
   const [description, setDescription] = useState(site.description);
   const [domain, setDomain] = useState(site.domain);
+  const [authorName, setAuthorName] = useState(site.authorName);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const updateSite = useUpdateSite();
   const deleteSite = useDeleteSite();
   const { data: publications, isLoading } = useSitePublications(site.name);
+  const [pageQuery, setPageQuery] = useState("");
 
-  const dirty = displayName !== site.displayName || description !== site.description || domain !== site.domain;
+  // The list is a management surface, not a browsing one: an author comes here
+  // to change one page's slug or take it down, so it shows the few most recent
+  // and lets everything else be reached by name. Rendering all of them would
+  // bury the settings below it once a site has any real number of pages.
+  const matchedPublications = useMemo(() => {
+    const query = pageQuery.trim().toLowerCase();
+    if (!query) return publications ?? [];
+    return (publications ?? []).filter((publication) => `${publication.title} ${publication.slug}`.toLowerCase().includes(query));
+  }, [publications, pageQuery]);
+  const shownPublications = matchedPublications.slice(0, PUBLICATION_ROWS);
+
+  const dirty =
+    displayName !== site.displayName || description !== site.description || domain !== site.domain || authorName !== site.authorName;
 
   const save = async (paths: string[], overrides: SiteInit = {}) => {
     try {
       await updateSite.mutateAsync({
-        site: { name: site.name, displayName, description, domain, ...overrides },
+        site: { name: site.name, displayName, description, domain, authorName, ...overrides },
         paths,
       });
       toast.success(t("setting.site.save-success"));
@@ -242,6 +259,15 @@ const SiteCard = ({ site }: { site: Site }) => {
             rows={2}
           />
           <Input value={domain} onChange={(e) => setDomain(e.target.value)} placeholder={t("setting.site.domain-placeholder")} />
+          {/* The byline every page of this site carries. Left empty, pages are
+              signed with the site's own name — never with the account that
+              published them. */}
+          <Input
+            value={authorName}
+            onChange={(e) => setAuthorName(e.target.value)}
+            placeholder={t("setting.site.author-name-placeholder", { name: site.displayName })}
+          />
+          <p className="text-xs text-muted-foreground">{t("setting.site.author-name-hint")}</p>
         </div>
         <div className="flex shrink-0 flex-col items-stretch gap-2 sm:w-44">
           <Select value={String(site.status)} onValueChange={(value) => void save(["status"], { status: Number(value) as SiteStatus })}>
@@ -268,7 +294,7 @@ const SiteCard = ({ site }: { site: Site }) => {
             variant="outline"
             size="sm"
             disabled={!dirty || updateSite.isPending}
-            onClick={() => void save(["display_name", "description", "domain"])}
+            onClick={() => void save(["display_name", "description", "domain", "author_name"])}
           >
             {t("common.save")}
           </Button>
@@ -287,16 +313,36 @@ const SiteCard = ({ site }: { site: Site }) => {
         <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60">
           {t("setting.site.published-pages")} {publications ? `(${publications.length})` : ""}
         </p>
+        {publications && publications.length > PUBLICATION_ROWS && (
+          <Input
+            value={pageQuery}
+            onChange={(e) => setPageQuery(e.target.value)}
+            placeholder={t("setting.site.search-pages")}
+            className="h-8"
+          />
+        )}
         {isLoading ? (
           <Loader2Icon className="h-4 w-4 animate-spin text-muted-foreground" />
         ) : !publications || publications.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("setting.site.no-pages")}</p>
+        ) : matchedPublications.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("setting.site.no-pages-matched")}</p>
         ) : (
-          <SettingList>
-            {publications.map((publication) => (
-              <PublicationRow key={publication.name} site={site} publication={publication} />
-            ))}
-          </SettingList>
+          <>
+            <SettingList>
+              {shownPublications.map((publication) => (
+                <PublicationRow key={publication.name} site={site} publication={publication} />
+              ))}
+            </SettingList>
+            {matchedPublications.length > shownPublications.length && (
+              // Says how many are out of sight rather than offering to show
+              // them: the way to reach one is to name it, which is what the
+              // search box above is for.
+              <p className="text-xs text-muted-foreground">
+                {t("setting.site.pages-hidden", { count: matchedPublications.length - shownPublications.length })}
+              </p>
+            )}
+          </>
         )}
       </div>
 

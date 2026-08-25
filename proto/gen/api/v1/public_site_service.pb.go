@@ -30,12 +30,25 @@ type PublicSiteProfile struct {
 	Description string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 	// Theme configuration as JSON.
 	Theme string `protobuf:"bytes,3,opt,name=theme,proto3" json:"theme,omitempty"`
-	// The slug of the site's home page, empty when no dashboard is published yet.
-	DashboardSlug string `protobuf:"bytes,4,opt,name=dashboard_slug,json=dashboardSlug,proto3" json:"dashboard_slug,omitempty"`
+	// The site's home page layout: the sanitized block JSON of the `.view`
+	// document chosen as the home page, empty when none is. It is served inline
+	// rather than as a page the reader fetches by slug, because a home page is
+	// not a page of the site: it has no URL of its own, is not in the contents,
+	// and must never turn up in a listing next to the articles.
+	DashboardContent string `protobuf:"bytes,4,opt,name=dashboard_content,json=dashboardContent,proto3" json:"dashboard_content,omitempty"`
 	// The top menu, in the order it is drawn. It is served with the profile
 	// rather than read off the home page document because it renders on every
 	// page of the site, most of which never load that document.
-	Menu          []*SiteMenuItem `protobuf:"bytes,5,rep,name=menu,proto3" json:"menu,omitempty"`
+	Menu []*SiteMenuItem `protobuf:"bytes,5,rep,name=menu,proto3" json:"menu,omitempty"`
+	// The byline shown on every page of this site, already resolved: the site's
+	// author name when one is set, otherwise its display name. Resolving it here
+	// keeps every reader-facing surface agreeing on one answer.
+	AuthorName string `protobuf:"bytes,7,opt,name=author_name,json=authorName,proto3" json:"author_name,omitempty"`
+	// The navigation tree for the contents page, already pruned to what is
+	// published: a node pointing at a page that is not published on this site is
+	// not served at all. Pruning here rather than in the client is what keeps the
+	// tree from telling an anonymous reader that an unpublished document exists.
+	Nav           []*SiteNavItem `protobuf:"bytes,6,rep,name=nav,proto3" json:"nav,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -91,9 +104,9 @@ func (x *PublicSiteProfile) GetTheme() string {
 	return ""
 }
 
-func (x *PublicSiteProfile) GetDashboardSlug() string {
+func (x *PublicSiteProfile) GetDashboardContent() string {
 	if x != nil {
-		return x.DashboardSlug
+		return x.DashboardContent
 	}
 	return ""
 }
@@ -101,6 +114,20 @@ func (x *PublicSiteProfile) GetDashboardSlug() string {
 func (x *PublicSiteProfile) GetMenu() []*SiteMenuItem {
 	if x != nil {
 		return x.Menu
+	}
+	return nil
+}
+
+func (x *PublicSiteProfile) GetAuthorName() string {
+	if x != nil {
+		return x.AuthorName
+	}
+	return ""
+}
+
+func (x *PublicSiteProfile) GetNav() []*SiteNavItem {
+	if x != nil {
+		return x.Nav
 	}
 	return nil
 }
@@ -121,7 +148,11 @@ type PublicPage struct {
 	// the foot of a page.
 	UpdateTime *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
 	// The document id backing the permanent short link /d/{doc_id}.
-	DocId         string `protobuf:"bytes,7,opt,name=doc_id,json=docId,proto3" json:"doc_id,omitempty"`
+	DocId string `protobuf:"bytes,7,opt,name=doc_id,json=docId,proto3" json:"doc_id,omitempty"`
+	// The card image, resolved when the snapshot was taken. Resolving it at read
+	// time would let an edit of the source document change what a published card
+	// shows, which is the one thing a snapshot exists to prevent.
+	CoverUrl      string `protobuf:"bytes,8,opt,name=cover_url,json=coverUrl,proto3" json:"cover_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -201,6 +232,13 @@ func (x *PublicPage) GetUpdateTime() *timestamppb.Timestamp {
 func (x *PublicPage) GetDocId() string {
 	if x != nil {
 		return x.DocId
+	}
+	return ""
+}
+
+func (x *PublicPage) GetCoverUrl() string {
+	if x != nil {
+		return x.CoverUrl
 	}
 	return ""
 }
@@ -470,6 +508,114 @@ func (x *ListPublicPagesRequest) GetPageToken() string {
 	return ""
 }
 
+type SearchPublicPagesRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Optional explicit site for platform-path access. Format: sites/{site}
+	Site string `protobuf:"bytes,1,opt,name=site,proto3" json:"site,omitempty"`
+	// The reader's query. Matched as a substring against title, summary and body.
+	Query         string `protobuf:"bytes,2,opt,name=query,proto3" json:"query,omitempty"`
+	PageSize      int32  `protobuf:"varint,3,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchPublicPagesRequest) Reset() {
+	*x = SearchPublicPagesRequest{}
+	mi := &file_api_v1_public_site_service_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchPublicPagesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchPublicPagesRequest) ProtoMessage() {}
+
+func (x *SearchPublicPagesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_public_site_service_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchPublicPagesRequest.ProtoReflect.Descriptor instead.
+func (*SearchPublicPagesRequest) Descriptor() ([]byte, []int) {
+	return file_api_v1_public_site_service_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *SearchPublicPagesRequest) GetSite() string {
+	if x != nil {
+		return x.Site
+	}
+	return ""
+}
+
+func (x *SearchPublicPagesRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *SearchPublicPagesRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+type SearchPublicPagesResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Matching pages, without bodies. Ordered newest first, same as the feed:
+	// substring matching carries no relevance score to order by.
+	Pages         []*PublicPage `protobuf:"bytes,1,rep,name=pages,proto3" json:"pages,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchPublicPagesResponse) Reset() {
+	*x = SearchPublicPagesResponse{}
+	mi := &file_api_v1_public_site_service_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchPublicPagesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchPublicPagesResponse) ProtoMessage() {}
+
+func (x *SearchPublicPagesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_public_site_service_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchPublicPagesResponse.ProtoReflect.Descriptor instead.
+func (*SearchPublicPagesResponse) Descriptor() ([]byte, []int) {
+	return file_api_v1_public_site_service_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *SearchPublicPagesResponse) GetPages() []*PublicPage {
+	if x != nil {
+		return x.Pages
+	}
+	return nil
+}
+
 type ListPublicPagesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Pages         []*PublicPage          `protobuf:"bytes,1,rep,name=pages,proto3" json:"pages,omitempty"`
@@ -480,7 +626,7 @@ type ListPublicPagesResponse struct {
 
 func (x *ListPublicPagesResponse) Reset() {
 	*x = ListPublicPagesResponse{}
-	mi := &file_api_v1_public_site_service_proto_msgTypes[7]
+	mi := &file_api_v1_public_site_service_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -492,7 +638,7 @@ func (x *ListPublicPagesResponse) String() string {
 func (*ListPublicPagesResponse) ProtoMessage() {}
 
 func (x *ListPublicPagesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_public_site_service_proto_msgTypes[7]
+	mi := &file_api_v1_public_site_service_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -505,7 +651,7 @@ func (x *ListPublicPagesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPublicPagesResponse.ProtoReflect.Descriptor instead.
 func (*ListPublicPagesResponse) Descriptor() ([]byte, []int) {
-	return file_api_v1_public_site_service_proto_rawDescGZIP(), []int{7}
+	return file_api_v1_public_site_service_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ListPublicPagesResponse) GetPages() []*PublicPage {
@@ -526,13 +672,16 @@ var File_api_v1_public_site_service_proto protoreflect.FileDescriptor
 
 const file_api_v1_public_site_service_proto_rawDesc = "" +
 	"\n" +
-	" api/v1/public_site_service.proto\x12\fmemos.api.v1\x1a\x19api/v1/site_service.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc5\x01\n" +
+	" api/v1/public_site_service.proto\x12\fmemos.api.v1\x1a\x19api/v1/site_service.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x99\x02\n" +
 	"\x11PublicSiteProfile\x12!\n" +
 	"\fdisplay_name\x18\x01 \x01(\tR\vdisplayName\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x14\n" +
-	"\x05theme\x18\x03 \x01(\tR\x05theme\x12%\n" +
-	"\x0edashboard_slug\x18\x04 \x01(\tR\rdashboardSlug\x12.\n" +
-	"\x04menu\x18\x05 \x03(\v2\x1a.memos.api.v1.SiteMenuItemR\x04menu\"\xd2\x01\n" +
+	"\x05theme\x18\x03 \x01(\tR\x05theme\x12+\n" +
+	"\x11dashboard_content\x18\x04 \x01(\tR\x10dashboardContent\x12.\n" +
+	"\x04menu\x18\x05 \x03(\v2\x1a.memos.api.v1.SiteMenuItemR\x04menu\x12\x1f\n" +
+	"\vauthor_name\x18\a \x01(\tR\n" +
+	"authorName\x12+\n" +
+	"\x03nav\x18\x06 \x03(\v2\x19.memos.api.v1.SiteNavItemR\x03nav\"\xef\x01\n" +
 	"\n" +
 	"PublicPage\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x14\n" +
@@ -542,7 +691,8 @@ const file_api_v1_public_site_service_proto_rawDesc = "" +
 	"\x04tags\x18\x05 \x03(\tR\x04tags\x12;\n" +
 	"\vupdate_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"updateTime\x12\x15\n" +
-	"\x06doc_id\x18\a \x01(\tR\x05docId\"1\n" +
+	"\x06doc_id\x18\a \x01(\tR\x05docId\x12\x1b\n" +
+	"\tcover_url\x18\b \x01(\tR\bcoverUrl\"1\n" +
 	"\x1bGetPublicSiteProfileRequest\x12\x12\n" +
 	"\x04site\x18\x01 \x01(\tR\x04site\"C\n" +
 	"\x14GetPublicPageRequest\x12\x17\n" +
@@ -558,15 +708,22 @@ const file_api_v1_public_site_service_proto_rawDesc = "" +
 	"\x04tags\x18\x02 \x03(\tR\x04tags\x12\x1b\n" +
 	"\tpage_size\x18\x03 \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +
-	"page_token\x18\x04 \x01(\tR\tpageToken\"q\n" +
+	"page_token\x18\x04 \x01(\tR\tpageToken\"f\n" +
+	"\x18SearchPublicPagesRequest\x12\x12\n" +
+	"\x04site\x18\x01 \x01(\tR\x04site\x12\x19\n" +
+	"\x05query\x18\x02 \x01(\tB\x03\xe0A\x02R\x05query\x12\x1b\n" +
+	"\tpage_size\x18\x03 \x01(\x05R\bpageSize\"K\n" +
+	"\x19SearchPublicPagesResponse\x12.\n" +
+	"\x05pages\x18\x01 \x03(\v2\x18.memos.api.v1.PublicPageR\x05pages\"q\n" +
 	"\x17ListPublicPagesResponse\x12.\n" +
 	"\x05pages\x18\x01 \x03(\v2\x18.memos.api.v1.PublicPageR\x05pages\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken2\x90\x04\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken2\x9c\x05\n" +
 	"\x11PublicSiteService\x12\x7f\n" +
 	"\x14GetPublicSiteProfile\x12).memos.api.v1.GetPublicSiteProfileRequest\x1a\x1f.memos.api.v1.PublicSiteProfile\"\x1b\x82\xd3\xe4\x93\x02\x15\x12\x13/api/v1/public/site\x12r\n" +
 	"\rGetPublicPage\x12\".memos.api.v1.GetPublicPageRequest\x1a\x18.memos.api.v1.PublicPage\"#\x82\xd3\xe4\x93\x02\x1d\x12\x1b/api/v1/public/pages/{slug}\x12\x87\x01\n" +
 	"\x10ResolvePublicDoc\x12%.memos.api.v1.ResolvePublicDocRequest\x1a&.memos.api.v1.ResolvePublicDocResponse\"$\x82\xd3\xe4\x93\x02\x1e\x12\x1c/api/v1/public/docs/{doc_id}\x12|\n" +
-	"\x0fListPublicPages\x12$.memos.api.v1.ListPublicPagesRequest\x1a%.memos.api.v1.ListPublicPagesResponse\"\x1c\x82\xd3\xe4\x93\x02\x16\x12\x14/api/v1/public/pagesB\xae\x01\n" +
+	"\x0fListPublicPages\x12$.memos.api.v1.ListPublicPagesRequest\x1a%.memos.api.v1.ListPublicPagesResponse\"\x1c\x82\xd3\xe4\x93\x02\x16\x12\x14/api/v1/public/pages\x12\x89\x01\n" +
+	"\x11SearchPublicPages\x12&.memos.api.v1.SearchPublicPagesRequest\x1a'.memos.api.v1.SearchPublicPagesResponse\"#\x82\xd3\xe4\x93\x02\x1d\x12\x1b/api/v1/public/pages:searchB\xae\x01\n" +
 	"\x10com.memos.api.v1B\x16PublicSiteServiceProtoP\x01Z0github.com/usememos/memos/proto/gen/api/v1;apiv1\xa2\x02\x03MAX\xaa\x02\fMemos.Api.V1\xca\x02\fMemos\\Api\\V1\xe2\x02\x18Memos\\Api\\V1\\GPBMetadata\xea\x02\x0eMemos::Api::V1b\x06proto3"
 
 var (
@@ -581,7 +738,7 @@ func file_api_v1_public_site_service_proto_rawDescGZIP() []byte {
 	return file_api_v1_public_site_service_proto_rawDescData
 }
 
-var file_api_v1_public_site_service_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_api_v1_public_site_service_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_api_v1_public_site_service_proto_goTypes = []any{
 	(*PublicSiteProfile)(nil),           // 0: memos.api.v1.PublicSiteProfile
 	(*PublicPage)(nil),                  // 1: memos.api.v1.PublicPage
@@ -590,27 +747,34 @@ var file_api_v1_public_site_service_proto_goTypes = []any{
 	(*ResolvePublicDocRequest)(nil),     // 4: memos.api.v1.ResolvePublicDocRequest
 	(*ResolvePublicDocResponse)(nil),    // 5: memos.api.v1.ResolvePublicDocResponse
 	(*ListPublicPagesRequest)(nil),      // 6: memos.api.v1.ListPublicPagesRequest
-	(*ListPublicPagesResponse)(nil),     // 7: memos.api.v1.ListPublicPagesResponse
-	(*SiteMenuItem)(nil),                // 8: memos.api.v1.SiteMenuItem
-	(*timestamppb.Timestamp)(nil),       // 9: google.protobuf.Timestamp
+	(*SearchPublicPagesRequest)(nil),    // 7: memos.api.v1.SearchPublicPagesRequest
+	(*SearchPublicPagesResponse)(nil),   // 8: memos.api.v1.SearchPublicPagesResponse
+	(*ListPublicPagesResponse)(nil),     // 9: memos.api.v1.ListPublicPagesResponse
+	(*SiteMenuItem)(nil),                // 10: memos.api.v1.SiteMenuItem
+	(*SiteNavItem)(nil),                 // 11: memos.api.v1.SiteNavItem
+	(*timestamppb.Timestamp)(nil),       // 12: google.protobuf.Timestamp
 }
 var file_api_v1_public_site_service_proto_depIdxs = []int32{
-	8, // 0: memos.api.v1.PublicSiteProfile.menu:type_name -> memos.api.v1.SiteMenuItem
-	9, // 1: memos.api.v1.PublicPage.update_time:type_name -> google.protobuf.Timestamp
-	1, // 2: memos.api.v1.ListPublicPagesResponse.pages:type_name -> memos.api.v1.PublicPage
-	2, // 3: memos.api.v1.PublicSiteService.GetPublicSiteProfile:input_type -> memos.api.v1.GetPublicSiteProfileRequest
-	3, // 4: memos.api.v1.PublicSiteService.GetPublicPage:input_type -> memos.api.v1.GetPublicPageRequest
-	4, // 5: memos.api.v1.PublicSiteService.ResolvePublicDoc:input_type -> memos.api.v1.ResolvePublicDocRequest
-	6, // 6: memos.api.v1.PublicSiteService.ListPublicPages:input_type -> memos.api.v1.ListPublicPagesRequest
-	0, // 7: memos.api.v1.PublicSiteService.GetPublicSiteProfile:output_type -> memos.api.v1.PublicSiteProfile
-	1, // 8: memos.api.v1.PublicSiteService.GetPublicPage:output_type -> memos.api.v1.PublicPage
-	5, // 9: memos.api.v1.PublicSiteService.ResolvePublicDoc:output_type -> memos.api.v1.ResolvePublicDocResponse
-	7, // 10: memos.api.v1.PublicSiteService.ListPublicPages:output_type -> memos.api.v1.ListPublicPagesResponse
-	7, // [7:11] is the sub-list for method output_type
-	3, // [3:7] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	10, // 0: memos.api.v1.PublicSiteProfile.menu:type_name -> memos.api.v1.SiteMenuItem
+	11, // 1: memos.api.v1.PublicSiteProfile.nav:type_name -> memos.api.v1.SiteNavItem
+	12, // 2: memos.api.v1.PublicPage.update_time:type_name -> google.protobuf.Timestamp
+	1,  // 3: memos.api.v1.SearchPublicPagesResponse.pages:type_name -> memos.api.v1.PublicPage
+	1,  // 4: memos.api.v1.ListPublicPagesResponse.pages:type_name -> memos.api.v1.PublicPage
+	2,  // 5: memos.api.v1.PublicSiteService.GetPublicSiteProfile:input_type -> memos.api.v1.GetPublicSiteProfileRequest
+	3,  // 6: memos.api.v1.PublicSiteService.GetPublicPage:input_type -> memos.api.v1.GetPublicPageRequest
+	4,  // 7: memos.api.v1.PublicSiteService.ResolvePublicDoc:input_type -> memos.api.v1.ResolvePublicDocRequest
+	6,  // 8: memos.api.v1.PublicSiteService.ListPublicPages:input_type -> memos.api.v1.ListPublicPagesRequest
+	7,  // 9: memos.api.v1.PublicSiteService.SearchPublicPages:input_type -> memos.api.v1.SearchPublicPagesRequest
+	0,  // 10: memos.api.v1.PublicSiteService.GetPublicSiteProfile:output_type -> memos.api.v1.PublicSiteProfile
+	1,  // 11: memos.api.v1.PublicSiteService.GetPublicPage:output_type -> memos.api.v1.PublicPage
+	5,  // 12: memos.api.v1.PublicSiteService.ResolvePublicDoc:output_type -> memos.api.v1.ResolvePublicDocResponse
+	9,  // 13: memos.api.v1.PublicSiteService.ListPublicPages:output_type -> memos.api.v1.ListPublicPagesResponse
+	8,  // 14: memos.api.v1.PublicSiteService.SearchPublicPages:output_type -> memos.api.v1.SearchPublicPagesResponse
+	10, // [10:15] is the sub-list for method output_type
+	5,  // [5:10] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_api_v1_public_site_service_proto_init() }
@@ -625,7 +789,7 @@ func file_api_v1_public_site_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_v1_public_site_service_proto_rawDesc), len(file_api_v1_public_site_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

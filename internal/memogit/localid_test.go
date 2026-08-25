@@ -44,16 +44,25 @@ func TestLocalIDNeverPrecedesFrontmatter(t *testing.T) {
 	}
 }
 
-// VIEW documents are consumed as JSON by agents and linters, so their marker
-// goes inside the object rather than after it.
+// VIEW and BLOGVIEW documents are consumed as JSON by agents and linters, so
+// their marker goes inside the object rather than after it. BLOGVIEW is covered
+// here because that marker is what makes renaming a home page a move rather
+// than a delete plus a create.
 func TestLocalIDViewStaysValidJSON(t *testing.T) {
+	for _, docType := range []string{"VIEW", "BLOGVIEW"} {
+		t.Run(docType, func(t *testing.T) { assertJSONMarkerRoundTrip(t, docType) })
+	}
+}
+
+func assertJSONMarkerRoundTrip(t *testing.T, docType string) {
+	t.Helper()
 	cases := []string{
 		`{"viewType":"gallery","blocks":[]}`,
 		"{\n  \"viewType\": \"gallery\",\n  \"blocks\": []\n}",
 		"---\ntitle: Dash\n---\n{\n  \"viewType\": \"gallery\"\n}",
 	}
 	for _, body := range cases {
-		marked := InjectLocalID(body, "uid123", "VIEW")
+		marked := InjectLocalID(body, "uid123", docType)
 		if ParseLocalID(marked) != "uid123" {
 			t.Errorf("marker not parsed back from %q", marked)
 		}

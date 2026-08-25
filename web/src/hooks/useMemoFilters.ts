@@ -28,7 +28,7 @@ const escapeFilterValue = (value: string): string => JSON.stringify(value);
 // and therefore excluded from content feeds (e.g. Explore). This is THE single
 // place deciding which doc types are feed-worthy — do not duplicate this
 // judgment elsewhere.
-export const FEED_EXCLUDED_DOC_TYPES = ["VIEW"];
+export const FEED_EXCLUDED_DOC_TYPES = ["VIEW", "BLOGVIEW"];
 
 export interface UseMemoFiltersOptions {
   creatorName?: string;

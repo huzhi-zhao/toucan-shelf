@@ -4,7 +4,7 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { SiteMenuItem } from "./site_service_pb";
+import type { SiteMenuItem, SiteNavItem } from "./site_service_pb";
 import { file_api_v1_site_service } from "./site_service_pb";
 import { file_google_api_annotations } from "../../google/api/annotations_pb";
 import { file_google_api_field_behavior } from "../../google/api/field_behavior_pb";
@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file api/v1/public_site_service.proto.
  */
 export const file_api_v1_public_site_service: GenFile = /*@__PURE__*/
-  fileDesc("CiBhcGkvdjEvcHVibGljX3NpdGVfc2VydmljZS5wcm90bxIMbWVtb3MuYXBpLnYxIo8BChFQdWJsaWNTaXRlUHJvZmlsZRIUCgxkaXNwbGF5X25hbWUYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkSDQoFdGhlbWUYAyABKAkSFgoOZGFzaGJvYXJkX3NsdWcYBCABKAkSKAoEbWVudRgFIAMoCzIaLm1lbW9zLmFwaS52MS5TaXRlTWVudUl0ZW0imgEKClB1YmxpY1BhZ2USDAoEc2x1ZxgBIAEoCRINCgV0aXRsZRgCIAEoCRIPCgdzdW1tYXJ5GAMgASgJEg8KB2NvbnRlbnQYBCABKAkSDAoEdGFncxgFIAMoCRIvCgt1cGRhdGVfdGltZRgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDgoGZG9jX2lkGAcgASgJIisKG0dldFB1YmxpY1NpdGVQcm9maWxlUmVxdWVzdBIMCgRzaXRlGAEgASgJIjcKFEdldFB1YmxpY1BhZ2VSZXF1ZXN0EhEKBHNsdWcYASABKAlCA+BBAhIMCgRzaXRlGAIgASgJIjwKF1Jlc29sdmVQdWJsaWNEb2NSZXF1ZXN0EhMKBmRvY19pZBgBIAEoCUID4EECEgwKBHNpdGUYAiABKAkiKAoYUmVzb2x2ZVB1YmxpY0RvY1Jlc3BvbnNlEgwKBHNsdWcYASABKAkiWwoWTGlzdFB1YmxpY1BhZ2VzUmVxdWVzdBIMCgRzaXRlGAEgASgJEgwKBHRhZ3MYAiADKAkSEQoJcGFnZV9zaXplGAMgASgFEhIKCnBhZ2VfdG9rZW4YBCABKAkiWwoXTGlzdFB1YmxpY1BhZ2VzUmVzcG9uc2USJwoFcGFnZXMYASADKAsyGC5tZW1vcy5hcGkudjEuUHVibGljUGFnZRIXCg9uZXh0X3BhZ2VfdG9rZW4YAiABKAkykAQKEVB1YmxpY1NpdGVTZXJ2aWNlEn8KFEdldFB1YmxpY1NpdGVQcm9maWxlEikubWVtb3MuYXBpLnYxLkdldFB1YmxpY1NpdGVQcm9maWxlUmVxdWVzdBofLm1lbW9zLmFwaS52MS5QdWJsaWNTaXRlUHJvZmlsZSIbgtPkkwIVEhMvYXBpL3YxL3B1YmxpYy9zaXRlEnIKDUdldFB1YmxpY1BhZ2USIi5tZW1vcy5hcGkudjEuR2V0UHVibGljUGFnZVJlcXVlc3QaGC5tZW1vcy5hcGkudjEuUHVibGljUGFnZSIjgtPkkwIdEhsvYXBpL3YxL3B1YmxpYy9wYWdlcy97c2x1Z30ShwEKEFJlc29sdmVQdWJsaWNEb2MSJS5tZW1vcy5hcGkudjEuUmVzb2x2ZVB1YmxpY0RvY1JlcXVlc3QaJi5tZW1vcy5hcGkudjEuUmVzb2x2ZVB1YmxpY0RvY1Jlc3BvbnNlIiSC0+STAh4SHC9hcGkvdjEvcHVibGljL2RvY3Mve2RvY19pZH0SfAoPTGlzdFB1YmxpY1BhZ2VzEiQubWVtb3MuYXBpLnYxLkxpc3RQdWJsaWNQYWdlc1JlcXVlc3QaJS5tZW1vcy5hcGkudjEuTGlzdFB1YmxpY1BhZ2VzUmVzcG9uc2UiHILT5JMCFhIUL2FwaS92MS9wdWJsaWMvcGFnZXNCrgEKEGNvbS5tZW1vcy5hcGkudjFCFlB1YmxpY1NpdGVTZXJ2aWNlUHJvdG9QAVowZ2l0aHViLmNvbS91c2VtZW1vcy9tZW1vcy9wcm90by9nZW4vYXBpL3YxO2FwaXYxogIDTUFYqgIMTWVtb3MuQXBpLlYxygIMTWVtb3NcQXBpXFYx4gIYTWVtb3NcQXBpXFYxXEdQQk1ldGFkYXRh6gIOTWVtb3M6OkFwaTo6VjFiBnByb3RvMw", [file_api_v1_site_service, file_google_api_annotations, file_google_api_field_behavior, file_google_protobuf_timestamp]);
+  fileDesc("CiBhcGkvdjEvcHVibGljX3NpdGVfc2VydmljZS5wcm90bxIMbWVtb3MuYXBpLnYxIs8BChFQdWJsaWNTaXRlUHJvZmlsZRIUCgxkaXNwbGF5X25hbWUYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkSDQoFdGhlbWUYAyABKAkSGQoRZGFzaGJvYXJkX2NvbnRlbnQYBCABKAkSKAoEbWVudRgFIAMoCzIaLm1lbW9zLmFwaS52MS5TaXRlTWVudUl0ZW0SEwoLYXV0aG9yX25hbWUYByABKAkSJgoDbmF2GAYgAygLMhkubWVtb3MuYXBpLnYxLlNpdGVOYXZJdGVtIq0BCgpQdWJsaWNQYWdlEgwKBHNsdWcYASABKAkSDQoFdGl0bGUYAiABKAkSDwoHc3VtbWFyeRgDIAEoCRIPCgdjb250ZW50GAQgASgJEgwKBHRhZ3MYBSADKAkSLwoLdXBkYXRlX3RpbWUYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg4KBmRvY19pZBgHIAEoCRIRCgljb3Zlcl91cmwYCCABKAkiKwobR2V0UHVibGljU2l0ZVByb2ZpbGVSZXF1ZXN0EgwKBHNpdGUYASABKAkiNwoUR2V0UHVibGljUGFnZVJlcXVlc3QSEQoEc2x1ZxgBIAEoCUID4EECEgwKBHNpdGUYAiABKAkiPAoXUmVzb2x2ZVB1YmxpY0RvY1JlcXVlc3QSEwoGZG9jX2lkGAEgASgJQgPgQQISDAoEc2l0ZRgCIAEoCSIoChhSZXNvbHZlUHVibGljRG9jUmVzcG9uc2USDAoEc2x1ZxgBIAEoCSJbChZMaXN0UHVibGljUGFnZXNSZXF1ZXN0EgwKBHNpdGUYASABKAkSDAoEdGFncxgCIAMoCRIRCglwYWdlX3NpemUYAyABKAUSEgoKcGFnZV90b2tlbhgEIAEoCSJPChhTZWFyY2hQdWJsaWNQYWdlc1JlcXVlc3QSDAoEc2l0ZRgBIAEoCRISCgVxdWVyeRgCIAEoCUID4EECEhEKCXBhZ2Vfc2l6ZRgDIAEoBSJEChlTZWFyY2hQdWJsaWNQYWdlc1Jlc3BvbnNlEicKBXBhZ2VzGAEgAygLMhgubWVtb3MuYXBpLnYxLlB1YmxpY1BhZ2UiWwoXTGlzdFB1YmxpY1BhZ2VzUmVzcG9uc2USJwoFcGFnZXMYASADKAsyGC5tZW1vcy5hcGkudjEuUHVibGljUGFnZRIXCg9uZXh0X3BhZ2VfdG9rZW4YAiABKAkynAUKEVB1YmxpY1NpdGVTZXJ2aWNlEn8KFEdldFB1YmxpY1NpdGVQcm9maWxlEikubWVtb3MuYXBpLnYxLkdldFB1YmxpY1NpdGVQcm9maWxlUmVxdWVzdBofLm1lbW9zLmFwaS52MS5QdWJsaWNTaXRlUHJvZmlsZSIbgtPkkwIVEhMvYXBpL3YxL3B1YmxpYy9zaXRlEnIKDUdldFB1YmxpY1BhZ2USIi5tZW1vcy5hcGkudjEuR2V0UHVibGljUGFnZVJlcXVlc3QaGC5tZW1vcy5hcGkudjEuUHVibGljUGFnZSIjgtPkkwIdEhsvYXBpL3YxL3B1YmxpYy9wYWdlcy97c2x1Z30ShwEKEFJlc29sdmVQdWJsaWNEb2MSJS5tZW1vcy5hcGkudjEuUmVzb2x2ZVB1YmxpY0RvY1JlcXVlc3QaJi5tZW1vcy5hcGkudjEuUmVzb2x2ZVB1YmxpY0RvY1Jlc3BvbnNlIiSC0+STAh4SHC9hcGkvdjEvcHVibGljL2RvY3Mve2RvY19pZH0SfAoPTGlzdFB1YmxpY1BhZ2VzEiQubWVtb3MuYXBpLnYxLkxpc3RQdWJsaWNQYWdlc1JlcXVlc3QaJS5tZW1vcy5hcGkudjEuTGlzdFB1YmxpY1BhZ2VzUmVzcG9uc2UiHILT5JMCFhIUL2FwaS92MS9wdWJsaWMvcGFnZXMSiQEKEVNlYXJjaFB1YmxpY1BhZ2VzEiYubWVtb3MuYXBpLnYxLlNlYXJjaFB1YmxpY1BhZ2VzUmVxdWVzdBonLm1lbW9zLmFwaS52MS5TZWFyY2hQdWJsaWNQYWdlc1Jlc3BvbnNlIiOC0+STAh0SGy9hcGkvdjEvcHVibGljL3BhZ2VzOnNlYXJjaEKuAQoQY29tLm1lbW9zLmFwaS52MUIWUHVibGljU2l0ZVNlcnZpY2VQcm90b1ABWjBnaXRodWIuY29tL3VzZW1lbW9zL21lbW9zL3Byb3RvL2dlbi9hcGkvdjE7YXBpdjGiAgNNQViqAgxNZW1vcy5BcGkuVjHKAgxNZW1vc1xBcGlcVjHiAhhNZW1vc1xBcGlcVjFcR1BCTWV0YWRhdGHqAg5NZW1vczo6QXBpOjpWMWIGcHJvdG8z", [file_api_v1_site_service, file_google_api_annotations, file_google_api_field_behavior, file_google_protobuf_timestamp]);
 
 /**
  * PublicSiteProfile is what an anonymous reader may know about a site.
@@ -42,11 +42,15 @@ export type PublicSiteProfile = Message<"memos.api.v1.PublicSiteProfile"> & {
   theme: string;
 
   /**
-   * The slug of the site's home page, empty when no dashboard is published yet.
+   * The site's home page layout: the sanitized block JSON of the `.view`
+   * document chosen as the home page, empty when none is. It is served inline
+   * rather than as a page the reader fetches by slug, because a home page is
+   * not a page of the site: it has no URL of its own, is not in the contents,
+   * and must never turn up in a listing next to the articles.
    *
-   * @generated from field: string dashboard_slug = 4;
+   * @generated from field: string dashboard_content = 4;
    */
-  dashboardSlug: string;
+  dashboardContent: string;
 
   /**
    * The top menu, in the order it is drawn. It is served with the profile
@@ -56,6 +60,25 @@ export type PublicSiteProfile = Message<"memos.api.v1.PublicSiteProfile"> & {
    * @generated from field: repeated memos.api.v1.SiteMenuItem menu = 5;
    */
   menu: SiteMenuItem[];
+
+  /**
+   * The byline shown on every page of this site, already resolved: the site's
+   * author name when one is set, otherwise its display name. Resolving it here
+   * keeps every reader-facing surface agreeing on one answer.
+   *
+   * @generated from field: string author_name = 7;
+   */
+  authorName: string;
+
+  /**
+   * The navigation tree for the contents page, already pruned to what is
+   * published: a node pointing at a page that is not published on this site is
+   * not served at all. Pruning here rather than in the client is what keeps the
+   * tree from telling an anonymous reader that an unpublished document exists.
+   *
+   * @generated from field: repeated memos.api.v1.SiteNavItem nav = 6;
+   */
+  nav: SiteNavItem[];
 };
 
 /**
@@ -115,6 +138,15 @@ export type PublicPage = Message<"memos.api.v1.PublicPage"> & {
    * @generated from field: string doc_id = 7;
    */
   docId: string;
+
+  /**
+   * The card image, resolved when the snapshot was taken. Resolving it at read
+   * time would let an edit of the source document change what a published card
+   * shows, which is the one thing a snapshot exists to prevent.
+   *
+   * @generated from field: string cover_url = 8;
+   */
+  coverUrl: string;
 };
 
 /**
@@ -245,6 +277,57 @@ export const ListPublicPagesRequestSchema: GenMessage<ListPublicPagesRequest> = 
   messageDesc(file_api_v1_public_site_service, 6);
 
 /**
+ * @generated from message memos.api.v1.SearchPublicPagesRequest
+ */
+export type SearchPublicPagesRequest = Message<"memos.api.v1.SearchPublicPagesRequest"> & {
+  /**
+   * Optional explicit site for platform-path access. Format: sites/{site}
+   *
+   * @generated from field: string site = 1;
+   */
+  site: string;
+
+  /**
+   * The reader's query. Matched as a substring against title, summary and body.
+   *
+   * @generated from field: string query = 2;
+   */
+  query: string;
+
+  /**
+   * @generated from field: int32 page_size = 3;
+   */
+  pageSize: number;
+};
+
+/**
+ * Describes the message memos.api.v1.SearchPublicPagesRequest.
+ * Use `create(SearchPublicPagesRequestSchema)` to create a new message.
+ */
+export const SearchPublicPagesRequestSchema: GenMessage<SearchPublicPagesRequest> = /*@__PURE__*/
+  messageDesc(file_api_v1_public_site_service, 7);
+
+/**
+ * @generated from message memos.api.v1.SearchPublicPagesResponse
+ */
+export type SearchPublicPagesResponse = Message<"memos.api.v1.SearchPublicPagesResponse"> & {
+  /**
+   * Matching pages, without bodies. Ordered newest first, same as the feed:
+   * substring matching carries no relevance score to order by.
+   *
+   * @generated from field: repeated memos.api.v1.PublicPage pages = 1;
+   */
+  pages: PublicPage[];
+};
+
+/**
+ * Describes the message memos.api.v1.SearchPublicPagesResponse.
+ * Use `create(SearchPublicPagesResponseSchema)` to create a new message.
+ */
+export const SearchPublicPagesResponseSchema: GenMessage<SearchPublicPagesResponse> = /*@__PURE__*/
+  messageDesc(file_api_v1_public_site_service, 8);
+
+/**
  * @generated from message memos.api.v1.ListPublicPagesResponse
  */
 export type ListPublicPagesResponse = Message<"memos.api.v1.ListPublicPagesResponse"> & {
@@ -264,7 +347,7 @@ export type ListPublicPagesResponse = Message<"memos.api.v1.ListPublicPagesRespo
  * Use `create(ListPublicPagesResponseSchema)` to create a new message.
  */
 export const ListPublicPagesResponseSchema: GenMessage<ListPublicPagesResponse> = /*@__PURE__*/
-  messageDesc(file_api_v1_public_site_service, 7);
+  messageDesc(file_api_v1_public_site_service, 9);
 
 /**
  * PublicSiteService is the anonymous read path for published sites.
@@ -321,6 +404,23 @@ export const PublicSiteService: GenService<{
     methodKind: "unary";
     input: typeof ListPublicPagesRequestSchema;
     output: typeof ListPublicPagesResponseSchema;
+  },
+  /**
+   * SearchPublicPages searches this site's published pages.
+   *
+   * It searches the publication snapshots only, never the library index. That is
+   * not an optimisation: a snapshot is frozen at publish time while the source
+   * document keeps being edited, so a shared index would let an anonymous reader
+   * learn that a word appears in an article from text that was never published.
+   * The current matching is a plain substring scan — see
+   * docs/dev/design/20260823-public-publishing/tech-design.md §5.
+   *
+   * @generated from rpc memos.api.v1.PublicSiteService.SearchPublicPages
+   */
+  searchPublicPages: {
+    methodKind: "unary";
+    input: typeof SearchPublicPagesRequestSchema;
+    output: typeof SearchPublicPagesResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_api_v1_public_site_service, 0);

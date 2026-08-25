@@ -20,6 +20,10 @@ func extForDocType(docType string) string {
 	case "VIEW":
 		// Gallery config JSON, not markdown.
 		return ".view.json"
+	case "BLOGVIEW":
+		// A site home page's composition. Same JSON shape as a view, different
+		// block vocabulary — the extension says which one an editor is holding.
+		return ".blogview.json"
 	default: // MARKDOWN
 		return ".md"
 	}

@@ -5,11 +5,7 @@ import { describe, expect, it } from "vitest";
 import { remarkTag } from "@/utils/remark-plugins/remark-tag";
 
 const renderMarkdown = (content: string): string =>
-  renderToStaticMarkup(
-    <ReactMarkdown remarkPlugins={[remarkGfm, remarkTag]}>
-      {content}
-    </ReactMarkdown>,
-  );
+  renderToStaticMarkup(<ReactMarkdown remarkPlugins={[remarkGfm, remarkTag]}>{content}</ReactMarkdown>);
 
 describe("remarkTag", () => {
   it("does not turn URL fragments inside autolinks into tags", () => {

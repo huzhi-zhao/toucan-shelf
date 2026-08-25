@@ -481,6 +481,10 @@ func TestArchiveTakesPageDown(t *testing.T) {
 // TestSiteDashboardCannotBeArchivedOrDeleted covers the pointer, not the copy:
 // a site records which document is its home page, so losing that document would
 // leave the site with no front door and nothing to fall back to.
+// homeLayoutJSON is the smallest layout a site home page is allowed to have: a
+// feed, so that pages published after the layout was frozen still show up.
+const homeLayoutJSON = `{"viewType":"blog","blocks":[{"type":"public_feed","title":"Latest","tags":[]}]}`
+
 func TestSiteDashboardCannotBeArchivedOrDeleted(t *testing.T) {
 	ctx := context.Background()
 	ts := NewTestService(t)
@@ -491,8 +495,10 @@ func TestSiteDashboardCannotBeArchivedOrDeleted(t *testing.T) {
 	adminCtx := ts.CreateUserContext(ctx, admin.ID)
 	site := newTestSite(ctx, t, ts, adminCtx, "Docs")
 
+	// A home page is a `.blogview` document — an article has a page of its own,
+	// so pointing the site root at one would give it two URLs and no layout.
 	home, err := ts.Service.CreateMemo(adminCtx, &apiv1.CreateMemoRequest{
-		Memo: &apiv1.Memo{Title: "Home", Content: "{}"},
+		Memo: &apiv1.Memo{Title: "Home", Content: homeLayoutJSON, DocType: apiv1.Memo_BLOGVIEW},
 	})
 	require.NoError(t, err)
 	_, err = ts.Service.UpdateSite(adminCtx, &apiv1.UpdateSiteRequest{
@@ -511,4 +517,120 @@ func TestSiteDashboardCannotBeArchivedOrDeleted(t *testing.T) {
 	_, err = ts.Service.DeleteMemo(adminCtx, &apiv1.DeleteMemoRequest{Name: home.Name})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "home page")
+}
+
+// TestLayoutDocTypesStayOnTheirOwnSide is the whole point of splitting
+// `.blogview` off `.view`: each type has exactly one route out of the knowledge
+// base, and it is not the other one's. A `.view` composes live library data —
+// folders, frontmatter properties — so it must never become a site's front
+// door; a `.blogview` composes publication snapshots, so it must never be
+// published as a page, where its block JSON would become a page body.
+func TestLayoutDocTypesStayOnTheirOwnSide(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestService(t)
+	defer ts.Cleanup()
+
+	admin, err := ts.CreateHostUser(ctx, "admin")
+	require.NoError(t, err)
+	adminCtx := ts.CreateUserContext(ctx, admin.ID)
+	site := newTestSite(ctx, t, ts, adminCtx, "Docs")
+
+	view, err := ts.Service.CreateMemo(adminCtx, &apiv1.CreateMemoRequest{
+		Memo: &apiv1.Memo{Title: "Library view", Content: "{}", DocType: apiv1.Memo_VIEW},
+	})
+	require.NoError(t, err)
+	blogView, err := ts.Service.CreateMemo(adminCtx, &apiv1.CreateMemoRequest{
+		Memo: &apiv1.Memo{Title: "Front page", Content: "{}", DocType: apiv1.Memo_BLOGVIEW},
+	})
+	require.NoError(t, err)
+
+	// A library view cannot be a site's home page.
+	_, err = ts.Service.UpdateSite(adminCtx, &apiv1.UpdateSiteRequest{
+		Site:       &apiv1.Site{Name: site.Name, Dashboard: view.Name},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"dashboard"}},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "site home document")
+
+	// Neither layout type can be published as a page.
+	for _, memo := range []string{view.Name, blogView.Name} {
+		_, err = ts.Service.PublishMemo(adminCtx, &apiv1.PublishMemoRequest{Parent: site.Name, Memo: memo})
+		require.Error(t, err, "publishing %s as a page must be refused", memo)
+	}
+}
+
+// TestPublishedTagsComeFromFrontmatter pins the tag source. A site's galleries
+// and feeds filter on these, so where they come from is a product decision, not
+// an implementation detail: they are the author's `tags:` list, and body `#tag`
+// markers — a paused knowledge-base feature — have no say.
+func TestPublishedTagsComeFromFrontmatter(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestService(t)
+	defer ts.Cleanup()
+
+	admin, err := ts.CreateHostUser(ctx, "admin")
+	require.NoError(t, err)
+	adminCtx := ts.CreateUserContext(ctx, admin.ID)
+	site := newTestSite(ctx, t, ts, adminCtx, "Docs")
+
+	memo, err := ts.Service.CreateMemo(adminCtx, &apiv1.CreateMemoRequest{
+		Memo: &apiv1.Memo{
+			Title:   "Hello",
+			Content: "---\ntags: [guide, release]\n---\nbody with a #body-tag in it",
+		},
+	})
+	require.NoError(t, err)
+	_, err = ts.Service.PublishMemo(adminCtx, &apiv1.PublishMemoRequest{Parent: site.Name, Memo: memo.Name})
+	require.NoError(t, err)
+
+	listed, err := ts.Service.ListPublicPages(ctx, &apiv1.ListPublicPagesRequest{Site: site.Name})
+	require.NoError(t, err)
+	require.Len(t, listed.Pages, 1)
+	require.Equal(t, []string{"guide", "release"}, listed.Pages[0].Tags)
+
+	// The tag filter answers on the frontmatter list, and not on the body marker.
+	matched, err := ts.Service.ListPublicPages(ctx, &apiv1.ListPublicPagesRequest{Site: site.Name, Tags: []string{"guide"}})
+	require.NoError(t, err)
+	require.Len(t, matched.Pages, 1)
+
+	missed, err := ts.Service.ListPublicPages(ctx, &apiv1.ListPublicPagesRequest{Site: site.Name, Tags: []string{"body-tag"}})
+	require.NoError(t, err)
+	require.Empty(t, missed.Pages)
+}
+
+// TestHomePageMustCarryAFeed pins the "no dead end" rule. A home page made only
+// of prose and curated galleries is frozen at the moment it is saved: every page
+// published afterwards would be reachable by URL alone. The feed is the block
+// that keeps listing what is new, so the site refuses a layout without one.
+// A home page carrying no feed is accepted. It once was not: with the front
+// door being the only listing, a curated page of markdown and galleries meant
+// everything published afterwards was reachable by URL alone. The top menu's
+// Latest and Archive tabs are that listing now, and they are built from the
+// published pages rather than from the home layout — so the author gets to make
+// a front page that is only what they arranged.
+func TestHomePageNeedsNoFeed(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestService(t)
+	defer ts.Cleanup()
+
+	admin, err := ts.CreateHostUser(ctx, "admin")
+	require.NoError(t, err)
+	adminCtx := ts.CreateUserContext(ctx, admin.ID)
+	site := newTestSite(ctx, t, ts, adminCtx, "Docs")
+
+	feedless, err := ts.Service.CreateMemo(adminCtx, &apiv1.CreateMemoRequest{
+		Memo: &apiv1.Memo{
+			Title:   "Front",
+			Content: `{"viewType":"blog","blocks":[{"type":"markdown","content":"# Hello"}]}`,
+			DocType: apiv1.Memo_BLOGVIEW,
+		},
+	})
+	require.NoError(t, err)
+
+	updated, err := ts.Service.UpdateSite(adminCtx, &apiv1.UpdateSiteRequest{
+		Site:       &apiv1.Site{Name: site.Name, Dashboard: feedless.Name},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"dashboard"}},
+	})
+	require.NoError(t, err)
+	require.Equal(t, feedless.Name, updated.Dashboard)
 }

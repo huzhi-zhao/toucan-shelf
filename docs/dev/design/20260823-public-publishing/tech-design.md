@@ -5,7 +5,7 @@
 [../../launch/20260823-public-publishing.md](../../launch/20260823-public-publishing.md)。
 
 门面那一层（外壳、首页编排、主题、皮肤）单独拆了一篇：
-[front-end.md](front-end.md)。本篇 §4 末尾对 `.view` 前端查询的判断在那篇里被
+[front-end.md](front-end.md)。本篇 §4 末尾对布局文档前端查询的判断在那篇里被
 修正过，以那篇为准。
 
 ## 1. 一句话方案
@@ -26,7 +26,7 @@ site                          站点（blog 空间）
   domain_verified             域名归属校验通过标记
   canonical                   'PLATFORM' | 'DOMAIN'
   status                      'DRAFT' | 'ONLINE' | 'OFFLINE'  站点上线开关
-  dashboard_memo_id           指向作为首页的那篇 .view 文档
+  dashboard_memo_id           指向作为首页的那篇 .blogview 文档
   theme                       主题配置 JSON
   search_mode                 站点级检索模式（不是用户偏好）
 
@@ -36,7 +36,8 @@ site_publication              一次发布 = 一条快照
   UNIQUE(site_id, memo_id)    一篇文档在一个站点里只有一条发布记录
   title / summary
   content                     发布管线的输出（已剔加密块、已重写链接）
-  meta                        JSON：对外 tags、OG、canonical 指向等
+  meta                        JSON：对外 tags、封面等（canonical 不在这里，
+                              它由 site.canonical 算出来，见 §7 P4）
   source_updated_ts           快照对应的源文档版本，用来算"线上落后了"
   state                       枚举 'PUBLISHED' | 'UNPUBLISHED'（预留 'PENDING'）
   publisher_id / published_ts / updated_ts
@@ -82,6 +83,12 @@ site_chunk_fts                FTS5(content, tokenize='trigram')，rowid = site_c
    放开**，由作者自己去附件那边处理（需求 §9）。
 5. 生成快照正文：剔除 `toucan-secret` 块、重写站内链接到 `/<slug>`、重写附件
    链接到站点域名、按白名单挑出对外 frontmatter 与 tags。
+
+   **tags 只认 frontmatter 的 `tags:` 列表**（`tags: [guide, release]` 或
+   `- guide` 的块写法都读），不认正文里的 `#tag`。对外的 tag 是作者在属性面板里
+   看得见、改得动的一次声明，站点的 gallery / feed 直接按它筛；正文 `#tag` 是知识库
+   自己的一套东西，本项目里已暂停（见 `docs/dev/roadmap.md`），不作为发布输入。
+   没写 `tags:` 的文档就发成无标签，不做任何猜测。
 6. 首次发布生成 slug（撞则加后缀，过保留字表）；更新发布不重新生成。
 7. 写 `site_publication` + 两张附属表。附件权限一个字节都不动。
 8. 重建这条快照的 `site_chunk` / `site_chunk_fts`。
@@ -103,14 +110,27 @@ site_chunk_fts                FTS5(content, tokenize='trigram')，rowid = site_c
 - `/<slug>` → 一条快照。`/d/<doc-id>` → 查本站点的发布记录，没有就 404。
 - `/search?q=` → 站点搜索。
 
-前端复用现有渲染器加一个**对外模式**，但 `.view` 的数据查询不能复用——
+前端复用现有渲染器加一个**对外模式**，但布局文档的数据查询不能复用——
 现在 gallery 的 scope 查询是前端 `useScopeMemos` 按当前登录用户查文档表的
 （[gallery-view.md](../../requirements/views/gallery-view.md) §5），对外必须换成
 上面这组只读发布记录的接口。这是本次工作量被低估最容易发生的地方。
 
 ## 5. 搜索
 
-检索算法整套复用 `internal/rag/search.go`（FTS + 向量 RRF 融合、相对分数裁剪、
+**现状（P3 第一步，已上线代码）：`SearchPublicPages` 直接在
+`site_publication` 上做 `LIKE '%term%'`**，匹配标题、摘要和快照正文，多个词按
+空格切分、全部命中才算（CJK 不切词，整串当一个子串）。词里的 `%` `_` 会转义，
+否则一个 `%` 就等于把全站导出。结果按发布记录倒序，与 feed 同序——子串匹配没有
+相关性分可排。**没有索引表、没有分词、没有向量**，站点文章多了会线性扫。
+
+`site.search_mode` 这一列（默认 `HYBRID`）现在**存了但没人读**——子串匹配没有
+模式可选。它留着是给索引版用的，不要以为改它会影响搜索结果。
+
+选它是因为**隔离要求由"只查快照表"这一条就满足了**，与下面的索引方案等价；
+索引方案换来的是相关性和速度，不是安全性。所以先落最小实现，把搜索页接上，
+索引留到确有站点规模再做（P4 前复评）。
+
+**目标方案（未实现）**：检索算法整套复用 `internal/rag/search.go`（FTS + 向量 RRF 融合、相对分数裁剪、
 无 embedding 降级纯 FTS），但它现在是**写死查 `memo_chunk`、候选集由调用方传
 `SearchParams.MemoIDs`**。复用需要把"查哪张 chunk 表 / 候选集从哪来"参数化，
 属于中等改动，不是接一个函数就完事。
@@ -149,11 +169,18 @@ site_chunk_fts                FTS5(content, tokenize='trigram')，rowid = site_c
   是这块能力能不能上线的前提。
 - **P1 撤下与一致性**：撤下 / 归档联动、反向引用警告、编辑器里的"线上落后于
   当前版本"提示与更新发布入口。
-- **P2 dashboard 与 feed**：`.view` 新增 feed block、对外数据源接口、
+- **P2 dashboard 与 feed**：`.blogview` 新增 feed block、对外数据源接口、
   站点首页路由。
-- **P3 站内搜索**：`site_chunk` 两张表、检索层参数化、站点搜索页。
-- **P4 域名与 SEO**：自定义域名 + 归属校验 + 证书、canonical / 301、
-  sitemap / robots / noindex、撤下页 410。
+- **P3 站内搜索**：站点搜索页 + `SearchPublicPages`。**先落 LIKE 子串版**
+  （见 §5），`site_chunk` 两张表与检索层参数化推迟到 P4 前复评。
+- **P4 域名与 SEO**。拆成两半，先做后半：
+  - **SEO（已完成）**：站点自己的 `sitemap.xml`（平台路径下是
+    `/s/{uid}/sitemap.xml`，自定义域名下是 `/sitemap.xml`）、站点自己的
+    `robots.txt`、按 `site.canonical` 下发 `Link: rel="canonical"`、非规范入口
+    `Disallow`、撤下页 410 / 从未存在的 slug 404 / 两者都带 `X-Robots-Tag:
+    noindex`。都在 `server/router/frontend`，见 §8。
+  - **域名（未开工）**：自定义域名的归属校验与证书签发、301。按 Host 找站点的
+    路由 P0 就有了，剩下的主要是部署侧。
 
 P0 之前不要先做 P4：域名让站点看起来像回事，但没有 P0 的检查就等于把没过闸的
 内容挂到全网。
@@ -164,7 +191,7 @@ P0 之前不要先做 P4：域名让站点看起来像回事，但没有 P0 的�
 |---|---|---|
 | 跨库汇聚后站内链接解析歧义 | 链到错误的文档 | 按源文档所属库解析，关闭标题兜底匹配（管线第 3 步） |
 | 快照生成误用超级用户上下文 | member 放开时无越权检查落点 | 硬约束，P0 就守，code review 重点 |
-| `.view` 前端查询被直接复用到对外 | 匿名读者能列到未发布文档 | 对外只走 `site_*` 只读接口，P2 的主要工作量 |
+| 布局文档的前端查询被直接复用到对外 | 匿名读者能列到未发布文档 | 对外只走 `site_*` 只读接口，P2 的主要工作量 |
 | 附件公开与文章公开被混为一谈 | 一次点击开两道门，作者只看见一道 | 发布不碰附件权限，只列出读者取不到的文件（需求 §9） |
 | 主题可定制 | 存储型 XSS | 主题只允许受限的配置项，不允许任意 HTML / JS，与 gallery view 既有约定一致 |
 | 匿名流量打到主应用 + SQLite | 慢查询拖垮内部使用 | 快照天然可缓存；先加边缘缓存与限流再放量 |

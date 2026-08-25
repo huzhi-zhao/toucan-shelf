@@ -2,17 +2,14 @@ import { describe, expect, it } from "vitest";
 import { unsupportedFunction } from "@/components/MemoContent/sheets/formula";
 import { parseSheetsBlock } from "@/components/MemoContent/sheets/parseSheetsBlock";
 import { parseFenceId, serializeSheets, writeSheetsBlock } from "@/components/MemoContent/sheets/serializeSheetsBlock";
-import {
-  applySheetsStyle,
-  extractSheetsStyle,
-  parseStyleOverlay,
-  serializeStyleOverlay,
-} from "@/components/MemoContent/sheets/sheetStyle";
+import { applySheetsStyle, extractSheetsStyle, parseStyleOverlay, serializeStyleOverlay } from "@/components/MemoContent/sheets/sheetStyle";
 import { fromSpreadsheetData, toSpreadsheetData } from "@/components/MemoContent/sheets/toSpreadsheetData";
 
 describe("parseSheetsBlock", () => {
   it("parses multiple named sheets of CSV", () => {
-    const raw = ["sheet:销售数据", "name,price,qty", "苹果,3.5,10", "香蕉,2.1,20", "", "sheet:统计汇总", "month,total", "1月,1000"].join("\n");
+    const raw = ["sheet:销售数据", "name,price,qty", "苹果,3.5,10", "香蕉,2.1,20", "", "sheet:统计汇总", "month,total", "1月,1000"].join(
+      "\n",
+    );
 
     const data = parseSheetsBlock(raw);
 
@@ -61,7 +58,15 @@ describe("parseSheetsBlock", () => {
 
   it("treats a marker-less block as a single sheet", () => {
     const data = parseSheetsBlock(["a,b", "1,2"].join("\n"));
-    expect(data.sheets).toEqual([{ name: "Sheet1", rows: [["a", "b"], ["1", "2"]] }]);
+    expect(data.sheets).toEqual([
+      {
+        name: "Sheet1",
+        rows: [
+          ["a", "b"],
+          ["1", "2"],
+        ],
+      },
+    ]);
   });
 
   it("preserves formula strings and quoted fields with commas", () => {
@@ -94,7 +99,16 @@ describe("serialize round-trip", () => {
 
   it("drops trailing empty rows/cols added by the grid", () => {
     const data = {
-      sheets: [{ name: "S", rows: [["a", "b", ""], ["1", "", ""], ["", "", ""]] }],
+      sheets: [
+        {
+          name: "S",
+          rows: [
+            ["a", "b", ""],
+            ["1", "", ""],
+            ["", "", ""],
+          ],
+        },
+      ],
       view: { lock: false },
     };
     expect(serializeSheets(data)).toBe(["sheet:S", "a,b", "1,"].join("\n"));

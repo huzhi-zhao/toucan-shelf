@@ -47,6 +47,10 @@ type FindSitePublication struct {
 	// MemoIDList restricts results to these documents. An empty (non-nil) list
 	// matches nothing.
 	MemoIDList []int32
+	// ContentSearch keeps only publications whose title, summary or snapshot body
+	// contains every one of these substrings (case-insensitive over ASCII, which
+	// is what SQLite LIKE gives without ICU).
+	ContentSearch []string
 	// ExcludeContent skips the snapshot body, which is the large column.
 	ExcludeContent bool
 	Limit          *int

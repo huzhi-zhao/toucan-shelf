@@ -41,9 +41,7 @@ describe("CalendarCell empty-day clickability", () => {
   });
 
   it("does not render out-of-month days as interactive (no role=button)", () => {
-    render(
-      <CalendarCell day={makeDay({ isCurrentMonth: false })} maxCount={5} tooltipText="May 1, 2025" onClick={() => {}} />,
-    );
+    render(<CalendarCell day={makeDay({ isCurrentMonth: false })} maxCount={5} tooltipText="May 1, 2025" onClick={() => {}} />);
 
     expect(screen.queryByRole("button")).toBeNull();
   });

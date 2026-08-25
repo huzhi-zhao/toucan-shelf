@@ -996,3 +996,11 @@ func (s *ConnectServiceHandler) ListPublicPages(ctx context.Context, req *connec
 	}
 	return connect.NewResponse(resp), nil
 }
+
+func (s *ConnectServiceHandler) SearchPublicPages(ctx context.Context, req *connect.Request[v1pb.SearchPublicPagesRequest]) (*connect.Response[v1pb.SearchPublicPagesResponse], error) {
+	resp, err := s.APIV1Service.SearchPublicPages(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}

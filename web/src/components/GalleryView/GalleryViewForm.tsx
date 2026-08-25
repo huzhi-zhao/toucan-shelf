@@ -4,8 +4,10 @@ import {
   ChevronDownIcon,
   FileIcon,
   FileTextIcon,
+  GlobeIcon,
   GripVerticalIcon,
   LayoutGridIcon,
+  ListIcon,
   type LucideIcon,
   PaperclipIcon,
   PlusIcon,
@@ -32,6 +34,8 @@ import {
   DEFAULT_BADGE_COLOR,
   DEFAULT_CALENDAR_LAYOUT_BLOCK,
   DEFAULT_GALLERY_BLOCK,
+  DEFAULT_PUBLIC_FEED_BLOCK,
+  DEFAULT_PUBLIC_GALLERY_BLOCK,
   type GalleryBadgeKind,
   type GalleryBadgeRule,
   type GalleryCardField,
@@ -42,6 +46,8 @@ import {
   type GalleryScope,
   type GallerySort,
   MAX_GALLERY_BADGES,
+  type PublicFeedBlock,
+  type PublicGalleryBlock,
   parseGalleryViewConfig,
   serializeGalleryViewConfig,
   type ViewBlock,
@@ -66,6 +72,16 @@ interface Props {
    * which is what an ordinary view has always done.
    */
   workspaceOptions?: { name: string; title: string }[];
+  /**
+   * Which block vocabulary this document speaks.
+   *
+   * "library" (a `.view`) composes live knowledge-base data: galleries,
+   * calendars, document references. "site" (a `.blogview`) composes a published
+   * site's home page out of publication snapshots. The two sets are disjoint —
+   * each renderer ignores the other's blocks — so the editor offers one set or
+   * the other rather than both.
+   */
+  variant?: "library" | "site";
 }
 
 // UI state for one card-field row: a "kind" (built-in token or "property") plus
@@ -135,7 +151,48 @@ interface MarkdownDraft {
   collapsed?: boolean;
 }
 
-type BlockDraft = GalleryDraft | CalendarDraft | MarkdownDraft;
+/**
+ * Editable drafts of the outward-facing blocks.
+ *
+ * Tags, slugs and the limit are held as the text the author typed, so a
+ * half-written entry survives a re-render; they are split and dropped on save.
+ * The whole configuration is deliberately this small — a published snapshot has
+ * no folder and no frontmatter properties to filter on.
+ */
+interface PublicGalleryDraft {
+  type: "public_gallery";
+  collapsed?: boolean;
+  tags: string;
+  sort: "manual" | "updated_desc";
+  slugs: string;
+  limit: string;
+  columns: 2 | 3 | 4;
+}
+
+interface PublicFeedDraft {
+  type: "public_feed";
+  collapsed?: boolean;
+  title: string;
+  tags: string;
+  showTopicFilter: boolean;
+  limit: string;
+}
+
+type BlockDraft = GalleryDraft | CalendarDraft | MarkdownDraft | PublicGalleryDraft | PublicFeedDraft;
+
+/** Comma-separated input ⇄ stored list. Blank entries never make it through. */
+const splitList = (raw: string): string[] =>
+  raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item !== "");
+
+// A limit is optional: a blank or nonsensical one means "everything the block
+// covers", which is what a reader gets when the author has not decided yet.
+const parseLimitInput = (raw: string): number | undefined => {
+  const value = Number(raw.trim());
+  return Number.isFinite(value) && value >= 1 ? Math.floor(value) : undefined;
+};
 
 const DEFAULT_BADGE_DRAFT: GalleryBadgeRule = {
   kind: "tag",
@@ -210,6 +267,23 @@ function toGroupDraft(group: GalleryGroup): GroupDraft {
 
 function toDraft(block: ViewBlock): BlockDraft {
   if (block.type === "markdown") return { type: "markdown", content: block.content, docName: block.docName };
+  if (block.type === "public_gallery")
+    return {
+      type: "public_gallery",
+      tags: block.tags.join(", "),
+      sort: block.sort,
+      slugs: (block.slugs ?? []).join(", "),
+      limit: block.limit ? String(block.limit) : "",
+      columns: block.columns,
+    };
+  if (block.type === "public_feed")
+    return {
+      type: "public_feed",
+      title: block.title,
+      tags: block.tags.join(", "),
+      showTopicFilter: block.showTopicFilter,
+      limit: block.limit ? String(block.limit) : "",
+    };
   if (block.type === "calendar")
     return {
       type: "calendar",
@@ -265,6 +339,29 @@ function scopeOf(draft: GalleryDraft | CalendarDraft): GalleryScope {
 }
 
 function fromDraft(draft: BlockDraft): ViewBlock {
+  if (draft.type === "public_gallery") {
+    const slugs = splitList(draft.slugs);
+    const block: PublicGalleryBlock = {
+      type: "public_gallery",
+      tags: splitList(draft.tags),
+      // A manual order with nothing listed would publish an empty section.
+      sort: draft.sort === "manual" && slugs.length > 0 ? "manual" : "updated_desc",
+      ...(slugs.length > 0 ? { slugs } : {}),
+      limit: parseLimitInput(draft.limit),
+      columns: draft.columns,
+    };
+    return block;
+  }
+  if (draft.type === "public_feed") {
+    const block: PublicFeedBlock = {
+      type: "public_feed",
+      title: draft.title.trim() || DEFAULT_PUBLIC_FEED_BLOCK.title,
+      tags: splitList(draft.tags),
+      showTopicFilter: draft.showTopicFilter,
+      limit: parseLimitInput(draft.limit),
+    };
+    return block;
+  }
   if (draft.type === "markdown")
     return draft.docName
       ? { type: "markdown", content: draft.content, docName: draft.docName }
@@ -293,8 +390,11 @@ function fromDraft(draft: BlockDraft): ViewBlock {
 
 function blockInvalid(draft: BlockDraft): boolean {
   // A markdown block is never invalid — an empty one is simply dropped on save.
+  // Neither is an outward-facing one: every field on it is optional, and a
+  // gallery with no tags is the whole site, which is a real arrangement.
   // Gallery and calendar blocks need at least one complete scope rule.
-  return draft.type !== "markdown" && effectiveGroups(draft).length === 0;
+  if (draft.type === "markdown" || draft.type === "public_gallery" || draft.type === "public_feed") return false;
+  return effectiveGroups(draft).length === 0;
 }
 
 // Knowledge-base selector for a block's scope, shown only on the Home document
@@ -924,6 +1024,123 @@ const BlockHeader = ({
   );
 };
 
+/**
+ * The outward-facing blocks' form.
+ *
+ * Its whole vocabulary is tags, order, count and columns — everything a
+ * published snapshot carries. It is deliberately not the gallery form with
+ * fields hidden: "this field does nothing in that mode" is the shape that ships
+ * a block reaching for documents it must not see.
+ */
+const PublicBlockForm = ({
+  draft,
+  index,
+  onChange,
+  onRemove,
+  onToggleCollapse,
+  dragHandlers,
+}: {
+  draft: PublicGalleryDraft | PublicFeedDraft;
+  index: number;
+  onChange: (patch: Partial<PublicGalleryDraft> | Partial<PublicFeedDraft>) => void;
+  onRemove: () => void;
+  onToggleCollapse: () => void;
+  dragHandlers: React.HTMLAttributes<HTMLDivElement> & { draggable: boolean };
+}) => {
+  const t = useTranslate();
+  const isGallery = draft.type === "public_gallery";
+  return (
+    <div className="flex flex-col gap-3">
+      <BlockHeader
+        icon={isGallery ? GlobeIcon : ListIcon}
+        title={t(isGallery ? "gallery.public-gallery-block-title" : "gallery.public-feed-block-title", { index: index + 1 })}
+        collapsed={Boolean(draft.collapsed)}
+        onToggleCollapse={onToggleCollapse}
+        onRemove={onRemove}
+        dragHandlers={dragHandlers}
+      />
+      {!draft.collapsed && (
+        <div className="flex flex-col gap-3">
+          <p className="text-xs text-muted-foreground">{t("gallery.public-block-hint")}</p>
+          {draft.type === "public_feed" && (
+            <div className="flex flex-col gap-1.5">
+              <Label>{t("gallery.public-title-label")}</Label>
+              <Input
+                value={draft.title}
+                placeholder={DEFAULT_PUBLIC_FEED_BLOCK.title}
+                onChange={(e) => onChange({ title: e.target.value })}
+              />
+            </div>
+          )}
+          <div className="flex flex-col gap-1.5">
+            <Label>{t("gallery.public-tags-label")}</Label>
+            <Input
+              value={draft.tags}
+              placeholder={t("gallery.public-tags-placeholder")}
+              onChange={(e) => onChange({ tags: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground">{t("gallery.public-tags-hint")}</p>
+          </div>
+          {draft.type === "public_gallery" && (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <Label>{t("gallery.public-sort-label")}</Label>
+                <Select value={draft.sort} onValueChange={(v) => onChange({ sort: v === "manual" ? "manual" : "updated_desc" })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="updated_desc">{t("gallery.public-sort-updated")}</SelectItem>
+                    <SelectItem value="manual">{t("gallery.public-sort-manual")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {draft.sort === "manual" && (
+                <div className="flex flex-col gap-1.5">
+                  <Label>{t("gallery.public-slugs-label")}</Label>
+                  <Input value={draft.slugs} placeholder="handbook, changelog" onChange={(e) => onChange({ slugs: e.target.value })} />
+                  <p className="text-xs text-muted-foreground">{t("gallery.public-slugs-hint")}</p>
+                </div>
+              )}
+              <div className="flex flex-col gap-1.5">
+                <Label>{t("gallery.public-columns-label")}</Label>
+                <Select value={String(draft.columns)} onValueChange={(v) => onChange({ columns: Number(v) as 2 | 3 | 4 })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[2, 3, 4].map((columns) => (
+                      <SelectItem key={columns} value={String(columns)}>
+                        {columns}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
+          {draft.type === "public_feed" && (
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={draft.showTopicFilter} onCheckedChange={(checked) => onChange({ showTopicFilter: checked === true })} />
+              {t("gallery.public-topic-filter-label")}
+            </label>
+          )}
+          <div className="flex flex-col gap-1.5">
+            <Label>{t("gallery.public-limit-label")}</Label>
+            <Input
+              type="number"
+              min={1}
+              value={draft.limit}
+              placeholder={t("gallery.public-limit-placeholder")}
+              onChange={(e) => onChange({ limit: e.target.value })}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Picks the knowledge-base document a markdown block references: a filterable
 // list of the workspace's markdown documents. The view document itself is
 // excluded — a view embedding itself would recurse.
@@ -1065,6 +1282,7 @@ const MarkdownBlockForm = ({
 // Editor for VIEW documents. A document may hold multiple gallery blocks; the
 // bottom toolbar's "+" inserts another, and Save/Cancel are pinned bottom-right.
 const GalleryViewForm = ({
+  variant = "library",
   content,
   workspace,
   memoName,
@@ -1085,12 +1303,17 @@ const GalleryViewForm = ({
   const blockRefs = useRef<(HTMLDivElement | null)[]>([]);
   const attachmentsEnabled = Boolean(onAddAttachments);
 
-  const updateBlock = (index: number, patch: Partial<GalleryDraft> | Partial<CalendarDraft> | Partial<MarkdownDraft>) => {
+  const updateBlock = (
+    index: number,
+    patch: Partial<GalleryDraft> | Partial<CalendarDraft> | Partial<MarkdownDraft> | Partial<PublicGalleryDraft> | Partial<PublicFeedDraft>,
+  ) => {
     setBlocks((prev) => prev.map((b, i) => (i === index ? ({ ...b, ...patch } as BlockDraft) : b)));
   };
 
   const addGalleryBlock = () => setBlocks((prev) => [...prev, toDraft(DEFAULT_GALLERY_BLOCK)]);
   const addCalendarLayoutBlock = () => setBlocks((prev) => [...prev, toDraft(DEFAULT_CALENDAR_LAYOUT_BLOCK)]);
+  const addPublicGalleryBlock = () => setBlocks((prev) => [...prev, toDraft(DEFAULT_PUBLIC_GALLERY_BLOCK)]);
+  const addPublicFeedBlock = () => setBlocks((prev) => [...prev, toDraft(DEFAULT_PUBLIC_FEED_BLOCK)]);
   const addMarkdownBlock = () => setBlocks((prev) => [...prev, { type: "markdown" as const, content: "" }]);
   const addDocBlock = () => setBlocks((prev) => [...prev, { type: "markdown" as const, content: "", docName: "" }]);
   const removeBlock = (index: number) => setBlocks((prev) => prev.filter((_, i) => i !== index));
@@ -1144,6 +1367,8 @@ const GalleryViewForm = ({
     if (draft.type === "markdown")
       return t(draft.docName !== undefined ? "gallery.doc-block-title" : "gallery.markdown-block-title", { index: index + 1 });
     if (draft.type === "calendar") return t("gallery.calendar-block-title", { index: index + 1 });
+    if (draft.type === "public_gallery") return t("gallery.public-gallery-block-title", { index: index + 1 });
+    if (draft.type === "public_feed") return t("gallery.public-feed-block-title", { index: index + 1 });
     return t("gallery.block-title", { index: index + 1 });
   };
 
@@ -1215,6 +1440,15 @@ const GalleryViewForm = ({
                       index={index}
                       workspace={workspace}
                       excludeName={memoName}
+                      onChange={(patch) => updateBlock(index, patch)}
+                      onRemove={() => removeBlock(index)}
+                      onToggleCollapse={() => toggleCollapse(index)}
+                      dragHandlers={dragHandlers(index)}
+                    />
+                  ) : draft.type === "public_gallery" || draft.type === "public_feed" ? (
+                    <PublicBlockForm
+                      draft={draft}
+                      index={index}
                       onChange={(patch) => updateBlock(index, patch)}
                       onRemove={() => removeBlock(index)}
                       onToggleCollapse={() => toggleCollapse(index)}
@@ -1323,6 +1557,10 @@ const GalleryViewForm = ({
                         ) : (
                           <FileTextIcon className="w-3.5 h-3.5 shrink-0" />
                         )
+                      ) : draft.type === "public_gallery" ? (
+                        <GlobeIcon className="w-3.5 h-3.5 shrink-0" />
+                      ) : draft.type === "public_feed" ? (
+                        <ListIcon className="w-3.5 h-3.5 shrink-0" />
                       ) : draft.type === "calendar" ? (
                         <CalendarDaysIcon className="w-3.5 h-3.5 shrink-0" />
                       ) : (
@@ -1345,23 +1583,44 @@ const GalleryViewForm = ({
               <PlusIcon className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
+          {/* One vocabulary or the other. A library block on a site home page
+              would be stripped on publish, and an outward-facing block in the
+              knowledge base can only ever draw a placeholder — offering either
+              one in the wrong document is offering something that cannot work. */}
           <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={addGalleryBlock}>
-              <LayoutGridIcon className="w-4 h-4" />
-              {t("gallery.style-gallery")}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={addCalendarLayoutBlock}>
-              <CalendarDaysIcon className="w-4 h-4" />
-              {t("gallery.style-calendar")}
-            </DropdownMenuItem>
+            {variant === "library" ? (
+              <>
+                <DropdownMenuItem onClick={addGalleryBlock}>
+                  <LayoutGridIcon className="w-4 h-4" />
+                  {t("gallery.style-gallery")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={addCalendarLayoutBlock}>
+                  <CalendarDaysIcon className="w-4 h-4" />
+                  {t("gallery.style-calendar")}
+                </DropdownMenuItem>
+              </>
+            ) : null}
             <DropdownMenuItem onClick={addMarkdownBlock}>
               <FileTextIcon className="w-4 h-4" />
               {t("gallery.style-markdown")}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={addDocBlock}>
-              <BookTextIcon className="w-4 h-4" />
-              {t("gallery.style-doc")}
-            </DropdownMenuItem>
+            {variant === "library" ? (
+              <DropdownMenuItem onClick={addDocBlock}>
+                <BookTextIcon className="w-4 h-4" />
+                {t("gallery.style-doc")}
+              </DropdownMenuItem>
+            ) : (
+              <>
+                <DropdownMenuItem onClick={addPublicGalleryBlock}>
+                  <GlobeIcon className="w-4 h-4" />
+                  {t("gallery.style-public-gallery")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={addPublicFeedBlock}>
+                  <ListIcon className="w-4 h-4" />
+                  {t("gallery.style-public-feed")}
+                </DropdownMenuItem>
+              </>
+            )}
             {attachmentsEnabled && (
               <DropdownMenuItem onClick={handleAddAttachmentsClick}>
                 <PaperclipIcon className="w-4 h-4" />

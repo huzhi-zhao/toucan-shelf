@@ -299,11 +299,23 @@ CREATE TABLE site (
   -- dashboard_memo_id points at the `.view` document used as the site home
   -- page. NULL until one is chosen.
   dashboard_memo_id INTEGER,
+  -- dashboard_snapshot is the sanitized block JSON of that document, frozen at
+  -- the moment it was chosen. The home page is never fetched as a page, so this
+  -- is the only copy an anonymous reader is served.
+  dashboard_snapshot TEXT NOT NULL DEFAULT '',
   theme TEXT NOT NULL DEFAULT '{}',
+  -- author_name is the byline drawn on every page of the site. Deliberately not
+  -- the publisher's account: a login name is half of a credential pair, and in a
+  -- team the byline would otherwise follow whoever clicked "publish". Empty
+  -- falls back to the site's display name.
+  author_name TEXT NOT NULL DEFAULT '',
   -- menu is the site's top menu: an ordered JSON array of {label, path}. It is
   -- site configuration rather than part of the home `.view` because it renders
   -- on every outward-facing page, and those pages do not read that document.
   menu TEXT NOT NULL DEFAULT '[]',
+  -- nav is the site's navigation tree: nested JSON {label, slug, children},
+  -- authored rather than derived from the source documents' folders.
+  nav TEXT NOT NULL DEFAULT '[]',
   search_mode TEXT NOT NULL DEFAULT 'HYBRID',
   created_ts BIGINT NOT NULL DEFAULT (strftime('%s', 'now')),
   updated_ts BIGINT NOT NULL DEFAULT (strftime('%s', 'now'))

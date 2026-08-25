@@ -38,8 +38,8 @@ func tsToTime(ts *timestamppb.Timestamp) time.Time {
 	return ts.AsTime().UTC()
 }
 
-// docTypeString normalizes a memo's doc type to one of MARKDOWN/HTML/PDF/VIEW,
-// defaulting unknown/unspecified to MARKDOWN.
+// docTypeString normalizes a memo's doc type to one of
+// MARKDOWN/HTML/PDF/VIEW/BLOGVIEW, defaulting unknown/unspecified to MARKDOWN.
 func docTypeString(m *v1pb.Memo) string {
 	switch m.GetDocType() {
 	case v1pb.Memo_HTML:
@@ -48,13 +48,15 @@ func docTypeString(m *v1pb.Memo) string {
 		return "PDF"
 	case v1pb.Memo_VIEW:
 		return "VIEW"
+	case v1pb.Memo_BLOGVIEW:
+		return "BLOGVIEW"
 	default:
 		return "MARKDOWN"
 	}
 }
 
-// docTypeFromString converts a MARKDOWN/HTML/PDF/VIEW string back to the proto
-// enum for push (CreateMemo). Unknown values default to MARKDOWN.
+// docTypeFromString converts a MARKDOWN/HTML/PDF/VIEW/BLOGVIEW string back to
+// the proto enum for push (CreateMemo). Unknown values default to MARKDOWN.
 func docTypeFromString(s string) v1pb.Memo_DocType {
 	switch s {
 	case "HTML":
@@ -63,6 +65,8 @@ func docTypeFromString(s string) v1pb.Memo_DocType {
 		return v1pb.Memo_PDF
 	case "VIEW":
 		return v1pb.Memo_VIEW
+	case "BLOGVIEW":
+		return v1pb.Memo_BLOGVIEW
 	default:
 		return v1pb.Memo_MARKDOWN
 	}
@@ -70,11 +74,15 @@ func docTypeFromString(s string) v1pb.Memo_DocType {
 
 // docTypeFromExt derives a doc type from a repo-relative file path's extension,
 // inverting extForDocType. Order matters: the compound extensions (.pdf.md,
-// .view.json) must be checked before the plain ones.
+// .view.json, .blogview.json) must be checked before the plain ones, and
+// .blogview.json before .view.json is a readability choice rather than a
+// correctness one — the two suffixes do not overlap.
 func docTypeFromExt(relPath string) string {
 	switch {
 	case strings.HasSuffix(relPath, ".pdf.md"):
 		return "PDF"
+	case strings.HasSuffix(relPath, ".blogview.json"):
+		return "BLOGVIEW"
 	case strings.HasSuffix(relPath, ".view.json"):
 		return "VIEW"
 	case strings.HasSuffix(relPath, ".html"):
@@ -87,7 +95,7 @@ func docTypeFromExt(relPath string) string {
 // stripDocExt removes the doc-type extension from a filename, returning the
 // title stem. Mirrors docTypeFromExt / extForDocType.
 func stripDocExt(name string) string {
-	for _, ext := range []string{".pdf.md", ".view.json", ".html", ".md"} {
+	for _, ext := range []string{".pdf.md", ".blogview.json", ".view.json", ".html", ".md"} {
 		if strings.HasSuffix(name, ext) {
 			return strings.TrimSuffix(name, ext)
 		}

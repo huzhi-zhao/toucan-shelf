@@ -1,4 +1,4 @@
-import { FileTextIcon, LayoutGridIcon } from "lucide-react";
+import { FileTextIcon, GlobeIcon, LayoutGridIcon } from "lucide-react";
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { MARK_EXCLUDE_ATTR } from "@/components/DocComments/textAnchor";
@@ -18,6 +18,8 @@ import {
   type GalleryBlock,
   type MarkdownBlock,
   matchGalleryBadge,
+  type PublicFeedBlock,
+  type PublicGalleryBlock,
   parseGalleryViewConfig,
   serializeGalleryViewConfig,
   type ViewBlock,
@@ -403,6 +405,27 @@ const GalleryBlockView = ({ block, memo, openDoc }: BlockProps) => {
 // Renders a VIEW document: each configured block top-to-bottom. No dividers are
 // inserted between blocks — a markdown block can write its own `---` where one
 // is actually wanted.
+/**
+ * What an outward-facing block looks like from inside the app.
+ *
+ * It is not rendered here: its entries come from the site's publication
+ * snapshots, and this renderer only ever queries the knowledge base. Drawing it
+ * with live documents would show the author a home page containing pages that
+ * are not published — the exact confusion the snapshot model exists to remove.
+ */
+const PublicBlockPlaceholder = ({ block }: { block: PublicGalleryBlock | PublicFeedBlock }) => {
+  const t = useTranslate();
+  const title = t(block.type === "public_gallery" ? "gallery.style-public-gallery" : "gallery.style-public-feed");
+  const scope = block.tags.length > 0 ? block.tags.map((tag) => `#${tag}`).join(" ") : t("gallery.public-block-whole-site");
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
+      <GlobeIcon className="h-4 w-4 shrink-0" />
+      <span className="font-medium text-foreground">{title}</span>
+      <span className="truncate">{scope}</span>
+    </div>
+  );
+};
+
 const GalleryViewRenderer = ({
   memo,
   blocks,
@@ -441,6 +464,8 @@ const GalleryViewRenderer = ({
             ) : (
               <MarkdownBlockView block={block} blockIndex={index} memo={memo} readonly={readonly} />
             )
+          ) : block.type === "public_gallery" || block.type === "public_feed" ? (
+            <PublicBlockPlaceholder block={block} />
           ) : block.type === "calendar" ? (
             <CalendarLayout block={block} memo={memo} openDoc={openDoc} />
           ) : (

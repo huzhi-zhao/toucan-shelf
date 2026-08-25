@@ -1,7 +1,7 @@
 import { isValidElement } from "react";
 import type { RouteObject } from "react-router-dom";
 import { describe, expect, it } from "vitest";
-import { routeConfig, ROUTES } from "@/router";
+import { ROUTES, routeConfig } from "@/router";
 import { RequireAuthRoute, RequireGuestRoute } from "@/router/guards";
 
 // Walk the nested route config and find the first route with the given path,

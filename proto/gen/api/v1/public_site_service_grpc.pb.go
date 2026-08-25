@@ -23,6 +23,7 @@ const (
 	PublicSiteService_GetPublicPage_FullMethodName        = "/memos.api.v1.PublicSiteService/GetPublicPage"
 	PublicSiteService_ResolvePublicDoc_FullMethodName     = "/memos.api.v1.PublicSiteService/ResolvePublicDoc"
 	PublicSiteService_ListPublicPages_FullMethodName      = "/memos.api.v1.PublicSiteService/ListPublicPages"
+	PublicSiteService_SearchPublicPages_FullMethodName    = "/memos.api.v1.PublicSiteService/SearchPublicPages"
 )
 
 // PublicSiteServiceClient is the client API for PublicSiteService service.
@@ -49,6 +50,15 @@ type PublicSiteServiceClient interface {
 	// ListPublicPages lists the site's published pages. This is the only source a
 	// outward-facing listing may draw from.
 	ListPublicPages(ctx context.Context, in *ListPublicPagesRequest, opts ...grpc.CallOption) (*ListPublicPagesResponse, error)
+	// SearchPublicPages searches this site's published pages.
+	//
+	// It searches the publication snapshots only, never the library index. That is
+	// not an optimisation: a snapshot is frozen at publish time while the source
+	// document keeps being edited, so a shared index would let an anonymous reader
+	// learn that a word appears in an article from text that was never published.
+	// The current matching is a plain substring scan — see
+	// docs/dev/design/20260823-public-publishing/tech-design.md §5.
+	SearchPublicPages(ctx context.Context, in *SearchPublicPagesRequest, opts ...grpc.CallOption) (*SearchPublicPagesResponse, error)
 }
 
 type publicSiteServiceClient struct {
@@ -99,6 +109,16 @@ func (c *publicSiteServiceClient) ListPublicPages(ctx context.Context, in *ListP
 	return out, nil
 }
 
+func (c *publicSiteServiceClient) SearchPublicPages(ctx context.Context, in *SearchPublicPagesRequest, opts ...grpc.CallOption) (*SearchPublicPagesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchPublicPagesResponse)
+	err := c.cc.Invoke(ctx, PublicSiteService_SearchPublicPages_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PublicSiteServiceServer is the server API for PublicSiteService service.
 // All implementations must embed UnimplementedPublicSiteServiceServer
 // for forward compatibility.
@@ -123,6 +143,15 @@ type PublicSiteServiceServer interface {
 	// ListPublicPages lists the site's published pages. This is the only source a
 	// outward-facing listing may draw from.
 	ListPublicPages(context.Context, *ListPublicPagesRequest) (*ListPublicPagesResponse, error)
+	// SearchPublicPages searches this site's published pages.
+	//
+	// It searches the publication snapshots only, never the library index. That is
+	// not an optimisation: a snapshot is frozen at publish time while the source
+	// document keeps being edited, so a shared index would let an anonymous reader
+	// learn that a word appears in an article from text that was never published.
+	// The current matching is a plain substring scan — see
+	// docs/dev/design/20260823-public-publishing/tech-design.md §5.
+	SearchPublicPages(context.Context, *SearchPublicPagesRequest) (*SearchPublicPagesResponse, error)
 	mustEmbedUnimplementedPublicSiteServiceServer()
 }
 
@@ -144,6 +173,9 @@ func (UnimplementedPublicSiteServiceServer) ResolvePublicDoc(context.Context, *R
 }
 func (UnimplementedPublicSiteServiceServer) ListPublicPages(context.Context, *ListPublicPagesRequest) (*ListPublicPagesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListPublicPages not implemented")
+}
+func (UnimplementedPublicSiteServiceServer) SearchPublicPages(context.Context, *SearchPublicPagesRequest) (*SearchPublicPagesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SearchPublicPages not implemented")
 }
 func (UnimplementedPublicSiteServiceServer) mustEmbedUnimplementedPublicSiteServiceServer() {}
 func (UnimplementedPublicSiteServiceServer) testEmbeddedByValue()                           {}
@@ -238,6 +270,24 @@ func _PublicSiteService_ListPublicPages_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PublicSiteService_SearchPublicPages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchPublicPagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PublicSiteServiceServer).SearchPublicPages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PublicSiteService_SearchPublicPages_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PublicSiteServiceServer).SearchPublicPages(ctx, req.(*SearchPublicPagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PublicSiteService_ServiceDesc is the grpc.ServiceDesc for PublicSiteService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -260,6 +310,10 @@ var PublicSiteService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListPublicPages",
 			Handler:    _PublicSiteService_ListPublicPages_Handler,
+		},
+		{
+			MethodName: "SearchPublicPages",
+			Handler:    _PublicSiteService_SearchPublicPages_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

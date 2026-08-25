@@ -61,6 +61,14 @@ func (d *DB) ListSitePublications(ctx context.Context, find *store.FindSitePubli
 		}
 	}
 
+	for _, term := range find.ContentSearch {
+		// The snapshot body is searched too, so ExcludeContent may not skip it at
+		// the SQL level — it only controls what is returned.
+		where = append(where, "(`title` LIKE ? ESCAPE '\\' OR `summary` LIKE ? ESCAPE '\\' OR `content` LIKE ? ESCAPE '\\')")
+		pattern := "%" + escapeLike(term) + "%"
+		args = append(args, pattern, pattern, pattern)
+	}
+
 	contentField := "content"
 	if find.ExcludeContent {
 		contentField = "''"

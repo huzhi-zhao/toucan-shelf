@@ -6,6 +6,7 @@ import {
   ChevronRightIcon,
   Code2Icon,
   DownloadIcon,
+  GlobeIcon,
   HashIcon,
   ImageIcon,
   LinkIcon,
@@ -17,7 +18,8 @@ import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import { cn } from "@/lib/utils";
-import { Memo, Memo_PropertySchema } from "@/types/proto/api/v1/memo_service_pb";
+import { Memo, Memo_DocType, Memo_PropertySchema } from "@/types/proto/api/v1/memo_service_pb";
+import { isLayoutDoc } from "@/utils/docType";
 import { parseFrontmatter } from "@/utils/frontmatter";
 import { type Translations, useTranslate } from "@/utils/i18n";
 import { extractHeadings, type HeadingItem } from "@/utils/markdown-manipulation";
@@ -26,6 +28,7 @@ import { isSuperUser } from "@/utils/user";
 import MemoOutline from "./MemoOutline";
 import MemoPublishPanel from "./MemoPublishPanel";
 import MemoSharePanel from "./MemoSharePanel";
+import MemoSiteHomePanel from "./MemoSiteHomePanel";
 
 interface Props {
   memo: Memo;
@@ -71,11 +74,19 @@ const MemoDetailSidebar = ({ memo, className, onShareImageOpen, liveContent, isE
   const currentUser = useCurrentUser();
   const [sharePanelOpen, setSharePanelOpen] = useState(false);
   const [publishPanelOpen, setPublishPanelOpen] = useState(false);
+  const [siteHomePanelOpen, setSiteHomePanelOpen] = useState(false);
   const property = create(Memo_PropertySchema, memo.property || {});
   const canManageShares = !memo.parent && (memo.creator === currentUser?.name || isSuperUser(currentUser));
   // Publishing is a team-level action, so the entry point follows the same rule
   // the server enforces (canPublish == ADMIN) rather than document ownership.
-  const canPublish = !memo.parent && isSuperUser(currentUser);
+  // A layout document is not an article: a site home page is chosen in the site
+  // settings and a view never leaves the knowledge base at all, so there is
+  // nothing to publish here and the server refuses both.
+  const canPublish = !memo.parent && !isLayoutDoc(memo.docType) && isSuperUser(currentUser);
+  // A site home document has no publish action — it has no slug and never
+  // becomes a page. What it has instead is the choice that freezes it, which is
+  // the only outward action this document type has at all.
+  const canSetSiteHome = !memo.parent && memo.docType === Memo_DocType.BLOGVIEW && isSuperUser(currentUser);
   const hasUpdated = !isEqual(memo.createTime, memo.updateTime);
   const content = liveContent ?? memo.content;
   // Headings' `line` is relative to the body (frontmatter stripped) — add back the
@@ -162,7 +173,17 @@ const MemoDetailSidebar = ({ memo, className, onShareImageOpen, liveContent, isE
               <ChevronRightIcon className="size-3.5 shrink-0 text-muted-foreground/35" />
             </Button>
           )}
-          {(onShareImageOpen || canManageShares || canPublish) && <div className="border-t border-border/50" />}
+          {canSetSiteHome && (onShareImageOpen || canManageShares) && <div className="border-t border-border/50" />}
+          {canSetSiteHome && (
+            <Button variant="ghost" size="sm" className={SHARE_ACTION_ROW_CLASSES} onClick={() => setSiteHomePanelOpen(true)}>
+              <span className="flex min-w-0 flex-1 items-center gap-2">
+                <GlobeIcon className="size-3.5 shrink-0 text-muted-foreground/90" />
+                <span className="truncate">{t("memo.site-home.open-panel")}</span>
+              </span>
+              <ChevronRightIcon className="size-3.5 shrink-0 text-muted-foreground/35" />
+            </Button>
+          )}
+          {(onShareImageOpen || canManageShares || canPublish || canSetSiteHome) && <div className="border-t border-border/50" />}
           <Button variant="ghost" size="sm" className={SHARE_ACTION_ROW_CLASSES} onClick={handleDownloadMarkdown}>
             <span className="flex min-w-0 flex-1 items-center gap-2">
               <DownloadIcon className="size-3.5 shrink-0 text-muted-foreground/90" />
@@ -210,6 +231,7 @@ const MemoDetailSidebar = ({ memo, className, onShareImageOpen, liveContent, isE
       )}
 
       {publishPanelOpen && <MemoPublishPanel memoName={memo.name} open={publishPanelOpen} onClose={() => setPublishPanelOpen(false)} />}
+      {siteHomePanelOpen && <MemoSiteHomePanel memoName={memo.name} open={siteHomePanelOpen} onClose={() => setSiteHomePanelOpen(false)} />}
       {sharePanelOpen && <MemoSharePanel memoName={memo.name} open={sharePanelOpen} onClose={() => setSharePanelOpen(false)} />}
     </aside>
   );

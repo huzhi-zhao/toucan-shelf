@@ -45,6 +45,9 @@ const (
 	// PublicSiteServiceListPublicPagesProcedure is the fully-qualified name of the PublicSiteService's
 	// ListPublicPages RPC.
 	PublicSiteServiceListPublicPagesProcedure = "/memos.api.v1.PublicSiteService/ListPublicPages"
+	// PublicSiteServiceSearchPublicPagesProcedure is the fully-qualified name of the
+	// PublicSiteService's SearchPublicPages RPC.
+	PublicSiteServiceSearchPublicPagesProcedure = "/memos.api.v1.PublicSiteService/SearchPublicPages"
 )
 
 // PublicSiteServiceClient is a client for the memos.api.v1.PublicSiteService service.
@@ -62,6 +65,15 @@ type PublicSiteServiceClient interface {
 	// ListPublicPages lists the site's published pages. This is the only source a
 	// outward-facing listing may draw from.
 	ListPublicPages(context.Context, *connect.Request[v1.ListPublicPagesRequest]) (*connect.Response[v1.ListPublicPagesResponse], error)
+	// SearchPublicPages searches this site's published pages.
+	//
+	// It searches the publication snapshots only, never the library index. That is
+	// not an optimisation: a snapshot is frozen at publish time while the source
+	// document keeps being edited, so a shared index would let an anonymous reader
+	// learn that a word appears in an article from text that was never published.
+	// The current matching is a plain substring scan — see
+	// docs/dev/design/20260823-public-publishing/tech-design.md §5.
+	SearchPublicPages(context.Context, *connect.Request[v1.SearchPublicPagesRequest]) (*connect.Response[v1.SearchPublicPagesResponse], error)
 }
 
 // NewPublicSiteServiceClient constructs a client for the memos.api.v1.PublicSiteService service. By
@@ -99,6 +111,12 @@ func NewPublicSiteServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(publicSiteServiceMethods.ByName("ListPublicPages")),
 			connect.WithClientOptions(opts...),
 		),
+		searchPublicPages: connect.NewClient[v1.SearchPublicPagesRequest, v1.SearchPublicPagesResponse](
+			httpClient,
+			baseURL+PublicSiteServiceSearchPublicPagesProcedure,
+			connect.WithSchema(publicSiteServiceMethods.ByName("SearchPublicPages")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -108,6 +126,7 @@ type publicSiteServiceClient struct {
 	getPublicPage        *connect.Client[v1.GetPublicPageRequest, v1.PublicPage]
 	resolvePublicDoc     *connect.Client[v1.ResolvePublicDocRequest, v1.ResolvePublicDocResponse]
 	listPublicPages      *connect.Client[v1.ListPublicPagesRequest, v1.ListPublicPagesResponse]
+	searchPublicPages    *connect.Client[v1.SearchPublicPagesRequest, v1.SearchPublicPagesResponse]
 }
 
 // GetPublicSiteProfile calls memos.api.v1.PublicSiteService.GetPublicSiteProfile.
@@ -130,6 +149,11 @@ func (c *publicSiteServiceClient) ListPublicPages(ctx context.Context, req *conn
 	return c.listPublicPages.CallUnary(ctx, req)
 }
 
+// SearchPublicPages calls memos.api.v1.PublicSiteService.SearchPublicPages.
+func (c *publicSiteServiceClient) SearchPublicPages(ctx context.Context, req *connect.Request[v1.SearchPublicPagesRequest]) (*connect.Response[v1.SearchPublicPagesResponse], error) {
+	return c.searchPublicPages.CallUnary(ctx, req)
+}
+
 // PublicSiteServiceHandler is an implementation of the memos.api.v1.PublicSiteService service.
 type PublicSiteServiceHandler interface {
 	// GetPublicSiteProfile returns the branding of the site the request landed on.
@@ -145,6 +169,15 @@ type PublicSiteServiceHandler interface {
 	// ListPublicPages lists the site's published pages. This is the only source a
 	// outward-facing listing may draw from.
 	ListPublicPages(context.Context, *connect.Request[v1.ListPublicPagesRequest]) (*connect.Response[v1.ListPublicPagesResponse], error)
+	// SearchPublicPages searches this site's published pages.
+	//
+	// It searches the publication snapshots only, never the library index. That is
+	// not an optimisation: a snapshot is frozen at publish time while the source
+	// document keeps being edited, so a shared index would let an anonymous reader
+	// learn that a word appears in an article from text that was never published.
+	// The current matching is a plain substring scan — see
+	// docs/dev/design/20260823-public-publishing/tech-design.md §5.
+	SearchPublicPages(context.Context, *connect.Request[v1.SearchPublicPagesRequest]) (*connect.Response[v1.SearchPublicPagesResponse], error)
 }
 
 // NewPublicSiteServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -178,6 +211,12 @@ func NewPublicSiteServiceHandler(svc PublicSiteServiceHandler, opts ...connect.H
 		connect.WithSchema(publicSiteServiceMethods.ByName("ListPublicPages")),
 		connect.WithHandlerOptions(opts...),
 	)
+	publicSiteServiceSearchPublicPagesHandler := connect.NewUnaryHandler(
+		PublicSiteServiceSearchPublicPagesProcedure,
+		svc.SearchPublicPages,
+		connect.WithSchema(publicSiteServiceMethods.ByName("SearchPublicPages")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/memos.api.v1.PublicSiteService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case PublicSiteServiceGetPublicSiteProfileProcedure:
@@ -188,6 +227,8 @@ func NewPublicSiteServiceHandler(svc PublicSiteServiceHandler, opts ...connect.H
 			publicSiteServiceResolvePublicDocHandler.ServeHTTP(w, r)
 		case PublicSiteServiceListPublicPagesProcedure:
 			publicSiteServiceListPublicPagesHandler.ServeHTTP(w, r)
+		case PublicSiteServiceSearchPublicPagesProcedure:
+			publicSiteServiceSearchPublicPagesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -211,4 +252,8 @@ func (UnimplementedPublicSiteServiceHandler) ResolvePublicDoc(context.Context, *
 
 func (UnimplementedPublicSiteServiceHandler) ListPublicPages(context.Context, *connect.Request[v1.ListPublicPagesRequest]) (*connect.Response[v1.ListPublicPagesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PublicSiteService.ListPublicPages is not implemented"))
+}
+
+func (UnimplementedPublicSiteServiceHandler) SearchPublicPages(context.Context, *connect.Request[v1.SearchPublicPagesRequest]) (*connect.Response[v1.SearchPublicPagesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PublicSiteService.SearchPublicPages is not implemented"))
 }

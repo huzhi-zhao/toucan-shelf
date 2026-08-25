@@ -36,15 +36,30 @@ type Site struct {
 	// DashboardMemoID points at the `.view` document rendered at the site root.
 	// Nil until the author picks one.
 	DashboardMemoID *int32
-	Theme           string
+	// DashboardSnapshot is that document's sanitized block JSON, frozen when the
+	// home page was chosen or refreshed. A home page is not a page of the site —
+	// it has no slug and never appears in a listing — so this is the only copy an
+	// anonymous reader is ever served.
+	DashboardSnapshot string
+	Theme             string
+	// AuthorName is the byline drawn on every page of the site. Empty falls back
+	// to the site's display name. It is never the publisher's account: a login
+	// name is half of a credential pair, and in a team the byline would otherwise
+	// follow whoever clicked "publish" rather than who wrote the page.
+	AuthorName string
 	// Menu is the site's top menu as a JSON array of {label, path}. It is site
 	// configuration rather than part of the home `.view` document because it has
 	// to render on every outward-facing page, and those pages never read that
 	// document.
-	Menu       string
+	Menu string
+	// Nav is the site's navigation tree as nested JSON {label, slug, children}.
+	// It is authored on the site rather than derived from the source documents'
+	// folders: published URLs are flat, and a site may draw from several
+	// knowledge bases that share no structure.
+	Nav        string
 	SearchMode string
-	CreatedTs       int64
-	UpdatedTs       int64
+	CreatedTs  int64
+	UpdatedTs  int64
 }
 
 // FindSite specifies filter criteria for querying sites.
@@ -61,17 +76,20 @@ type FindSite struct {
 
 // UpdateSite contains the fields that can be updated on a site.
 type UpdateSite struct {
-	ID              int32
-	Name            *string
-	Description     *string
-	Domain          *string
-	DomainVerified  *bool
-	Canonical       *string
-	Status          *string
-	DashboardMemoID *int32
-	Theme           *string
-	Menu            *string
-	SearchMode      *string
+	ID                int32
+	Name              *string
+	Description       *string
+	Domain            *string
+	DomainVerified    *bool
+	Canonical         *string
+	Status            *string
+	DashboardMemoID   *int32
+	DashboardSnapshot *string
+	Theme             *string
+	AuthorName        *string
+	Menu              *string
+	Nav               *string
+	SearchMode        *string
 }
 
 // DeleteSite specifies which site to delete.

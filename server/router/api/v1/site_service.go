@@ -33,6 +33,9 @@ const defaultTeamID int32 = 1
 // new internal frontmatter key cannot leak by default.
 type publicationMeta struct {
 	Tags []string `json:"tags,omitempty"`
+	// Cover is the page's card image, frozen at publish time. Empty means the
+	// page's entries render without one.
+	Cover string `json:"cover,omitempty"`
 	// CanonicalSite points at the site that holds the canonical copy when the
 	// same document is published to several sites.
 	CanonicalSite string `json:"canonicalSite,omitempty"`
@@ -137,12 +140,14 @@ func (s *APIV1Service) CreateSite(ctx context.Context, request *v1pb.CreateSiteR
 		CreatorID:   user.ID,
 		Name:        strings.TrimSpace(request.Site.DisplayName),
 		Description: request.Site.Description,
+		AuthorName:  strings.TrimSpace(request.Site.AuthorName),
 		Canonical:   store.SiteCanonicalPlatform,
 		// A new site starts as a draft. Standing one up takes several steps —
 		// naming it, pointing a domain at it, laying out the home page — and none
 		// of that should be reachable from outside while it is half-built.
 		Status:     store.SiteStatusDraft,
 		Theme:      "{}",
+		Nav:        "[]",
 		SearchMode: "HYBRID",
 	}
 	menu, err := encodeSiteMenu(defaultSiteMenu())
@@ -163,6 +168,13 @@ func (s *APIV1Service) CreateSite(ctx context.Context, request *v1pb.CreateSiteR
 		}
 		create.Menu = menu
 	}
+	if len(request.Site.Nav) > 0 {
+		nav, err := encodeSiteNav(request.Site.Nav)
+		if err != nil {
+			return nil, err
+		}
+		create.Nav = nav
+	}
 
 	site, err := s.Store.CreateSite(ctx, create)
 	if err != nil {
@@ -172,7 +184,8 @@ func (s *APIV1Service) CreateSite(ctx context.Context, request *v1pb.CreateSiteR
 }
 
 func (s *APIV1Service) UpdateSite(ctx context.Context, request *v1pb.UpdateSiteRequest) (*v1pb.Site, error) {
-	if _, err := s.requireSiteAdmin(ctx); err != nil {
+	user, err := s.requireSiteAdmin(ctx)
+	if err != nil {
 		return nil, err
 	}
 	if request.Site == nil {
@@ -197,6 +210,11 @@ func (s *APIV1Service) UpdateSite(ctx context.Context, request *v1pb.UpdateSiteR
 			update.Name = &name
 		case "description":
 			update.Description = &request.Site.Description
+		case "author_name":
+			// Empty is a real value here, not "unset": it is how an author goes
+			// back to the site's own name as the byline.
+			authorName := strings.TrimSpace(request.Site.AuthorName)
+			update.AuthorName = &authorName
 		case "domain":
 			domain := strings.ToLower(strings.TrimSpace(request.Site.Domain))
 			update.Domain = &domain
@@ -211,11 +229,17 @@ func (s *APIV1Service) UpdateSite(ctx context.Context, request *v1pb.UpdateSiteR
 			statusValue := convertSiteStatusToStore(request.Site.Status)
 			update.Status = &statusValue
 		case "dashboard":
-			memoID, err := s.resolveDashboardMemoID(ctx, request.Site.Dashboard)
+			// Choosing the home page is also when its snapshot is taken. A view
+			// document is never published as a page, so this is the only moment
+			// its layout is frozen — and re-selecting the same document is how an
+			// author refreshes it after editing, the home page's equivalent of
+			// "update publication".
+			memoID, snapshot, err := s.resolveDashboard(ctx, user, site, request.Site.Dashboard)
 			if err != nil {
 				return nil, err
 			}
 			update.DashboardMemoID = memoID
+			update.DashboardSnapshot = snapshot
 		case "theme":
 			if err := validateSiteTheme(request.Site.Theme); err != nil {
 				return nil, err
@@ -227,6 +251,12 @@ func (s *APIV1Service) UpdateSite(ctx context.Context, request *v1pb.UpdateSiteR
 				return nil, err
 			}
 			update.Menu = &menu
+		case "nav":
+			nav, err := encodeSiteNav(request.Site.Nav)
+			if err != nil {
+				return nil, err
+			}
+			update.Nav = &nav
 		case "search_mode":
 			update.SearchMode = &request.Site.SearchMode
 		default:
@@ -257,23 +287,45 @@ func (s *APIV1Service) DeleteSite(ctx context.Context, request *v1pb.DeleteSiteR
 
 // resolveDashboardMemoID turns a memo resource name into the id stored on the
 // site. An empty name clears the pointer.
-func (s *APIV1Service) resolveDashboardMemoID(ctx context.Context, name string) (*int32, error) {
+// resolveDashboard turns the requested home-page document into the two values
+// stored on the site: which document it is, and the sanitized layout an
+// anonymous reader will be served.
+//
+// The snapshot is built by the same pipeline an article goes through, run by the
+// requesting user rather than a super-user: the day publishing opens up beyond
+// admins, a privileged read in here would have nowhere to be caught.
+func (s *APIV1Service) resolveDashboard(ctx context.Context, user *store.User, site *store.Site, name string) (*int32, *string, error) {
 	if name == "" {
 		var zero int32
-		return &zero, nil
+		empty := ""
+		return &zero, &empty, nil
 	}
 	memoUID, err := ExtractMemoUIDFromName(name)
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid dashboard memo name: %v", err)
+		return nil, nil, status.Errorf(codes.InvalidArgument, "invalid dashboard memo name: %v", err)
 	}
 	memo, err := s.Store.GetMemo(ctx, &store.FindMemo{UID: &memoUID})
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get dashboard memo: %v", err)
+		return nil, nil, status.Errorf(codes.Internal, "failed to get dashboard memo: %v", err)
 	}
 	if memo == nil {
-		return nil, status.Errorf(codes.NotFound, "dashboard memo not found")
+		return nil, nil, status.Errorf(codes.NotFound, "dashboard memo not found")
 	}
-	return &memo.ID, nil
+	// Only a site home document composes a home page. An article has a page of
+	// its own; pointing the site root at one would give it two URLs and no
+	// layout. A knowledge-base view is refused too: its blocks query folders and
+	// frontmatter, which mean nothing to a reader who can only see snapshots.
+	if memo.DocType != docTypeBlogView {
+		return nil, nil, status.Errorf(codes.InvalidArgument, "the site home page must be a site home document")
+	}
+	plan, err := s.buildPublishPlan(ctx, user, site, memo)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(plan.blockers) > 0 {
+		return nil, nil, publishBlockedError(plan.blockers)
+	}
+	return &memo.ID, &plan.content, nil
 }
 
 func (s *APIV1Service) convertSiteFromStore(ctx context.Context, site *store.Site) (*v1pb.Site, error) {
@@ -286,7 +338,9 @@ func (s *APIV1Service) convertSiteFromStore(ctx context.Context, site *store.Sit
 		Canonical:      convertSiteCanonicalFromStore(site.Canonical),
 		Status:         convertSiteStatusFromStore(site.Status),
 		Theme:          site.Theme,
+		AuthorName:     site.AuthorName,
 		Menu:           decodeSiteMenu(site.Menu),
+		Nav:            decodeSiteNav(site.Nav),
 		SearchMode:     site.SearchMode,
 		CreateTime:     timestamppb.New(time.Unix(site.CreatedTs, 0)),
 		UpdateTime:     timestamppb.New(time.Unix(site.UpdatedTs, 0)),

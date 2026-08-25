@@ -8,8 +8,8 @@ import {
   getMemoShareRenderWidth,
 } from "@/components/MemoActionMenu/memoShareImage";
 import { buildMemoShareImagePreviewModel } from "@/components/MemoActionMenu/memoShareImagePreviewModel";
-import { AttachmentSchema, type Attachment } from "@/types/proto/api/v1/attachment_service_pb";
-import { MemoSchema, type Memo } from "@/types/proto/api/v1/memo_service_pb";
+import { type Attachment, AttachmentSchema } from "@/types/proto/api/v1/attachment_service_pb";
+import { type Memo, MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
 
 const buildMemo = (overrides: Partial<Memo> = {}) =>
   create(MemoSchema, {

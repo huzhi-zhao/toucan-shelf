@@ -1,4 +1,4 @@
-import { GFM, parser as baseParser } from "@lezer/markdown";
+import { parser as baseParser, GFM } from "@lezer/markdown";
 import { describe, expect, it } from "vitest";
 import { cjkEmphasis } from "@/components/MemoEditor/Editor/cjkEmphasis";
 

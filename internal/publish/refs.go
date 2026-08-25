@@ -55,3 +55,11 @@ func SiteAttachmentHref(href string) (string, bool) {
 func SiteDocHref(slug string) string {
 	return "/" + slug
 }
+
+// AttachmentHref is the application href for one attachment. Used to bring a
+// reference written in resource-name form ("attachments/{uid}", which is how
+// frontmatter names a file) onto the same footing as one written in the body.
+// The filename is part of the served path, so a href without it 404s.
+func AttachmentHref(uid, filename string) string {
+	return attachmentPathPrefix + uid + "/" + url.PathEscape(filename)
+}

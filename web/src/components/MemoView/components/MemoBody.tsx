@@ -5,6 +5,7 @@ import { AttachmentListView, LocationDisplayView, RelationListView } from "@/com
 import { cn } from "@/lib/utils";
 import { Memo_DocType, MemoRelation_Type } from "@/types/proto/api/v1/memo_service_pb";
 import { getAttachmentUrl, partitionInlinedAttachments } from "@/utils/attachment";
+import { isLayoutDoc } from "@/utils/docType";
 import { useTranslate } from "@/utils/i18n";
 import MemoContent from "../../MemoContent";
 import { InlineAttachmentProvider } from "../../MemoContent/InlineAttachmentContext";
@@ -32,7 +33,7 @@ const MemoBody: React.FC<MemoBodyProps> = ({ compact, autoFold }) => {
 
   const referencedMemos = memo.relations.filter((relation) => relation.type === MemoRelation_Type.REFERENCE);
   const isPdf = memo.docType === Memo_DocType.PDF;
-  const isView = memo.docType === Memo_DocType.VIEW;
+  const isView = isLayoutDoc(memo.docType);
   const pdfAttachment = isPdf ? memo.attachments.find((a) => a.type === "application/pdf") : undefined;
   const nonInlinedAttachments = useMemo(
     () => partitionInlinedAttachments(memo.attachments, memo.content).rest,

@@ -522,6 +522,8 @@ func convertDocTypeFromStore(docType string) v1pb.Memo_DocType {
 		return v1pb.Memo_PDF
 	case "VIEW":
 		return v1pb.Memo_VIEW
+	case "BLOGVIEW":
+		return v1pb.Memo_BLOGVIEW
 	default:
 		return v1pb.Memo_MARKDOWN
 	}
@@ -535,6 +537,8 @@ func convertDocTypeToStore(docType v1pb.Memo_DocType) string {
 		return "PDF"
 	case v1pb.Memo_VIEW:
 		return "VIEW"
+	case v1pb.Memo_BLOGVIEW:
+		return "BLOGVIEW"
 	default:
 		return "MARKDOWN"
 	}

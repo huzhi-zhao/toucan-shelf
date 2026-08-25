@@ -91,6 +91,14 @@ const BlogFeed = ({ title, topics, activeTopic, onTopicChange, posts, basePath }
           </div>
         ))
       )}
+      {/* A feed is a slice — scoped by tag, capped by a limit, frozen into the
+          home page's layout. The way out to the complete list belongs at its
+          foot, or a reader has no way to learn the rest exists. */}
+      <div className="mt-14">
+        <Link to={`${basePath}/archive`} className="blog-pill inline-block">
+          {COPY.archiveSeeAll}
+        </Link>
+      </div>
     </div>
   </div>
 );

@@ -1734,6 +1734,49 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/v1/public/pages:search:
+        get:
+            tags:
+                - PublicSiteService
+            description: |-
+                SearchPublicPages searches this site's published pages.
+
+                 It searches the publication snapshots only, never the library index. That is
+                 not an optimisation: a snapshot is frozen at publish time while the source
+                 document keeps being edited, so a shared index would let an anonymous reader
+                 learn that a word appears in an article from text that was never published.
+                 The current matching is a plain substring scan — see
+                 docs/dev/design/20260823-public-publishing/tech-design.md §5.
+            operationId: PublicSiteService_SearchPublicPages
+            parameters:
+                - name: site
+                  in: query
+                  description: 'Optional explicit site for platform-path access. Format: sites/{site}'
+                  schema:
+                    type: string
+                - name: query
+                  in: query
+                  description: The reader's query. Matched as a substring against title, summary and body.
+                  schema:
+                    type: string
+                - name: pageSize
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/SearchPublicPagesResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/public/site:
         get:
             tags:
@@ -5192,6 +5235,7 @@ components:
                         - HTML
                         - PDF
                         - VIEW
+                        - BLOGVIEW
                     type: string
                     description: Optional. The document type. Defaults to MARKDOWN.
                     format: enum
@@ -5617,6 +5661,14 @@ components:
                     description: |-
                         The slug the page would get. Empty when the document is already published
                          here, since an existing slug is never regenerated.
+                viewBlocksDropped:
+                    type: integer
+                    description: |-
+                        For a `.view` home page: how many blocks would not appear on the site.
+                         A gallery or calendar block belongs to the knowledge base and is stripped
+                         from the snapshot, so the author is told here rather than left to notice a
+                         section missing from the live page.
+                    format: int32
         PublicPage:
             type: object
             properties:
@@ -5642,6 +5694,12 @@ components:
                 docId:
                     type: string
                     description: The document id backing the permanent short link /d/{doc_id}.
+                coverUrl:
+                    type: string
+                    description: |-
+                        The card image, resolved when the snapshot was taken. Resolving it at read
+                         time would let an edit of the source document change what a published card
+                         shows, which is the one thing a snapshot exists to prevent.
             description: |-
                 PublicPage is a published page as an anonymous reader sees it: the frozen
                  snapshot, with no author account, comment, history or internal metadata
@@ -5657,9 +5715,14 @@ components:
                 theme:
                     type: string
                     description: Theme configuration as JSON.
-                dashboardSlug:
+                dashboardContent:
                     type: string
-                    description: The slug of the site's home page, empty when no dashboard is published yet.
+                    description: |-
+                        The site's home page layout: the sanitized block JSON of the `.view`
+                         document chosen as the home page, empty when none is. It is served inline
+                         rather than as a page the reader fetches by slug, because a home page is
+                         not a page of the site: it has no URL of its own, is not in the contents,
+                         and must never turn up in a listing next to the articles.
                 menu:
                     type: array
                     items:
@@ -5668,6 +5731,21 @@ components:
                         The top menu, in the order it is drawn. It is served with the profile
                          rather than read off the home page document because it renders on every
                          page of the site, most of which never load that document.
+                authorName:
+                    type: string
+                    description: |-
+                        The byline shown on every page of this site, already resolved: the site's
+                         author name when one is set, otherwise its display name. Resolving it here
+                         keeps every reader-facing surface agreeing on one answer.
+                nav:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/SiteNavItem'
+                    description: |-
+                        The navigation tree for the contents page, already pruned to what is
+                         published: a node pointing at a page that is not published on this site is
+                         not served at all. Pruning here rather than in the client is what keeps the
+                         tree from telling an anonymous reader that an unpublished document exists.
             description: PublicSiteProfile is what an anonymous reader may know about a site.
         Publication:
             type: object
@@ -5741,6 +5819,7 @@ components:
                         - BLOCKER_TYPE_UNSPECIFIED
                         - UNPUBLISHED_REFERENCE
                         - PRIVATE_ATTACHMENT
+                        - INVALID_HOME_LAYOUT
                     type: string
                     format: enum
                 reference:
@@ -5878,6 +5957,16 @@ components:
                     items:
                         type: string
                     description: Substrings within the snippet that matched the query, for client-side highlighting.
+        SearchPublicPagesResponse:
+            type: object
+            properties:
+                pages:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/PublicPage'
+                    description: |-
+                        Matching pages, without bodies. Ordered newest first, same as the feed:
+                         substring matching carries no relevance score to order by.
         SearchRequest:
             required:
                 - query
@@ -6205,11 +6294,34 @@ components:
                         The site's top menu, in the order it is drawn. Authored, not derived from
                          the content: a menu inferred from what happens to be published is always a
                          little off, and this is the first thing a reader sees.
+                nav:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/SiteNavItem'
+                    description: |-
+                        The site's navigation tree, drawn on the contents page. Authored here
+                         rather than derived from where the documents live: publishing paths and
+                         authoring paths are decoupled, and a site may aggregate several knowledge
+                         bases with no single folder structure between them.
+                authorName:
+                    type: string
+                    description: |-
+                        The name shown as the byline on every page of this site. Empty means the
+                         site's display name is used instead.
+
+                         It is site configuration and never an account: a login name is half of a
+                         credential pair, and which account happened to click "publish" is not what
+                         a reader is being told when a page says who wrote it.
                 searchMode:
                     type: string
                     description: |-
                         The site-level search mode. Anonymous readers have no preferences of their
                          own, so this is site configuration rather than a user setting.
+
+                         Reserved, not yet honoured: site search currently does substring matching
+                         with no index behind it, so there is no mode to pick between. It is stored
+                         and returned as written until the indexed search of
+                         docs/dev/design/20260823-public-publishing/tech-design.md §5 lands.
                 createTime:
                     readOnly: true
                     type: string
@@ -6235,6 +6347,24 @@ components:
                          for the search page, or a page's slug. Never an absolute URL — the menu is
                          in-site navigation, not a link list.
             description: SiteMenuItem is one entry of the site's top menu.
+        SiteNavItem:
+            type: object
+            properties:
+                label:
+                    type: string
+                    description: What the reader sees.
+                slug:
+                    type: string
+                    description: |-
+                        The slug of the page this node opens, empty for a pure grouping node.
+                         Never an absolute URL: the tree is in-site navigation.
+                children:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/SiteNavItem'
+            description: |-
+                SiteNavItem is one node of the site's navigation tree. A node either points
+                 at a page (`slug`), groups other nodes, or both.
         Status:
             type: object
             properties:

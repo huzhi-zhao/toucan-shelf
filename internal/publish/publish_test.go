@@ -38,6 +38,7 @@ func TestValidateSlugRejectsReservedAndMalformed(t *testing.T) {
 	require.NoError(t, ValidateSlug("my-post"))
 	require.ErrorIs(t, ValidateSlug(""), ErrSlugEmpty)
 	require.ErrorIs(t, ValidateSlug("search"), ErrSlugReserved)
+	require.ErrorIs(t, ValidateSlug("contents"), ErrSlugReserved)
 	require.ErrorIs(t, ValidateSlug("My Post"), ErrSlugInvalidChars)
 	require.ErrorIs(t, ValidateSlug("中文"), ErrSlugInvalidChars)
 }

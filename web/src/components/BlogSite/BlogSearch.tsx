@@ -8,6 +8,8 @@ interface Props {
   query: string;
   onQueryChange: (query: string) => void;
   results: BlogPost[];
+  /** A search is in flight; results below belong to the previous query. */
+  loading?: boolean;
   basePath: string;
 }
 
@@ -15,11 +17,11 @@ interface Props {
  * In-site search.
  *
  * A reader arrives at a site to find something, so the site has to be
- * searchable — but only over what this site has published. In the prototype the
- * matching runs in the browser over the loaded entries; the real one is a site
- * index built at publish time, never the knowledge base's.
+ * searchable — but only over what this site has published. The matching is done
+ * by the server against the publication snapshots; this component only draws
+ * what comes back.
  */
-const BlogSearch = ({ query, onQueryChange, results, basePath }: Props) => (
+const BlogSearch = ({ query, onQueryChange, results, loading = false, basePath }: Props) => (
   <div className="blog-shell pt-14">
     <div className="mx-auto w-full max-w-3xl">
       <h1 className="blog-section-title">{COPY.searchTitle}</h1>
@@ -38,6 +40,8 @@ const BlogSearch = ({ query, onQueryChange, results, basePath }: Props) => (
       <div className="mt-10">
         {query.trim() === "" ? (
           <p className="blog-muted text-base">{COPY.searchPrompt}</p>
+        ) : loading && results.length === 0 ? (
+          <p className="blog-muted text-base">{COPY.loading}</p>
         ) : results.length === 0 ? (
           <p className="blog-muted text-base">{COPY.searchNoResults(query)}</p>
         ) : (

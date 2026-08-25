@@ -161,8 +161,27 @@ message Site {
   // little off, and this is the first thing a reader sees.
   repeated SiteMenuItem menu = 13;
 
+  // The site's navigation tree, drawn on the contents page. Authored here
+  // rather than derived from where the documents live: publishing paths and
+  // authoring paths are decoupled, and a site may aggregate several knowledge
+  // bases with no single folder structure between them.
+  repeated SiteNavItem nav = 14;
+
+  // The name shown as the byline on every page of this site. Empty means the
+  // site's display name is used instead.
+  //
+  // It is site configuration and never an account: a login name is half of a
+  // credential pair, and which account happened to click "publish" is not what
+  // a reader is being told when a page says who wrote it.
+  string author_name = 15;
+
   // The site-level search mode. Anonymous readers have no preferences of their
   // own, so this is site configuration rather than a user setting.
+  //
+  // Reserved, not yet honoured: site search currently does substring matching
+  // with no index behind it, so there is no mode to pick between. It is stored
+  // and returned as written until the indexed search of
+  // docs/dev/design/20260823-public-publishing/tech-design.md §5 lands.
   string search_mode = 10;
 
   google.protobuf.Timestamp create_time = 11 [(google.api.field_behavior) = OUTPUT_ONLY];
@@ -179,6 +198,19 @@ message SiteMenuItem {
   // for the search page, or a page's slug. Never an absolute URL — the menu is
   // in-site navigation, not a link list.
   string path = 2;
+}
+
+// SiteNavItem is one node of the site's navigation tree. A node either points
+// at a page (`slug`), groups other nodes, or both.
+message SiteNavItem {
+  // What the reader sees.
+  string label = 1;
+
+  // The slug of the page this node opens, empty for a pure grouping node.
+  // Never an absolute URL: the tree is in-site navigation.
+  string slug = 2;
+
+  repeated SiteNavItem children = 3;
 }
 
 // SiteCanonical selects the entry point search engines should index.
@@ -332,6 +364,12 @@ message PreviewPublishResponse {
   // The slug the page would get. Empty when the document is already published
   // here, since an existing slug is never regenerated.
   string proposed_slug = 4;
+
+  // For a `.view` home page: how many blocks would not appear on the site.
+  // A gallery or calendar block belongs to the knowledge base and is stripped
+  // from the snapshot, so the author is told here rather than left to notice a
+  // section missing from the live page.
+  int32 view_blocks_dropped = 5;
 }
 
 // AttachmentNotice is one attachment the page references that anonymous readers
@@ -366,6 +404,9 @@ enum BlockerType {
   // The document embeds an attachment the author put behind a passphrase.
   // Publishing must not overturn that decision on their behalf.
   PRIVATE_ATTACHMENT = 2;
+  // A `.view` document chosen as a home page whose layout could not be read.
+  // Half a home page is worse than the plain feed it falls back to.
+  INVALID_HOME_LAYOUT = 3;
 }
 
 message PublishMemoRequest {

@@ -23,6 +23,12 @@ export const COPY = {
   galleryCta: "Read article",
   galleryEmpty: "Nothing published here yet.",
 
+  archiveTitle: "Archive",
+  archiveLoadMore: "Load more",
+  archiveUndated: "Undated",
+  /** Shown at the foot of a home-page feed: the feed is a slice, this is not. */
+  archiveSeeAll: "See every post",
+
   catalogNavLabel: "Contents",
   catalogAllPosts: "All posts",
   catalogEmpty: "No posts in this section yet.",

@@ -88,6 +88,16 @@ func normalizeHost(host string) string {
 	return strings.TrimSuffix(host, ".")
 }
 
+// siteByline is the name a page is attributed to: the site's author name when
+// one is set, otherwise the site's own name. Never an account — publishing
+// carries no user identity across to the reader side at all.
+func siteByline(site *store.Site) string {
+	if name := strings.TrimSpace(site.AuthorName); name != "" {
+		return name
+	}
+	return site.Name
+}
+
 func (s *APIV1Service) GetPublicSiteProfile(ctx context.Context, request *v1pb.GetPublicSiteProfileRequest) (*v1pb.PublicSiteProfile, error) {
 	site, err := s.resolveSiteForReader(ctx, request.Site)
 	if err != nil {
@@ -97,24 +107,48 @@ func (s *APIV1Service) GetPublicSiteProfile(ctx context.Context, request *v1pb.G
 		DisplayName: site.Name,
 		Description: site.Description,
 		Theme:       site.Theme,
-		Menu:        decodeSiteMenu(site.Menu),
+		// The byline is resolved here rather than in the reader: every public
+		// surface draws it, and a fallback repeated in five components is a
+		// fallback that will eventually disagree with itself.
+		AuthorName: siteByline(site),
+		Menu:       decodeSiteMenu(site.Menu),
 	}
-	if site.DashboardMemoID != nil && *site.DashboardMemoID != 0 {
-		published := store.SitePublicationStatePublished
-		pub, err := s.Store.GetSitePublication(ctx, &store.FindSitePublication{
-			SiteID:         &site.ID,
-			MemoID:         site.DashboardMemoID,
-			State:          &published,
-			ExcludeContent: true,
-		})
+	nav := decodeSiteNav(site.Nav)
+	if len(nav) > 0 {
+		publishedSlugs, err := s.publishedSlugs(ctx, site)
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to resolve dashboard: %v", err)
+			return nil, err
 		}
-		if pub != nil {
-			profile.DashboardSlug = pub.Slug
-		}
+		profile.Nav = pruneNavToPublished(nav, publishedSlugs)
 	}
+	// The home page's layout is served inline rather than looked up as a page.
+	// It has no publication row, no slug, and no entry in any listing: a home
+	// page is the site's front door, not one of its articles.
+	profile.DashboardContent = site.DashboardSnapshot
 	return profile, nil
+}
+
+// publishedSlugs is the set of slugs an anonymous reader can open on this site.
+// It reads the publication table only — an unpublished document is not filtered
+// out here, it is not in the query range at all.
+func (s *APIV1Service) publishedSlugs(ctx context.Context, site *store.Site) (map[string]struct{}, error) {
+	published := store.SitePublicationStatePublished
+	publications, err := s.Store.ListSitePublications(ctx, &store.FindSitePublication{
+		SiteID:         &site.ID,
+		State:          &published,
+		ExcludeContent: true,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list pages: %v", err)
+	}
+	slugs := make(map[string]struct{}, len(publications))
+	for _, pub := range publications {
+		if isDashboardPublication(site, pub) {
+			continue
+		}
+		slugs[pub.Slug] = struct{}{}
+	}
+	return slugs, nil
 }
 
 func (s *APIV1Service) GetPublicPage(ctx context.Context, request *v1pb.GetPublicPageRequest) (*v1pb.PublicPage, error) {
@@ -134,7 +168,7 @@ func (s *APIV1Service) GetPublicPage(ctx context.Context, request *v1pb.GetPubli
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get page: %v", err)
 	}
-	if pub == nil {
+	if pub == nil || isDashboardPublication(site, pub) {
 		return nil, status.Errorf(codes.NotFound, "page not found")
 	}
 	return s.convertPublicPage(ctx, pub, true)
@@ -168,7 +202,7 @@ func (s *APIV1Service) ResolvePublicDoc(ctx context.Context, request *v1pb.Resol
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to resolve page: %v", err)
 	}
-	if pub == nil {
+	if pub == nil || isDashboardPublication(site, pub) {
 		return nil, status.Errorf(codes.NotFound, "page not found")
 	}
 	return &v1pb.ResolvePublicDocResponse{Slug: pub.Slug}, nil
@@ -212,6 +246,9 @@ func (s *APIV1Service) ListPublicPages(ctx context.Context, request *v1pb.ListPu
 			response.NextPageToken = nextToken
 			break
 		}
+		if isDashboardPublication(site, pub) {
+			continue
+		}
 		page, err := s.convertPublicPage(ctx, pub, false)
 		if err != nil {
 			return nil, err
@@ -222,6 +259,16 @@ func (s *APIV1Service) ListPublicPages(ctx context.Context, request *v1pb.ListPu
 		response.Pages = append(response.Pages, page)
 	}
 	return response, nil
+}
+
+// isDashboardPublication guards the reader paths against a leftover publication
+// row for the document that is now the site home page. Publishing a view as a
+// page is refused and the migration cleared the rows that predate that rule, so
+// this should never fire — but a home page turning up in the contents listing
+// with its raw block JSON as the body is exactly the failure worth being
+// paranoid about.
+func isDashboardPublication(site *store.Site, pub *store.SitePublication) bool {
+	return site.DashboardMemoID != nil && *site.DashboardMemoID != 0 && pub.MemoID == *site.DashboardMemoID
 }
 
 func hasAllTags(pageTags, wanted []string) bool {
@@ -249,6 +296,7 @@ func (s *APIV1Service) convertPublicPage(ctx context.Context, pub *store.SitePub
 		Summary:    pub.Summary,
 		Tags:       meta.Tags,
 		UpdateTime: timestamppb.New(time.Unix(pub.UpdatedTs, 0)),
+		CoverUrl:   meta.Cover,
 	}
 	if includeContent {
 		page.Content = pub.Content
@@ -261,4 +309,58 @@ func (s *APIV1Service) convertPublicPage(ctx context.Context, pub *store.SitePub
 		page.DocId = memo.UID
 	}
 	return page, nil
+}
+
+// maxPublicSearchTerms caps how many substrings one query turns into. Each term
+// becomes three LIKE comparisons over the snapshot bodies, so an unbounded query
+// is a cheap way for an anonymous visitor to make the database work hard.
+const maxPublicSearchTerms = 8
+
+func (s *APIV1Service) SearchPublicPages(ctx context.Context, request *v1pb.SearchPublicPagesRequest) (*v1pb.SearchPublicPagesResponse, error) {
+	site, err := s.resolveSiteForReader(ctx, request.Site)
+	if err != nil {
+		return nil, err
+	}
+	terms := splitSearchTerms(request.Query)
+	if len(terms) == 0 {
+		return nil, status.Errorf(codes.InvalidArgument, "query is required")
+	}
+
+	limit := normalizePageSize(request.PageSize)
+	published := store.SitePublicationStatePublished
+	publications, err := s.Store.ListSitePublications(ctx, &store.FindSitePublication{
+		SiteID: &site.ID,
+		State:  &published,
+		// The body is matched but not returned: a result list showing snapshot
+		// bodies would be a slower feed, not a search result.
+		ExcludeContent: true,
+		ContentSearch:  terms,
+		Limit:          &limit,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to search pages: %v", err)
+	}
+
+	response := &v1pb.SearchPublicPagesResponse{}
+	for _, pub := range publications {
+		page, err := s.convertPublicPage(ctx, pub, false)
+		if err != nil {
+			return nil, err
+		}
+		response.Pages = append(response.Pages, page)
+	}
+	return response, nil
+}
+
+// splitSearchTerms cuts a query on whitespace. CJK queries carry no spaces and
+// stay one term, which is what a substring match wants anyway.
+func splitSearchTerms(query string) []string {
+	terms := []string{}
+	for _, field := range strings.Fields(query) {
+		terms = append(terms, field)
+		if len(terms) == maxPublicSearchTerms {
+			break
+		}
+	}
+	return terms
 }

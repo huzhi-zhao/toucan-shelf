@@ -87,14 +87,14 @@ func InjectLocalID(content, uid, docType string) string {
 		return content
 	}
 	body := StripLocalID(content)
-	if docType == "VIEW" {
+	if docType == "VIEW" || docType == "BLOGVIEW" {
 		return injectJSONLocalID(body, uid)
 	}
 	return body + "\n\n" + localIDComment(uid)
 }
 
-// injectJSONLocalID inserts the marker as the first key of a VIEW document's
-// config object. A VIEW body is an optional `---` frontmatter block followed by
+// injectJSONLocalID inserts the marker as the first key of a VIEW/BLOGVIEW
+// document's config object. Such a body is an optional `---` frontmatter block followed by
 // the config JSON, so the insertion point is the first `{` after any such block.
 // When no object is found the content is returned untouched: a malformed view is
 // the user's to fix, and silently rewriting it would make things worse. Such a

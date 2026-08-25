@@ -49,6 +49,7 @@ var PublicMethods = map[string]struct{}{
 	"/memos.api.v1.PublicSiteService/GetPublicPage":        {},
 	"/memos.api.v1.PublicSiteService/ResolvePublicDoc":     {},
 	"/memos.api.v1.PublicSiteService/ListPublicPages":      {},
+	"/memos.api.v1.PublicSiteService/SearchPublicPages":    {},
 }
 
 // IsPublicMethod checks if a procedure path is public (no authentication required).
@@ -95,6 +96,7 @@ var AuthBootstrapMethods = map[string]struct{}{
 	"/memos.api.v1.PublicSiteService/GetPublicPage":        {},
 	"/memos.api.v1.PublicSiteService/ResolvePublicDoc":     {},
 	"/memos.api.v1.PublicSiteService/ListPublicPages":      {},
+	"/memos.api.v1.PublicSiteService/SearchPublicPages":    {},
 }
 
 // createUserProcedure is the CreateUser endpoint. On a private instance it is

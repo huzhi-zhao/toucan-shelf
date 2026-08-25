@@ -76,9 +76,11 @@ const nodeAt = (nav: BlogNavNode[], key: string): BlogNavNode | undefined => {
  */
 const BlogCatalog = ({ nav, posts, selectedKey, onSelect, basePath }: Props) => {
   const selected = nodeAt(nav, selectedKey);
-  const scope = selected ? slugsUnder(selected) : nav.flatMap(slugsUnder);
+  const scope = [...new Set(selected ? slugsUnder(selected) : nav.flatMap(slugsUnder))];
   const bySlug = new Map(posts.map((post) => [post.slug, post]));
-  const listed = scope.map((slug) => bySlug.get(slug)).filter((post): post is BlogPost => post !== undefined);
+  // A site with no tree configured still gets a useful contents page: every
+  // published page, rather than an empty rail next to an empty list.
+  const listed = nav.length === 0 ? posts : scope.map((slug) => bySlug.get(slug)).filter((post): post is BlogPost => post !== undefined);
 
   return (
     <div className="blog-shell grid gap-y-10 pt-14 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)] lg:gap-x-[clamp(2.5rem,6vw,6rem)]">
