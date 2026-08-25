@@ -9,6 +9,7 @@ import {
   FolderIcon,
   FolderInputIcon,
   FolderOpenIcon,
+  GlobeIcon,
   LayoutGridIcon,
   LinkIcon,
   MoreHorizontalIcon,
@@ -28,6 +29,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { WorkspaceTreeNode } from "@/types/proto/api/v1/workspace_service_pb";
 import { WorkspaceTreeNode_NodeType } from "@/types/proto/api/v1/workspace_service_pb";
+import { isLayoutDocTypeName } from "@/utils/docType";
 import { useTranslate } from "@/utils/i18n";
 import type { FreshnessMap } from "./notebookFreshness";
 import { freshnessClass, freshnessKey } from "./notebookFreshness";
@@ -52,6 +54,7 @@ interface Props {
   onDeleteFolder: (path: string) => void;
   onNewDocumentIn: (path: string) => void;
   onNewViewIn: (path: string) => void;
+  onNewBlogViewIn: (path: string) => void;
   onNewFolderIn: (path: string) => void;
   onUploadIn: (path: string, file: File) => void;
   onUploadPdfIn: (path: string, file: File) => void;
@@ -84,6 +87,7 @@ const FileTreeNode = ({
   onDeleteFolder,
   onNewDocumentIn,
   onNewViewIn,
+  onNewBlogViewIn,
   onNewFolderIn,
   onUploadIn,
   onUploadPdfIn,
@@ -177,7 +181,12 @@ const FileTreeNode = ({
           <CodeIcon className="w-4 h-4 shrink-0 text-muted-foreground" />
         ) : node.docType === "PDF" ? (
           <FileIcon className="w-4 h-4 shrink-0 text-muted-foreground" />
-        ) : node.docType === "VIEW" ? (
+        ) : node.docType === "BLOGVIEW" ? (
+          // A site home page reads as a layout too, but it is the one document
+          // in the tree that faces outward — same icon as the outward-facing
+          // blocks it is made of, so it is not mistaken for a library view.
+          <GlobeIcon className="w-4 h-4 shrink-0 text-muted-foreground" />
+        ) : isLayoutDocTypeName(node.docType) ? (
           <LayoutGridIcon className="w-4 h-4 shrink-0 text-muted-foreground" />
         ) : (
           <FileTextIcon className="w-4 h-4 shrink-0 text-muted-foreground" />
@@ -250,6 +259,7 @@ const FileTreeNode = ({
                 <DropdownMenuSubContent>
                   <DropdownMenuItem onClick={() => onNewDocumentIn(node.path)}>{t("notebook.new-document")}</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => onNewViewIn(node.path)}>{t("notebook.new-view")}</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onNewBlogViewIn(node.path)}>{t("notebook.new-blogview")}</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => onNewFolderIn(node.path)}>{t("notebook.new-folder")}</DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
@@ -331,6 +341,7 @@ const FileTreeNode = ({
               onDeleteFolder={onDeleteFolder}
               onNewDocumentIn={onNewDocumentIn}
               onNewViewIn={onNewViewIn}
+              onNewBlogViewIn={onNewBlogViewIn}
               onNewFolderIn={onNewFolderIn}
               onUploadIn={onUploadIn}
               onUploadPdfIn={onUploadPdfIn}

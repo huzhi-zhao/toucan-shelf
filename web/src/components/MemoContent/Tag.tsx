@@ -1,5 +1,6 @@
 import type { Element } from "hast";
 import { useLocation } from "react-router-dom";
+import { usePublicSiteRender } from "@/components/MemoContent/PublicSiteRenderContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { type MemoFilter, stringifyFilters, useMemoFilterContext } from "@/contexts/MemoFilterContext";
 import useNavigateTo from "@/hooks/useNavigateTo";
@@ -22,6 +23,7 @@ export const Tag: React.FC<TagProps> = ({ "data-tag": dataTag, children, classNa
   const navigateTo = useNavigateTo();
   const { getFiltersByFactor, removeFilter, addFilter } = useMemoFilterContext();
   const { userTagsSetting } = useAuth();
+  const publicSite = usePublicSiteRender();
 
   const tag = dataTag || "";
 
@@ -41,6 +43,10 @@ export const Tag: React.FC<TagProps> = ({ "data-tag": dataTag, children, classNa
 
   const handleTagClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+
+    // On a published site a tag has nowhere to lead: the surfaces it filters are
+    // the knowledge base's, which the reader has no access to. It stays a label.
+    if (publicSite) return;
 
     // If the tag is clicked in a memo detail page, we should navigate to the memo list page.
     if (location.pathname.startsWith("/m")) {
@@ -69,7 +75,12 @@ export const Tag: React.FC<TagProps> = ({ "data-tag": dataTag, children, classNa
 
   return (
     <span
-      className={cn(tagStyles.base, "cursor-pointer transition-opacity hover:opacity-75", !bgHex && tagStyles.defaultColor, className)}
+      className={cn(
+        tagStyles.base,
+        !publicSite && "cursor-pointer transition-opacity hover:opacity-75",
+        !bgHex && tagStyles.defaultColor,
+        className,
+      )}
       style={tagStyle}
       data-tag={tag}
       {...props}

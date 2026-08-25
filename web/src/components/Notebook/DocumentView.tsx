@@ -4,6 +4,7 @@ import {
   ArchiveIcon,
   ArchiveRestoreIcon,
   ExpandIcon,
+  ExternalLinkIcon,
   HistoryIcon,
   LinkIcon,
   MessageCircleIcon,
@@ -63,6 +64,7 @@ import {
 } from "@/types/proto/api/v1/memo_service_pb";
 import { getAttachmentUrl, partitionInlinedAttachments } from "@/utils/attachment";
 import { type ResolvedDocConfig, resolveMemoDocConfig } from "@/utils/docConfig";
+import { isLayoutDoc, viewVariantOf } from "@/utils/docType";
 import { type MemoProperty, setFrontmatterProperty } from "@/utils/frontmatter";
 import { useTranslate } from "@/utils/i18n";
 import { DEFAULT_MARK_COLOR } from "@/utils/markColors";
@@ -122,7 +124,7 @@ const DocumentView = ({
   const isDesktop = useMediaQuery("lg");
   const isHtml = memo.docType === Memo_DocType.HTML;
   const isPdf = memo.docType === Memo_DocType.PDF;
-  const isView = memo.docType === Memo_DocType.VIEW;
+  const isView = isLayoutDoc(memo.docType);
   const pdfAttachment = isPdf ? memo.attachments.find((a) => a.type === "application/pdf") : undefined;
   const remainingAttachments = partitionInlinedAttachments(memo.attachments, memo.content).rest;
   // Comments are available for markdown/view docs (PDF has its own annotation sidebar; HTML is skipped).
@@ -349,6 +351,11 @@ const DocumentView = ({
 
   const handleOpenReader = () => {
     window.open(`/${memo.name}/reader`, "_blank", "noopener");
+  };
+
+  // The standalone document page (`/memos/{uid}`), as opposed to this in-notebook view.
+  const handleOpenDetail = () => {
+    window.open(`/${memo.name}`, "_blank", "noopener");
   };
 
   useEffect(() => {
@@ -804,6 +811,10 @@ const DocumentView = ({
                 <ExpandIcon className="w-4 h-4" />
                 {t("memo.fullscreen-view")}
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleOpenDetail}>
+                <ExternalLinkIcon className="w-4 h-4" />
+                {t("memo.open-detail-page")}
+              </DropdownMenuItem>
               {/* This document's own framing. Reading density is NOT here: it's a per-reader
                   preference and lives in the appearance settings, applied to every document. */}
               {!isPdf && !isHtml && (
@@ -992,6 +1003,7 @@ const DocumentView = ({
               <div className="h-full">
                 <GalleryViewForm
                   key={memo.name}
+                  variant={viewVariantOf(memo.docType)}
                   content={memo.content}
                   workspace={memo.workspace}
                   memoName={memo.name}

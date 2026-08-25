@@ -61,6 +61,31 @@ export function useSSEConnectionStatus(): SSEConnectionStatus {
 // ---------------------------------------------------------------------------
 
 /**
+ * The whole browser gets one SSE stream, not one per tab.
+ *
+ * The stream is a request that never ends, so in a browser it permanently
+ * occupies one of the six HTTP/1.1 connections allowed per origin. Six open tabs
+ * of the app used to hold six such streams — every ordinary request after that
+ * queued behind them and never went out, which shows up as spinners that never
+ * stop and a UI that looks frozen while the server sits idle.
+ *
+ * So one tab wins a Web Lock and holds the only stream; the others listen on a
+ * BroadcastChannel and invalidate their own caches from what it relays. The lock
+ * releases by itself when the holding tab is closed or crashes, and whichever
+ * tab is waiting takes over — no heartbeat, no timeout, no stale leader.
+ */
+const LOCK_NAME_PREFIX = "toucanshelf-sse-leader:";
+const CHANNEL_NAME_PREFIX = "toucanshelf-sse:";
+
+/** What the tab holding the stream relays to the others. */
+type ChannelMessage =
+  | { kind: "event"; event: SSEChangeEvent }
+  | { kind: "status"; status: SSEConnectionStatus }
+  | { kind: "resync" }
+  /** A tab that just mounted asking the holder for the current status. */
+  | { kind: "hello" };
+
+/**
  * useLiveMemoRefresh connects to the server's SSE endpoint and
  * invalidates relevant React Query caches when change events
  * (memos, reactions) are received.
@@ -78,25 +103,75 @@ export function useLiveMemoRefresh() {
   const handleEvent = useCallback((event: SSEChangeEvent) => handleSSEEvent(event, queryClient), [queryClient]);
 
   useEffect(() => {
+    if (!currentUserName) {
+      setSSEStatus("disconnected");
+      return;
+    }
+
     let mounted = true;
+    // Whether this tab holds the stream. Only the holder connects, and only the
+    // holder answers other tabs.
+    let holdsStream = false;
     let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+    let releaseLock: (() => void) | null = null;
+    const electionAbort = new AbortController();
+
+    // Keyed by user so switching accounts elects a fresh holder rather than
+    // relaying one account's events into another's caches.
+    const channel = typeof BroadcastChannel === "undefined" ? null : new BroadcastChannel(CHANNEL_NAME_PREFIX + currentUserName);
+    const post = (message: ChannelMessage) => channel?.postMessage(message);
+
+    // A BroadcastChannel never delivers to the tab that posted, so relaying is
+    // free of any echo back into the holder.
+    const publishStatus = (status: SSEConnectionStatus) => {
+      setSSEStatus(status);
+      if (holdsStream) post({ kind: "status", status });
+    };
+
+    const resync = () => {
+      // Resync active collaborative views after reconnect because the server may have
+      // dropped events while the client was disconnected or backpressured.
+      queryClient.invalidateQueries({ queryKey: memoKeys.all, refetchType: "active" });
+      queryClient.invalidateQueries({ queryKey: userKeys.stats(), refetchType: "active" });
+    };
+
+    if (channel) {
+      channel.onmessage = (message: MessageEvent<ChannelMessage>) => {
+        const payload = message.data;
+        if (holdsStream) {
+          // A tab mounted while this one already holds the stream: tell it where
+          // the connection stands, or its indicator would sit on "connecting".
+          if (payload.kind === "hello") post({ kind: "status", status: getSSEStatus() });
+          return;
+        }
+        switch (payload.kind) {
+          case "event":
+            handleEvent(payload.event);
+            break;
+          case "status":
+            setSSEStatus(payload.status);
+            break;
+          case "resync":
+            resync();
+            break;
+          case "hello":
+            break;
+        }
+      };
+      post({ kind: "hello" });
+    }
 
     const connect = async () => {
       if (!mounted) return;
 
-      if (!currentUserName) {
-        setSSEStatus("disconnected");
-        return;
-      }
-
       let token = await getRequestToken();
       if (!token) {
-        setSSEStatus("disconnected");
+        publishStatus("disconnected");
         // Not logged in; do not retry. Effect will re-run when currentUser is set.
         return;
       }
 
-      setSSEStatus("connecting");
+      publishStatus("connecting");
       const abortController = new AbortController();
       abortControllerRef.current = abortController;
 
@@ -118,12 +193,10 @@ export function useLiveMemoRefresh() {
 
         // Successfully connected - reset retry delay.
         retryDelayRef.current = INITIAL_RETRY_DELAY_MS;
-        setSSEStatus("connected");
+        publishStatus("connected");
         if (hasConnectedOnceRef.current) {
-          // Resync active collaborative views after reconnect because the server may have
-          // dropped events while the client was disconnected or backpressured.
-          queryClient.invalidateQueries({ queryKey: memoKeys.all, refetchType: "active" });
-          queryClient.invalidateQueries({ queryKey: userKeys.stats(), refetchType: "active" });
+          resync();
+          post({ kind: "resync" });
         }
         hasConnectedOnceRef.current = true;
 
@@ -153,6 +226,7 @@ export function useLiveMemoRefresh() {
                 try {
                   const event = JSON.parse(jsonStr) as SSEChangeEvent;
                   handleEvent(event);
+                  post({ kind: "event", event });
                 } catch {
                   // Ignore malformed JSON.
                 }
@@ -163,13 +237,13 @@ export function useLiveMemoRefresh() {
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === "AbortError") {
           // Intentional abort, don't reconnect.
-          setSSEStatus("disconnected");
+          publishStatus("disconnected");
           return;
         }
         // Connection lost or failed - reconnect with backoff.
       }
 
-      setSSEStatus("disconnected");
+      publishStatus("disconnected");
 
       // Reconnect with exponential backoff.
       if (mounted) {
@@ -179,10 +253,35 @@ export function useLiveMemoRefresh() {
       }
     };
 
-    connect();
+    // The lock is held for as long as this promise is pending — that is how a
+    // Web Lock expresses "until this tab goes away".
+    const holdStream = () =>
+      new Promise<void>((resolve) => {
+        releaseLock = resolve;
+        if (!mounted) {
+          resolve();
+          return;
+        }
+        holdsStream = true;
+        void connect();
+      });
+
+    if (navigator.locks) {
+      navigator.locks.request(LOCK_NAME_PREFIX + currentUserName, { signal: electionAbort.signal }, holdStream).catch(() => {
+        // Aborted because the tab unmounted while still waiting its turn. A tab
+        // that never held the stream has nothing to clean up.
+      });
+    } else {
+      // No Web Locks — an old browser, or the app reached over plain http on a
+      // LAN address, since the API needs a secure context (localhost counts).
+      // Fall back to the previous behaviour of one stream per tab rather than
+      // leaving this tab with no live updates at all.
+      void holdStream();
+    }
 
     return () => {
       mounted = false;
+      electionAbort.abort();
       setSSEStatus("disconnected");
       retryDelayRef.current = INITIAL_RETRY_DELAY_MS;
       if (retryTimeout) {
@@ -191,8 +290,11 @@ export function useLiveMemoRefresh() {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
+      // Releasing hands the stream to whichever tab is waiting for it.
+      releaseLock?.();
+      channel?.close();
     };
-  }, [handleEvent, currentUserName]);
+  }, [handleEvent, currentUserName, queryClient]);
 }
 
 // ---------------------------------------------------------------------------

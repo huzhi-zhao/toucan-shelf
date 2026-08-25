@@ -68,6 +68,16 @@ function stripExtension(fileName: string): string {
 }
 
 // URLs show the bare UID, not the `memos/{uid}` resource name used internally.
+// A new site home page starts with a feed already in it. The server refuses a
+// home page without one — a layout of prose and curated galleries is frozen the
+// moment it is saved, leaving everything published afterwards reachable only by
+// URL — so the starting point is the smallest layout that is actually allowed.
+const NEW_SITE_HOME_LAYOUT = JSON.stringify(
+  { viewType: "gallery", blocks: [{ type: "public_feed", title: "Latest", tags: [], showTopicFilter: true }] },
+  null,
+  2,
+);
+
 const memoUid = (memoName: string) => memoName.replace(/^memos\//, "");
 
 const Notebook = () => {
@@ -107,6 +117,9 @@ const Notebook = () => {
     folderPath: string;
   } | null>(null);
   const [newViewDialog, setNewViewDialog] = useState<{
+    folderPath: string;
+  } | null>(null);
+  const [newBlogViewDialog, setNewBlogViewDialog] = useState<{
     folderPath: string;
   } | null>(null);
   const [newFolderDialog, setNewFolderDialog] = useState<{
@@ -601,6 +614,7 @@ const Notebook = () => {
             onArchivedChange={setArchived}
             onNewDocument={(folderPath) => setNewDocDialog({ folderPath })}
             onNewView={(folderPath) => setNewViewDialog({ folderPath })}
+            onNewBlogView={(folderPath) => setNewBlogViewDialog({ folderPath })}
             onNewFolder={(folderPath) => setNewFolderDialog({ folderPath })}
             onUpload={handleUpload}
             onUploadPdf={handleUploadPdf}
@@ -665,6 +679,13 @@ const Notebook = () => {
         title={t("notebook.new-view")}
         placeholder={t("notebook.document-title-placeholder")}
         onConfirm={(title) => handleCreateDocument(newViewDialog?.folderPath ?? "", title, Memo_DocType.VIEW, "")}
+      />
+      <PromptDialog
+        open={!!newBlogViewDialog}
+        onOpenChange={(open) => !open && setNewBlogViewDialog(null)}
+        title={t("notebook.new-blogview")}
+        placeholder={t("notebook.document-title-placeholder")}
+        onConfirm={(title) => handleCreateDocument(newBlogViewDialog?.folderPath ?? "", title, Memo_DocType.BLOGVIEW, NEW_SITE_HOME_LAYOUT)}
       />
       <PromptDialog
         open={!!newFolderDialog}

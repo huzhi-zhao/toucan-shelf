@@ -14,6 +14,9 @@ func TestDocTypeFromExt(t *testing.T) {
 		"page.html":          "HTML",
 		"papers/x.pdf.md":    "PDF",
 		"dash/all.view.json": "VIEW",
+		// A site home page. The suffixes do not overlap, so ".blogview.json"
+		// must not be read as a ".view.json" that happens to end in one.
+		"site/front.blogview.json": "BLOGVIEW",
 	}
 	for path, want := range cases {
 		if got := docTypeFromExt(path); got != want {
@@ -24,11 +27,12 @@ func TestDocTypeFromExt(t *testing.T) {
 
 func TestStripDocExt(t *testing.T) {
 	cases := map[string]string{
-		"note.md":       "note",
-		"page.html":     "page",
-		"x.pdf.md":      "x",
-		"all.view.json": "all",
-		"noext":         "noext",
+		"note.md":             "note",
+		"page.html":           "page",
+		"x.pdf.md":            "x",
+		"all.view.json":       "all",
+		"front.blogview.json": "front",
+		"noext":               "noext",
 	}
 	for in, want := range cases {
 		if got := stripDocExt(in); got != want {

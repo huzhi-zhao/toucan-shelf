@@ -64,7 +64,7 @@ type Memo struct {
 	// Title is the document's display name (the "filename"). Required for HTML
 	// documents since they have no H1 heading to derive a title from.
 	Title string
-	// DocType is one of "MARKDOWN", "HTML", "PDF", or "VIEW".
+	// DocType is one of "MARKDOWN", "HTML", "PDF", "VIEW", or "BLOGVIEW".
 	DocType string
 
 	// Composed fields

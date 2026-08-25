@@ -345,6 +345,17 @@ message Memo {
     // JSON configuration (view type + scope + display rules), rendered
     // client-side against live data.
     VIEW = 4;
+    // A published site's home page: the same block JSON as VIEW, but composed
+    // of outward-facing blocks only, and rendered against publication
+    // snapshots rather than live library data.
+    //
+    // Kept apart from VIEW because the two block sets are disjoint at both
+    // ends — the reader ignores library blocks (their folder and property
+    // rules have no meaning in a snapshot), and the app can only draw a
+    // placeholder for outward-facing ones. Which set applies is decided when
+    // the document is created, not by where it is later used, so it is a type
+    // rather than a mode.
+    BLOGVIEW = 5;
   }
 
   // Computed properties of a memo.

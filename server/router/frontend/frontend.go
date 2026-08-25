@@ -56,11 +56,11 @@ func (s *FrontendService) Serve(_ context.Context, e *echo.Echo) {
 		Skipper:    skipper,
 	}))
 
-	e.Use(spaFallbackMiddleware(frontendFS))
+	e.Use(s.spaFallbackMiddleware(frontendFS))
 	s.registerRoutes(e)
 }
 
-func spaFallbackMiddleware(frontendFS fs.FS) echo.MiddlewareFunc {
+func (s *FrontendService) spaFallbackMiddleware(frontendFS fs.FS) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {
 			err := next(c)
@@ -74,13 +74,34 @@ func spaFallbackMiddleware(frontendFS fs.FS) echo.MiddlewareFunc {
 			}
 
 			setFrontendCacheHeaders(c, requestPath)
+			// The shell is the same file for every route, so a published site's
+			// pages can only differ from an application route in their status and
+			// headers. Getting those right is the whole of what a crawler sees.
+			ctx := c.Request().Context()
+			if resolved := s.resolveSiteRequest(ctx, requestHost(c), requestPath); resolved != nil {
+				status := s.applySiteSEOHeaders(ctx, c, resolved)
+				if status != http.StatusOK {
+					c.Response().WriteHeader(status)
+				}
+			}
 			return c.FileFS("index.html", frontendFS)
 		}
 	}
 }
 
+// requestHost reads the Host a request arrived on, preferring what an edge proxy
+// stamped over the hostname the application was reached at internally.
+func requestHost(c *echo.Context) string {
+	for _, key := range []string{"X-Original-Host", "X-Forwarded-Host"} {
+		if value := c.Request().Header.Get(key); value != "" {
+			return value
+		}
+	}
+	return c.Request().Host
+}
+
 func shouldSkipFrontendStatic(requestPath string) bool {
-	if requestPath == "/robots.txt" || requestPath == "/sitemap.xml" || strings.HasSuffix(requestPath, "/rss.xml") {
+	if requestPath == "/robots.txt" || strings.HasSuffix(requestPath, "/sitemap.xml") || strings.HasSuffix(requestPath, "/rss.xml") {
 		return true
 	}
 	return hasPathPrefix(requestPath, "/api") ||
@@ -123,9 +144,20 @@ func getFileSystem(path string) fs.FS {
 func (s *FrontendService) registerRoutes(e *echo.Echo) {
 	e.GET("/robots.txt", s.getRobotsTXT)
 	e.GET("/sitemap.xml", s.getSitemapXML)
+	// A site on the platform path shares the instance's hostname, so it cannot
+	// have a robots.txt of its own — only its sitemap can live under the prefix,
+	// and the instance robots.txt is not the place to advertise it.
+	e.GET("/s/:siteUid/sitemap.xml", s.getSitemapXML)
 }
 
 func (s *FrontendService) getRobotsTXT(c *echo.Context) error {
+	// On a published site's own domain, robots.txt describes that site. Serving
+	// the instance's file there would point crawlers at the application's sitemap,
+	// which lists public memos — a different site with different content.
+	if resolved := s.resolveSiteRequest(c.Request().Context(), requestHost(c), c.Request().URL.Path); resolved != nil {
+		return c.String(http.StatusOK, s.siteRobotsTXT(resolved))
+	}
+
 	instanceURL, err := normalizeInstanceURL(s.Profile.InstanceURL)
 	if err != nil {
 		return err
@@ -141,6 +173,15 @@ func (s *FrontendService) getRobotsTXT(c *echo.Context) error {
 }
 
 func (s *FrontendService) getSitemapXML(c *echo.Context) error {
+	ctx := c.Request().Context()
+	if resolved := s.resolveSiteRequest(ctx, requestHost(c), c.Request().URL.Path); resolved != nil {
+		urls, err := s.siteSitemap(ctx, resolved)
+		if err != nil {
+			return err
+		}
+		return c.XML(http.StatusOK, sitemapURLSet{XMLNS: sitemapXMLNamespace, URLs: urls})
+	}
+
 	instanceURL, err := normalizeInstanceURL(s.Profile.InstanceURL)
 	if err != nil {
 		return err

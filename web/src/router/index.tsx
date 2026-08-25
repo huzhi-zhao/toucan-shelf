@@ -27,6 +27,14 @@ const MemoReader = lazyWithReload(() => import("@/pages/MemoReader"));
 const AttachmentPreview = lazyWithReload(() => import("@/pages/AttachmentPreview"));
 const AttachmentTextPreview = lazyWithReload(() => import("@/pages/AttachmentTextPreview"));
 const NotFound = lazyWithReload(() => import("@/pages/NotFound"));
+const PublicSiteLayout = lazyWithReload(() => import("@/pages/PublicSiteLayout"));
+const PublicSiteHome = lazyWithReload(() => import("@/pages/PublicSiteHome"));
+const PublicSitePage = lazyWithReload(() => import("@/pages/PublicSitePage"));
+const PublicSiteLatest = lazyWithReload(() => import("@/pages/PublicSiteLatest"));
+const PublicSiteDoc = lazyWithReload(() => import("@/pages/PublicSiteDoc"));
+const PublicSiteCatalog = lazyWithReload(() => import("@/pages/PublicSiteCatalog"));
+const PublicSiteArchive = lazyWithReload(() => import("@/pages/PublicSiteArchive"));
+const PublicSiteSearch = lazyWithReload(() => import("@/pages/PublicSiteSearch"));
 const PermissionDenied = lazyWithReload(() => import("@/pages/PermissionDenied"));
 const Attachments = lazyWithReload(() => import("@/pages/Attachments"));
 const Setting = lazyWithReload(() => import("@/pages/Setting"));
@@ -76,6 +84,26 @@ export const routeConfig: RouteObject[] = [
       // Bare reader for a memo — content only, sized for reading and for the
       // browser's own print-to-PDF. Kept out of RootLayout so no app chrome renders.
       { path: "memos/:uid/reader", element: <MemoReader /> },
+      // A published site. Deliberately outside RootLayout: it renders no app
+      // chrome, requires no session, and its data comes only from
+      // PublicSiteService. On a custom domain the same site is served from the
+      // URL root; on the platform host it lives under this prefix, because the
+      // root segment is already the knowledge-base route (":workspaceTitle").
+      {
+        path: "s/:siteUid",
+        element: <PublicSiteLayout />,
+        children: [
+          { index: true, element: <PublicSiteHome /> },
+          { path: "d/:docId", element: <PublicSiteDoc /> },
+          // Before ":slug", and reserved in the slug allocator, so a page can
+          // never take the site's own contents path.
+          { path: "contents", element: <PublicSiteCatalog /> },
+          { path: "latest", element: <PublicSiteLatest /> },
+          { path: "archive", element: <PublicSiteArchive /> },
+          { path: "search", element: <PublicSiteSearch /> },
+          { path: ":slug", element: <PublicSitePage /> },
+        ],
+      },
       {
         element: <RootLayout />,
         children: [

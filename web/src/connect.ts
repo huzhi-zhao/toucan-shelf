@@ -8,9 +8,11 @@ import { AuthService } from "./types/proto/api/v1/auth_service_pb";
 import { IdentityProviderService } from "./types/proto/api/v1/idp_service_pb";
 import { InstanceService } from "./types/proto/api/v1/instance_service_pb";
 import { MemoService } from "./types/proto/api/v1/memo_service_pb";
+import { PublicSiteService } from "./types/proto/api/v1/public_site_service_pb";
 import { RagService } from "./types/proto/api/v1/rag_service_pb";
 import { SecretBlockService } from "./types/proto/api/v1/secret_block_service_pb";
 import { ShortcutService } from "./types/proto/api/v1/shortcut_service_pb";
+import { SiteService } from "./types/proto/api/v1/site_service_pb";
 import { UserService } from "./types/proto/api/v1/user_service_pb";
 import { WorkspaceService } from "./types/proto/api/v1/workspace_service_pb";
 import { redirectOnAuthFailure } from "./utils/auth-redirect";
@@ -191,6 +193,13 @@ const transport = createConnectTransport({
   interceptors: [authInterceptor],
 });
 
+// The anonymous read transport: no auth interceptor, no credentials.
+const publicTransport = createConnectTransport({
+  baseUrl: window.location.origin,
+  useBinaryFormat: true,
+  interceptors: [],
+});
+
 // Core service clients
 export const instanceServiceClient = createClient(InstanceService, transport);
 export const authServiceClient = createClient(AuthService, transport);
@@ -204,6 +213,13 @@ export const ragServiceClient = createClient(RagService, transport);
 export const secretBlockServiceClient = createClient(SecretBlockService, transport);
 export const shortcutServiceClient = createClient(ShortcutService, transport);
 export const workspaceServiceClient = createClient(WorkspaceService, transport);
+
+// Publishing. SiteService is the authoring side and needs the session; the public
+// read path is anonymous by design, so it deliberately goes through a transport
+// with no auth interceptor — a reader who happens to have a stale token in this
+// tab must still see exactly what an anonymous visitor sees.
+export const siteServiceClient = createClient(SiteService, transport);
+export const publicSiteServiceClient = createClient(PublicSiteService, publicTransport);
 
 // Configuration service clients
 export const identityProviderServiceClient = createClient(IdentityProviderService, transport);

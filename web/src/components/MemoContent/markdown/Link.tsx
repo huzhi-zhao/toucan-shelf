@@ -1,4 +1,6 @@
+import { Link as RouterLink } from "react-router-dom";
 import { isRootRelativeDocHref, useDocumentLinkContext } from "@/components/MemoContent/DocumentLinkContext";
+import { isInSiteHref, usePublicSiteRender } from "@/components/MemoContent/PublicSiteRenderContext";
 import { markdownStyles } from "@/lib/markdownStyles";
 import { cn } from "@/lib/utils";
 import type { ReactMarkdownProps } from "./types";
@@ -26,6 +28,19 @@ interface LinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement>, React
  */
 export const Link = ({ children, className, href, node: _node, ...props }: LinkProps) => {
   const docLinkContext = useDocumentLinkContext();
+  const publicSite = usePublicSiteRender();
+
+  // On a published site the snapshot's own links ("/<slug>") are in-site
+  // navigation, not external links to open in a new tab. They are rebased onto
+  // the site's base path, which is empty on a custom domain and "/s/{site}" on
+  // the platform path.
+  if (publicSite && isInSiteHref(href)) {
+    return (
+      <RouterLink to={`${publicSite.basePath}${href}`} className={cn(markdownStyles.link, className)} {...props}>
+        {children}
+      </RouterLink>
+    );
+  }
 
   if (docLinkContext && isRootRelativeDocHref(href)) {
     const target = docLinkContext.resolve(href);

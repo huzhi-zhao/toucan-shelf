@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	v1pb "github.com/usememos/memos/proto/gen/api/v1"
 )
 
 // TestPublicMethodsArePublic verifies that methods in PublicMethods are recognized as public.
@@ -136,6 +138,29 @@ func TestAuthBootstrapClassification(t *testing.T) {
 	for _, method := range gatedWhilePrivate {
 		t.Run("gated/"+method, func(t *testing.T) {
 			assert.False(t, IsAuthBootstrapMethod(method), "expected %s to be gated on a private instance", method)
+		})
+	}
+}
+
+// TestEveryPublicSiteMethodIsAnonymous walks the service descriptor rather than
+// listing methods by hand: PublicSiteService exists to be reached without a
+// session, so a new RPC on it that nobody remembered to allowlist is a broken
+// page for every anonymous reader. This test is how that gets caught at build
+// time instead of in a log line.
+func TestEveryPublicSiteMethodIsAnonymous(t *testing.T) {
+	service := v1pb.File_api_v1_public_site_service_proto.Services().ByName("PublicSiteService")
+	if service == nil {
+		t.Fatal("PublicSiteService descriptor not found")
+	}
+	methods := service.Methods()
+	for i := 0; i < methods.Len(); i++ {
+		procedure := "/memos.api.v1.PublicSiteService/" + string(methods.Get(i).Name())
+		t.Run(procedure, func(t *testing.T) {
+			assert.True(t, IsPublicMethod(procedure), "%s needs no session", procedure)
+			// A site's readability is decided by the site's own status, never by
+			// whether the main application serves anonymous visitors.
+			_, ok := AuthBootstrapMethods[procedure]
+			assert.True(t, ok, "%s must stay reachable on a private instance", procedure)
 		})
 	}
 }

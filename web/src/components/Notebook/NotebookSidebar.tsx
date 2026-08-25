@@ -1,5 +1,15 @@
 import dayjs from "dayjs";
-import { CalendarIcon, FilePlusIcon, FolderPlusIcon, LayoutGridIcon, SearchIcon, TagsIcon, UploadIcon, XIcon } from "lucide-react";
+import {
+  CalendarIcon,
+  FilePlusIcon,
+  FolderPlusIcon,
+  GlobeIcon,
+  LayoutGridIcon,
+  SearchIcon,
+  TagsIcon,
+  UploadIcon,
+  XIcon,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { calculateMaxCount, MonthCalendar } from "@/components/ActivityCalendar";
 import { MonthNavigator } from "@/components/StatisticsView/MonthNavigator";
@@ -31,6 +41,7 @@ interface Props {
   onArchivedChange: (archived: boolean) => void;
   onNewDocument: (folderPath: string) => void;
   onNewView: (folderPath: string) => void;
+  onNewBlogView: (folderPath: string) => void;
   onNewFolder: (folderPath: string) => void;
   onUpload: (folderPath: string, file: File) => void;
   onUploadPdf: (folderPath: string, file: File) => void;
@@ -124,6 +135,7 @@ const NotebookSidebar = ({
   onArchivedChange,
   onNewDocument,
   onNewView,
+  onNewBlogView,
   onNewFolder,
   onUpload,
   onUploadPdf,
@@ -241,6 +253,10 @@ const NotebookSidebar = ({
               <LayoutGridIcon className="w-4 h-4" />
               {t("notebook.new-view")}
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onNewBlogView("")}>
+              <GlobeIcon className="w-4 h-4" />
+              {t("notebook.new-blogview")}
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onNewFolder("")}>
               <FolderPlusIcon className="w-4 h-4" />
               {t("notebook.new-folder")}
@@ -302,6 +318,7 @@ const NotebookSidebar = ({
               onDeleteFolder={onDeleteFolder}
               onNewDocumentIn={onNewDocument}
               onNewViewIn={onNewView}
+              onNewBlogViewIn={onNewBlogView}
               onNewFolderIn={onNewFolder}
               onUploadIn={onUpload}
               onUploadPdfIn={onUploadPdf}

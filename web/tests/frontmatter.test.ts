@@ -55,7 +55,7 @@ describe("parseFrontmatter", () => {
   });
 
   it("keeps quoted values as text even when they look like other types", () => {
-    const content = ['---', 'a: "2026-07-11"', "b: 'true'", 'c: "42"', "---", "body"].join("\n");
+    const content = ["---", 'a: "2026-07-11"', "b: 'true'", 'c: "42"', "---", "body"].join("\n");
     const { properties } = parseFrontmatter(content);
     expect(properties).toEqual([
       { key: "a", type: "text", value: "2026-07-11" },

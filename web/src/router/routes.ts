@@ -23,3 +23,19 @@ export type RoutePath = (typeof ROUTES)[RouteKey];
 export function workspaceDetailPath(workspaceName: string): string {
   return `${ROUTES.SHELF}/${encodeURIComponent(workspaceName.replace(/^workspaces\//, ""))}`;
 }
+
+/**
+ * Platform path of a published site. A site is normally reached at its own
+ * domain, where the reader lands on "/" and pages sit at "/<slug>" — but the main
+ * application already owns that root segment (":workspaceTitle"), so on the
+ * platform host the same site is served under this prefix instead. The snapshot's
+ * own links are written as "/<slug>"; the public renderer rebases them onto this
+ * prefix (see PublicSiteContext), so the two entry points render identically.
+ */
+export function publicSitePath(siteName: string): string {
+  return `/s/${encodeURIComponent(siteName.replace(/^sites\//, ""))}`;
+}
+
+export function publicPagePath(siteName: string, slug: string): string {
+  return `${publicSitePath(siteName)}/${slug}`;
+}

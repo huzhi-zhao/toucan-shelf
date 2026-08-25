@@ -1,12 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseSheetsBlock } from "@/components/MemoContent/sheets/parseSheetsBlock";
 import { parseFenceId } from "@/components/MemoContent/sheets/serializeSheetsBlock";
-import {
-  applySheetsStyle,
-  extractSheetsStyle,
-  parseStyleOverlay,
-  serializeStyleOverlay,
-} from "@/components/MemoContent/sheets/sheetStyle";
+import { applySheetsStyle, extractSheetsStyle, parseStyleOverlay, serializeStyleOverlay } from "@/components/MemoContent/sheets/sheetStyle";
 import { toSpreadsheetData, type XSheet } from "@/components/MemoContent/sheets/toSpreadsheetData";
 
 // Reproduces exactly what SheetsBlock does on a cold page load, minus React:

@@ -58,6 +58,10 @@ func NewServer(ctx context.Context, profile *profile.Profile, store *store.Store
 	echoServer := echo.New()
 	echoServer.Use(middleware.Recover())
 	echoServer.Use(newCORSMiddleware(profile))
+	// Published sites are resolved by the Host the reader landed on. Go strips
+	// Host out of the header map, so stamp it onto a header of our own here,
+	// where both the Connect handlers and the gRPC gateway can still see it.
+	echoServer.Use(newOriginalHostMiddleware())
 	s.echoServer = echoServer
 
 	instanceBasicSetting, err := s.getOrUpsertInstanceBasicSetting(ctx)

@@ -1,0 +1,294 @@
+/* ---------------------------------------------------------------------------
+   The blog skin: the outward-facing site's own visual system.
+
+   Deliberately self-contained. It defines its own tokens and never reads the
+   application's (`--background`, `--foreground`, …), because a published site
+   must look the same to every reader — the app's theme is a signed-in user's
+   preference and an anonymous reader has none. Everything the skin draws is
+   scoped under `.blog-skin`, so nothing here can reach the knowledge base UI.
+
+   The eventual `site.theme` JSON maps onto these tokens and nothing else: a
+   bounded set of values, never author-supplied CSS.
+   --------------------------------------------------------------------------- */
+.blog-skin {
+  --blog-bg: #ffffff;
+  --blog-surface: #f3f4f6;
+  --blog-ink: #17181a;
+  --blog-ink-soft: #43474d;
+  --blog-ink-muted: #6c7178;
+  --blog-hairline: #e4e5e8;
+  --blog-accent: #1b4fa8;
+  --blog-accent-soft: #e0e9fa;
+
+  --blog-cover-radius: 24px;
+  --blog-shell-max: 1440px;
+  --blog-gutter: clamp(20px, 4vw, 56px);
+  --blog-prose-max: 46rem;
+
+  /* Display face carries the personality; body face stays neutral so long text
+     is comfortable. Swapping in a self-hosted webfont later is a change here. */
+  --blog-font-display:
+    "Google Sans", "Avenir Next", "SF Pro Display", -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei",
+    sans-serif;
+  --blog-font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+
+  background: var(--blog-bg);
+  color: var(--blog-ink);
+  font-family: var(--blog-font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.blog-shell {
+  width: 100%;
+  max-width: var(--blog-shell-max);
+  margin-inline: auto;
+  padding-inline: var(--blog-gutter);
+}
+
+.blog-display {
+  font-family: var(--blog-font-display);
+  letter-spacing: -0.018em;
+  font-weight: 500;
+}
+
+/* The feed headline. Big and light rather than big and heavy — the reference
+   gets its presence from size and air, not from weight. */
+.blog-section-title {
+  font-family: var(--blog-font-display);
+  font-size: clamp(2.25rem, 3.4vw, 3rem);
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  font-weight: 400;
+}
+
+.blog-entry-title {
+  font-family: var(--blog-font-display);
+  font-size: clamp(1.5rem, 2.2vw, 2.15rem);
+  line-height: 1.16;
+  letter-spacing: -0.02em;
+  font-weight: 500;
+  color: var(--blog-ink);
+}
+
+.blog-article-title {
+  font-family: var(--blog-font-display);
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  line-height: 1.1;
+  letter-spacing: -0.028em;
+  font-weight: 500;
+}
+
+/* Filter pills. Outlined when off, softly filled when on — no shadow, no
+   gradient; the only state signal is fill. */
+.blog-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 2.5rem;
+  padding-inline: 1.125rem;
+  border-radius: 999px;
+  border: 1px solid var(--blog-hairline);
+  background: var(--blog-bg);
+  color: var(--blog-ink-soft);
+  font-size: 0.9375rem;
+  line-height: 1;
+  white-space: nowrap;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.blog-pill:hover {
+  background: var(--blog-surface);
+}
+
+.blog-pill[data-on="true"] {
+  background: var(--blog-accent-soft);
+  border-color: transparent;
+  color: var(--blog-accent);
+}
+
+/* The small tags printed above an entry title. Read-only labels, not controls. */
+.blog-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 1.875rem;
+  padding-inline: 0.75rem;
+  border-radius: 999px;
+  background: var(--blog-surface);
+  color: var(--blog-ink-soft);
+  font-size: 0.8125rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.blog-cover {
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  border-radius: var(--blog-cover-radius);
+  object-fit: cover;
+  background: var(--blog-surface);
+  display: block;
+}
+
+.blog-rule {
+  height: 1px;
+  background: var(--blog-hairline);
+  border: 0;
+}
+
+.blog-muted {
+  color: var(--blog-ink-muted);
+}
+
+.blog-link-quiet {
+  color: var(--blog-ink);
+  text-decoration: none;
+}
+
+.blog-link-quiet:hover .blog-entry-title,
+.blog-link-quiet:hover .blog-underline {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.blog-skin :focus-visible {
+  outline: 2px solid var(--blog-accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blog-skin * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Shared renderers inside the blog surface.
+
+   The article body goes through the application's markdown renderer on purpose
+   — a published page has to look like the document it came from — but that
+   renderer is written against the *application's* theme tokens. Remapping them
+   here to blog values is what keeps a published page on the site's own theme
+   instead of following whichever theme the reader's browser happens to have
+   stored for the app.
+   --------------------------------------------------------------------------- */
+.blog-skin {
+  --background: var(--blog-bg);
+  --foreground: var(--blog-ink);
+  --card: var(--blog-bg);
+  --card-foreground: var(--blog-ink);
+  --popover: var(--blog-bg);
+  --popover-foreground: var(--blog-ink);
+  --muted: var(--blog-surface);
+  --muted-foreground: var(--blog-ink-muted);
+  --accent: var(--blog-surface);
+  --accent-foreground: var(--blog-ink);
+  --secondary: var(--blog-surface);
+  --secondary-foreground: var(--blog-ink-soft);
+  --primary: var(--blog-accent);
+  --primary-foreground: #ffffff;
+  --border: var(--blog-hairline);
+  --input: var(--blog-hairline);
+  --ring: var(--blog-accent);
+}
+
+.blog-prose {
+  max-width: var(--blog-prose-max);
+  font-size: 1.0625rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Gallery layout.
+
+   Same idea as the knowledge base's card wall — a scope resolved to cards — but
+   sized for a reader rather than for someone scanning their own files: a few
+   wide cards on a tinted panel instead of many small tiles, each ending in an
+   explicit call to action rather than relying on the whole card being clickable.
+   --------------------------------------------------------------------------- */
+.blog-card {
+  background: var(--blog-surface);
+  border-radius: 28px;
+  overflow: hidden;
+}
+
+.blog-card-media {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 18px;
+  object-fit: cover;
+  display: block;
+  background: var(--blog-bg);
+}
+
+.blog-eyebrow {
+  font-size: 0.9375rem;
+  line-height: 1.3;
+  color: var(--blog-ink-soft);
+}
+
+.blog-card-title {
+  font-family: var(--blog-font-display);
+  font-size: clamp(1.3rem, 1.75vw, 1.7rem);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  font-weight: 500;
+}
+
+.blog-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 3.25rem;
+  padding-inline: 1.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--blog-ink);
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--blog-ink);
+  text-decoration: none;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.blog-cta:hover {
+  background: var(--blog-accent-soft);
+  border-color: transparent;
+  color: var(--blog-accent);
+}
+
+/* ---------------------------------------------------------------------------
+   Markdown blocks inside a composed page.
+
+   The text still goes through the application's markdown renderer — the author
+   writes these in the same editor as anything else — but the site's own type
+   scale applies to its headings, so a heading typed into the home page reads as
+   part of the site rather than as a document heading.
+   --------------------------------------------------------------------------- */
+.blog-md-block :is(h1, h2, h3) {
+  font-family: var(--blog-font-display);
+  letter-spacing: -0.025em;
+  font-weight: 400;
+}
+
+.blog-md-block h1 {
+  font-size: clamp(2.25rem, 3.4vw, 3rem);
+  line-height: 1.08;
+}
+
+.blog-md-block h2 {
+  font-size: clamp(1.75rem, 2.6vw, 2.25rem);
+  line-height: 1.12;
+}
+
+.blog-md-block h3 {
+  font-size: clamp(1.35rem, 1.9vw, 1.6rem);
+  line-height: 1.2;
+}
+
+.blog-md-block p {
+  color: var(--blog-ink-soft);
+}

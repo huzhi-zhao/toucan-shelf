@@ -2,6 +2,7 @@ import {
   BarChart3Icon,
   CogIcon,
   DatabaseIcon,
+  GlobeIcon,
   HeartHandshakeIcon,
   KeyIcon,
   LibraryIcon,
@@ -24,6 +25,7 @@ import NotificationSection from "@/components/Settings/NotificationSection";
 import PreferencesSection from "@/components/Settings/PreferencesSection";
 import PublicAttachmentsSection from "@/components/Settings/PublicAttachmentsSection";
 import ResourceStatsSection from "@/components/Settings/ResourceStatsSection";
+import SitesSection from "@/components/Settings/SitesSection";
 import SSOSection from "@/components/Settings/SSOSection";
 import StorageSection from "@/components/Settings/StorageSection";
 import TagsSection from "@/components/Settings/TagsSection";
@@ -43,6 +45,7 @@ export type SettingSectionKey =
   | "sso"
   | "tags"
   | "ai"
+  | "site"
   | "resource-stats";
 
 type SettingSectionScope = "basic" | "admin";
@@ -143,6 +146,13 @@ export const SETTINGS_SECTIONS: SettingSectionDefinition[] = [
     icon: HeartHandshakeIcon,
     component: AISection,
     preloadSettingKeys: [InstanceSetting_Key.AI],
+  },
+  {
+    key: "site",
+    scope: "admin",
+    labelKey: "setting.site.label",
+    icon: GlobeIcon,
+    component: SitesSection,
   },
   {
     key: "resource-stats",

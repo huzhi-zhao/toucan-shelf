@@ -187,8 +187,43 @@ export interface MarkdownBlock {
   docName?: string;
 }
 
+/* ---------------------------------------------------------------------------
+   Outward-facing blocks.
+
+   A site's home page is a VIEW document published like any other page, so its
+   composition is stored here alongside the in-app block types. They are separate
+   types rather than a mode on GalleryBlock because the configuration genuinely
+   differs: a snapshot has no folder and no frontmatter properties, so tags are
+   the only grouping left, and "this field does nothing in that mode" is the
+   shape that leaks. Nothing renders these in the app — the blog skin does, from
+   the published snapshot.
+   --------------------------------------------------------------------------- */
+
+/** A card wall on the site's home page. */
+export interface PublicGalleryBlock {
+  type: "public_gallery";
+  /** Only pages carrying every one of these tags. Empty means the whole site. */
+  tags: string[];
+  /** `manual` follows `slugs`; `updated_desc` is the only automatic order. */
+  sort: "manual" | "updated_desc";
+  /** Published slugs, in the order they appear when `sort` is "manual". */
+  slugs?: string[];
+  limit?: number;
+  columns: 2 | 3 | 4;
+}
+
+/** A vertical list of entries on the site's home page. */
+export interface PublicFeedBlock {
+  type: "public_feed";
+  title: string;
+  tags: string[];
+  /** Whether readers get the topic rail that narrows within the block. */
+  showTopicFilter: boolean;
+  limit?: number;
+}
+
 /** Blocks are heterogeneous and render top-to-bottom in list order. */
-export type ViewBlock = GalleryBlock | MarkdownBlock | CalendarLayoutBlock;
+export type ViewBlock = GalleryBlock | MarkdownBlock | CalendarLayoutBlock | PublicGalleryBlock | PublicFeedBlock;
 
 export interface GalleryViewConfig {
   viewType: "gallery";
@@ -213,6 +248,21 @@ export const DEFAULT_GALLERY_BLOCK: GalleryBlock = {
   cover: "first_image",
   cardFields: DEFAULT_CARD_FIELDS,
   badges: [],
+};
+
+export const DEFAULT_PUBLIC_GALLERY_BLOCK: PublicGalleryBlock = {
+  type: "public_gallery",
+  tags: [],
+  sort: "updated_desc",
+  limit: 6,
+  columns: 3,
+};
+
+export const DEFAULT_PUBLIC_FEED_BLOCK: PublicFeedBlock = {
+  type: "public_feed",
+  title: "Latest",
+  tags: [],
+  showTopicFilter: true,
 };
 
 export const DEFAULT_CALENDAR_LAYOUT_BLOCK: CalendarLayoutBlock = {
@@ -417,6 +467,43 @@ function parseMarkdownBlock(raw: unknown): MarkdownBlock | undefined {
   return content.trim() ? { type: "markdown", content } : undefined;
 }
 
+// Tag lists and limits are the whole configuration of an outward-facing block.
+// The parsing mirrors the blog skin's (web/src/components/BlogSite/blocks.ts):
+// both read the same stored JSON, and both fall back rather than throw.
+function parsePublicTags(raw: unknown): string[] {
+  return Array.isArray(raw)
+    ? raw.filter((tag): tag is string => typeof tag === "string" && tag.trim() !== "").map((tag) => tag.trim())
+    : [];
+}
+
+function parsePublicLimit(raw: unknown): number | undefined {
+  return typeof raw === "number" && Number.isFinite(raw) && raw >= 1 ? Math.floor(raw) : undefined;
+}
+
+function parsePublicGalleryBlock(raw: unknown): PublicGalleryBlock {
+  const b = (raw ?? {}) as { tags?: unknown; sort?: unknown; slugs?: unknown; limit?: unknown; columns?: unknown };
+  const slugs = parsePublicTags(b.slugs);
+  return {
+    type: "public_gallery",
+    tags: parsePublicTags(b.tags),
+    sort: b.sort === "manual" ? "manual" : "updated_desc",
+    ...(slugs.length > 0 ? { slugs } : {}),
+    limit: parsePublicLimit(b.limit),
+    columns: b.columns === 2 || b.columns === 4 ? b.columns : 3,
+  };
+}
+
+function parsePublicFeedBlock(raw: unknown): PublicFeedBlock {
+  const b = (raw ?? {}) as { title?: unknown; tags?: unknown; showTopicFilter?: unknown; limit?: unknown };
+  return {
+    type: "public_feed",
+    title: typeof b.title === "string" ? b.title : DEFAULT_PUBLIC_FEED_BLOCK.title,
+    tags: parsePublicTags(b.tags),
+    showTopicFilter: b.showTopicFilter !== false,
+    limit: parsePublicLimit(b.limit),
+  };
+}
+
 /** Parses one stored block. */
 export function parseViewBlock(raw: unknown): ViewBlock[] {
   const b = (raw ?? {}) as { type?: unknown };
@@ -425,6 +512,8 @@ export function parseViewBlock(raw: unknown): ViewBlock[] {
     return block ? [block] : [];
   }
   if (b.type === "calendar") return [parseCalendarLayoutBlock(raw)];
+  if (b.type === "public_gallery") return [parsePublicGalleryBlock(raw)];
+  if (b.type === "public_feed") return [parsePublicFeedBlock(raw)];
   return [parseGalleryBlock(raw)];
 }
 
