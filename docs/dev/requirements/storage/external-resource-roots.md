@@ -182,7 +182,55 @@ NAS 挂载几乎都是 NFS / SMB 等网络文件系统，改动发生在 NAS 端
 图像模型生成的是画面描述（"a man standing on a beach"）而非情境，对检索有帮助，
 但不是这块能力成立的前提。
 
-### 复用现有 RAG 管线，不引入第二套向量空间
+下面 §隐私 中的取舍进一步加强了这个优先级：EXIF 是本地计算，不外发任何数据。
+
+### 走现有 provider 抽象，不自建模型
+
+**不自行部署图像模型。** 项目已有 provider 抽象
+（[internal/ai/ai.go](../../../../internal/ai/ai.go)：`ProviderType` 为
+`OPENAI` / `GEMINI`，`ProviderConfig` 携带 endpoint 与密钥），tag 与 desc 通过
+调用已配置的 provider 生成。
+
+多模态调用在项目里**已有完整先例**：
+[internal/ai/audiollm/](../../../../internal/ai/audiollm/) 是一个能力包的范式——
+`Model` 接口加 `Request` / `Response` / `FinishReason`，`gemini/` 子包以
+`inlineData`（base64 + MIME type）传二进制，`normalizeContentType` 负责拒绝
+不支持的类型；能力协商则见
+[models.go](../../../../internal/ai/models.go) 的
+`DefaultTranscriptionModel` + `ErrCapabilityUnsupported`。
+
+"图像 → 描述"与"音频 → 文本"是同一个形状，按同一套范式扩一个视觉能力包即可，
+不引入新的架构概念。
+
+`TODO(确认)`：各 provider 的图像输入尺寸与格式限制，以及超限时是先行缩图还是拒绝。
+
+### 成本模型是按量计费，不是一次性算力
+
+这与自建模型有本质区别，且直接影响需求：
+
+- **数万张图的批量标注是真实的金钱与时间成本。** 扫描前必须让用户看到
+  "本次将处理 N 个对象"并由他确认，不能静默开始烧钱。
+- 需要限流、重试、断点续传，以及单个对象失败不拖垮整批。
+  `audiollm` 已有的 `FinishReason` 处理可作参考。
+- **provider 未配置时，L2 的其余部分必须照常可用**——浏览、EXIF 检索、
+  手工 tag 与 desc 都不得依赖 AI。
+
+### 隐私：必须显式告知的取舍
+
+本能力的整个场景前提是"数据留在自己的 NAS 上"，而调用云端 provider 意味着
+**图片内容会被发送到第三方**。这两件事直接冲突。
+
+因此：
+
+- AI 标注**默认关闭**，由用户显式开启。
+- 开启入口处必须明确写出"图片内容将发送至你配置的 AI provider"，
+  不能只在文档里提。
+- 允许按资源根分别设置是否启用，使用户可以只对部分目录开启。
+
+这不是可以靠"用户自己配置了 provider 就等于同意"来绕过的——他配置 provider
+时想的是文档检索，不是把家庭相册发出去。
+
+### 检索链路：复用现有 RAG 管线
 
 项目已具备完整的向量检索基础设施：
 
@@ -195,12 +243,13 @@ NAS 挂载几乎都是 NFS / SMB 等网络文件系统，改动发生在 NAS 端
 
 因此 AI 描述产出后的检索链路是**现成的**，不需要新建。
 
-选型上有一处分叉，取舍见
-[design/20260827-external-resource-roots.md](../../design/20260827-external-resource-roots.md)：
-图文共享向量空间（CLIP 一类）能直接支持自然语言搜图，但其向量空间与当前文本
-embedding 模型的空间不同，余弦相似度不可混算，混入同一张表会得到无意义的结果。
-**首版走「图像 caption → 文本 embedding」**，完全复用现有管线；以图搜图作为
-后续增强再评估是否值得引入第二张向量表。
+因此路径是：**provider 生成 caption 与 tag → 文本 embedding → 现有混合检索**。
+`ai.Embed` 接受的是字符串数组，本就是文本嵌入，caption 落进去即可复用整条链路，
+新增检索基础设施为零。
+
+以图搜图（自然语言直接匹配图像内容）需要 provider 提供多模态 embedding，
+是另一件事，首版不做，取舍见
+[design/20260827-external-resource-roots.md](../../design/20260827-external-resource-roots.md)。
 
 ---
 
@@ -251,6 +300,8 @@ NAS 场景下 Docker 反而是主流（群晖 Container Manager、威联通 Cont
 - **不做 fsnotify 实时监听。** 在网络文件系统上不可靠。
 - **不为外部资源新建平行的顶层导航入口。** 消费面走 view（L3）。
 - **不做全量内容 hash。** 增量判定用 `path + mtime + size`。
+- **不自建、不自部署图像模型。** 走现有 provider 抽象。
+- **AI 标注不默认开启。** 见 §隐私。
 
 ---
 
@@ -265,6 +316,8 @@ NAS 场景下 Docker 反而是主流（群晖 Container Manager、威联通 Cont
    [sqlite-as-sole-datasource.md](sqlite-as-sole-datasource.md) 里的容量边界复评
    条件直接顶到线上，这是**要不要做**的前置判断依据，不是"以后再说"。
 5. 默认扫描间隔与进度反馈。
+6. 各 provider 的图像输入尺寸/格式限制，以及超限时缩图还是拒绝。
+7. 批量标注的成本预估如何呈现给用户——按对象数、还是尝试折算 token。
 
 ---
 
