@@ -6,12 +6,16 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/pkg/errors"
@@ -164,4 +168,80 @@ func (c *Client) DeleteObject(ctx context.Context, key string) error {
 		return errors.Wrap(err, "failed to delete object")
 	}
 	return nil
+}
+
+// ObjectInfo is the subset of an object's metadata the migration needs to decide whether an
+// object at the destination key is the one it put there on an earlier run.
+type ObjectInfo struct {
+	Size        int64
+	ContentType string
+}
+
+// HeadObject returns the object's metadata, or (nil, nil) when it does not exist. A missing
+// object is not an error here: callers use this to probe a destination key before writing.
+func (c *Client) HeadObject(ctx context.Context, key string) (*ObjectInfo, error) {
+	output, err := c.Client.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: c.Bucket,
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		if isNotFound(err) {
+			return nil, nil
+		}
+		return nil, errors.Wrap(err, "failed to head object")
+	}
+	info := &ObjectInfo{}
+	if output.ContentLength != nil {
+		info.Size = *output.ContentLength
+	}
+	if output.ContentType != nil {
+		info.ContentType = *output.ContentType
+	}
+	return info, nil
+}
+
+// CopyObject server-side copies an object into this client's bucket under destKey. The source
+// may live in a different bucket on the same endpoint; copying across endpoints is not possible
+// this way and the caller has to stream the bytes itself.
+func (c *Client) CopyObject(ctx context.Context, sourceBucket, sourceKey, destKey string) error {
+	_, err := c.Client.CopyObject(ctx, &s3.CopyObjectInput{
+		Bucket:     c.Bucket,
+		Key:        aws.String(destKey),
+		CopySource: aws.String(encodeCopySource(sourceBucket, sourceKey)),
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to copy object")
+	}
+	return nil
+}
+
+// encodeCopySource builds the `bucket/key` value of the x-amz-copy-source header. The path has
+// to be URL-encoded segment by segment: encoding the whole string would escape the separators,
+// and leaving it raw breaks on keys containing spaces or non-ASCII filenames (which attachment
+// keys routinely do, since the original filename is part of the key).
+func encodeCopySource(sourceBucket, sourceKey string) string {
+	segments := strings.Split(sourceKey, "/")
+	for i, segment := range segments {
+		segments[i] = url.PathEscape(segment)
+	}
+	return url.PathEscape(sourceBucket) + "/" + strings.Join(segments, "/")
+}
+
+// isNotFound reports whether the error is S3's "this object does not exist". HeadObject reports
+// it as a bare 404 with code NotFound, GetObject as NoSuchKey.
+func isNotFound(err error) bool {
+	var notFound *types.NotFound
+	if errors.As(err, &notFound) {
+		return true
+	}
+	var noSuchKey *types.NoSuchKey
+	if errors.As(err, &noSuchKey) {
+		return true
+	}
+	var apiErr smithy.APIError
+	if errors.As(err, &apiErr) {
+		code := apiErr.ErrorCode()
+		return code == "NotFound" || code == "NoSuchKey" || code == "404"
+	}
+	return false
 }

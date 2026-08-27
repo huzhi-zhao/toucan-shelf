@@ -34,21 +34,10 @@ var (
 		Use:   "memos",
 		Short: `An open source, lightweight note-taking service. Easily capture and share your great thoughts.`,
 		Run: func(_ *cobra.Command, _ []string) {
-			instanceProfile := &profile.Profile{
-				Demo:        viper.GetBool("demo"),
-				Addr:        viper.GetString("addr"),
-				Port:        viper.GetInt("port"),
-				UNIXSock:    viper.GetString("unix-sock"),
-				Data:        viper.GetString("data"),
-				Driver:      viper.GetString("driver"),
-				DSN:         viper.GetString("dsn"),
-				InstanceURL: viper.GetString("instance-url"),
-			}
-			instanceProfile.Version = version.GetCurrentVersion()
-			instanceProfile.Commit = version.Commit
 			webhook.AllowPrivateIPs = viper.GetBool("allow-private-webhooks")
 
-			if err := instanceProfile.Validate(); err != nil {
+			instanceProfile, err := newInstanceProfile()
+			if err != nil {
 				slog.Error("failed to validate profile", "error", err)
 				return
 			}
@@ -164,6 +153,27 @@ func init() {
 	viper.AutomaticEnv()
 
 	rootCmd.AddCommand(versionCmd)
+}
+
+// newInstanceProfile builds the runtime profile from the resolved flags/environment. Every
+// entry point needs it, not just the server: the CLI subcommands talk to the same database.
+func newInstanceProfile() (*profile.Profile, error) {
+	instanceProfile := &profile.Profile{
+		Demo:        viper.GetBool("demo"),
+		Addr:        viper.GetString("addr"),
+		Port:        viper.GetInt("port"),
+		UNIXSock:    viper.GetString("unix-sock"),
+		Data:        viper.GetString("data"),
+		Driver:      viper.GetString("driver"),
+		DSN:         viper.GetString("dsn"),
+		InstanceURL: viper.GetString("instance-url"),
+	}
+	instanceProfile.Version = version.GetCurrentVersion()
+	instanceProfile.Commit = version.Commit
+	if err := instanceProfile.Validate(); err != nil {
+		return nil, err
+	}
+	return instanceProfile, nil
 }
 
 func printGreetings(profile *profile.Profile) {

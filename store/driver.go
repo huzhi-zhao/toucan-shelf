@@ -3,6 +3,8 @@ package store
 import (
 	"context"
 	"database/sql"
+
+	storepb "github.com/usememos/memos/proto/gen/store"
 )
 
 // Driver is an interface for store driver.
@@ -24,6 +26,7 @@ type Driver interface {
 	UpdateAttachment(ctx context.Context, update *UpdateAttachment) error
 	DeleteAttachment(ctx context.Context, delete *DeleteAttachment) error
 	DeleteAttachments(ctx context.Context, deletes []*DeleteAttachment) error
+	CountAttachmentsByStorageType(ctx context.Context) (map[storepb.AttachmentStorageType]int, error)
 
 	// Memo model related methods.
 	CreateMemo(ctx context.Context, create *Memo) (*Memo, error)
