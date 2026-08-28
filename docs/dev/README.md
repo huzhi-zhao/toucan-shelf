@@ -7,6 +7,7 @@
 docs/dev/
 ├── README.md                    # 索引（需重写，现在还是原项目内容）
 ├── roadmap.md
+├── subdomain-boundaries.md      # 子域划分与依赖方向规则
 ├── platform-architecture.md
 ├── requirements/
 │   ├── README.md                # 域清单 + 建域规则
@@ -150,6 +151,8 @@ design doc 是给三个月后的人读的，下面这四类内容三个月后全
   未满 3 篇准入线暂平铺于此
 - [standalone-local-deploy.md](standalone-local-deploy.md) —— 单机本地部署：打包、S3 备份
   现状与已知问题、首启引导
+- [subdomain-boundaries.md](subdomain-boundaries.md) —— DDD 子域划分：核心域/支撑域的
+  分类结果与判定顺序、依赖方向规则、边界的三种长相与当前偏离
 
 - [roadmap.md](roadmap.md) —— 能力阶段：每块能力交付到了什么程度，以及交付过程中
   定下的、读代码之前不容易看出来的结构性事实。**不写待办**——未竟事项在仓库根目录的
@@ -177,7 +180,7 @@ design doc 是给三个月后的人读的，下面这四类内容三个月后全
 
 ### adr/ —— 为什么这么选（事件，不改名不删除）
 
-编号从 `0001` 起，一经分配不回收，当前已到 `0018`：
+编号从 `0001` 起，一经分配不回收，当前已到 `0019`：
 
 - [0001](adr/0001-attachment-proxy-not-presigned-url.md) 附件走服务端代理，不用 S3 预签名直连
 - [0002](adr/0002-private-attachments-reuse-master-passphrase.md) 私密附件复用账号主口令
@@ -197,6 +200,7 @@ design doc 是给三个月后的人读的，下面这四类内容三个月后全
 - [0016](adr/0016-no-multi-instance-lease.md) 不支持多端写入，靠文档约束
 - [0017](adr/0017-drawio-svg-with-embedded-xml.md) draw.io 图存成带内嵌 XML 的 SVG 附件
 - [0018](adr/0018-html-to-markdown-via-turndown.md) 粘贴的 HTML 用 turndown 转 Markdown
+- [0019](adr/0019-subdomain-boundaries-not-a-plugin-system.md) 不做插件系统，用 DDD 子域边界管理"核心 / 外围"
 
 ### design/ —— 一次变更打算怎么做（事件）
 
@@ -234,6 +238,8 @@ design doc 是给三个月后的人读的，下面这四类内容三个月后全
   —— draw.io SVG 图的渲染与回写的分阶段实施计划
 - [20260823-public-publishing/](design/20260823-public-publishing/)
   —— 对外发布：快照模型的数据表、发布管线、站点搜索索引、分阶段切分与风险登记
+- [20260826-attachment-object-migration.md](design/20260826-attachment-object-migration.md)
+  —— 附件对象迁移：目标 key 的计算规则与幂等性、复制路径、存储后端锁定、分阶段与风险登记
 
 > `docs/plans/` 下 2026-07-03 及之后的方案文档已按上述计划拆入本目录并从 `docs/plans/`
 > 删除（原文保留在 git history）。2026-03～2026-04 的 6 个方案目录判定与本 fork 增量
@@ -248,6 +254,9 @@ design doc 是给三个月后的人读的，下面这四类内容三个月后全
   —— Obsidian 知识库迁移上线记录：空跑实测数据、执行中改掉的方案内容
 - [20260823-public-publishing.md](launch/20260823-public-publishing.md)
   —— 对外发布分阶段上线：前置准备、实操步骤、盯盘项、后置条件与人工验收清单
+- [20260826-attachment-object-migration.md](launch/20260826-attachment-object-migration.md)
+  —— 附件对象迁移分阶段上线（**初稿，开发完成后定稿**）：不删源的知情确认、
+  dry-run 先行、幂等性现场验证与人工验收清单
 
 ### postmortem/ —— 事件
 

@@ -232,6 +232,11 @@ func (s *APIV1Service) UpdateInstanceSetting(ctx context.Context, request *v1pb.
 			}
 		}
 	case storepb.InstanceSettingKey_STORAGE:
+		if storage := updateSetting.GetStorageSetting(); storage != nil {
+			if err := s.checkAttachmentStorageSwitch(ctx, storage.StorageType); err != nil {
+				return nil, err
+			}
+		}
 		if storage := updateSetting.GetStorageSetting(); storage != nil && storage.S3Config != nil {
 			s3Config := storage.S3Config
 			// Trim accidental leading/trailing whitespace (commonly picked up when copy-pasting
@@ -308,6 +313,83 @@ func embeddingSignature(cfg *storepb.EmbeddingConfig) string {
 }
 
 // BackupNow triggers an immediate SQLite database backup to the configured S3 storage.
+// attachmentStorageTypeFor maps an instance storage backend to the AttachmentStorageType its
+// attachments carry. Blobs kept in the database row have no storage type at all (the column is
+// empty), which decodes to UNSPECIFIED.
+func attachmentStorageTypeFor(storageType storepb.InstanceStorageSetting_StorageType) storepb.AttachmentStorageType {
+	switch storageType {
+	case storepb.InstanceStorageSetting_LOCAL:
+		return storepb.AttachmentStorageType_LOCAL
+	case storepb.InstanceStorageSetting_S3:
+		return storepb.AttachmentStorageType_S3
+	default:
+		return storepb.AttachmentStorageType_ATTACHMENT_STORAGE_TYPE_UNSPECIFIED
+	}
+}
+
+func instanceStorageTypeLabel(storageType storepb.InstanceStorageSetting_StorageType) string {
+	switch storageType {
+	case storepb.InstanceStorageSetting_LOCAL:
+		return "local storage"
+	case storepb.InstanceStorageSetting_S3:
+		return "S3 storage"
+	default:
+		return "database storage"
+	}
+}
+
+// checkAttachmentStorageSwitch refuses to flip the active attachment backend while attachments
+// still live in the current one. An instance is meant to be entirely local or entirely S3: a
+// mixed instance forces every later question (backup, migration, capacity) to be answered twice,
+// and nothing needs that flexibility. Switching is allowed only after the existing attachments
+// have been migrated over (see docs/dev/requirements/storage/20260826-attachment-object-migration.md).
+//
+// EXTERNAL attachments are exempt: their bytes were never held by this instance.
+func (s *APIV1Service) checkAttachmentStorageSwitch(ctx context.Context, target storepb.InstanceStorageSetting_StorageType) error {
+	if target == storepb.InstanceStorageSetting_STORAGE_TYPE_UNSPECIFIED {
+		return nil
+	}
+	existing, err := s.Store.GetInstanceStorageSetting(ctx)
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to get instance storage setting: %v", err)
+	}
+	if existing == nil || existing.StorageType == target {
+		return nil
+	}
+
+	counts, err := s.Store.CountAttachmentsByStorageType(ctx)
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to count attachments by storage type: %v", err)
+	}
+	targetAttachmentType := attachmentStorageTypeFor(target)
+	for attachmentType, count := range counts {
+		if count == 0 || attachmentType == targetAttachmentType || attachmentType == storepb.AttachmentStorageType_EXTERNAL {
+			continue
+		}
+		return status.Errorf(
+			codes.FailedPrecondition,
+			"cannot switch attachment storage to %s: %d attachment(s) still stored in %s. Migrate them first",
+			instanceStorageTypeLabel(target),
+			count,
+			attachmentStorageTypeLabel(attachmentType),
+		)
+	}
+	return nil
+}
+
+func attachmentStorageTypeLabel(storageType storepb.AttachmentStorageType) string {
+	switch storageType {
+	case storepb.AttachmentStorageType_LOCAL:
+		return "local storage"
+	case storepb.AttachmentStorageType_S3:
+		return "S3 storage"
+	case storepb.AttachmentStorageType_EXTERNAL:
+		return "external storage"
+	default:
+		return "the database"
+	}
+}
+
 func (s *APIV1Service) BackupNow(ctx context.Context, _ *v1pb.BackupNowRequest) (*v1pb.BackupNowResponse, error) {
 	user, err := s.fetchCurrentUser(ctx)
 	if err != nil {

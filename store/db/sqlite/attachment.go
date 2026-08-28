@@ -260,3 +260,28 @@ func (d *DB) DeleteAttachments(ctx context.Context, deletes []*store.DeleteAttac
 	tx = nil
 	return nil
 }
+
+// CountAttachmentsByStorageType returns how many attachments sit in each storage backend.
+// The `storage_type` column holds the enum name, with the empty string meaning
+// ATTACHMENT_STORAGE_TYPE_UNSPECIFIED — i.e. the blob lives in the row itself (DATABASE).
+func (d *DB) CountAttachmentsByStorageType(ctx context.Context) (map[storepb.AttachmentStorageType]int, error) {
+	rows, err := d.db.QueryContext(ctx, "SELECT `storage_type`, COUNT(*) FROM `attachment` GROUP BY `storage_type`")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	counts := make(map[storepb.AttachmentStorageType]int)
+	for rows.Next() {
+		var storageType string
+		var count int
+		if err := rows.Scan(&storageType, &count); err != nil {
+			return nil, err
+		}
+		counts[storepb.AttachmentStorageType(storepb.AttachmentStorageType_value[storageType])] += count
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return counts, nil
+}
