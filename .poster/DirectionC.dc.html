@@ -1,0 +1,76 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; }
+    a { color: #1F3BAB; } a:hover { color: #16268a; }
+  </style>
+</helmet>
+
+<!-- LOW-FI SKETCH — "Show the product": the three-pane app dominates, features are a caption strip -->
+<div style="width: 960px; height: 540px; box-sizing: border-box; padding: 32px 36px; background: #FFFFFF; display: flex; flex-direction: column; gap: 20px; font-family: system-ui, sans-serif; color: #12172B;">
+
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <div style="width: 26px; height: 26px; border: 2px dashed #B9C0D6; border-radius: 3px;"></div>
+      <span style="font-size: 17px; font-weight: 700; letter-spacing: -0.01em;">ToucanShelf</span>
+    </div>
+    <div style="font-size: 19px; font-weight: 600; letter-spacing: -0.015em; color: #3A4260;">Everything you know, and everything you keep.</div>
+  </div>
+
+  <!-- app mock: three panes -->
+  <div style="flex-grow: 1; border: 1.5px solid #D5DAE8; border-radius: 6px; display: flex; overflow: hidden; background: #FAFBFD;">
+    <!-- folder tree -->
+    <div style="width: 168px; border-right: 1.5px solid #E3E7F1; padding: 14px 12px; display: flex; flex-direction: column; gap: 9px;">
+      <div style="height: 7px; width: 62%; background: #C3CAD9; border-radius: 2px;"></div>
+      <div style="height: 7px; width: 84%; background: #1F3BAB; border-radius: 2px;"></div>
+      <div style="height: 7px; width: 52%; background: #DDE1EC; border-radius: 2px; margin-left: 14px;"></div>
+      <div style="height: 7px; width: 66%; background: #DDE1EC; border-radius: 2px; margin-left: 14px;"></div>
+      <div style="height: 7px; width: 58%; background: #DDE1EC; border-radius: 2px; margin-left: 28px;"></div>
+      <div style="height: 7px; width: 74%; background: #C3CAD9; border-radius: 2px;"></div>
+      <div style="height: 7px; width: 48%; background: #DDE1EC; border-radius: 2px; margin-left: 14px;"></div>
+      <div style="margin-top: auto; height: 26px; border: 1.5px dashed #F7B511; border-radius: 3px; display: flex; align-items: center; padding-left: 8px; font-size: 9px; color: #A5771A; letter-spacing: 0.04em;">NAS · planned</div>
+    </div>
+    <!-- gallery / cards -->
+    <div style="flex-grow: 1; padding: 14px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-content: start;">
+      <div style="height: 88px; background: #E8ECF6; border-radius: 4px;"></div>
+      <div style="height: 88px; background: #E8ECF6; border-radius: 4px;"></div>
+      <div style="height: 88px; background: #E8ECF6; border-radius: 4px;"></div>
+      <div style="height: 88px; background: #E8ECF6; border-radius: 4px;"></div>
+      <div style="height: 88px; background: #DCE2F4; border-radius: 4px;"></div>
+      <div style="height: 88px; background: #E8ECF6; border-radius: 4px;"></div>
+      <div style="grid-column: span 3; height: 34px; border: 1.5px solid #E3E7F1; border-radius: 4px; display: flex; align-items: center; padding: 0 10px; gap: 8px; background: #FFFFFF;">
+        <div style="width: 12px; height: 12px; border: 1.5px solid #9AA3BE; border-radius: 50%;"></div>
+        <div style="height: 6px; width: 34%; background: #DDE1EC; border-radius: 2px;"></div>
+        <div style="margin-left: auto; font-size: 9px; color: #8791AE;">hybrid search</div>
+      </div>
+    </div>
+    <!-- outline -->
+    <div style="width: 132px; border-left: 1.5px solid #E3E7F1; padding: 14px 12px; display: flex; flex-direction: column; gap: 8px;">
+      <div style="height: 6px; width: 70%; background: #DDE1EC; border-radius: 2px;"></div>
+      <div style="height: 6px; width: 52%; background: #DDE1EC; border-radius: 2px; margin-left: 10px;"></div>
+      <div style="height: 6px; width: 60%; background: #DDE1EC; border-radius: 2px; margin-left: 10px;"></div>
+      <div style="height: 6px; width: 44%; background: #DDE1EC; border-radius: 2px;"></div>
+    </div>
+  </div>
+
+  <!-- caption strip -->
+  <div style="display: flex; gap: 0; border-top: 2px solid #12172B; padding-top: 12px;">
+    <div style="flex-grow: 1; font-size: 11px; font-weight: 600;">Hierarchy</div>
+    <div style="flex-grow: 1; font-size: 11px; font-weight: 600;">Attachments + NAS</div>
+    <div style="flex-grow: 1; font-size: 11px; font-weight: 600;">Gallery views</div>
+    <div style="flex-grow: 1; font-size: 11px; font-weight: 600;">View blocks</div>
+    <div style="flex-grow: 1; font-size: 11px; font-weight: 600;">memogit + MCP</div>
+    <div style="flex-grow: 1; font-size: 11px; font-weight: 600;">RAG search</div>
+    <div style="flex-grow: 1; font-size: 11px; font-weight: 600;">Publish</div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
