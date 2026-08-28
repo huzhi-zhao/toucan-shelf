@@ -3,7 +3,7 @@ import { useInstance } from "@/contexts/InstanceContext";
 
 const usePageTitle = (title?: string) => {
   const { generalSetting } = useInstance();
-  const brand = generalSetting.customProfile?.title || "Memos";
+  const brand = generalSetting.customProfile?.title || "ToucanShelf";
 
   useEffect(() => {
     document.title = title ? `${title} - ${brand}` : brand;
