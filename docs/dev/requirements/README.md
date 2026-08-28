@@ -82,6 +82,8 @@
 - [20260826-attachment-object-migration.md](storage/20260826-attachment-object-migration.md)
   —— 附件对象迁移：换桶/换根路径不改 URL、旧附件归入知识库目录、
   存储后端不可中途切换
+- [external-resource-roots.md](storage/external-resource-roots.md)
+  —— 外部资源根：索引 NAS 上已存在的文件、只读边界、能力分层与扫描策略
 
 ### 根下平铺（同域文档不足 3 篇或跨域，暂不收进目录）
 
