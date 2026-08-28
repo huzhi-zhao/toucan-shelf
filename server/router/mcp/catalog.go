@@ -159,7 +159,18 @@ func requestBodySchema(operation *openAPIOperation) jsonSchema {
 	if operation.RequestBodySchema == nil {
 		return jsonSchema{"type": "object"}
 	}
-	return cloneSchema(operation.RequestBodySchema)
+	schema := cloneSchema(operation.RequestBodySchema)
+	// A PATCH body is a partial resource: what is actually written is whatever
+	// update_mask names. The generated OpenAPI body schema is the full resource
+	// schema, so its `required` list (state, content, visibility on Memo) would
+	// force a caller doing a content-only edit to echo fields it must not touch —
+	// and visibility is denied to the agent channel outright
+	// (checkAgentWritableFields), making "required by the schema, forbidden by the
+	// server" an unsatisfiable pair. Drop `required` for PATCH.
+	if strings.EqualFold(operation.Method, "PATCH") {
+		delete(schema, "required")
+	}
+	return schema
 }
 
 func outputSchemaForOperation(operation *openAPIOperation) jsonSchema {

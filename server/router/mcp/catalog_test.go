@@ -224,3 +224,26 @@ func TestBuildCuratedToolsRejectsDuplicateToolNames(t *testing.T) {
 	_, _, err := buildCuratedTools(registry)
 	require.ErrorContains(t, err, "duplicate MCP tool name")
 }
+
+func TestPatchRequestBodyDropsRequiredFields(t *testing.T) {
+	// update_memo's body is the full Memo schema, whose `required` list includes
+	// visibility — a field the agent channel forbids writing. Leaving it required
+	// makes a content-only edit impossible: the schema demands the field, the
+	// server rejects it.
+	spec, err := loadOpenAPISpec("../../../proto/gen/openapi.yaml")
+	require.NoError(t, err)
+	registry, err := buildOperationRegistry(spec)
+	require.NoError(t, err)
+
+	_, registered := buildToolFromOperation(registry["MemoService_UpdateMemo"])
+	body, ok := registered.InputSchema["properties"].(map[string]any)["body"].(jsonSchema)
+	require.True(t, ok)
+	require.NotContains(t, body, "required")
+
+	// A minimal content-only update validates.
+	require.NoError(t, validateToolArguments(registered.InputSchema, map[string]any{
+		"memo":       "memos/abc",
+		"updateMask": "content",
+		"body":       map[string]any{"content": "hello"},
+	}))
+}
