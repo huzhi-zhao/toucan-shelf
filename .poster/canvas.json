@@ -1,0 +1,24 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1920, "h": 1080, "title": "Poster — 1920×1080" },
+    { "file": "DirectionB.dc.html", "x": 0, "y": 1240, "w": 960, "h": 540, "title": "Sketch B — Paper index" },
+    { "file": "DirectionC.dc.html", "x": 1080, "y": 1240, "w": 960, "h": 540, "title": "Sketch C — Show the product" }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "x": 2060,
+      "y": 0,
+      "w": 300,
+      "text": "Main poster is the deliverable.\n\nSeven capabilities, numbered 01–07.\n01 gets the wide hero tile because the hierarchy is what everything else hangs off.\n\nNAS carries a PLANNED chip inside tile 02 — it is the one thing on here that does not exist yet."
+    },
+    {
+      "id": "sketches",
+      "x": 2060,
+      "y": 1240,
+      "w": 300,
+      "text": "Two alternates, low-fi on purpose.\n\nB — paper/editorial, features as a numbered index. Calmer, reads like a spec sheet.\n\nC — the app itself dominates, features shrink to a caption strip. Shows rather than tells, but needs a real screenshot to land."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

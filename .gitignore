@@ -41,3 +41,7 @@ web/coverage/
 
 # memogit CLI build artifact
 /memogit
+
+# design canvas: generated payload (~2.5MB) and the logo copy the seeder needs
+/.poster/toucanshelf-poster.html
+/.poster/logo.svg

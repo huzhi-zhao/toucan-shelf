@@ -1,0 +1,206 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #FDCC3E; text-decoration: none; }
+    a:hover { color: #F7B511; }
+    .tile-body { text-wrap: pretty; }
+  </style>
+</helmet>
+
+<div style="width: 1920px; height: 1080px; box-sizing: border-box; padding: 72px; background: #0F1C41; display: flex; gap: 72px; font-family: 'IBM Plex Sans', system-ui, sans-serif; overflow: hidden; position: relative;">
+
+  <!-- corner rule -->
+  <div style="position: absolute; top: 0; left: 0; width: 100%; height: 6px; background: {{accent}};"></div>
+
+  <!-- ============ LEFT: identity + promise ============ -->
+  <div style="width: 640px; flex-shrink: 0; display: flex; flex-direction: column;">
+
+    <div style="display: flex; align-items: center; gap: 18px;">
+      <img src="logo.svg" alt="ToucanShelf" style="width: 76px; height: 76px; display: block;">
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <div style="font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-weight: 800; font-size: 34px; color: #F4F1E8; letter-spacing: -0.02em;">ToucanShelf</div>
+        <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-weight: 500; font-size: 12px; color: {{accent}}; letter-spacing: 0.16em;">SELF-HOSTED KNOWLEDGE BASE</div>
+      </div>
+    </div>
+
+    <div style="height: 64px;"></div>
+
+    <h1 style="margin: 0; font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-weight: 800; font-size: 72px; line-height: 1.03; letter-spacing: -0.035em; color: #F4F1E8; overflow-wrap: break-word;">
+      Everything<br>you know,<br>and everything<br>you <span style="color: {{accent}};">keep.</span>
+    </h1>
+
+    <div style="height: 30px;"></div>
+
+    <p style="margin: 0; font-size: 20px; line-height: 1.55; color: #9AA7CC; max-width: 560px; text-wrap: pretty;">
+      A hierarchical knowledge base with Notion-style views, AI-native
+      collaboration, and a place for the files you already have.
+    </p>
+
+    <div style="flex-grow: 1;"></div>
+
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      <div style="display: flex; gap: 10px;">
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; color: #0F1C41; background: {{accent}}; padding: 9px 16px; font-weight: 500;">Single Go binary</span>
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; color: #C7D0EA; border: 1px solid rgba(244,241,232,0.22); padding: 9px 16px; font-weight: 500;">SQLite · no CGO</span>
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; color: #C7D0EA; border: 1px solid rgba(244,241,232,0.22); padding: 9px 16px; font-weight: 500;">MIT</span>
+      </div>
+
+      <div style="height: 1px; background: rgba(244,241,232,0.16);"></div>
+
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 24px;">
+        <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 16px; color: #F4F1E8;">github.com/huzhi-zhao/toucan-shelf</div>
+        <div style="font-size: 13px; color: #6F7EA8;">A respectful fork of usememos/memos</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============ RIGHT: capability field ============ -->
+  <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 24px;">
+
+    <!-- hero capability -->
+    <div style="background: #1F3BAB; padding: 26px 30px; display: flex; gap: 24px; align-items: flex-start;">
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding-top: 3px;">
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: {{accent}}; letter-spacing: 0.1em;">01</span>
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#F4F1E8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 4h6l1.6 2H21v5"></path><path d="M3 4v14"></path>
+          <path d="M3 11h6"></path><path d="M3 18h6"></path>
+          <rect x="11" y="8.5" width="10" height="5"></rect><rect x="11" y="15.5" width="10" height="5"></rect>
+        </svg>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div style="font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-weight: 600; font-size: 25px; color: #FFFFFF; letter-spacing: -0.015em;">Hierarchical Knowledge Base</div>
+        <div class="tile-body" style="font-size: 16px; line-height: 1.5; color: #C3CDF2; max-width: 900px;">
+          Workspaces, multi-level folder paths and a visual Bookshelf — Yuque's depth without its weight.
+          Read and edit from any browser; there is no desktop app to install or sync.
+        </div>
+      </div>
+    </div>
+
+    <!-- 2 x 3 grid -->
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; flex-grow: 1;">
+
+      <!-- 02 -->
+      <div style="background: #16265A; border: 1px solid rgba(244,241,232,0.09); padding: 24px 26px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: {{accent}}; letter-spacing: 0.1em;">02</span>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8FA3DE" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="5.5"></rect><rect x="3" y="14.5" width="18" height="5.5"></rect>
+            <path d="M6.5 6.75h.01"></path><path d="M6.5 17.25h.01"></path>
+          </svg>
+          <div style="font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-weight: 600; font-size: 21px; color: #F4F1E8; letter-spacing: -0.01em;">Attachments &amp; Storage</div>
+        </div>
+        <div class="tile-body" style="font-size: 15px; line-height: 1.5; color: #9AA7CC;">
+          S3-compatible object storage with per-workspace prefixes, served through the app — never a bare presigned URL.
+        </div>
+        <div style="display: flex; align-items: flex-start; gap: 10px; margin-top: auto; padding-top: 12px; border-top: 1px dashed rgba(247,181,17,0.35);">
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10px; color: #0F1C41; background: {{accent}}; padding: 3px 7px; letter-spacing: 0.08em; flex-shrink: 0;">PLANNED</span>
+          <span style="font-size: 14px; line-height: 1.45; color: #C6A354;">NAS resource roots — index the files already on your disks. Never re-upload them.</span>
+        </div>
+      </div>
+
+      <!-- 03 -->
+      <div style="background: #16265A; border: 1px solid rgba(244,241,232,0.09); padding: 24px 26px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: {{accent}}; letter-spacing: 0.1em;">03</span>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8FA3DE" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3.5" width="8" height="8"></rect><rect x="13" y="3.5" width="8" height="8"></rect>
+            <rect x="3" y="13.5" width="8" height="7"></rect><rect x="13" y="13.5" width="8" height="7"></rect>
+          </svg>
+          <div style="font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-weight: 600; font-size: 21px; color: #F4F1E8; letter-spacing: -0.01em;">Gallery Views</div>
+        </div>
+        <div class="tile-body" style="font-size: 15px; line-height: 1.5; color: #9AA7CC;">
+          Notion-style card walls scoped by folder, tag or property. A view document holds configuration only —
+          it always reflects current data, never a stale snapshot.
+        </div>
+      </div>
+
+      <!-- 04 -->
+      <div style="background: #16265A; border: 1px solid rgba(244,241,232,0.09); padding: 24px 26px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: {{accent}}; letter-spacing: 0.1em;">04</span>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8FA3DE" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="5" width="18" height="16"></rect><path d="M3 10h18"></path>
+            <path d="M8 3v4"></path><path d="M16 3v4"></path>
+            <path d="M7.5 14h2"></path><path d="M14.5 14h2"></path><path d="M7.5 17.5h2"></path>
+          </svg>
+          <div style="font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-weight: 600; font-size: 21px; color: #F4F1E8; letter-spacing: -0.01em;">View Blocks</div>
+        </div>
+        <div class="tile-body" style="font-size: 15px; line-height: 1.5; color: #9AA7CC;">
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 14px; color: #C3CDF2;">calendar · kanban · grid · sheets</span>
+          — interactive fenced blocks with write-back gestures straight from the preview.
+        </div>
+      </div>
+
+      <!-- 05 -->
+      <div style="background: #16265A; border: 1px solid rgba(244,241,232,0.09); padding: 24px 26px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: {{accent}}; letter-spacing: 0.1em;">05</span>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8FA3DE" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="6" cy="5.5" r="2.5"></circle><circle cx="6" cy="18.5" r="2.5"></circle><circle cx="18" cy="12" r="2.5"></circle>
+            <path d="M6 8v8"></path><path d="M8.5 6.5c5 1 5 4.2 7 5"></path><path d="M8.5 17.5c5-1 5-4.2 7-5"></path>
+          </svg>
+          <div style="font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-weight: 600; font-size: 21px; color: #F4F1E8; letter-spacing: -0.01em;">AI Agent Collaboration</div>
+        </div>
+        <div class="tile-body" style="font-size: 15px; line-height: 1.5; color: #9AA7CC;">
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 14px; color: #C3CDF2;">memogit</span>
+          checks a base out to plain files; <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 14px; color: #C3CDF2;">MCP</span>
+          reaches it over HTTP with nothing on disk. Both snapshot a human baseline first.
+        </div>
+      </div>
+
+      <!-- 06 -->
+      <div style="background: #16265A; border: 1px solid rgba(244,241,232,0.09); padding: 24px 26px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: {{accent}}; letter-spacing: 0.1em;">06</span>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8FA3DE" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.2 15.2 21 21"></path>
+            <path d="M7.5 9.5h6"></path><path d="M7.5 12.5h4"></path>
+          </svg>
+          <div style="font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-weight: 600; font-size: 21px; color: #F4F1E8; letter-spacing: -0.01em;">Hybrid RAG Search</div>
+        </div>
+        <div class="tile-body" style="font-size: 15px; line-height: 1.5; color: #9AA7CC;">
+          FTS5 keyword retrieval and vector similarity, fused and re-ranked — with a keyword fallback
+          that covers every document type.
+        </div>
+      </div>
+
+      <!-- 07 -->
+      <div style="background: #16265A; border: 1px solid rgba(244,241,232,0.09); padding: 24px 26px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: {{accent}}; letter-spacing: 0.1em;">07</span>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8FA3DE" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"></circle><path d="M3 12h18"></path>
+            <path d="M12 3c2.4 2.6 3.6 5.6 3.6 9s-1.2 6.4-3.6 9c-2.4-2.6-3.6-5.6-3.6-9s1.2-6.4 3.6-9z"></path>
+          </svg>
+          <div style="font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-weight: 600; font-size: 21px; color: #F4F1E8; letter-spacing: -0.01em;">Publish &amp; Share</div>
+        </div>
+        <div class="tile-body" style="font-size: 15px; line-height: 1.5; color: #9AA7CC;">
+          Send a document to your own public site: themes, a navigation tree, sitemap and canonical URLs —
+          and a real 410 when you withdraw it.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#F7B511","options":["#F7B511","#FDCC3E","#BD5D41","#8FA3DE"],"section":"Theme"},"$preview":{"width":1920,"height":1080}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#F7B511' };
+  }
+}
+</script>
+</body>
+</html>

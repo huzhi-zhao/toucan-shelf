@@ -3,7 +3,7 @@
 > A hierarchical, view-powered knowledge base built on top of
 > [**Memos**](https://github.com/usememos/memos).
 
-![overview](docs/images/overview.svg)
+![overview](docs/images/overview.jpg)
 <img align="right" height="96px" src="web/public/logo.svg" alt="ToucanShelf" />
 
 This project is a fork of the excellent open-source
