@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	v1pb "github.com/usememos/memos/proto/gen/api/v1"
 )
 
 func TestRelPath(t *testing.T) {
@@ -142,11 +144,42 @@ func TestCanonicalHashIgnoresTrailingNewlines(t *testing.T) {
 }
 
 func TestScopedFilter(t *testing.T) {
-	if got := scopedFilter("alice", ""); got != `creator == "users/alice"` {
+	user := syncScope{Username: "alice"}
+	if got := scopedFilter(user, ""); got != `creator == "users/alice"` {
 		t.Errorf("no extra: got %q", got)
 	}
-	if got := scopedFilter("alice", `"work" in tags`); got != `(creator == "users/alice") && ("work" in tags)` {
+	if got := scopedFilter(user, `"work" in tags`); got != `(creator == "users/alice") && ("work" in tags)` {
 		t.Errorf("with extra: got %q", got)
+	}
+
+	// An admin syncs the whole workspace: no authorship clause, so a document
+	// created by another account (or by a second account of their own) is still
+	// checked out, pulled and pushed.
+	admin := syncScope{Username: "alice", Admin: true}
+	if got := scopedFilter(admin, ""); got != "" {
+		t.Errorf("admin, no extra: want empty filter, got %q", got)
+	}
+	if got := scopedFilter(admin, `"work" in tags`); got != `"work" in tags` {
+		t.Errorf("admin, with extra: got %q", got)
+	}
+}
+
+func TestScopeOf(t *testing.T) {
+	if got := scopeOf(&v1pb.User{Username: "alice", Role: v1pb.User_USER}); got.Admin || got.Username != "alice" {
+		t.Errorf("plain user: got %+v", got)
+	}
+	if got := scopeOf(&v1pb.User{Username: "root", Role: v1pb.User_ADMIN}); !got.Admin {
+		t.Errorf("admin: got %+v", got)
+	}
+}
+
+func TestAndFilter(t *testing.T) {
+	// An unfiltered admin must not produce a dangling "() && (...)".
+	if got := andFilter("", "updated_ts > timestamp(1)"); got != "updated_ts > timestamp(1)" {
+		t.Errorf("empty scope: got %q", got)
+	}
+	if got := andFilter(`creator == "users/alice"`, "x"); got != `(creator == "users/alice") && (x)` {
+		t.Errorf("with scope: got %q", got)
 	}
 }
 

@@ -18,6 +18,20 @@ export interface DocumentLinkContextValue {
    * autocomplete has nothing to offer and stays silent.
    */
   listDocuments?: () => Array<{ path: string; title: string }>;
+  /**
+   * Folder of the document whose content is being rendered ("" at the workspace
+   * root). Document-relative hrefs (`./x.md`, `../fb/x.md`) resolve against it,
+   * so it must track the document the markdown actually came from — not the
+   * page's own document. Absent means relative hrefs cannot be resolved.
+   */
+  baseFolderPath?: string;
+  /**
+   * Same resolution as `resolve`, but against an explicitly given base folder.
+   * Embedded content (`![[...]]`) is rendered inside the *host* document's
+   * provider, so it needs this to resolve its own relative links against its
+   * own folder rather than the host's.
+   */
+  resolveFrom?: (baseFolderPath: string, href: string) => string | undefined;
 }
 
 const DocumentLinkContext = createContext<DocumentLinkContextValue | null>(null);
@@ -107,19 +121,6 @@ function findDocInFolder(tree: WorkspaceTreeNode[], folderSegments: string[], ti
 }
 
 /**
- * Resolves a workspace-root-relative markdown href ("/doc/api.md") against a workspace tree,
- * returning the target memo resource name. This ports ResolveRootRelativePath from
- * internal/linkindex/resolve.go: the final path segment names the document (matched against its
- * title, extension-agnostic, case-insensitive), the leading segments are exact-name folder matches
- * against the workspace root. There is no fallback of any kind — a path that doesn't resolve this
- * way is a broken link, not a cue to search the rest of the tree by title or to try relative
- * navigation. Any change here must be mirrored in ResolveRootRelativePath on the backend, or the
- * two will disagree about which links are broken.
- *
- * Document nodes carry their title as `name`; their stored `path` is folder + UID, so matching is
- * done on folder names + document `name`, never on the stored `path`.
- */
-/**
  * Flattens a workspace tree into its markdown documents as root-relative paths (`node.path` is
  * already workspace-relative and title-terminated, matching what `resolveWorkspacePath` expects
  * back), for the `![[` embed-target autocomplete. `excludeMemoName`, when given, omits that
@@ -140,6 +141,19 @@ export function flattenWorkspaceDocuments(tree: WorkspaceTreeNode[], excludeMemo
   return results;
 }
 
+/**
+ * Resolves a workspace-root-relative markdown href ("/doc/api.md") against a workspace tree,
+ * returning the target memo resource name. This ports ResolveRootRelativePath from
+ * internal/linkindex/resolve.go: the final path segment names the document (matched against its
+ * title, extension-agnostic, case-insensitive), the leading segments are exact-name folder matches
+ * against the workspace root. There is no fallback of any kind — a path that doesn't resolve this
+ * way is a broken link, not a cue to search the rest of the tree by title or to try relative
+ * navigation. Any change here must be mirrored in ResolveRootRelativePath on the backend, or the
+ * two will disagree about which links are broken.
+ *
+ * Document nodes carry their title as `name`; their stored `path` is folder + UID, so matching is
+ * done on folder names + document `name`, never on the stored `path`.
+ */
 export function resolveWorkspacePath(tree: WorkspaceTreeNode[], href: string): string | undefined {
   let path = href;
   try {
@@ -154,4 +168,112 @@ export function resolveWorkspacePath(tree: WorkspaceTreeNode[], href: string): s
   const title = stripExt(segments[segments.length - 1]);
   const folderSegments = segments.slice(0, -1);
   return findDocInFolder(tree, folderSegments, title);
+}
+
+/** The path form a markdown link destination is written in. Mirrors HrefForm in internal/linkindex/resolve.go. */
+export type HrefForm = "absoluteMemo" | "rootRelative" | "relativeExplicit" | "relativeBare" | "external";
+
+/** Matches a URI scheme prefix ("https:", "mailto:") per RFC 3986. */
+const HAS_SCHEME_RE = /^[a-zA-Z][a-zA-Z0-9+.-]*:/;
+
+/**
+ * Decides which path form `href` is written in — the single dispatch point for
+ * every renderer, so the precedence between the forms is stated once instead of
+ * being re-derived at each call site.
+ *
+ * Mirrors ClassifyDocHref in internal/linkindex/resolve.go. The shared cases in
+ * internal/linkindex/testdata/resolve_cases.json pin the two together; add a
+ * case there before changing either side.
+ *
+ * - "relativeExplicit" (`./x.md`, `../fb/x.md`) is unambiguously a document
+ *   reference: not resolving means a broken link.
+ * - "relativeBare" (`x.md`, `sub/x.md`) is indistinguishable from a schemeless
+ *   external destination such as `example.com/page`, so callers must fall back
+ *   to external-link behaviour when it doesn't resolve, NOT show a broken link.
+ * - "@"-prefixed hrefs are reserved for the workspace-qualified form
+ *   (库限定路径) and are excluded up front, so a cross-workspace reference is
+ *   never swallowed by in-workspace relative resolution.
+ */
+export function classifyDocHref(href: string | undefined): HrefForm {
+  if (!href) return "external";
+  if (isAbsoluteMemoHref(href)) return "absoluteMemo";
+  if (href.startsWith("/")) return "rootRelative";
+  if (href.startsWith("#") || href.startsWith("?") || href.startsWith("@")) return "external";
+  if (HAS_SCHEME_RE.test(href)) return "external";
+  if (href.startsWith("./") || href.startsWith("../")) return "relativeExplicit";
+  return "relativeBare";
+}
+
+/** Whether `href` is a document-relative path (文档相对路径), explicit or bare. */
+export function isRelativeDocHref(href: string | undefined): href is string {
+  const form = classifyDocHref(href);
+  return form === "relativeExplicit" || form === "relativeBare";
+}
+
+/**
+ * Applies `relSegments` to `baseSegments`, resolving "." and "..". Returns
+ * undefined when a ".." would climb above the workspace root — a relative path
+ * can never address anything outside its own workspace, so cross-workspace
+ * document-relative references are structurally impossible rather than merely
+ * unsupported.
+ */
+function normalizeRelativeSegments(baseSegments: string[], relSegments: string[]): string[] | undefined {
+  const out = [...baseSegments];
+  for (const seg of relSegments) {
+    if (seg === ".") continue;
+    if (seg === "..") {
+      if (out.length === 0) return undefined;
+      out.pop();
+      continue;
+    }
+    out.push(seg);
+  }
+  return out;
+}
+
+/**
+ * Resolves a document-relative href against the folder the *referencing*
+ * document lives in (`baseFolderPath`, "" at the workspace root), returning the
+ * target memo resource name. Once the segments are normalised, matching is
+ * identical to resolveWorkspacePath. There is no fallback.
+ *
+ * Mirrors ResolveRelativePath in internal/linkindex/resolve.go.
+ */
+export function resolveRelativePath(tree: WorkspaceTreeNode[], baseFolderPath: string, href: string): string | undefined {
+  let path = href;
+  try {
+    path = decodeURIComponent(href);
+  } catch {
+    // keep raw href if it isn't valid percent-encoding
+  }
+  path = path.split(/[?#]/)[0];
+
+  const base = baseFolderPath.split("/").filter((s) => s !== "");
+  const rel = path.split("/").filter((s) => s !== "");
+  const segments = normalizeRelativeSegments(base, rel);
+  if (!segments || segments.length === 0) return undefined;
+
+  const title = stripExt(segments[segments.length - 1]);
+  return findDocInFolder(tree, segments.slice(0, -1), title);
+}
+
+/**
+ * Resolves any in-workspace href form against a workspace tree: the canonical
+ * root-relative form, or a document-relative form interpreted against
+ * `baseFolderPath` (the folder of the document the markdown came from).
+ *
+ * This is what a DocumentLinkProvider should supply as its `resolve`, so the
+ * dispatch between the forms lives in one place rather than at each provider.
+ * Returns undefined for anything that is not an in-workspace document href.
+ */
+export function resolveInWorkspace(tree: WorkspaceTreeNode[], baseFolderPath: string, href: string): string | undefined {
+  switch (classifyDocHref(href)) {
+    case "rootRelative":
+      return resolveWorkspacePath(tree, href);
+    case "relativeExplicit":
+    case "relativeBare":
+      return resolveRelativePath(tree, baseFolderPath, href);
+    default:
+      return undefined;
+  }
 }

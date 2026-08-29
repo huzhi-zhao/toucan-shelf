@@ -5,7 +5,9 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -48,6 +50,7 @@ Typical session:
   ... edit files ...
   memogit status             # what is out of sync
   memogit push               # send local edits back
+  memogit rm "My KB"         # stop tracking it locally (the server is untouched)
 
 Files are the only carrier of content; everything else (doc type, visibility,
 hashes) lives in .memogit/state/. The one exception is the identity marker at
@@ -55,7 +58,7 @@ the end of each document -- never delete, edit, or hand-write it.`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	root.AddCommand(loginCmd(), cloneCmd(), workspacesCmd(), pullCmd(), pushCmd(), statusCmd(), agentsCmd())
+	root.AddCommand(loginCmd(), cloneCmd(), workspacesCmd(), pullCmd(), pushCmd(), statusCmd(), rmCmd(), agentsCmd())
 	return root
 }
 
@@ -258,6 +261,38 @@ func selectWorkspaces(args []string) (string, *memogit.Config, []*memogit.Worksp
 	return root, cfg, targets, nil
 }
 
+// forEachWorkspace runs one sync command over every selected knowledge base,
+// buffering each run's output and printing only the ones that had something to
+// report. A checkout with a dozen knowledge bases is mostly in sync at any
+// moment, and a screenful of "nothing to push" buries the one that matters.
+// When every workspace is quiet a single line says so instead.
+func forEachWorkspace(out io.Writer, targets []*memogit.WorkspaceConfig, quietMsg string,
+	run func(ws *memogit.WorkspaceConfig, out io.Writer) (bool, error)) error {
+	printed := 0
+	for _, ws := range targets {
+		var buf bytes.Buffer
+		quiet, err := run(ws, &buf)
+		if err != nil {
+			// Print what the run managed to say before failing; it is the context
+			// for the error.
+			io.Copy(out, &buf)
+			return fmt.Errorf("workspace %q: %w", ws.Title, err)
+		}
+		if quiet {
+			continue
+		}
+		if printed > 0 {
+			fmt.Fprintln(out)
+		}
+		io.Copy(out, &buf)
+		printed++
+	}
+	if printed == 0 {
+		fmt.Fprintf(out, "%s (%d knowledge base(s), all in sync).\n", quietMsg, len(targets))
+	}
+	return nil
+}
+
 func pullCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "pull [workspace-title]",
@@ -268,15 +303,14 @@ func pullCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			for i, ws := range targets {
-				if i > 0 {
-					fmt.Fprintln(cmd.OutOrStdout())
-				}
-				if _, err := memogit.Pull(cmd.Context(), root, cfg, ws, cmd.OutOrStdout()); err != nil {
-					return fmt.Errorf("workspace %q: %w", ws.Title, err)
-				}
-			}
-			return nil
+			return forEachWorkspace(cmd.OutOrStdout(), targets, "Nothing to pull",
+				func(ws *memogit.WorkspaceConfig, out io.Writer) (bool, error) {
+					res, err := memogit.Pull(cmd.Context(), root, cfg, ws, out)
+					if err != nil {
+						return false, err
+					}
+					return res.Quiet(), nil
+				})
 		},
 	}
 	return cmd
@@ -293,15 +327,14 @@ func pushCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			for i, ws := range targets {
-				if i > 0 {
-					fmt.Fprintln(cmd.OutOrStdout())
-				}
-				if _, err := memogit.Push(cmd.Context(), root, cfg, ws, dryRun, cmd.OutOrStdout()); err != nil {
-					return fmt.Errorf("workspace %q: %w", ws.Title, err)
-				}
-			}
-			return nil
+			return forEachWorkspace(cmd.OutOrStdout(), targets, "Nothing to push",
+				func(ws *memogit.WorkspaceConfig, out io.Writer) (bool, error) {
+					res, err := memogit.Push(cmd.Context(), root, cfg, ws, dryRun, out)
+					if err != nil {
+						return false, err
+					}
+					return res.Quiet(), nil
+				})
 		},
 	}
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "print the push plan without sending changes")
@@ -354,6 +387,37 @@ A path that is already one of your documents is never overwritten.`,
 	}
 }
 
+// rmCmd is the inverse of clone: stop managing one knowledge base locally.
+func rmCmd() *cobra.Command {
+	var force bool
+	cmd := &cobra.Command{
+		Use:   "rm <workspace-title>",
+		Short: "Remove a knowledge base from this checkout (local only; the server is untouched)",
+		Long: `Remove a knowledge base from this checkout.
+
+Deletes its document folder, its sync baseline in .memogit/state/ and its entry
+in config.yaml, then commits the removal. Nothing is deleted on the server: this
+is "stop managing this knowledge base here", and re-cloning it later brings
+everything back.
+
+It refuses to run while the knowledge base is out of sync with the server —
+unpushed edits would be lost without a trace — and while its folder has
+uncommitted git changes, which are the one thing the repo's history could not
+give back. Get in sync first, or pass --force to delete the local copy anyway.`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			root, cfg, targets, err := selectWorkspaces(args)
+			if err != nil {
+				return err
+			}
+			_, err = memogit.Remove(cmd.Context(), root, cfg, targets[0], force, cmd.OutOrStdout())
+			return err
+		},
+	}
+	cmd.Flags().BoolVar(&force, "force", false, "remove even when out of sync or with uncommitted changes (loses unpushed work)")
+	return cmd
+}
+
 func statusCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "status [workspace-title]",
@@ -364,13 +428,22 @@ func statusCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			for i, ws := range targets {
-				if i > 0 {
-					fmt.Fprintln(cmd.OutOrStdout())
-				}
-				if _, err := memogit.Status(cmd.Context(), root, cfg, ws, cmd.OutOrStdout()); err != nil {
-					return fmt.Errorf("workspace %q: %w", ws.Title, err)
-				}
+			dirty := 0
+			if err := forEachWorkspace(cmd.OutOrStdout(), targets, "Nothing to push or pull",
+				func(ws *memogit.WorkspaceConfig, out io.Writer) (bool, error) {
+					res, err := memogit.Status(cmd.Context(), root, cfg, ws, out)
+					if err != nil {
+						return false, err
+					}
+					dirty = res.GitDirty
+					return res.Quiet(), nil
+				}); err != nil {
+				return err
+			}
+			// The working tree belongs to the checkout, not to any one knowledge
+			// base, so report it once at the end rather than per workspace.
+			if dirty > 0 {
+				fmt.Fprintf(cmd.OutOrStdout(), "Local git: %d uncommitted working-tree change(s) (run `git status`).\n", dirty)
 			}
 			return nil
 		},

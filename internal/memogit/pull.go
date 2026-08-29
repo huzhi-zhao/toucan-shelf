@@ -24,6 +24,13 @@ type PullResult struct {
 	Orphaned          []string // paths deleted on server but kept (locally modified)
 }
 
+// Quiet reports whether the pull changed nothing locally and left nothing
+// needing the user's attention.
+func (r *PullResult) Quiet() bool {
+	return r.Added+r.Updated+r.Removed+r.Attachments+r.AttachmentsFailed+
+		len(r.Conflicts)+len(r.Missing)+len(r.Orphaned) == 0
+}
+
 // Pull incrementally fetches memos changed on the server since the last sync,
 // updates local files where only the server changed, and commits. Files where
 // both server and local changed are reported as conflicts and left untouched.
@@ -36,7 +43,7 @@ func Pull(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, ou
 		return nil, fmt.Errorf("config missing workspace; re-run `memogit clone` (older config?)")
 	}
 	client := NewClient(cfg)
-	username, err := client.CurrentUsername(ctx)
+	scope, err := currentScope(ctx, client)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +56,7 @@ func Pull(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, ou
 	sinceUnix := state.LastSync.Unix() - 1
 	// updated_ts is a timestamp field in the CEL schema, so compare against
 	// timestamp(<epoch>) rather than a bare int.
-	filter := fmt.Sprintf("(%s) && updated_ts > timestamp(%d)", scopedFilter(username, ws.Filter), sinceUnix)
+	filter := andFilter(scopedFilter(scope, ws.Filter), fmt.Sprintf("updated_ts > timestamp(%d)", sinceUnix))
 	fmt.Fprintf(out, "Pulling changes since %s (workspace %q) ...\n", state.LastSync.Format(time.RFC3339), ws.Title)
 
 	memos, err := client.ListAllMemos(ctx, ws.Workspace, filter)
@@ -145,7 +152,7 @@ func Pull(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, ou
 	// Reconcile against a full current listing: catches server-side deletions
 	// (never returned by the incremental filter) and path drift (memos whose
 	// folder/title changed without their updated_ts moving).
-	if err := reconcileFullListing(ctx, client, ws, username, contentRoot, state, res, out, warn); err != nil {
+	if err := reconcileFullListing(ctx, client, ws, scope, contentRoot, state, res, out, warn); err != nil {
 		return nil, err
 	}
 
@@ -231,8 +238,8 @@ func syncWorkspaceTitle(ctx context.Context, client *Client, root string, cfg *C
 //     is exported as an add. The incremental filter only ever looks forward from
 //     last_sync, so a memo whose last update predates the watermark is invisible
 //     to it forever; the full listing is the ground truth that closes that gap.
-func reconcileFullListing(ctx context.Context, client *Client, ws *WorkspaceConfig, username, contentRoot string, state *State, res *PullResult, out io.Writer, warn *attachmentWarner) error {
-	current, err := client.ListAllMemos(ctx, ws.Workspace, scopedFilter(username, ws.Filter))
+func reconcileFullListing(ctx context.Context, client *Client, ws *WorkspaceConfig, scope syncScope, contentRoot string, state *State, res *PullResult, out io.Writer, warn *attachmentWarner) error {
+	current, err := client.ListAllMemos(ctx, ws.Workspace, scopedFilter(scope, ws.Filter))
 	if err != nil {
 		return err
 	}

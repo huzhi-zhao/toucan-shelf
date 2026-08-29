@@ -4,7 +4,7 @@ import copy from "copy-to-clipboard";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { DocumentLinkProvider, flattenWorkspaceDocuments, resolveWorkspacePath } from "@/components/MemoContent/DocumentLinkContext";
+import { DocumentLinkProvider, flattenWorkspaceDocuments, resolveInWorkspace } from "@/components/MemoContent/DocumentLinkContext";
 import { EmbedAncestryProvider } from "@/components/MemoContent/EmbedAncestryContext";
 import DocumentView from "@/components/Notebook/DocumentView";
 import LibrarySearchResults from "@/components/Notebook/LibrarySearchResults";
@@ -630,7 +630,9 @@ const Notebook = () => {
         {memo ? (
           <DocumentLinkProvider
             value={{
-              resolve: (href) => resolveWorkspacePath(tree, href),
+              baseFolderPath: memo.folderPath,
+              resolve: (href) => resolveInWorkspace(tree, memo.folderPath, href),
+              resolveFrom: (baseFolderPath, href) => resolveInWorkspace(tree, baseFolderPath, href),
               navigate: (memoName, href) => handleSelectDocument(memoName, href),
               listDocuments: () => flattenWorkspaceDocuments(tree, memo.name),
             }}

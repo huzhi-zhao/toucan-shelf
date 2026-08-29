@@ -41,7 +41,7 @@ func Status(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, 
 		return nil, fmt.Errorf("config missing workspace; re-run `memogit clone` (older config?)")
 	}
 	client := NewClient(cfg)
-	username, err := client.CurrentUsername(ctx)
+	scope, err := currentScope(ctx, client)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func Status(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, 
 
 	// Full current server listing (scoped to own memos in the workspace):
 	// used for both remote-new/updated and remote-deleted detection.
-	current, err := client.ListAllMemos(ctx, ws.Workspace, scopedFilter(username, ws.Filter))
+	current, err := client.ListAllMemos(ctx, ws.Workspace, scopedFilter(scope, ws.Filter))
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +195,12 @@ func printStatus(out io.Writer, ws *WorkspaceConfig, res *StatusResult) {
 	} else {
 		fmt.Fprintf(out, "Summary: %d to push, %d to pull, %d conflicts.\n", nLocal, nRemote, len(res.Conflicts))
 	}
-	if res.GitDirty > 0 {
-		fmt.Fprintf(out, "Local git: %d uncommitted working-tree change(s) (run `git status`).\n", res.GitDirty)
-	}
+}
+
+// Quiet reports whether the workspace has nothing pending against the server.
+// The git working tree is deliberately excluded: it is a property of the whole
+// checkout, not of one knowledge base.
+func (r *StatusResult) Quiet() bool {
+	return len(r.LocalModified)+len(r.LocalNew)+len(r.LocalDeleted)+len(r.LocalMoved)+
+		len(r.RemoteUpdated)+len(r.RemoteNew)+len(r.RemoteDeleted)+len(r.Conflicts) == 0
 }

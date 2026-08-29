@@ -209,3 +209,178 @@ func escapePathSegments(segments []string) string {
 	}
 	return "/" + strings.Join(escaped, "/")
 }
+
+// HrefForm is the path form a markdown link destination is written in. The
+// four in-app forms are named in docs/dev/requirements/document-reference-forms.md.
+type HrefForm string
+
+const (
+	// FormAbsoluteMemo is the "/memos/{uid}" compat form.
+	FormAbsoluteMemo HrefForm = "absoluteMemo"
+	// FormRootRelative is the canonical "/fa/db.md" form (库根相对路径).
+	FormRootRelative HrefForm = "rootRelative"
+	// FormRelativeExplicit is a "./" or "../" prefixed path (文档相对路径,
+	// 显式形式). It is unambiguously a document reference: if it doesn't
+	// resolve, it is a broken link.
+	FormRelativeExplicit HrefForm = "relativeExplicit"
+	// FormRelativeBare is a relative path with no "./" prefix ("db.md",
+	// "sub/dd.md"). It is *probably* a document reference, but it is
+	// indistinguishable from a schemeless external destination such as
+	// "example.com/page", so renderers must fall back to external-link
+	// behaviour when it doesn't resolve rather than showing a broken link.
+	FormRelativeBare HrefForm = "relativeBare"
+	// FormExternal is everything else: scheme-qualified URLs, bare fragments,
+	// queries, the empty string, and "@"-prefixed hrefs (reserved for the
+	// workspace-qualified form, 库限定路径).
+	FormExternal HrefForm = "external"
+)
+
+// hasSchemeRe matches a URI scheme prefix ("https:", "mailto:") per RFC 3986.
+var hasSchemeRe = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9+.\-]*:`)
+
+// ClassifyDocHref decides which path form href is written in. It is the single
+// dispatch point every caller should use, so that the precedence between the
+// forms is stated once instead of being re-derived at each call site.
+//
+// Mirrored by classifyDocHref in
+// web/src/components/MemoContent/DocumentLinkContext.tsx. The shared cases in
+// testdata/resolve_cases.json pin the two implementations together.
+func ClassifyDocHref(href string) HrefForm {
+	if href == "" {
+		return FormExternal
+	}
+	if _, ok := ResolveAbsoluteMemoHref(href); ok {
+		return FormAbsoluteMemo
+	}
+	if strings.HasPrefix(href, "/") {
+		return FormRootRelative
+	}
+	// "@" is reserved for the workspace-qualified form. Excluded here up front
+	// so a cross-workspace href is never silently resolved as an in-workspace
+	// relative path (which would render it as a broken link in its own
+	// workspace instead of reaching the other one).
+	if strings.HasPrefix(href, "#") || strings.HasPrefix(href, "?") || strings.HasPrefix(href, "@") {
+		return FormExternal
+	}
+	if hasSchemeRe.MatchString(href) {
+		return FormExternal
+	}
+	if strings.HasPrefix(href, "./") || strings.HasPrefix(href, "../") {
+		return FormRelativeExplicit
+	}
+	return FormRelativeBare
+}
+
+// IsRelativeDocHref reports whether href is a document-relative path
+// (文档相对路径), in either its explicit or bare form.
+func IsRelativeDocHref(href string) bool {
+	form := ClassifyDocHref(href)
+	return form == FormRelativeExplicit || form == FormRelativeBare
+}
+
+// ResolveRelativePath resolves a document-relative href against the folder the
+// *referencing* document lives in, and returns the target memo uid.
+//
+// baseFolderPath is the referencing document's own FolderPath ("" at the
+// workspace root). "." segments are dropped and ".." pops one folder; a ".."
+// that would climb above the workspace root fails rather than clamping, so a
+// path can never address anything outside its own workspace — cross-workspace
+// document-relative paths are deliberately not supported.
+//
+// Once the segments are normalised, matching is identical to
+// ResolveRootRelativePath: exact folder names, then a case-insensitive,
+// extension-stripped title match among that folder's direct children. There is
+// no fallback. Any change here must be mirrored in resolveRelativePath on the
+// frontend.
+func ResolveRelativePath(tree []*TreeNode, baseFolderPath, href string) (string, bool) {
+	path := href
+	if decoded, err := url.PathUnescape(href); err == nil {
+		path = decoded
+	}
+	if idx := strings.IndexAny(path, "?#"); idx >= 0 {
+		path = path[:idx]
+	}
+
+	segments, ok := normalizeRelativeSegments(splitPath(baseFolderPath), splitPath(path))
+	if !ok || len(segments) == 0 {
+		return "", false
+	}
+	title := stripExt(segments[len(segments)-1])
+	return findDocInFolder(tree, segments[:len(segments)-1], title)
+}
+
+// normalizeRelativeSegments applies relSegments to baseSegments, resolving "."
+// and "..". ok is false when a ".." climbs above the workspace root.
+func normalizeRelativeSegments(baseSegments, relSegments []string) ([]string, bool) {
+	out := append([]string{}, baseSegments...)
+	for _, seg := range relSegments {
+		switch seg {
+		case ".":
+			continue
+		case "..":
+			if len(out) == 0 {
+				return nil, false
+			}
+			out = out[:len(out)-1]
+		default:
+			out = append(out, seg)
+		}
+	}
+	return out, true
+}
+
+// ResolveRelativeToCanonical resolves a document-relative href against
+// baseFolderPath and returns the equivalent workspace-root-relative href,
+// without consulting the tree. Used to "fossilize" a document's own outbound
+// relative links when that document itself moves: the target didn't move, so
+// the link must keep pointing where it pointed before, which the authored
+// relative form no longer does.
+func ResolveRelativeToCanonical(baseFolderPath, href string) (string, bool) {
+	path := href
+	if decoded, err := url.PathUnescape(href); err == nil {
+		path = decoded
+	}
+	suffix := ""
+	if idx := strings.IndexAny(path, "?#"); idx >= 0 {
+		suffix = path[idx:]
+		path = path[:idx]
+	}
+	segments, ok := normalizeRelativeSegments(splitPath(baseFolderPath), splitPath(path))
+	if !ok || len(segments) == 0 {
+		return "", false
+	}
+	return escapePathSegments(segments) + suffix, true
+}
+
+// ResolveInWorkspace resolves any in-workspace document href form against a
+// workspace tree: the canonical root-relative form, or a document-relative
+// form interpreted against baseFolderPath (the FolderPath of the document the
+// markdown came from). It deliberately does NOT handle the "/memos/{uid}"
+// compat form: that one resolves by uid without a tree and may point outside
+// this workspace, so callers handle it first with ResolveAbsoluteMemoHref.
+//
+// Mirrors resolveInWorkspace in
+// web/src/components/MemoContent/DocumentLinkContext.tsx.
+func ResolveInWorkspace(tree []*TreeNode, baseFolderPath, href string) (string, bool) {
+	switch ClassifyDocHref(href) {
+	case FormRootRelative:
+		return ResolveRootRelativePath(tree, href)
+	case FormRelativeExplicit, FormRelativeBare:
+		return ResolveRelativePath(tree, baseFolderPath, href)
+	default:
+		return "", false
+	}
+}
+
+// IsInWorkspaceDocHref reports whether href is one of the in-workspace path
+// forms that ResolveInWorkspace can resolve (root-relative or
+// document-relative). Callers use it to skip building a workspace tree for
+// hrefs that could never resolve against one.
+func IsInWorkspaceDocHref(href string) bool {
+	switch ClassifyDocHref(href) {
+	case FormRootRelative, FormRelativeExplicit, FormRelativeBare:
+		return true
+	default:
+		return false
+	}
+}

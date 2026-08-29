@@ -12,16 +12,62 @@ import (
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
 )
 
-// scopedFilter combines the implicit "own memos only" scoping with an optional
-// extra CEL clause from config.
-func scopedFilter(username, extra string) string {
+// syncScope is the set of documents a checkout syncs: everything in the
+// workspace the authenticated user may write.
+//
+// For an ordinary user that is their own documents, and the creator clause is
+// what keeps a shared knowledge base from checking out documents they could
+// never push back. An admin may write every document in the workspace
+// regardless of who created it (the server authorizes writes by workspace role,
+// not by authorship — see checkMemoWriteAccess), so scoping them by authorship
+// only hides documents they own in every sense that matters: pull would skip
+// them forever, and status would keep reporting "in sync" over a knowledge base
+// that is missing files.
+type syncScope struct {
+	// Username of the authenticated user; empty for admins, who are not scoped
+	// by authorship at all.
+	Username string
+	Admin    bool
+}
+
+// scopeOf reads the sync scope off the authenticated user.
+func scopeOf(user *v1pb.User) syncScope {
+	return syncScope{Username: user.GetUsername(), Admin: user.GetRole() == v1pb.User_ADMIN}
+}
+
+// currentScope fetches the authenticated user and derives the sync scope.
+func currentScope(ctx context.Context, client *Client) (syncScope, error) {
+	user, err := client.CurrentUser(ctx)
+	if err != nil {
+		return syncScope{}, err
+	}
+	return scopeOf(user), nil
+}
+
+// scopedFilter combines the scope's authorship clause (if any) with an optional
+// extra CEL clause from config. An admin with no configured filter gets the
+// empty filter: the whole workspace.
+func scopedFilter(scope syncScope, extra string) string {
+	extra = strings.TrimSpace(extra)
+	if scope.Admin {
+		return extra
+	}
 	// The `creator` CEL field compares against the user's resource name
 	// ("users/<username>"), not the bare username, so scope with that form.
-	base := fmt.Sprintf("creator == %s", strconv.Quote("users/"+username))
-	if strings.TrimSpace(extra) == "" {
+	base := fmt.Sprintf("creator == %s", strconv.Quote("users/"+scope.Username))
+	if extra == "" {
 		return base
 	}
 	return fmt.Sprintf("(%s) && (%s)", base, extra)
+}
+
+// andFilter conjoins a scoped filter with one more clause, tolerating an empty
+// scoped filter (an unfiltered admin) rather than emitting a dangling "() &&".
+func andFilter(scoped, clause string) string {
+	if scoped == "" {
+		return clause
+	}
+	return fmt.Sprintf("(%s) && (%s)", scoped, clause)
 }
 
 // ContentRoot returns the directory under the checkout root where one
