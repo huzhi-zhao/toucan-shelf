@@ -28,6 +28,12 @@ type PushResult struct {
 	Orphaned []string
 }
 
+// Quiet reports whether the push moved nothing: no memo created, updated,
+// relocated or archived, and nothing left needing the user's attention.
+func (r *PushResult) Quiet() bool {
+	return r.Created+r.Updated+r.Moved+r.Archived+len(r.Conflicts)+len(r.Orphaned) == 0
+}
+
 // localDoc is one work-tree document file, resolved to the memo it belongs to.
 type localDoc struct {
 	// Path is the file's current repo-relative path.
@@ -464,11 +470,11 @@ func resolveIdentities(docs []localDoc, state *State) {
 // document is not on the server any more", which the hash comparison alone can
 // never distinguish — an unchanged file is never looked up remotely.
 func aliveMemoUIDs(ctx context.Context, client *Client, ws *WorkspaceConfig) (map[string]bool, error) {
-	username, err := client.CurrentUsername(ctx)
+	scope, err := currentScope(ctx, client)
 	if err != nil {
 		return nil, err
 	}
-	current, err := client.ListAllMemos(ctx, ws.Workspace, scopedFilter(username, ws.Filter))
+	current, err := client.ListAllMemos(ctx, ws.Workspace, scopedFilter(scope, ws.Filter))
 	if err != nil {
 		return nil, err
 	}

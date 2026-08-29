@@ -369,19 +369,36 @@ func (s *APIV1Service) repairFolderMoveReferencesBestEffort(ctx context.Context,
 		return
 	}
 
+	subtreeIDSet := make(map[int32]struct{}, len(subtreeIDs))
+	for _, id := range subtreeIDs {
+		subtreeIDSet[id] = struct{}{}
+	}
+
 	referrerIDs := make(map[int32]struct{})
 	for _, l := range links {
 		referrerIDs[l.MemoID] = struct{}{}
 	}
 	for id := range referrerIDs {
-		if err := s.repairOneFolderMoveReferrer(ctx, workspaceID, id, oldPath, newPath); err != nil {
+		_, insideSubtree := subtreeIDSet[id]
+		if err := s.repairOneFolderMoveReferrer(ctx, workspaceID, id, oldPath, newPath, insideSubtree); err != nil {
 			slog.Warn("failed to repair folder move reference",
 				slog.Int("sourceMemoID", int(id)), slog.String("oldPath", oldPath), slog.String("newPath", newPath), slog.Any("err", err))
 		}
 	}
+
+	// The pass above is driven by the reverse-link index, so it only sees
+	// documents that link INTO the subtree. A moved document's links pointing
+	// OUT of it are a different set entirely, and document-relative hrefs among
+	// them are stale for a reason no prefix swap can fix: the href is relative
+	// to where the referencing document sits, and that is what just changed.
+	oldFolders := make(map[int32]string, len(subtree))
+	for _, m := range subtree {
+		oldFolders[m.ID] = movedFolderPath(m.FolderPath, newPath, oldPath)
+	}
+	s.fossilizeOutboundRelativeLinksBestEffort(ctx, workspaceID, oldFolders)
 }
 
-func (s *APIV1Service) repairOneFolderMoveReferrer(ctx context.Context, workspaceID, memoID int32, oldPath, newPath string) error {
+func (s *APIV1Service) repairOneFolderMoveReferrer(ctx context.Context, workspaceID, memoID int32, oldPath, newPath string, insideSubtree bool) error {
 	source, err := s.Store.GetMemo(ctx, &store.FindMemo{ID: &memoID})
 	if err != nil || source == nil {
 		return err
@@ -398,10 +415,29 @@ func (s *APIV1Service) repairOneFolderMoveReferrer(ctx context.Context, workspac
 
 	var repairs []SSELinkRepair
 	decide := func(href, text string) (string, string, bool) {
-		if !linkindex.IsRootRelativeDocHref(href) {
+		hrefPath := href
+		if linkindex.IsRelativeDocHref(href) {
+			if insideSubtree {
+				// The referencing document moved by the same prefix as its
+				// target, so a relative href between them is still exactly as
+				// correct as the author wrote it. Leave it relative; the
+				// out-of-subtree case is handled by the fossilization pass.
+				return href, text, false
+			}
+			// The referencing document did NOT move, but its target did, so a
+			// relative href to it is stale. Reduce it to the path it named and
+			// let the same prefix swap below apply — the result is canonical
+			// root-relative, since the authored relative form describes a
+			// location the target no longer occupies.
+			canonical, ok := linkindex.ResolveRelativeToCanonical(source.FolderPath, href)
+			if !ok {
+				return href, text, false
+			}
+			hrefPath = canonical
+		} else if !linkindex.IsRootRelativeDocHref(href) {
 			return href, text, false
 		}
-		newHref, ok := linkindex.RewritePathPrefix(href, oldPath, newPath)
+		newHref, ok := linkindex.RewritePathPrefix(hrefPath, oldPath, newPath)
 		if !ok {
 			// Not under oldPath (any more, on a re-run) — nothing to do here,
 			// which is what keeps repeating the same move a no-op.
@@ -617,13 +653,16 @@ func (s *APIV1Service) MoveWorkspaceFolder(ctx context.Context, request *v1pb.Mo
 	// workspace can't stay root-relative either — same reasoning, opposite
 	// direction. Targets that moved along with the subtree are exempt (the
 	// sweep above already fixed their paths).
-	movedIDs := make([]int32, 0, len(memos))
+	// `memos` was read before the update loop above, so m.FolderPath is still
+	// the pre-move folder — which is what a document-relative href in the
+	// moved document was written against.
+	movedOldFolders := make(map[int32]string, len(memos))
 	movedUIDs := make(map[string]bool, len(memos))
 	for _, m := range memos {
-		movedIDs = append(movedIDs, m.ID)
+		movedOldFolders[m.ID] = m.FolderPath
 		movedUIDs[m.UID] = true
 	}
-	s.rewriteOutboundLinksToUIDBestEffort(ctx, movedIDs, source.ID, movedUIDs)
+	s.rewriteOutboundLinksToUIDBestEffort(ctx, movedOldFolders, source.ID, movedUIDs)
 
 	for _, f := range moved {
 		if err := s.Store.DeleteWorkspaceFolder(ctx, &store.DeleteWorkspaceFolder{WorkspaceID: source.ID, Path: f.Path}); err != nil {

@@ -4,7 +4,7 @@ import MemoContent from "@/components/MemoContent";
 import { useMemo as useMemoDetail } from "@/hooks/useMemoQueries";
 import { cn } from "@/lib/utils";
 import { parseFrontmatter } from "@/utils/frontmatter";
-import { useDocumentLinkContext } from "./DocumentLinkContext";
+import { DocumentLinkProvider, useDocumentLinkContext } from "./DocumentLinkContext";
 import { EmbedAncestryProvider, MAX_EMBED_DEPTH, useEmbedAncestry } from "./EmbedAncestryContext";
 
 interface EmbedProps {
@@ -73,7 +73,23 @@ const EmbedContent: React.FC<{
         <span className="truncate">{memo.title || resolvedName}</span>
       </button>
       <EmbedAncestryProvider ancestry={[...ancestry, resolvedName]}>
-        <MemoContent content={body} memoName={resolvedName} showProperties={false} />
+        {/* The embedded document's own document-relative links ("./x.md") must resolve
+            against ITS folder, not the host document's — otherwise the same embedded
+            content resolves differently depending on who embeds it. Root-relative and
+            uid links are unaffected; only the base folder is rebased. */}
+        {documentLinkContext?.resolveFrom ? (
+          <DocumentLinkProvider
+            value={{
+              ...documentLinkContext,
+              baseFolderPath: memo.folderPath,
+              resolve: (href) => documentLinkContext.resolveFrom!(memo.folderPath, href),
+            }}
+          >
+            <MemoContent content={body} memoName={resolvedName} showProperties={false} />
+          </DocumentLinkProvider>
+        ) : (
+          <MemoContent content={body} memoName={resolvedName} showProperties={false} />
+        )}
       </EmbedAncestryProvider>
       {/* Closes the embedded range: without it the reader can't tell where the
           referenced document's content ends and the host document resumes. */}

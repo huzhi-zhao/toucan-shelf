@@ -69,7 +69,11 @@ func TestMemoLinkIndexP0(t *testing.T) {
 		require.Equal(t, targetMemo.ID, links[0].TargetMemoID)
 	})
 
-	t.Run("bare relative path (no leading slash) is not a document link (old scheme retired)", func(t *testing.T) {
+	// R1 (docs/dev/requirements/document-reference-forms.md) reverses the
+	// 2026-08-07 decision that retired relative paths: a document-relative
+	// href now resolves against the referencing document's own folder, and is
+	// indexed like any other document link.
+	t.Run("bare relative path resolves against the source document's folder and is indexed", func(t *testing.T) {
 		source, err := ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
 			Memo: &apiv1.Memo{
 				Title:   "Source Doc 2b",
@@ -83,7 +87,43 @@ func TestMemoLinkIndexP0(t *testing.T) {
 
 		links, err := ts.Store.ListMemoLinks(ctx, &store.FindMemoLink{MemoID: &sourceMemo.ID})
 		require.NoError(t, err)
-		require.Empty(t, links, "P3 retires the bare-relative-path form; it must not resolve or index")
+		require.Len(t, links, 1)
+		require.Equal(t, targetMemo.ID, links[0].TargetMemoID)
+	})
+
+	t.Run("explicit ./ relative path resolves and is indexed", func(t *testing.T) {
+		source, err := ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
+			Memo: &apiv1.Memo{
+				Title:   "Source Doc 2c",
+				Content: "See [Target Doc](./Target%20Doc.md) for details.",
+			},
+		})
+		require.NoError(t, err)
+		sourceUID := memoUIDFromName(t, source.Name)
+		sourceMemo, err := ts.Store.GetMemo(ctx, &store.FindMemo{UID: &sourceUID})
+		require.NoError(t, err)
+
+		links, err := ts.Store.ListMemoLinks(ctx, &store.FindMemoLink{MemoID: &sourceMemo.ID})
+		require.NoError(t, err)
+		require.Len(t, links, 1)
+		require.Equal(t, targetMemo.ID, links[0].TargetMemoID)
+	})
+
+	t.Run("a relative path climbing above the workspace root resolves to nothing", func(t *testing.T) {
+		source, err := ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
+			Memo: &apiv1.Memo{
+				Title:   "Source Doc 2d",
+				Content: "See [Target Doc](../Target%20Doc.md) for details.",
+			},
+		})
+		require.NoError(t, err)
+		sourceUID := memoUIDFromName(t, source.Name)
+		sourceMemo, err := ts.Store.GetMemo(ctx, &store.FindMemo{UID: &sourceUID})
+		require.NoError(t, err)
+
+		links, err := ts.Store.ListMemoLinks(ctx, &store.FindMemoLink{MemoID: &sourceMemo.ID})
+		require.NoError(t, err)
+		require.Empty(t, links, "\"..\" must not escape the workspace root")
 	})
 
 	t.Run("re-editing content overwrites the index rather than appending", func(t *testing.T) {

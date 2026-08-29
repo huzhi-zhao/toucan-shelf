@@ -843,6 +843,15 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 			previousFolderPath = memo.FolderPath
 		}
 		s.repairInboundLinksBestEffort(ctx, memo, previousTitle, previousFolderPath)
+		// The pass above repairs OTHER documents' hrefs into this one. This
+		// document's own outbound document-relative hrefs are stale for the
+		// opposite reason — it is the end that moved — and only a folder change
+		// can do that. Skipped when the workspace changed too: those links are
+		// pinned to uid form below instead, which the destination workspace's
+		// tree could not resolve as paths anyway.
+		if folderChanged && !workspaceChanged {
+			s.fossilizeOutboundRelativeLinksBestEffort(ctx, memo.WorkspaceID, map[int32]string{memo.ID: previousFolderPath})
+		}
 	}
 	// Archiving equals a takedown (publish requirement §9): the public read path
 	// only checks publication state, so a document left in the recycle bin would
@@ -854,7 +863,15 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 	// this one, but this one's own root-relative hrefs name paths in the
 	// workspace it just left and would go dead. Pin them to uid form instead.
 	if workspaceChanged {
-		s.rewriteOutboundLinksToUIDBestEffort(ctx, []int32{memo.ID}, previousWorkspaceID, nil)
+		// Document-relative hrefs resolve against the folder the memo was in
+		// before the move. previousFolderPath only holds that when folder_path
+		// was part of this same update; otherwise the folder didn't change and
+		// the current one is also the old one.
+		oldFolderPath := memo.FolderPath
+		if folderPathUpdated {
+			oldFolderPath = previousFolderPath
+		}
+		s.rewriteOutboundLinksToUIDBestEffort(ctx, map[int32]string{memo.ID: oldFolderPath}, previousWorkspaceID, nil)
 	}
 
 	memo, parentMemo, memoMessage, err := s.buildUpdatedMemoState(ctx, memo.ID)

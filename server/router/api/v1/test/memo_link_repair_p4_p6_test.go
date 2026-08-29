@@ -376,3 +376,122 @@ func defaultWorkspaceUID(t *testing.T, ctx context.Context, ts *TestService, use
 	require.NotEmpty(t, list, "user must already have a default workspace (created by an earlier CreateMemo call)")
 	return list[0].UID
 }
+
+// TestMoverOutboundRelativeLinksAreFossilized covers R1.3
+// (docs/dev/design/20260829-relative-and-cross-workspace-refs.md): a document
+// that moves must have its OWN document-relative hrefs pinned to the canonical
+// root-relative form, because a relative href means "relative to where I am"
+// and the move is exactly what changed that. Root-relative, uid, and
+// non-document hrefs must come through byte-identical.
+func TestMoverOutboundRelativeLinksAreFossilized(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestService(t)
+	defer ts.Cleanup()
+
+	user, err := ts.CreateHostUser(ctx, "user")
+	require.NoError(t, err)
+	userCtx := ts.CreateUserContext(ctx, user.ID)
+
+	_, err = ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
+		Memo: &apiv1.Memo{Title: "Referenced Doc", Content: "content"},
+	})
+	require.NoError(t, err)
+
+	source, err := ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
+		Memo: &apiv1.Memo{
+			Title: "Mover",
+			Content: "bare [a](Referenced%20Doc.md), explicit [b](./Referenced%20Doc), " +
+				"rooted [c](/Referenced%20Doc), external [d](example.com/page), " +
+				"unresolvable [e](./No%20Such%20Doc).",
+		},
+	})
+	require.NoError(t, err)
+
+	workspace := "workspaces/" + defaultWorkspaceUID(t, ctx, ts, user.ID)
+	for _, path := range []string{"elsewhere", "later"} {
+		_, err = ts.Service.CreateWorkspaceFolder(userCtx, &apiv1.CreateWorkspaceFolderRequest{
+			Parent: workspace,
+			Folder: &apiv1.WorkspaceFolder{Path: path},
+		})
+		require.NoError(t, err)
+	}
+
+	_, err = ts.Service.UpdateMemo(userCtx, &apiv1.UpdateMemoRequest{
+		Memo:       &apiv1.Memo{Name: source.Name, FolderPath: "elsewhere"},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"folder_path"}},
+	})
+	require.NoError(t, err)
+
+	after, err := ts.Service.GetMemo(userCtx, &apiv1.GetMemoRequest{Name: source.Name})
+	require.NoError(t, err)
+	require.Equal(t,
+		"bare [a](/Referenced%20Doc.md), explicit [b](/Referenced%20Doc), "+
+			"rooted [c](/Referenced%20Doc), external [d](example.com/page), "+
+			"unresolvable [e](./No%20Such%20Doc).",
+		after.Content,
+		"relative hrefs that named a real document must be pinned; a schemeless external "+
+			"destination and an href that never resolved must be left exactly as written")
+
+	// Moving again must be a no-op: the pinned hrefs are root-relative now, and
+	// the two left alone still resolve to nothing from either folder.
+	_, err = ts.Service.UpdateMemo(userCtx, &apiv1.UpdateMemoRequest{
+		Memo:       &apiv1.Memo{Name: source.Name, FolderPath: "later"},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"folder_path"}},
+	})
+	require.NoError(t, err)
+	again, err := ts.Service.GetMemo(userCtx, &apiv1.GetMemoRequest{Name: source.Name})
+	require.NoError(t, err)
+	require.Equal(t, after.Content, again.Content, "fossilization must be idempotent")
+}
+
+// TestSubtreeRelativeLinksSurviveFolderMove is the other half of R1.3: when a
+// whole folder moves, the relative paths BETWEEN its documents are unchanged,
+// so they must be left alone. Only a relative href pointing out of the moved
+// subtree is stale.
+func TestSubtreeRelativeLinksSurviveFolderMove(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestService(t)
+	defer ts.Cleanup()
+
+	user, err := ts.CreateHostUser(ctx, "user")
+	require.NoError(t, err)
+	userCtx := ts.CreateUserContext(ctx, user.ID)
+	_, err = ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
+		Memo: &apiv1.Memo{Title: "Outside Doc", Content: "content"},
+	})
+	require.NoError(t, err)
+
+	workspace := "workspaces/" + defaultWorkspaceUID(t, ctx, ts, user.ID)
+	_, err = ts.Service.CreateWorkspaceFolder(userCtx, &apiv1.CreateWorkspaceFolderRequest{
+		Parent: workspace,
+		Folder: &apiv1.WorkspaceFolder{Path: "src"},
+	})
+	require.NoError(t, err)
+	_, err = ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
+		Memo: &apiv1.Memo{Title: "Sibling", FolderPath: "src", Content: "content"},
+	})
+	require.NoError(t, err)
+	mover, err := ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
+		Memo: &apiv1.Memo{
+			Title:      "Mover",
+			FolderPath: "src",
+			Content:    "sibling [a](./Sibling), outside [b](../Outside%20Doc).",
+		},
+	})
+	require.NoError(t, err)
+
+	_, err = ts.Service.RenameWorkspaceFolder(userCtx, &apiv1.RenameWorkspaceFolderRequest{
+		// A move that changes the subtree's DEPTH: "../" out of it now lands
+		// somewhere else, whereas a same-depth rename would leave it correct.
+		Parent: workspace, OldPath: "src", NewPath: "dst/src",
+	})
+	require.NoError(t, err)
+
+	after, err := ts.Service.GetMemo(userCtx, &apiv1.GetMemoRequest{Name: mover.Name})
+	require.NoError(t, err)
+	require.Equal(t,
+		"sibling [a](./Sibling), outside [b](/Outside%20Doc).",
+		after.Content,
+		"the intra-subtree relative link is still correct and must stay relative; "+
+			"the one pointing out of the subtree must be pinned")
+}

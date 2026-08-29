@@ -64,7 +64,11 @@ func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter
 			username, wsCfg.Title, wsCfg.Workspace, cfg.Server)
 	}
 
-	memos, err := client.ListAllMemos(ctx, wsCfg.Workspace, scopedFilter(username, wsCfg.Filter))
+	scope := scopeOf(user)
+	if scope.Admin {
+		fmt.Fprintln(out, "  (admin: the checkout covers every document in the workspace, not only your own)")
+	}
+	memos, err := client.ListAllMemos(ctx, wsCfg.Workspace, scopedFilter(scope, wsCfg.Filter))
 	if err != nil {
 		return err
 	}

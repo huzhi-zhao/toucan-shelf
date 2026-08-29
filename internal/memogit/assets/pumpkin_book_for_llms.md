@@ -349,6 +349,7 @@ memogit 借用 git 词汇但**不是 git 网络协议**，是"数据库 ↔ 本�
 | `memogit pull` | 拉下服务器自上次同步后的变更，和本地对账，做一次 git commit。 |
 | `memogit push` | 把本地改动推上去；`--dry-run` 只打印计划不发送。 |
 | `memogit clone [名称]` | 首次检出某 workspace（本地应已是 clone 好的，一般不用再跑）。 |
+| `memogit rm <名称>` | clone 的反操作：把某个 workspace 从**本地**检出里删掉（文档目录 + 同步基线 + config 条目），服务器分毫不动。未同步或有未提交改动时拒绝执行，`--force` 强来。 |
 
 **push 的行为**（`push --dry-run` 先看计划是个好习惯）：
 
@@ -378,8 +379,11 @@ memogit 借用 git 词汇但**不是 git 网络协议**，是"数据库 ↔ 本�
 
 **还没实现**：附件**上传**（下载是单向的）、关系写回服务器（v1 只读导出）。
 
-**只同步你自己的文档**：clone/pull 只抓 `creator == 你`。别人共享的 PROTECTED/PUBLIC
-文档不会灌进你的本地库（你也 push 不回去）。
+**同步范围看角色**：普通用户的 clone/pull 只抓 `creator == 你`——别人共享的
+PROTECTED/PUBLIC 文档不会灌进你的本地库（你本来也 push 不回去）。**管理员不按作者
+过滤**：服务器按 workspace 角色而非作者判写权限，管理员能改库里任何文档，所以
+checkout 覆盖整个 workspace，包括别人（或你自己另一个账号、某个 agent 的 token）
+建的文档。
 
 ---
 

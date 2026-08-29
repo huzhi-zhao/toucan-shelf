@@ -77,11 +77,14 @@ func (s *APIV1Service) buildWorkspaceLinkTreeAsOf(ctx context.Context, workspace
 // each href to the memo ID it points at, per the canonical link form
 // (docs/dev/requirements/cross-reference-repair-on-move-rename.md,
 // "链接的规范形式"): absolute-form hrefs ("/memos/{uid}" or
-// "{host}/memos/{uid}") resolve directly by uid; workspace-root-relative
-// hrefs ("/doc/api.md") resolve against the workspace tree, mirroring
+// "{host}/memos/{uid}") resolve directly by uid; the in-workspace path forms
+// (root-relative "/doc/api.md", and document-relative "./api.md" resolved
+// against this memo's own folder — see
+// docs/dev/requirements/document-reference-forms.md) resolve against the
+// workspace tree, mirroring
 // web/src/components/MemoContent/DocumentLinkContext.tsx. Any other href
-// shape (including the old bare-relative-path form) is not a document link
-// at all now — no tree-wide title fallback. Links that fail to resolve
+// shape is not a document link at all — no tree-wide title fallback, so an
+// unresolvable path stays unresolved. Links that fail to resolve
 // (broken, or pointing outside any known memo) are silently dropped — the
 // index is best-effort, not a constraint on content. Self-links are dropped
 // too.
@@ -107,7 +110,7 @@ func (s *APIV1Service) resolveMemoLinkTargets(ctx context.Context, memo *store.M
 	for _, link := range links {
 		uid, ok := linkindex.ResolveAbsoluteMemoHref(link.Href)
 		if !ok {
-			if !linkindex.IsRootRelativeDocHref(link.Href) {
+			if !linkindex.IsInWorkspaceDocHref(link.Href) {
 				continue
 			}
 			if !treeBuilt {
@@ -117,7 +120,7 @@ func (s *APIV1Service) resolveMemoLinkTargets(ctx context.Context, memo *store.M
 				}
 				treeBuilt = true
 			}
-			uid, ok = linkindex.ResolveRootRelativePath(tree, link.Href)
+			uid, ok = linkindex.ResolveInWorkspace(tree, memo.FolderPath, link.Href)
 			if !ok {
 				continue
 			}

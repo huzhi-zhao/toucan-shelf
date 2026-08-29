@@ -3,7 +3,7 @@ import { ArrowUpLeftFromCircleIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import MemoCommentSection from "@/components/MemoCommentSection";
-import { DocumentLinkProvider, flattenWorkspaceDocuments, resolveWorkspacePath } from "@/components/MemoContent/DocumentLinkContext";
+import { DocumentLinkProvider, flattenWorkspaceDocuments, resolveInWorkspace } from "@/components/MemoContent/DocumentLinkContext";
 import { EmbedAncestryProvider } from "@/components/MemoContent/EmbedAncestryContext";
 import { MentionResolutionProvider } from "@/components/MemoContent/MentionResolutionContext";
 import { MemoDetailSidebar, MemoDetailSidebarDrawer } from "@/components/MemoDetailSidebar";
@@ -127,7 +127,9 @@ const MemoDetail = () => {
             )}
             <DocumentLinkProvider
               value={{
-                resolve: (href) => resolveWorkspacePath(workspaceTree, href),
+                baseFolderPath: displayMemo.folderPath,
+                resolve: (href) => resolveInWorkspace(workspaceTree, displayMemo.folderPath, href),
+                resolveFrom: (baseFolderPath, href) => resolveInWorkspace(workspaceTree, baseFolderPath, href),
                 navigate: (memoName, href) => {
                   // Carry the link's fragment across so the destination page can scroll to the
                   // heading (`document/abc#h-…`); the scroll effect above resolves it there.

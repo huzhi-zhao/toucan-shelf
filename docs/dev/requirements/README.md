@@ -89,6 +89,9 @@
 
 - [cross-reference-repair-on-move-rename.md](cross-reference-repair-on-move-rename.md)
   —— 知识库内文档引用在移动/重命名/删除时的完整性维护（`knowledge-base` 域相关）
+- [document-reference-forms.md](document-reference-forms.md)
+  —— 文档引用的路径表达形式：库根相对/文档相对/库限定跨库/UID 四种形式、
+  `[]()` 与 `![[]]` 与 `![]()` 的语法边界、跨库权限三态（同上域）
 - [20260823-public-blog-publishing.md](20260823-public-blog-publishing.md)
   —— 对外发布：单篇文档发布到对外站点、与"分享"的边界、站点模型与可见性检查
   （未来若增至 3 篇可独立成 `publishing/` 域）

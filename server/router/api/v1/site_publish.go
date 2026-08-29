@@ -438,7 +438,8 @@ func (s *APIV1Service) rewritePublishedBody(
 	plan *publishPlan,
 ) (string, []markdown.LinkRef, error) {
 	// 2. Resolve every in-site document link against the source document's own
-	// knowledge base. A root-relative path is unique only within one workspace,
+	// knowledge base — and, for document-relative hrefs, against the source
+	// document's own folder. A root-relative path is unique only within one workspace,
 	// so once a site aggregates several, the same path can name two different
 	// documents; the source document's workspace is what disambiguates.
 	linkRefs, err := s.MarkdownService.ExtractLinks([]byte(body))
@@ -463,7 +464,7 @@ func (s *APIV1Service) rewritePublishedBody(
 		}
 		uid, ok := linkindex.ResolveAbsoluteMemoHref(ref.Href)
 		if !ok {
-			if !linkindex.IsRootRelativeDocHref(ref.Href) {
+			if !linkindex.IsInWorkspaceDocHref(ref.Href) {
 				continue
 			}
 			if !treeBuilt {
@@ -477,7 +478,7 @@ func (s *APIV1Service) rewritePublishedBody(
 			// tree when a path misses. That fallback stays off here: it would
 			// happily land on an unpublished document, which makes it a
 			// disclosure path rather than a convenience.
-			uid, ok = linkindex.ResolveRootRelativePath(tree, ref.Href)
+			uid, ok = linkindex.ResolveInWorkspace(tree, memo.FolderPath, ref.Href)
 			if !ok {
 				continue
 			}
