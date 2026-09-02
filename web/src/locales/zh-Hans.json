@@ -842,7 +842,9 @@
       "use-path-style": "使用路径样式链接",
       "use-path-style-description": "MinIO 或部分不支持虚拟主机样式 bucket 的 S3 兼容服务通常需要开启。",
       "warning-text": "您确定要删除存储服务“{{name}}”吗？（此操作不可逆）",
-      "label": "存储"
+      "label": "存储",
+      "move-warning-title": "这会改变附件的存放位置",
+      "move-warning-description": "已有的附件对象仍留在原来的 key 上，所以保存之后全站附件会立刻打不开，直到你在服务器上跑完 `migrate-attachments` 把它们复制过去。过程中不会删除任何数据，附件地址也不会变。确认你接下来就要执行迁移再保存。"
     },
     "system": {
       "additional-script": "自定义脚本",

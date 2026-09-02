@@ -1106,7 +1106,9 @@
       "url-suffix-placeholder": "Custom URL suffix, optional",
       "use-path-style": "Use path-style URLs",
       "use-path-style-description": "Enable this for providers such as MinIO or some S3-compatible services that do not support virtual-hosted-style buckets.",
-      "warning-text": "Are you sure you want to delete storage service `{{name}}`? THIS ACTION IS IRREVERSIBLE"
+      "warning-text": "Are you sure you want to delete storage service `{{name}}`? THIS ACTION IS IRREVERSIBLE",
+      "move-warning-title": "This moves where attachments are stored",
+      "move-warning-description": "Existing attachment objects stay at their old keys, so every attachment on this instance will stop opening as soon as this is saved — until you run `migrate-attachments` on the server to copy them across. Nothing is deleted, and attachment URLs do not change. Save only if you are about to run the migration."
     },
     "system": {
       "additional-script": "Additional script",
