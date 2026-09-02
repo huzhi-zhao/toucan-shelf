@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/usememos/memos/internal/storage/attachmentpath"
 	storepb "github.com/usememos/memos/proto/gen/store"
 	"github.com/usememos/memos/store"
 	teststore "github.com/usememos/memos/store/test"
@@ -86,7 +87,7 @@ func TestEnqueueRecomputesTargetKeys(t *testing.T) {
 	// always computes the same target and a resumed run is idempotent.
 	require.Equal(t, "shelf/"+slug+"/17_uuid_a.png", byID[nested.ID].TargetKey)
 	require.Equal(t, "shelf/"+slug+"/17_uuid_b.png", byID[flat.ID].TargetKey)
-	require.Equal(t, "shelf/"+store.UnassignedWorkspaceSlug+"/17_uuid_c.png", byID[orphan.ID].TargetKey)
+	require.Equal(t, "shelf/"+attachmentpath.UnassignedWorkspaceSlug+"/17_uuid_c.png", byID[orphan.ID].TargetKey)
 	require.Equal(t, store.AttachmentMigrationStatusPending, byID[nested.ID].Status)
 
 	// An S3 row with no object key has nothing to copy; it is recorded rather than dropped.
@@ -109,5 +110,5 @@ func TestEnqueueUsesBucketRootWhenPrefixIsEmpty(t *testing.T) {
 	jobs, err := ts.ListAttachmentMigrationJobs(ctx, &store.FindAttachmentMigrationJob{AttachmentID: &attachment.ID})
 	require.NoError(t, err)
 	require.Len(t, jobs, 1)
-	require.Equal(t, store.UnassignedWorkspaceSlug+"/17_uuid_a.png", jobs[0].TargetKey)
+	require.Equal(t, attachmentpath.UnassignedWorkspaceSlug+"/17_uuid_a.png", jobs[0].TargetKey)
 }

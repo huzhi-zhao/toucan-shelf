@@ -11,6 +11,7 @@ import (
 
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
 	storepb "github.com/usememos/memos/proto/gen/store"
+	"github.com/usememos/memos/store"
 )
 
 func TestGetInstanceProfile(t *testing.T) {
@@ -965,5 +966,111 @@ func TestUpdateInstanceSetting(t *testing.T) {
 		require.Equal(t, "whisper-1", stored.GetTranscription().GetModel())
 		require.Equal(t, "en", stored.GetTranscription().GetLanguage())
 		require.Equal(t, "names: Alice", stored.GetTranscription().GetPrompt())
+	})
+}
+
+// TestAttachmentStorageSwitchLock covers the "an instance is entirely local or entirely S3"
+// rule: flipping the active backend is refused while attachments still live in the other one.
+// See docs/dev/requirements/storage/20260826-attachment-object-migration.md §4.
+func TestAttachmentStorageSwitchLock(t *testing.T) {
+	ctx := context.Background()
+
+	newStorageSetting := func(storageType v1pb.InstanceSetting_StorageSetting_StorageType) *v1pb.InstanceSetting {
+		return &v1pb.InstanceSetting{
+			Name: "instance/settings/STORAGE",
+			Value: &v1pb.InstanceSetting_StorageSetting_{
+				StorageSetting: &v1pb.InstanceSetting_StorageSetting{
+					StorageType:      storageType,
+					FilepathTemplate: "assets/{workspace}/{timestamp}_{uuid}_{filename}",
+				},
+			},
+		}
+	}
+
+	createAttachment := func(t *testing.T, ts *TestService, creatorID int32, uid string, storageType storepb.AttachmentStorageType) {
+		t.Helper()
+		_, err := ts.Store.CreateAttachment(ctx, &store.Attachment{
+			UID:         uid,
+			CreatorID:   creatorID,
+			Filename:    uid + ".png",
+			Type:        "image/png",
+			Size:        1,
+			StorageType: storageType,
+			Reference:   "assets/" + uid + ".png",
+		})
+		require.NoError(t, err)
+	}
+
+	t.Run("switching away is refused while attachments remain in the current backend", func(t *testing.T) {
+		ts := NewTestService(t)
+		defer ts.Cleanup()
+
+		hostUser, err := ts.CreateHostUser(ctx, "admin")
+		require.NoError(t, err)
+		adminCtx := ts.CreateUserContext(ctx, hostUser.ID)
+
+		// Move the instance to S3 while it is still empty: allowed.
+		_, err = ts.Service.UpdateInstanceSetting(adminCtx, &v1pb.UpdateInstanceSettingRequest{
+			Setting: newStorageSetting(v1pb.InstanceSetting_StorageSetting_S3),
+		})
+		require.NoError(t, err)
+
+		createAttachment(t, ts, hostUser.ID, "s3-one", storepb.AttachmentStorageType_S3)
+		createAttachment(t, ts, hostUser.ID, "s3-two", storepb.AttachmentStorageType_S3)
+
+		for _, target := range []v1pb.InstanceSetting_StorageSetting_StorageType{
+			v1pb.InstanceSetting_StorageSetting_LOCAL,
+			v1pb.InstanceSetting_StorageSetting_DATABASE,
+		} {
+			_, err = ts.Service.UpdateInstanceSetting(adminCtx, &v1pb.UpdateInstanceSettingRequest{
+				Setting: newStorageSetting(target),
+			})
+			require.Error(t, err)
+			// The message must carry the count, otherwise the admin has no idea what to migrate.
+			require.Contains(t, err.Error(), "2 attachment(s) still stored in S3 storage")
+
+			stored, storedErr := ts.Store.GetInstanceStorageSetting(ctx)
+			require.NoError(t, storedErr)
+			require.Equal(t, storepb.InstanceStorageSetting_S3, stored.StorageType,
+				"a refused switch must not have been persisted")
+		}
+	})
+
+	t.Run("external attachments do not block a switch", func(t *testing.T) {
+		ts := NewTestService(t)
+		defer ts.Cleanup()
+
+		hostUser, err := ts.CreateHostUser(ctx, "admin")
+		require.NoError(t, err)
+		adminCtx := ts.CreateUserContext(ctx, hostUser.ID)
+
+		createAttachment(t, ts, hostUser.ID, "external-one", storepb.AttachmentStorageType_EXTERNAL)
+
+		_, err = ts.Service.UpdateInstanceSetting(adminCtx, &v1pb.UpdateInstanceSettingRequest{
+			Setting: newStorageSetting(v1pb.InstanceSetting_StorageSetting_S3),
+		})
+		require.NoError(t, err)
+	})
+
+	t.Run("re-saving the same backend is always allowed", func(t *testing.T) {
+		ts := NewTestService(t)
+		defer ts.Cleanup()
+
+		hostUser, err := ts.CreateHostUser(ctx, "admin")
+		require.NoError(t, err)
+		adminCtx := ts.CreateUserContext(ctx, hostUser.ID)
+
+		// The default backend is LOCAL, so local attachments must not lock the instance
+		// out of editing the rest of the storage settings.
+		createAttachment(t, ts, hostUser.ID, "local-one", storepb.AttachmentStorageType_LOCAL)
+
+		_, err = ts.Service.UpdateInstanceSetting(adminCtx, &v1pb.UpdateInstanceSettingRequest{
+			Setting: newStorageSetting(v1pb.InstanceSetting_StorageSetting_LOCAL),
+		})
+		require.NoError(t, err)
+
+		stored, err := ts.Store.GetInstanceStorageSetting(ctx)
+		require.NoError(t, err)
+		require.Equal(t, "assets/{workspace}/{timestamp}_{uuid}_{filename}", stored.FilepathTemplate)
 	})
 }

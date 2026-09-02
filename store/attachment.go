@@ -140,6 +140,13 @@ func (s *Store) UpdateAttachment(ctx context.Context, update *UpdateAttachment) 
 	return s.driver.UpdateAttachment(ctx, update)
 }
 
+// CountAttachmentsByStorageType returns how many attachments currently live in each storage
+// backend. EXTERNAL attachments are included in the map; callers that only care about backends
+// this instance actually owns the bytes of must skip them.
+func (s *Store) CountAttachmentsByStorageType(ctx context.Context) (map[storepb.AttachmentStorageType]int, error) {
+	return s.driver.CountAttachmentsByStorageType(ctx)
+}
+
 func (s *Store) DeleteAttachment(ctx context.Context, delete *DeleteAttachment) error {
 	attachment, err := s.GetAttachment(ctx, &FindAttachment{ID: &delete.ID})
 	if err != nil {

@@ -1,4 +1,7 @@
-import { type Attachment, AttachmentAccess } from "@/types/proto/api/v1/attachment_service_pb";
+import {
+  type Attachment,
+  AttachmentAccess,
+} from "@/types/proto/api/v1/attachment_service_pb";
 import { getAttachmentType } from "@/utils/attachment";
 import { formatFileSize, getFileTypeLabel } from "@/utils/format";
 
@@ -14,28 +17,51 @@ export interface AttachmentMetadata {
   fileSizeLabel?: string;
 }
 
-export const isLockedAttachment = (attachment: Attachment): boolean => attachment.access === AttachmentAccess.ACCESS_LOCKED;
-export const isPublicAttachment = (attachment: Attachment): boolean => attachment.access === AttachmentAccess.ACCESS_PUBLIC;
-export const isImageAttachment = (attachment: Attachment): boolean => getAttachmentType(attachment) === "image/*";
-export const isVideoAttachment = (attachment: Attachment): boolean => getAttachmentType(attachment) === "video/*";
-export const isAudioAttachment = (attachment: Attachment): boolean => getAttachmentType(attachment) === "audio/*";
-export const isPdfAttachment = (attachment: Attachment): boolean => getAttachmentType(attachment) === "application/pdf";
-export const isHtmlAttachment = (attachment: Attachment): boolean => attachment.type === "text/html";
-export const isEpubAttachment = (attachment: Attachment): boolean => getAttachmentType(attachment) === "application/epub+zip";
+export const isLockedAttachment = (attachment: Attachment): boolean =>
+  attachment.access === AttachmentAccess.ACCESS_LOCKED;
+export const isPublicAttachment = (attachment: Attachment): boolean =>
+  attachment.access === AttachmentAccess.ACCESS_PUBLIC;
+export const isImageAttachment = (attachment: Attachment): boolean =>
+  getAttachmentType(attachment) === "image/*";
+export const isVideoAttachment = (attachment: Attachment): boolean =>
+  getAttachmentType(attachment) === "video/*";
+export const isAudioAttachment = (attachment: Attachment): boolean =>
+  getAttachmentType(attachment) === "audio/*";
+export const isPdfAttachment = (attachment: Attachment): boolean =>
+  getAttachmentType(attachment) === "application/pdf";
+export const isHtmlAttachment = (attachment: Attachment): boolean =>
+  attachment.type === "text/html";
+// A .md attachment is matched by mime type *and* filename extension: uploads coming from
+// different clients land as text/markdown, text/x-markdown, or a generic octet-stream.
+export const isMarkdownAttachment = (attachment: Attachment): boolean => {
+  const type = attachment.type.toLowerCase().split(";")[0].trim();
+  if (type === "text/markdown" || type === "text/x-markdown") return true;
+  return /\.(md|markdown)$/i.test(attachment.filename);
+};
+export const isEpubAttachment = (attachment: Attachment): boolean =>
+  getAttachmentType(attachment) === "application/epub+zip";
 export const isPreviewableAttachment = (attachment: Attachment): boolean =>
-  isPdfAttachment(attachment) || isHtmlAttachment(attachment) || isEpubAttachment(attachment);
+  isPdfAttachment(attachment) ||
+  isHtmlAttachment(attachment) ||
+  isEpubAttachment(attachment) ||
+  isMarkdownAttachment(attachment);
 
 // A locked attachment is pulled out before any media-type classification, so it
 // never enters the visual gallery / audio player / previewable-doc paths — those
 // all assume the attachment's bytes are actually fetchable, which a locked one's
 // aren't until the vault is open. See LockedAttachmentRow for the one place a
 // locked attachment's content becomes reachable.
-export const separateAttachments = (attachments: Attachment[]): AttachmentGroups => {
+export const separateAttachments = (
+  attachments: Attachment[],
+): AttachmentGroups => {
   return attachments.reduce<AttachmentGroups>(
     (groups, attachment) => {
       if (isLockedAttachment(attachment)) {
         groups.locked.push(attachment);
-      } else if (isImageAttachment(attachment) || isVideoAttachment(attachment)) {
+      } else if (
+        isImageAttachment(attachment) ||
+        isVideoAttachment(attachment)
+      ) {
         groups.visual.push(attachment);
       } else if (isAudioAttachment(attachment)) {
         groups.audio.push(attachment);
@@ -54,9 +80,13 @@ export const separateAttachments = (attachments: Attachment[]): AttachmentGroups
   );
 };
 
-export const getAttachmentMetadata = (attachment: Attachment): AttachmentMetadata => ({
+export const getAttachmentMetadata = (
+  attachment: Attachment,
+): AttachmentMetadata => ({
   fileTypeLabel: getFileTypeLabel(attachment.type),
-  fileSizeLabel: attachment.size ? formatFileSize(Number(attachment.size)) : undefined,
+  fileSizeLabel: attachment.size
+    ? formatFileSize(Number(attachment.size))
+    : undefined,
 });
 
 export const formatAudioTime = (seconds: number): string => {

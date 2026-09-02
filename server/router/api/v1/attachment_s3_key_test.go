@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/usememos/memos/internal/storage/attachmentpath"
 	storepb "github.com/usememos/memos/proto/gen/store"
 )
 
@@ -49,7 +50,7 @@ func TestBuildS3ObjectKeyThreeLevels(t *testing.T) {
 			filenameTmpl:  "{timestamp}_{uuid}_{filename}",
 			workspaceSlug: "",
 			filename:      "a.png",
-			wantPrefix:    "assets/" + unassignedWorkspaceSlug + "/",
+			wantPrefix:    "assets/" + attachmentpath.UnassignedWorkspaceSlug + "/",
 		},
 		{
 			name:          "stray slashes in the root prefix do not double up",

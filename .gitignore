@@ -7,7 +7,9 @@ web/dist
 # Build artifacts
 build/
 bin/
-memos
+# The compiled binary at the repo root. Anchored: a bare `memos` also matches the
+# cmd/memos directory, which silently hides new files added there.
+/memos
 
 .DS_Store
 

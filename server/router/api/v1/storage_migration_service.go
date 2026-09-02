@@ -128,11 +128,11 @@ func runStorageMigrationProbe(ctx context.Context, target *storepb.StorageS3Conf
 		}
 	}()
 
-	stat, err := client.StatObject(ctx, result.ProbeKey)
+	stat, err := client.HeadObject(ctx, result.ProbeKey)
 	if err != nil {
 		return fail("cannot stat the object just written to the target", err)
 	}
-	if !stat.Exists {
+	if stat == nil {
 		return fail("the object written to the target is not there when read back; check bucket policies and any proxy in front of the endpoint", nil)
 	}
 	readBack, err := client.GetObject(ctx, result.ProbeKey)

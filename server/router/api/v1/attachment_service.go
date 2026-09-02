@@ -14,7 +14,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
@@ -30,8 +29,8 @@ import (
 	"github.com/usememos/memos/internal/filter"
 	"github.com/usememos/memos/internal/motionphoto"
 	"github.com/usememos/memos/internal/profile"
+	"github.com/usememos/memos/internal/storage/attachmentpath"
 	"github.com/usememos/memos/internal/storage/s3"
-	"github.com/usememos/memos/internal/util"
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
 	storepb "github.com/usememos/memos/proto/gen/store"
 	"github.com/usememos/memos/server/attachmentacl"
@@ -760,11 +759,8 @@ func SaveAttachmentBlob(ctx context.Context, profile *profile.Profile, stores *s
 			filepathTemplate = instanceStorageSetting.FilepathTemplate
 		}
 
-		internalPath := filepathTemplate
-		if !strings.Contains(internalPath, "{filename}") {
-			internalPath = filepath.Join(internalPath, "{filename}")
-		}
-		internalPath = replaceFilenameWithPathTemplate(internalPath, attachmentPathContext{filename: create.Filename, dropWorkspace: true})
+		internalPath := attachmentpath.Normalize(filepathTemplate)
+		internalPath = attachmentpath.Expand(internalPath, attachmentpath.Context{Filename: create.Filename, DropWorkspace: true})
 		internalPath = filepath.ToSlash(internalPath)
 
 		// Ensure the directory exists.
@@ -836,16 +832,12 @@ func SaveAttachmentBlob(ctx context.Context, profile *profile.Profile, stores *s
 // attachment storage migration comparable and a target key recomputable. See
 // docs/dev/requirements/storage/attachment-storage-migration.md.
 func buildS3ObjectKey(setting *storepb.InstanceStorageSetting, workspaceSlug, filename string) string {
-	filenameTemplate := setting.GetFilenameTemplate()
-	if !strings.Contains(filenameTemplate, "{filename}") {
-		filenameTemplate = path.Join(filenameTemplate, "{filename}")
-	}
-	name := replaceFilenameWithPathTemplate(filenameTemplate, attachmentPathContext{
-		filename:      filename,
-		workspaceSlug: workspaceSlug,
+	name := attachmentpath.Expand(attachmentpath.Normalize(setting.GetFilenameTemplate()), attachmentpath.Context{
+		Filename:      filename,
+		WorkspaceSlug: workspaceSlug,
 	})
 	if workspaceSlug == "" {
-		workspaceSlug = unassignedWorkspaceSlug
+		workspaceSlug = attachmentpath.UnassignedWorkspaceSlug
 	}
 	// path.Join drops the empty segment on its own, so an empty root prefix means the bucket root.
 	return path.Join(strings.Trim(setting.GetS3Config().GetRootPrefix(), "/"), workspaceSlug, name)
@@ -906,77 +898,6 @@ func (s *APIV1Service) GetAttachmentBlob(attachment *store.Attachment) ([]byte, 
 	}
 	// For database storage, return the blob from the database.
 	return attachment.Blob, nil
-}
-
-var fileKeyPattern = regexp.MustCompile(`\{[a-z]{1,9}\}`)
-
-// attachmentPathContext carries the per-upload values that the filepath template can
-// interpolate beyond the filename.
-type attachmentPathContext struct {
-	filename string
-	// workspaceSlug is the storage slug of the owning workspace, or "" when the caller
-	// did not supply a workspace (see unassignedWorkspaceSlug).
-	workspaceSlug string
-	// dropWorkspace expands `{workspace}` to nothing instead of a directory name. Set for
-	// local storage: per-workspace directories are an S3-only concern (they exist so S3
-	// lifecycle/backup rules can be scoped per knowledge base), and silently reorganizing
-	// an existing local data directory is not worth it.
-	dropWorkspace bool
-}
-
-// unassignedWorkspaceSlug is the directory used when an upload arrives with no workspace.
-// Uploads that legitimately have no workspace (and any caller not yet updated) still
-// succeed; they just don't get their own directory.
-const unassignedWorkspaceSlug = store.UnassignedWorkspaceSlug
-
-func replaceFilenameWithPathTemplate(path string, pathCtx attachmentPathContext) string {
-	filename := pathCtx.filename
-	workspaceSlug := pathCtx.workspaceSlug
-	if workspaceSlug == "" {
-		workspaceSlug = unassignedWorkspaceSlug
-	}
-	if pathCtx.dropWorkspace {
-		workspaceSlug = ""
-	}
-	t := time.Now()
-	path = fileKeyPattern.ReplaceAllStringFunc(path, func(s string) string {
-		switch s {
-		case "{filename}":
-			return filename
-		case "{workspace}":
-			return workspaceSlug
-		case "{timestamp}":
-			return fmt.Sprintf("%d", t.Unix())
-		case "{year}":
-			return fmt.Sprintf("%d", t.Year())
-		case "{month}":
-			return fmt.Sprintf("%02d", t.Month())
-		case "{day}":
-			return fmt.Sprintf("%02d", t.Day())
-		case "{hour}":
-			return fmt.Sprintf("%02d", t.Hour())
-		case "{minute}":
-			return fmt.Sprintf("%02d", t.Minute())
-		case "{second}":
-			return fmt.Sprintf("%02d", t.Second())
-		case "{uuid}":
-			return util.GenUUID()
-		default:
-			return s
-		}
-	})
-	// A placeholder that expanded to nothing (`{workspace}` on local storage) leaves an
-	// empty path segment behind; collapse it so the result stays a well-formed path.
-	// The leading separator of an absolute template is preserved.
-	absolute := strings.HasPrefix(path, "/")
-	for strings.Contains(path, "//") {
-		path = strings.ReplaceAll(path, "//", "/")
-	}
-	path = strings.TrimPrefix(path, "/")
-	if absolute {
-		path = "/" + path
-	}
-	return path
 }
 
 func ensureUniqueLocalAttachmentPath(path, uid string) string {

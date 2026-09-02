@@ -26,7 +26,7 @@ hierarchy** combined with **Notion's views**, without either one's weight.
 ---
 
 ## What this fork adds
-
+![whatisadds](https://www.huzhi.dev/projects/toucan-shelf.svg)
 ### 📂 Hierarchical knowledge base (Yuque-like)
 
 Every document lives in a **workspace** (knowledge base) under a

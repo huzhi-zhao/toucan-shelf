@@ -6,12 +6,6 @@ import (
 	"unicode"
 )
 
-// UnassignedWorkspaceSlug is the storage directory for attachments with no owning workspace:
-// uploads that legitimately arrive without one, and rows whose document was deleted. It lives
-// here rather than next to the upload path because the storage migration has to recompute the
-// exact directory the upload path would have chosen.
-const UnassignedWorkspaceSlug = "_unassigned"
-
 // maxStorageSlugRunes caps the derived part of a storage slug. Titles are unbounded but the
 // slug ends up inside every object key of the workspace, so keep it short.
 const maxStorageSlugRunes = 48

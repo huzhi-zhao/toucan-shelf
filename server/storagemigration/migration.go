@@ -17,6 +17,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/usememos/memos/internal/storage/attachmentpath"
 	"github.com/usememos/memos/internal/storage/s3"
 	storepb "github.com/usememos/memos/proto/gen/store"
 	"github.com/usememos/memos/store"
@@ -145,7 +146,7 @@ func workspaceSlugsForAttachments(ctx context.Context, st *store.Store, attachme
 		if slug == "" {
 			// No document, a deleted document, or a document outside any workspace: the same
 			// directory the upload path uses when it is handed no workspace.
-			slug = store.UnassignedWorkspaceSlug
+			slug = attachmentpath.UnassignedWorkspaceSlug
 		}
 		slugs[attachment.ID] = slug
 	}
@@ -238,11 +239,11 @@ func copyOne(ctx context.Context, cs *clients, job *store.AttachmentMigrationJob
 		return update
 	}
 
-	source, err := cs.source.StatObject(ctx, job.SourceKey)
+	source, err := cs.source.HeadObject(ctx, job.SourceKey)
 	if err != nil {
 		return fail(errors.Wrap(err, "cannot read the source object"))
 	}
-	if !source.Exists {
+	if source == nil {
 		// The database says there is an object and the bucket disagrees. This attachment was
 		// already broken before the migration started, so it is recorded and stepped over
 		// rather than allowed to stop everything behind it.
@@ -256,11 +257,11 @@ func copyOne(ctx context.Context, cs *clients, job *store.AttachmentMigrationJob
 	// A target object that is already there with the same size is this row's own work from a
 	// previous run. Skipping it is what makes a resumed migration cheap, and it is also why
 	// "change the endpoint but point at the same data" costs one stat per object and no copying.
-	existing, err := cs.target.StatObject(ctx, job.TargetKey)
+	existing, err := cs.target.HeadObject(ctx, job.TargetKey)
 	if err != nil {
 		return fail(errors.Wrap(err, "cannot check the target object"))
 	}
-	if existing.Exists && existing.Size == source.Size {
+	if existing != nil && existing.Size == source.Size {
 		status := store.AttachmentMigrationStatusDone
 		empty := ""
 		update.Status, update.LastError = &status, &empty
@@ -311,12 +312,12 @@ func Reconcile(ctx context.Context, st *store.Store, target *storepb.StorageS3Co
 		if ctx.Err() != nil {
 			return failed, ctx.Err()
 		}
-		stat, err := client.StatObject(ctx, job.TargetKey)
+		stat, err := client.HeadObject(ctx, job.TargetKey)
 		reason := ""
 		switch {
 		case err != nil:
 			reason = "cannot verify the target object: " + err.Error()
-		case !stat.Exists:
+		case stat == nil:
 			reason = "the object is missing at the target"
 		case stat.Size != job.Size:
 			reason = "the object at the target has a different size than the source"

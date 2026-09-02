@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
@@ -14,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/pkg/errors"
@@ -156,59 +158,6 @@ func (c *Client) GetObjectStream(ctx context.Context, key string) (io.ReadCloser
 	return output.Body, nil
 }
 
-// CopyObject asks S3 to copy an object into this client's bucket without the bytes passing
-// through Toucan. sourceBucket/sourceKey must be reachable with the same credentials, which is
-// why the caller decides whether this path applies (see canServerSideCopy): between two buckets
-// of different accounts a server-side copy needs bucket policy on both sides that cannot be
-// assumed, and the failure would only surface object by object.
-func (c *Client) CopyObject(ctx context.Context, sourceBucket, sourceKey, targetKey string) error {
-	// CopySource is a URL path, so a key containing spaces or non-ASCII (both ordinary in
-	// attachment file names) has to be escaped or the provider looks up a different key.
-	// EscapedPath escapes the characters that need it while leaving the separators alone --
-	// url.PathEscape would turn every "/" into %2F and flatten the whole thing into one segment.
-	source := (&url.URL{Path: sourceBucket + "/" + sourceKey}).EscapedPath()
-	if _, err := c.Client.CopyObject(ctx, &s3.CopyObjectInput{
-		Bucket:     c.Bucket,
-		Key:        aws.String(targetKey),
-		CopySource: aws.String(source),
-	}); err != nil {
-		return errors.Wrap(err, "failed to copy object")
-	}
-	return nil
-}
-
-// ObjectStat is what StatObject reports about an object: whether it is there, and how big.
-type ObjectStat struct {
-	Exists bool
-	Size   int64
-}
-
-// StatObject reports the existence and size of an object without downloading it.
-//
-// It is the workhorse of the attachment storage migration: the precheck reads its probe back
-// with it, the copier skips objects already present at the target with it (which is what makes
-// a resumed migration idempotent), and reconciliation verifies every target object with it.
-// A missing object is not an error -- it is the answer to the question.
-func (c *Client) StatObject(ctx context.Context, key string) (ObjectStat, error) {
-	output, err := c.Client.HeadObject(ctx, &s3.HeadObjectInput{
-		Bucket: c.Bucket,
-		Key:    aws.String(key),
-	})
-	if err != nil {
-		var notFound *types.NotFound
-		if errors.As(err, &notFound) {
-			return ObjectStat{}, nil
-		}
-		// Providers that do not map a missing key to NotFound still answer 404 on the wire.
-		var respErr *awshttp.ResponseError
-		if errors.As(err, &respErr) && respErr.HTTPStatusCode() == http.StatusNotFound {
-			return ObjectStat{}, nil
-		}
-		return ObjectStat{}, errors.Wrap(err, "failed to stat object")
-	}
-	return ObjectStat{Exists: true, Size: aws.ToInt64(output.ContentLength)}, nil
-}
-
 // DeleteObject deletes an object in S3.
 func (c *Client) DeleteObject(ctx context.Context, key string) error {
 	_, err := c.Client.DeleteObject(ctx, &s3.DeleteObjectInput{
@@ -219,4 +168,80 @@ func (c *Client) DeleteObject(ctx context.Context, key string) error {
 		return errors.Wrap(err, "failed to delete object")
 	}
 	return nil
+}
+
+// ObjectInfo is the subset of an object's metadata the migration needs to decide whether an
+// object at the destination key is the one it put there on an earlier run.
+type ObjectInfo struct {
+	Size        int64
+	ContentType string
+}
+
+// HeadObject returns the object's metadata, or (nil, nil) when it does not exist. A missing
+// object is not an error here: callers use this to probe a destination key before writing.
+func (c *Client) HeadObject(ctx context.Context, key string) (*ObjectInfo, error) {
+	output, err := c.Client.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: c.Bucket,
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		if isNotFound(err) {
+			return nil, nil
+		}
+		return nil, errors.Wrap(err, "failed to head object")
+	}
+	info := &ObjectInfo{}
+	if output.ContentLength != nil {
+		info.Size = *output.ContentLength
+	}
+	if output.ContentType != nil {
+		info.ContentType = *output.ContentType
+	}
+	return info, nil
+}
+
+// CopyObject server-side copies an object into this client's bucket under destKey. The source
+// may live in a different bucket on the same endpoint; copying across endpoints is not possible
+// this way and the caller has to stream the bytes itself.
+func (c *Client) CopyObject(ctx context.Context, sourceBucket, sourceKey, destKey string) error {
+	_, err := c.Client.CopyObject(ctx, &s3.CopyObjectInput{
+		Bucket:     c.Bucket,
+		Key:        aws.String(destKey),
+		CopySource: aws.String(encodeCopySource(sourceBucket, sourceKey)),
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to copy object")
+	}
+	return nil
+}
+
+// encodeCopySource builds the `bucket/key` value of the x-amz-copy-source header. The path has
+// to be URL-encoded segment by segment: encoding the whole string would escape the separators,
+// and leaving it raw breaks on keys containing spaces or non-ASCII filenames (which attachment
+// keys routinely do, since the original filename is part of the key).
+func encodeCopySource(sourceBucket, sourceKey string) string {
+	segments := strings.Split(sourceKey, "/")
+	for i, segment := range segments {
+		segments[i] = url.PathEscape(segment)
+	}
+	return url.PathEscape(sourceBucket) + "/" + strings.Join(segments, "/")
+}
+
+// isNotFound reports whether the error is S3's "this object does not exist". HeadObject reports
+// it as a bare 404 with code NotFound, GetObject as NoSuchKey.
+func isNotFound(err error) bool {
+	var notFound *types.NotFound
+	if errors.As(err, &notFound) {
+		return true
+	}
+	var noSuchKey *types.NoSuchKey
+	if errors.As(err, &noSuchKey) {
+		return true
+	}
+	var apiErr smithy.APIError
+	if errors.As(err, &apiErr) {
+		code := apiErr.ErrorCode()
+		return code == "NotFound" || code == "NoSuchKey" || code == "404"
+	}
+	return false
 }

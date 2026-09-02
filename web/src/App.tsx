@@ -53,7 +53,7 @@ const App = () => {
       return;
     }
 
-    document.title = instanceGeneralSetting.customProfile.title;
+    document.title = instanceGeneralSetting.customProfile.title || "ToucanShelf";
     const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
     link.href = instanceGeneralSetting.customProfile.logoUrl || "/logo.webp";
   }, [instanceGeneralSetting.customProfile]);
