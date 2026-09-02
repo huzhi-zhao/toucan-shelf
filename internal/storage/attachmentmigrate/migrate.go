@@ -10,6 +10,7 @@
 package attachmentmigrate
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"path"
@@ -64,6 +65,12 @@ const (
 	OutcomeReused Outcome = "REUSED"
 	// OutcomeFailed means the item was left untouched; Error says why.
 	OutcomeFailed Outcome = "FAILED"
+	// OutcomeSourceMissing means the row points at an object that is not in the source bucket.
+	// The attachment was already broken before the migration -- it is reported separately from
+	// FAILED because the two need different reactions: a failure is something to retry or
+	// investigate, a missing source is a pre-existing hole the migration cannot fill and did
+	// not create.
+	OutcomeSourceMissing Outcome = "SOURCE_MISSING"
 )
 
 // Item is one attachment's place in the plan.
@@ -354,6 +361,16 @@ func (m *Migrator) applyItem(ctx context.Context, item *Item, targetClient Objec
 	}
 	switch {
 	case existing == nil:
+		// Ask whether the source is even there before trying to copy it. Without this the
+		// answer arrives as a copy error and reads as "the migration broke", when what actually
+		// happened is that this row was already pointing at nothing.
+		present, err := m.sourcePresent(ctx, item, targetConfig)
+		if err != nil {
+			return "", err
+		}
+		if !present {
+			return OutcomeSourceMissing, nil
+		}
 		if err := m.copyObject(ctx, item, targetClient, targetConfig); err != nil {
 			return "", err
 		}
@@ -374,6 +391,35 @@ func (m *Migrator) applyItem(ctx context.Context, item *Item, targetClient Objec
 	return outcome, nil
 }
 
+// sourceClient builds a client for wherever this item's object actually lives. The source
+// differs from the target only in endpoint and bucket: the credentials are the instance's
+// current ones, because they are the only ones it has.
+func (m *Migrator) sourceClient(ctx context.Context, item *Item, targetConfig *storepb.StorageS3Config) (ObjectStore, error) {
+	if item.SourceEndpoint == targetConfig.Endpoint && item.SourceBucket == targetConfig.Bucket {
+		return m.newClient(ctx, targetConfig)
+	}
+	sourceConfig, ok := proto.Clone(targetConfig).(*storepb.StorageS3Config)
+	if !ok {
+		return nil, errors.New("failed to clone the target s3 config")
+	}
+	sourceConfig.Endpoint = item.SourceEndpoint
+	sourceConfig.Bucket = item.SourceBucket
+	return m.newClient(ctx, sourceConfig)
+}
+
+// sourcePresent reports whether the object the row points at is actually in the source bucket.
+func (m *Migrator) sourcePresent(ctx context.Context, item *Item, targetConfig *storepb.StorageS3Config) (bool, error) {
+	client, err := m.sourceClient(ctx, item, targetConfig)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to create source s3 client")
+	}
+	info, err := client.HeadObject(ctx, item.SourceKey)
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to probe source object %s", item.SourceKey)
+	}
+	return info != nil, nil
+}
+
 func (m *Migrator) copyObject(ctx context.Context, item *Item, targetClient ObjectStore, targetConfig *storepb.StorageS3Config) error {
 	if item.SourceEndpoint == targetConfig.Endpoint {
 		// Same endpoint: the provider can copy server-side, across buckets included, without
@@ -383,11 +429,8 @@ func (m *Migrator) copyObject(ctx context.Context, item *Item, targetClient Obje
 		}
 		return nil
 	}
-	// Different endpoints have no server-side copy between them, so stream the object through.
-	sourceConfig := proto.Clone(targetConfig).(*storepb.StorageS3Config)
-	sourceConfig.Endpoint = item.SourceEndpoint
-	sourceConfig.Bucket = item.SourceBucket
-	sourceClient, err := m.newClient(ctx, sourceConfig)
+	// Different endpoints have no server-side copy between them, so the bytes come through us.
+	sourceClient, err := m.sourceClient(ctx, item, targetConfig)
 	if err != nil {
 		return errors.Wrap(err, "failed to create source s3 client")
 	}
@@ -396,7 +439,16 @@ func (m *Migrator) copyObject(ctx context.Context, item *Item, targetClient Obje
 		return errors.Wrapf(err, "failed to read source object %s", item.SourceKey)
 	}
 	defer reader.Close()
-	if _, err := targetClient.UploadObject(ctx, item.TargetKey, item.ContentType, reader); err != nil {
+	// Buffer before uploading rather than handing the stream straight to the SDK. A reader of
+	// unpredictable length has been observed to produce SignatureDoesNotMatch against some
+	// S3-compatible providers, because the request body hash is computed differently than for a
+	// fixed-size buffer -- see the same note on the backup upload (server/backup/backup.go).
+	// Attachments are bounded by the instance upload limit and copied one at a time.
+	blob, err := io.ReadAll(reader)
+	if err != nil {
+		return errors.Wrapf(err, "failed to read source object %s", item.SourceKey)
+	}
+	if _, err := targetClient.UploadObject(ctx, item.TargetKey, item.ContentType, bytes.NewReader(blob)); err != nil {
 		return errors.Wrapf(err, "failed to upload %s", item.TargetKey)
 	}
 	return nil

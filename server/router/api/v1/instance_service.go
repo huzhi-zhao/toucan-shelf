@@ -16,6 +16,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/usememos/memos/internal/ai"
+	"github.com/usememos/memos/internal/storage/attachmentpath"
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
 	storepb "github.com/usememos/memos/proto/gen/store"
 	"github.com/usememos/memos/server/backup"
@@ -236,6 +237,7 @@ func (s *APIV1Service) UpdateInstanceSetting(ctx context.Context, request *v1pb.
 			if err := s.checkAttachmentStorageSwitch(ctx, storage.StorageType); err != nil {
 				return nil, err
 			}
+			s.logAttachmentStorageLocationMove(ctx, storage)
 		}
 		if storage := updateSetting.GetStorageSetting(); storage != nil && storage.S3Config != nil {
 			s3Config := storage.S3Config
@@ -375,6 +377,42 @@ func (s *APIV1Service) checkAttachmentStorageSwitch(ctx context.Context, target 
 		)
 	}
 	return nil
+}
+
+// logAttachmentStorageLocationMove records that the instance was pointed at a different place
+// than the one its objects are in.
+//
+// The read path resolves keys against the instance's current S3 config, so this takes effect
+// immediately while the objects stay where they were: every existing attachment stops resolving
+// until `migrate-attachments` has copied them across. That is the intended first step of a
+// migration, not an error, which is why this only records it -- but it is also a site-wide
+// outage if it was done unaware, and an operator reading the log afterwards deserves to find
+// the reason rather than infer it.
+func (s *APIV1Service) logAttachmentStorageLocationMove(ctx context.Context, next *storepb.InstanceStorageSetting) {
+	existing, err := s.Store.GetInstanceStorageSetting(ctx)
+	if err != nil || existing.GetS3Config() == nil {
+		return
+	}
+	current := existing.GetS3Config()
+	target := next.GetS3Config()
+	if target == nil {
+		return
+	}
+	movedDir := attachmentpath.Dir(existing.FilepathTemplate) != attachmentpath.Dir(next.FilepathTemplate)
+	if current.Endpoint == target.Endpoint && current.Bucket == target.Bucket && !movedDir {
+		return
+	}
+
+	counts, err := s.Store.CountAttachmentsByStorageType(ctx)
+	if err != nil || counts[storepb.AttachmentStorageType_S3] == 0 {
+		return
+	}
+	slog.Warn("attachment storage location changed; existing objects were not moved",
+		slog.Int("attachmentsInS3", counts[storepb.AttachmentStorageType_S3]),
+		slog.String("endpoint", current.Endpoint+" -> "+target.Endpoint),
+		slog.String("bucket", current.Bucket+" -> "+target.Bucket),
+		slog.String("directory", attachmentpath.Dir(existing.FilepathTemplate)+" -> "+attachmentpath.Dir(next.FilepathTemplate)),
+		slog.String("action", "run `migrate-attachments` to copy them, or attachments will not resolve"))
 }
 
 func attachmentStorageTypeLabel(storageType storepb.AttachmentStorageType) string {

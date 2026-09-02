@@ -428,6 +428,58 @@ func TestApplyStreamsAcrossEndpoints(t *testing.T) {
 	require.Empty(t, fake.store(testEndpoint, testBucket).copies)
 }
 
+// A row pointing at an object that is not in the source bucket is a hole that predates the
+// migration. It must be reported as its own thing: calling it a failure sends the operator
+// looking for a bug in a run that did exactly what it should.
+func TestApplyReportsAMissingSourceApartFromAFailure(t *testing.T) {
+	ctx := context.Background()
+	ts := storetest.NewTestingStore(ctx, t)
+	config := s3Config(testEndpoint, testBucket)
+	setStorageSetting(ctx, t, ts, "assets/{workspace}/{filename}", config)
+
+	user := createUser(ctx, t, ts)
+	workspace := createWorkspace(ctx, t, ts, user, "笔记", "notes")
+	memo := createMemo(ctx, t, ts, user, workspace.ID)
+	broken := createS3Attachment(ctx, t, ts, user, &memo.ID, "gone.png", "assets/gone.png", 10, config)
+	createS3Attachment(ctx, t, ts, user, &memo.ID, "here.png", "assets/here.png", 10, config)
+
+	fake := newFakeS3()
+	// Only one of the two objects is actually in the bucket.
+	fake.store(testEndpoint, testBucket).objects["assets/here.png"] = 10
+	migrator := attachmentmigrate.NewWithClientFactory(ts, fake.factory())
+
+	plan, err := migrator.Plan(ctx, true)
+	require.NoError(t, err)
+	require.NoError(t, migrator.Apply(ctx, plan))
+
+	outcomes := map[int32]attachmentmigrate.Outcome{}
+	for _, item := range plan.Items {
+		outcomes[item.AttachmentID] = item.Outcome
+	}
+	require.Equal(t, attachmentmigrate.OutcomeSourceMissing, outcomes[broken.ID])
+
+	// The broken row must not stop the intact one behind it, and must not be repointed at an
+	// object that was never copied.
+	require.Equal(t, []string{"assets/here.png"}, copiedSourceKeys(fake.store(testEndpoint, testBucket).copies))
+	reloaded, err := ts.GetAttachment(ctx, &store.FindAttachment{ID: &broken.ID})
+	require.NoError(t, err)
+	require.Equal(t, "assets/gone.png", reloaded.Payload.GetS3Object().Key)
+
+	var report bytes.Buffer
+	failed := plan.WriteApplyReport(&report)
+	require.Equal(t, 0, failed, "a pre-existing broken link is not a failure of this run")
+	require.Contains(t, report.String(), "1 source object missing")
+	require.Contains(t, report.String(), "assets/gone.png")
+}
+
+func copiedSourceKeys(calls []copyCall) []string {
+	keys := make([]string, 0, len(calls))
+	for _, call := range calls {
+		keys = append(keys, call.sourceKey)
+	}
+	return keys
+}
+
 func TestWritePlanReportGroupsByWorkspace(t *testing.T) {
 	ctx := context.Background()
 	ts := storetest.NewTestingStore(ctx, t)

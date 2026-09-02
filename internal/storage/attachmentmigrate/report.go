@@ -52,19 +52,36 @@ func (p *Plan) WritePlanReport(w io.Writer) {
 }
 
 // WriteApplyReport prints what applying the plan actually did, and reports whether anything failed.
+//
+// A missing source object is counted and listed apart from a failure on purpose. They look the
+// same from the migration's side -- an object it wanted and did not get -- but they need
+// opposite reactions: a failure is worth retrying or investigating, while a missing source is a
+// hole that was already there and that no re-run will fill. Lumping them together would leave a
+// wall of red where most of it is nothing new.
 func (p *Plan) WriteApplyReport(w io.Writer) (failed int) {
-	copied, reused := 0, 0
+	copied, reused, sourceMissing := 0, 0, 0
 	for _, item := range p.Items {
 		switch item.Outcome {
 		case OutcomeCopied:
 			copied++
 		case OutcomeReused:
 			reused++
+		case OutcomeSourceMissing:
+			sourceMissing++
 		case OutcomeFailed:
 			failed++
 		}
 	}
-	fmt.Fprintf(w, "\nMigrated: %d copied, %d already at the target key, %d failed\n", copied, reused, failed)
+	fmt.Fprintf(w, "\nMigrated: %d copied, %d already at the target key, %d source object missing, %d failed\n",
+		copied, reused, sourceMissing, failed)
+	if sourceMissing > 0 {
+		fmt.Fprintf(w, "\nSource object missing (already broken before this migration — the row points at\nan object that is not in the source bucket; re-running will not change this):\n")
+		for _, item := range p.Items {
+			if item.Outcome == OutcomeSourceMissing {
+				fmt.Fprintf(w, "  #%d %s: %s\n", item.AttachmentID, item.Filename, item.SourceKey)
+			}
+		}
+	}
 	if failed > 0 {
 		fmt.Fprintf(w, "\nFailures (left untouched, safe to re-run after fixing):\n")
 		for _, item := range p.Items {

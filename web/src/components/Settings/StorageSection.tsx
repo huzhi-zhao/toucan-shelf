@@ -96,6 +96,32 @@ const StorageSection = () => {
     );
   };
 
+  // The bucket, the endpoint and the directory part of the template are where the existing
+  // objects are. Changing any of them takes effect immediately on the read path, while the
+  // objects stay at their old keys -- so every existing attachment stops resolving until the
+  // migration has run. This is a legitimate thing to do (it is step one of a migration), which
+  // is why it is a warning and not a refusal, but doing it unaware is a site-wide outage.
+  const templateDir = (template: string) => {
+    const normalized = template.includes("{filename}") ? template : `${template}/{filename}`;
+    const idx = normalized.lastIndexOf("/");
+    return idx < 0 ? "" : normalized.slice(0, idx);
+  };
+  const movesExistingObjects =
+    hasExistingS3Config &&
+    (originalSetting.s3Config?.bucket !== s3Draft.s3Config?.bucket ||
+      originalSetting.s3Config?.endpoint !== s3Draft.s3Config?.endpoint ||
+      templateDir(originalSetting.filepathTemplate) !== templateDir(s3Draft.filepathTemplate || DEFAULT_FILEPATH_TEMPLATE));
+
+  const moveWarningDialog = useDialog();
+
+  const requestSaveS3Config = () => {
+    if (movesExistingObjects) {
+      moveWarningDialog.open();
+      return;
+    }
+    void saveS3Config();
+  };
+
   const saveS3Config = async () => {
     await saveInstanceSetting({
       key: InstanceSetting_Key.STORAGE,
@@ -318,7 +344,7 @@ const StorageSection = () => {
               {t("common.delete")}
             </Button>
           )}
-          <Button disabled={!allowSaveS3Config} onClick={saveS3Config}>
+          <Button disabled={!allowSaveS3Config} onClick={requestSaveS3Config}>
             {t("common.save")}
           </Button>
         </div>
@@ -423,6 +449,16 @@ const StorageSection = () => {
         confirmLabel={t("common.confirm")}
         cancelLabel={t("common.cancel")}
         onConfirm={confirmStorageTypeChange}
+      />
+
+      <ConfirmDialog
+        open={moveWarningDialog.isOpen}
+        onOpenChange={moveWarningDialog.setOpen}
+        title={t("setting.storage.move-warning-title")}
+        description={t("setting.storage.move-warning-description")}
+        confirmLabel={t("common.confirm")}
+        cancelLabel={t("common.cancel")}
+        onConfirm={saveS3Config}
       />
 
       <ConfirmDialog
