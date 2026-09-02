@@ -24,14 +24,26 @@ import { useTranslate } from "@/utils/i18n";
 import SettingGroup from "./SettingGroup";
 import SettingRow from "./SettingRow";
 import SettingSection from "./SettingSection";
+import StorageMigrationSection from "./StorageMigrationSection";
 import useInstanceSettingUpdater, { buildInstanceSettingName } from "./useInstanceSettingUpdater";
 
 const DEFAULT_FILEPATH_TEMPLATE = "assets/{workspace}/{timestamp}_{uuid}_{filename}";
+const DEFAULT_ROOT_PREFIX = "assets";
+const DEFAULT_FILENAME_TEMPLATE = "{timestamp}_{uuid}_{filename}";
 
 const activeStorageOptions = [
-  { storageType: InstanceSetting_StorageSetting_StorageType.LOCAL, labelKey: "setting.storage.type-local" as const },
-  { storageType: InstanceSetting_StorageSetting_StorageType.DATABASE, labelKey: "setting.storage.type-database" as const },
-  { storageType: InstanceSetting_StorageSetting_StorageType.S3, labelKey: "setting.storage.type-s3" as const },
+  {
+    storageType: InstanceSetting_StorageSetting_StorageType.LOCAL,
+    labelKey: "setting.storage.type-local" as const,
+  },
+  {
+    storageType: InstanceSetting_StorageSetting_StorageType.DATABASE,
+    labelKey: "setting.storage.type-database" as const,
+  },
+  {
+    storageType: InstanceSetting_StorageSetting_StorageType.S3,
+    labelKey: "setting.storage.type-s3" as const,
+  },
 ];
 
 const StorageSection = () => {
@@ -48,9 +60,20 @@ const StorageSection = () => {
 
   const hasExistingS3Config = originalSetting.s3Config !== undefined;
 
+  // Endpoint, bucket and root directory are the location triple: together they say *which pile of
+  // bytes* the attachments are. Region and credentials only say how to reach the same pile.
+  // Editing the triple in place leaves every stored object at its old key and silently 404s the
+  // whole instance, so it is read-only by default — and the server refuses the change outright
+  // once S3 attachments exist.
+  const [locationUnlocked, setLocationUnlocked] = useState(false);
+  useEffect(() => {
+    setLocationUnlocked(false);
+  }, [originalSetting]);
+  const locationLocked = hasExistingS3Config && !locationUnlocked;
+
   const allowSaveS3Config = useMemo(() => {
     if (
-      !s3Draft.filepathTemplate ||
+      !s3Draft.filenameTemplate ||
       !s3Draft.s3Config?.accessKeyId ||
       (!hasExistingS3Config && !s3Draft.s3Config?.accessKeySecret) ||
       !s3Draft.s3Config?.endpoint ||
@@ -59,14 +82,14 @@ const StorageSection = () => {
     ) {
       return false;
     }
-    return !isEqual(originalSetting.s3Config, s3Draft.s3Config) || originalSetting.filepathTemplate !== s3Draft.filepathTemplate;
+    return !isEqual(originalSetting.s3Config, s3Draft.s3Config) || originalSetting.filenameTemplate !== s3Draft.filenameTemplate;
   }, [s3Draft, originalSetting, hasExistingS3Config]);
 
-  const handleFilepathTemplateChanged = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFilenameTemplateChanged = (event: React.ChangeEvent<HTMLInputElement>) => {
     setS3Draft(
       create(InstanceSetting_StorageSettingSchema, {
         ...s3Draft,
-        filepathTemplate: event.target.value,
+        filenameTemplate: event.target.value,
       }),
     );
   };
@@ -74,7 +97,7 @@ const StorageSection = () => {
   // Trim these fields on save: whitespace/newlines picked up from copy-pasting credentials out
   // of a cloud console are otherwise stored verbatim and signed as part of the S3 request,
   // producing SignatureDoesNotMatch against the provider.
-  const trimmedS3Fields = new Set(["accessKeyId", "accessKeySecret", "endpoint", "region", "bucket"]);
+  const trimmedS3Fields = new Set(["accessKeyId", "accessKeySecret", "endpoint", "region", "bucket", "rootPrefix"]);
 
   const handleS3FieldChange = (field: string, value: string | boolean) => {
     const existing = s3Draft.s3Config;
@@ -88,6 +111,7 @@ const StorageSection = () => {
           endpoint: existing?.endpoint ?? "",
           region: existing?.region ?? "",
           bucket: existing?.bucket ?? "",
+          rootPrefix: existing?.rootPrefix ?? "",
           usePathStyle: existing?.usePathStyle ?? false,
           insecureSkipTlsVerify: existing?.insecureSkipTlsVerify ?? false,
           [field]: normalizedValue,
@@ -105,7 +129,7 @@ const StorageSection = () => {
           case: "storageSetting",
           value: create(InstanceSetting_StorageSettingSchema, {
             ...originalSetting,
-            filepathTemplate: s3Draft.filepathTemplate || DEFAULT_FILEPATH_TEMPLATE,
+            filenameTemplate: s3Draft.filenameTemplate || DEFAULT_FILENAME_TEMPLATE,
             s3Config: s3Draft.s3Config,
           }),
         },
@@ -168,6 +192,32 @@ const StorageSection = () => {
     setPendingStorageType(undefined);
   };
 
+  // Local storage still expresses its whole path as one template; S3 stopped using it once the
+  // path became root prefix + knowledge base directory + filename template.
+  const [filepathTemplateDraft, setFilepathTemplateDraft] = useState(originalSetting.filepathTemplate);
+  useEffect(() => {
+    setFilepathTemplateDraft(originalSetting.filepathTemplate);
+  }, [originalSetting.filepathTemplate]);
+
+  const allowSaveFilepathTemplate = Boolean(filepathTemplateDraft) && filepathTemplateDraft !== originalSetting.filepathTemplate;
+
+  const saveFilepathTemplate = async () => {
+    await saveInstanceSetting({
+      key: InstanceSetting_Key.STORAGE,
+      setting: create(InstanceSettingSchema, {
+        name: buildInstanceSettingName(InstanceSetting_Key.STORAGE),
+        value: {
+          case: "storageSetting",
+          value: create(InstanceSetting_StorageSettingSchema, {
+            ...originalSetting,
+            filepathTemplate: filepathTemplateDraft,
+          }),
+        },
+      }),
+      errorContext: "Update local filepath template",
+    });
+  };
+
   // Upload size limit: applies to non-media attachments regardless of active storage backend.
   const [uploadSizeLimitDraft, setUploadSizeLimitDraft] = useState(String(originalSetting.uploadSizeLimitMb || ""));
   useEffect(() => {
@@ -218,7 +268,10 @@ const StorageSection = () => {
         name: buildInstanceSettingName(InstanceSetting_Key.BACKUP),
         value: {
           case: "backupSetting",
-          value: create(InstanceSetting_BackupSettingSchema, { ...backupSetting, pathTemplate: pathTemplateDraft }),
+          value: create(InstanceSetting_BackupSettingSchema, {
+            ...backupSetting,
+            pathTemplate: pathTemplateDraft,
+          }),
         },
       }),
       errorContext: "Update backup path template",
@@ -229,7 +282,9 @@ const StorageSection = () => {
     setBackupRunning(true);
     try {
       await instanceServiceClient.backupNow({});
-      const updated = await instanceServiceClient.getInstanceSetting({ name: buildInstanceSettingName(InstanceSetting_Key.BACKUP) });
+      const updated = await instanceServiceClient.getInstanceSetting({
+        name: buildInstanceSettingName(InstanceSetting_Key.BACKUP),
+      });
       if (updated.value.case === "backupSetting") {
         setLastBackup(updated.value.value);
       }
@@ -270,6 +325,8 @@ const StorageSection = () => {
           <Input
             className="w-64"
             value={s3Draft.s3Config?.endpoint ?? ""}
+            readOnly={locationLocked}
+            disabled={locationLocked}
             onChange={(e) => handleS3FieldChange("endpoint", e.target.value)}
           />
         </SettingRow>
@@ -279,8 +336,34 @@ const StorageSection = () => {
         </SettingRow>
 
         <SettingRow label={t("setting.storage.bucket")} description={t("setting.storage.bucket-description")}>
-          <Input className="w-64" value={s3Draft.s3Config?.bucket ?? ""} onChange={(e) => handleS3FieldChange("bucket", e.target.value)} />
+          <Input
+            className="w-64"
+            value={s3Draft.s3Config?.bucket ?? ""}
+            readOnly={locationLocked}
+            disabled={locationLocked}
+            onChange={(e) => handleS3FieldChange("bucket", e.target.value)}
+          />
         </SettingRow>
+
+        <SettingRow label={t("setting.storage.root-prefix")} description={t("setting.storage.root-prefix-description")}>
+          <Input
+            className="w-64 font-mono"
+            value={s3Draft.s3Config?.rootPrefix ?? ""}
+            placeholder={DEFAULT_ROOT_PREFIX}
+            readOnly={locationLocked}
+            disabled={locationLocked}
+            onChange={(e) => handleS3FieldChange("rootPrefix", e.target.value)}
+          />
+        </SettingRow>
+
+        {locationLocked && (
+          <div className="w-full flex items-start justify-between gap-4">
+            <p className="text-xs text-muted-foreground">{t("setting.storage.location-locked-hint")}</p>
+            <Button variant="outline" size="sm" onClick={() => setLocationUnlocked(true)}>
+              {t("setting.storage.unlock-location")}
+            </Button>
+          </div>
+        )}
 
         <SettingRow label={t("setting.storage.use-path-style")} description={t("setting.storage.use-path-style-description")}>
           <Switch
@@ -300,15 +383,15 @@ const StorageSection = () => {
         </SettingRow>
 
         <SettingRow
-          label={t("setting.storage.filepath-template")}
-          description={t("setting.storage.filepath-template-description")}
+          label={t("setting.storage.filename-template")}
+          description={t("setting.storage.filename-template-description")}
           vertical
         >
           <Input
             className="w-full max-w-lg font-mono"
-            value={s3Draft.filepathTemplate}
-            placeholder={DEFAULT_FILEPATH_TEMPLATE}
-            onChange={handleFilepathTemplateChanged}
+            value={s3Draft.filenameTemplate}
+            placeholder={DEFAULT_FILENAME_TEMPLATE}
+            onChange={handleFilenameTemplateChanged}
           />
         </SettingRow>
 
@@ -349,6 +432,24 @@ const StorageSection = () => {
           </Select>
         </SettingRow>
 
+        <SettingRow
+          label={t("setting.storage.filepath-template")}
+          description={t("setting.storage.filepath-template-description")}
+          vertical
+        >
+          <div className="flex w-full max-w-lg items-center gap-2">
+            <Input
+              className="font-mono"
+              value={filepathTemplateDraft}
+              placeholder={DEFAULT_FILEPATH_TEMPLATE}
+              onChange={(e) => setFilepathTemplateDraft(e.target.value)}
+            />
+            <Button variant="outline" disabled={!allowSaveFilepathTemplate} onClick={saveFilepathTemplate}>
+              {t("common.save")}
+            </Button>
+          </div>
+        </SettingRow>
+
         <SettingRow label={t("setting.storage.max-upload-size")} description={t("setting.storage.max-upload-size-hint")}>
           <div className="flex items-center gap-2">
             <Input
@@ -364,6 +465,8 @@ const StorageSection = () => {
           </div>
         </SettingRow>
       </SettingGroup>
+
+      <StorageMigrationSection />
 
       <SettingGroup title={t("setting.storage.backup-title")} description={t("setting.storage.backup-description")} showSeparator>
         <SettingRow

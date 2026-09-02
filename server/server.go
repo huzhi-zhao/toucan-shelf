@@ -22,6 +22,7 @@ import (
 	backuprunner "github.com/usememos/memos/server/runner/backup"
 	commentvisibilityrunner "github.com/usememos/memos/server/runner/commentvisibility"
 	memopayloadrunner "github.com/usememos/memos/server/runner/memopayload"
+	storagemigrationrunner "github.com/usememos/memos/server/runner/storagemigration"
 
 	apiv1 "github.com/usememos/memos/server/router/api/v1"
 	"github.com/usememos/memos/server/router/fileserver"
@@ -220,6 +221,19 @@ func (s *Server) startBackgroundRunners(ctx context.Context) {
 	go func() {
 		defer s.backgroundRunnerWG.Done()
 		commentVisibilityRunner.RunOnce(commentVisibilityContext)
+	}()
+
+	// Attachment storage migration worker. Idle on every instance without a migration in
+	// flight; when there is one, this is what copies the objects and picks the work back up
+	// after a restart.
+	storageMigrationContext, storageMigrationCancel := context.WithCancel(ctx)
+	s.backgroundRunnerCancels = append(s.backgroundRunnerCancels, storageMigrationCancel)
+	storageMigrationRunner := storagemigrationrunner.NewRunner(s.Store)
+	s.backgroundRunnerWG.Add(1)
+	go func() {
+		defer s.backgroundRunnerWG.Done()
+		storageMigrationRunner.Run(storageMigrationContext)
+		slog.Info("storage migration runner stopped")
 	}()
 
 	// RAG search index worker.

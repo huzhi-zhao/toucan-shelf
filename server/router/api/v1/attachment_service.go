@@ -12,6 +12,7 @@ import (
 	"mime"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -239,6 +240,12 @@ func (s *APIV1Service) CreateAttachment(ctx context.Context, request *v1pb.Creat
 	create.Size = int64(len(strippedBlob))
 
 	if err := SaveAttachmentBlob(ctx, s.Profile, s.Store, create, workspaceSlug); err != nil {
+		// The freeze gate has to arrive as something the client can recognise and explain,
+		// not as a generic internal error: during a migration this is the expected answer,
+		// and "try again later" is genuinely the right advice.
+		if errors.Is(err, store.ErrAttachmentWritesFrozen) {
+			return nil, status.Error(codes.FailedPrecondition, store.ErrAttachmentWritesFrozen.Error())
+		}
 		return nil, status.Errorf(codes.Internal, "failed to save attachment blob: %v", err)
 	}
 
@@ -508,6 +515,13 @@ func (s *APIV1Service) applyAttachmentContentUpdate(ctx context.Context, attachm
 	if attachment.StorageType == storepb.AttachmentStorageType_EXTERNAL {
 		return status.Errorf(codes.FailedPrecondition, "externally linked attachments cannot be overwritten")
 	}
+	// An in-place overwrite during a migration would write to whichever side of the copy the
+	// instance currently points at and leave the other stale.
+	if frozen, err := s.Store.AttachmentWritesFrozen(ctx); err != nil {
+		return status.Errorf(codes.Internal, "failed to check the attachment write gate: %v", err)
+	} else if frozen {
+		return status.Error(codes.FailedPrecondition, store.ErrAttachmentWritesFrozen.Error())
+	}
 	if !overwritableAttachmentTypes[attachment.Type] {
 		return status.Errorf(codes.FailedPrecondition, "content of a %s attachment cannot be replaced", attachment.Type)
 	}
@@ -729,6 +743,12 @@ func convertAttachmentFromStore(attachment *store.Attachment) *v1pb.Attachment {
 // `{workspace}` placeholder of the S3 filepath template. It has to be passed in rather than
 // derived from create.MemoID, because web uploads happen before the memo exists.
 func SaveAttachmentBlob(ctx context.Context, profile *profile.Profile, stores *store.Store, create *store.Attachment, workspaceSlug string) error {
+	// New objects during a migration would land in the old location after it has already been
+	// scanned, and never be copied. This is the only entry point for attachment bytes, which is
+	// what makes freezing here sufficient.
+	if err := stores.EnsureAttachmentWritesAllowed(ctx); err != nil {
+		return err
+	}
 	instanceStorageSetting, err := stores.GetInstanceStorageSetting(ctx)
 	if err != nil {
 		return errors.Wrap(err, "Failed to find instance storage setting")
@@ -783,12 +803,7 @@ func SaveAttachmentBlob(ctx context.Context, profile *profile.Profile, stores *s
 			return errors.Wrap(err, "Failed to create s3 client")
 		}
 
-		filepathTemplate := instanceStorageSetting.FilepathTemplate
-		if !strings.Contains(filepathTemplate, "{filename}") {
-			filepathTemplate = filepath.Join(filepathTemplate, "{filename}")
-		}
-		filepathTemplate = replaceFilenameWithPathTemplate(filepathTemplate, attachmentPathContext{filename: create.Filename, workspaceSlug: workspaceSlug})
-		key, err := s3Client.UploadObject(ctx, filepathTemplate, create.Type, bytes.NewReader(create.Blob))
+		key, err := s3Client.UploadObject(ctx, buildS3ObjectKey(instanceStorageSetting, workspaceSlug, create.Filename), create.Type, bytes.NewReader(create.Blob))
 		if err != nil {
 			return errors.Wrap(err, "Failed to upload via s3 client")
 		}
@@ -811,6 +826,29 @@ func SaveAttachmentBlob(ctx context.Context, profile *profile.Profile, stores *s
 	}
 
 	return nil
+}
+
+// buildS3ObjectKey composes the three-level S3 object path: the admin-configurable root prefix,
+// the workspace directory the system picks, and the file name from filename_template.
+//
+// The middle segment is deliberately not configurable. It is what keeps "where the data lives"
+// expressible as the single pair (bucket, root_prefix), which is in turn what makes an
+// attachment storage migration comparable and a target key recomputable. See
+// docs/dev/requirements/storage/attachment-storage-migration.md.
+func buildS3ObjectKey(setting *storepb.InstanceStorageSetting, workspaceSlug, filename string) string {
+	filenameTemplate := setting.GetFilenameTemplate()
+	if !strings.Contains(filenameTemplate, "{filename}") {
+		filenameTemplate = path.Join(filenameTemplate, "{filename}")
+	}
+	name := replaceFilenameWithPathTemplate(filenameTemplate, attachmentPathContext{
+		filename:      filename,
+		workspaceSlug: workspaceSlug,
+	})
+	if workspaceSlug == "" {
+		workspaceSlug = unassignedWorkspaceSlug
+	}
+	// path.Join drops the empty segment on its own, so an empty root prefix means the bucket root.
+	return path.Join(strings.Trim(setting.GetS3Config().GetRootPrefix(), "/"), workspaceSlug, name)
 }
 
 func (s *APIV1Service) GetAttachmentBlob(attachment *store.Attachment) ([]byte, error) {
@@ -889,7 +927,7 @@ type attachmentPathContext struct {
 // unassignedWorkspaceSlug is the directory used when an upload arrives with no workspace.
 // Uploads that legitimately have no workspace (and any caller not yet updated) still
 // succeed; they just don't get their own directory.
-const unassignedWorkspaceSlug = "_unassigned"
+const unassignedWorkspaceSlug = store.UnassignedWorkspaceSlug
 
 func replaceFilenameWithPathTemplate(path string, pathCtx attachmentPathContext) string {
 	filename := pathCtx.filename

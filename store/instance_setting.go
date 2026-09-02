@@ -2,9 +2,11 @@ package store
 
 import (
 	"context"
+	"strings"
 
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 
 	storepb "github.com/usememos/memos/proto/gen/store"
 )
@@ -27,31 +29,10 @@ func (s *Store) UpsertInstanceSetting(ctx context.Context, upsert *storepb.Insta
 	instanceSettingRaw := &InstanceSetting{
 		Name: upsert.Key.String(),
 	}
-	var valueBytes []byte
-	var err error
-	if upsert.Key == storepb.InstanceSettingKey_BASIC {
-		valueBytes, err = protojson.Marshal(upsert.GetBasicSetting())
-	} else if upsert.Key == storepb.InstanceSettingKey_GENERAL {
-		valueBytes, err = protojson.Marshal(upsert.GetGeneralSetting())
-	} else if upsert.Key == storepb.InstanceSettingKey_STORAGE {
-		valueBytes, err = protojson.Marshal(upsert.GetStorageSetting())
-	} else if upsert.Key == storepb.InstanceSettingKey_MEMO_RELATED {
-		valueBytes, err = protojson.Marshal(upsert.GetMemoRelatedSetting())
-	} else if upsert.Key == storepb.InstanceSettingKey_TAGS {
-		valueBytes, err = protojson.Marshal(upsert.GetTagsSetting())
-	} else if upsert.Key == storepb.InstanceSettingKey_NOTIFICATION {
-		valueBytes, err = protojson.Marshal(upsert.GetNotificationSetting())
-	} else if upsert.Key == storepb.InstanceSettingKey_AI {
-		valueBytes, err = protojson.Marshal(upsert.GetAiSetting())
-	} else if upsert.Key == storepb.InstanceSettingKey_BACKUP {
-		valueBytes, err = protojson.Marshal(upsert.GetBackupSetting())
-	} else {
-		return nil, errors.Errorf("unsupported instance setting key: %v", upsert.Key)
-	}
+	valueString, err := marshalInstanceSettingValue(upsert)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal instance setting value")
+		return nil, err
 	}
-	valueString := string(valueBytes)
 	instanceSettingRaw.Value = valueString
 	instanceSettingRaw, err = s.driver.UpsertInstanceSetting(ctx, instanceSettingRaw)
 	if err != nil {
@@ -63,6 +44,41 @@ func (s *Store) UpsertInstanceSetting(ctx context.Context, upsert *storepb.Insta
 	}
 	s.instanceSettingCache.Set(ctx, instanceSetting.Key.String(), instanceSetting)
 	return instanceSetting, nil
+}
+
+// marshalInstanceSettingValue renders one setting's oneof payload as the JSON blob stored in the
+// value column. It is separate from UpsertInstanceSetting because the attachment storage
+// migration writes settings inside its own transaction, and both paths have to agree byte for
+// byte on the encoding.
+func marshalInstanceSettingValue(setting *storepb.InstanceSetting) (string, error) {
+	var valueBytes []byte
+	var err error
+	switch setting.Key {
+	case storepb.InstanceSettingKey_BASIC:
+		valueBytes, err = protojson.Marshal(setting.GetBasicSetting())
+	case storepb.InstanceSettingKey_GENERAL:
+		valueBytes, err = protojson.Marshal(setting.GetGeneralSetting())
+	case storepb.InstanceSettingKey_STORAGE:
+		valueBytes, err = protojson.Marshal(setting.GetStorageSetting())
+	case storepb.InstanceSettingKey_MEMO_RELATED:
+		valueBytes, err = protojson.Marshal(setting.GetMemoRelatedSetting())
+	case storepb.InstanceSettingKey_TAGS:
+		valueBytes, err = protojson.Marshal(setting.GetTagsSetting())
+	case storepb.InstanceSettingKey_NOTIFICATION:
+		valueBytes, err = protojson.Marshal(setting.GetNotificationSetting())
+	case storepb.InstanceSettingKey_AI:
+		valueBytes, err = protojson.Marshal(setting.GetAiSetting())
+	case storepb.InstanceSettingKey_BACKUP:
+		valueBytes, err = protojson.Marshal(setting.GetBackupSetting())
+	case storepb.InstanceSettingKey_STORAGE_MIGRATION:
+		valueBytes, err = protojson.Marshal(setting.GetStorageMigrationSetting())
+	default:
+		return "", errors.Errorf("unsupported instance setting key: %v", setting.Key)
+	}
+	if err != nil {
+		return "", errors.Wrap(err, "failed to marshal instance setting value")
+	}
+	return string(valueBytes), nil
 }
 
 func (s *Store) ListInstanceSettings(ctx context.Context, find *FindInstanceSetting) ([]*storepb.InstanceSetting, error) {
@@ -259,10 +275,21 @@ func (s *Store) GetInstanceAISetting(ctx context.Context) (*storepb.InstanceAISe
 const (
 	defaultInstanceStorageType       = storepb.InstanceStorageSetting_LOCAL
 	defaultInstanceUploadSizeLimitMb = 100
-	// {workspace} expands to the owning workspace's storage slug on S3, so each knowledge
-	// base gets its own prefix and can carry its own lifecycle/backup rules. On local
-	// storage it expands to nothing, leaving the historical layout untouched.
+	// LEGACY-COMPAT(storage/three-level-path): filepath_template is still the source of truth
+	// for LOCAL storage, where {workspace} expands to nothing and the historical flat layout is
+	// left untouched. For S3 the path is now the three-level model below, and this template only
+	// survives as the thing an old instance is decomposed from.
 	defaultInstanceFilepathTemplate = "assets/{workspace}/{timestamp}_{uuid}_{filename}"
+
+	// The S3 object path is root_prefix / workspace storage slug / filename_template. Only the
+	// two ends are configurable: the middle directory is decided by the system so that "where
+	// the data lives" stays a single comparable pair (bucket, root_prefix). See
+	// docs/dev/requirements/storage/attachment-storage-migration.md.
+	defaultInstanceRootPrefix       = "assets"
+	defaultInstanceFilenameTemplate = "{timestamp}_{uuid}_{filename}"
+
+	// workspacePlaceholder is where an old filepath_template splits into root prefix and file name.
+	workspacePlaceholder = "{workspace}"
 )
 
 func (s *Store) GetInstanceStorageSetting(ctx context.Context) (*storepb.InstanceStorageSetting, error) {
@@ -286,11 +313,63 @@ func (s *Store) GetInstanceStorageSetting(ctx context.Context) (*storepb.Instanc
 	if instanceStorageSetting.FilepathTemplate == "" {
 		instanceStorageSetting.FilepathTemplate = defaultInstanceFilepathTemplate
 	}
+	decomposeStorageFilepathTemplate(instanceStorageSetting)
 	s.instanceSettingCache.Set(ctx, storepb.InstanceSettingKey_STORAGE.String(), &storepb.InstanceSetting{
 		Key:   storepb.InstanceSettingKey_STORAGE,
 		Value: &storepb.InstanceSetting_StorageSetting{StorageSetting: instanceStorageSetting},
 	})
 	return instanceStorageSetting, nil
+}
+
+// decomposeStorageFilepathTemplate fills in the three-level S3 path model for a setting written
+// before that model existed, by splitting the old free-form filepath_template around
+// {workspace}. It is the same lazy-backfill shape as EnsureWorkspaceStorageSlug: the instance
+// setting is one JSON blob, so there is nothing a SQL migration could rewrite. The result is
+// materialized on the next settings write.
+//
+// filename_template being empty is the marker for "not decomposed yet". root_prefix cannot serve
+// as the marker because an empty root prefix legitimately means the bucket root, whereas a file
+// name template is never legitimately empty.
+func decomposeStorageFilepathTemplate(setting *storepb.InstanceStorageSetting) {
+	if setting.FilenameTemplate != "" {
+		return
+	}
+	rootPrefix, filenameTemplate := splitFilepathTemplate(setting.FilepathTemplate)
+	setting.FilenameTemplate = filenameTemplate
+	// root_prefix lives on the S3 config; with no S3 config there is nothing to carry it, and
+	// whoever configures S3 later states the prefix themselves.
+	if setting.S3Config != nil && setting.S3Config.RootPrefix == "" {
+		setting.S3Config.RootPrefix = rootPrefix
+	}
+}
+
+// splitFilepathTemplate splits an old filepath_template into (root prefix, file name template).
+//
+// Everything before {workspace} becomes the root prefix and everything after it becomes the file
+// name. A template that never mentions {workspace} is split at its last separator instead, which
+// is the flat historical layout: its whole directory part is the root prefix.
+//
+// Directory segments the admin wrote *after* {workspace} end up inside the file name template,
+// producing a "file name" containing a slash. That is accepted: it only affects how an old
+// config is displayed, and the first migration recomputes those keys anyway.
+func splitFilepathTemplate(template string) (rootPrefix, filenameTemplate string) {
+	template = strings.Trim(strings.TrimSpace(template), "/")
+	if template == "" {
+		return defaultInstanceRootPrefix, defaultInstanceFilenameTemplate
+	}
+	if idx := strings.Index(template, workspacePlaceholder); idx >= 0 {
+		rootPrefix = strings.Trim(template[:idx], "/")
+		filenameTemplate = strings.Trim(template[idx+len(workspacePlaceholder):], "/")
+	} else if idx := strings.LastIndex(template, "/"); idx >= 0 {
+		rootPrefix = template[:idx]
+		filenameTemplate = template[idx+1:]
+	} else {
+		filenameTemplate = template
+	}
+	if filenameTemplate == "" {
+		filenameTemplate = defaultInstanceFilenameTemplate
+	}
+	return rootPrefix, filenameTemplate
 }
 
 // DefaultInstanceBackupPathTemplate is the default S3 object key template for database backups.
@@ -313,6 +392,30 @@ func (s *Store) GetInstanceBackupSetting(ctx context.Context) (*storepb.Instance
 		instanceBackupSetting.PathTemplate = DefaultInstanceBackupPathTemplate
 	}
 	return instanceBackupSetting, nil
+}
+
+// GetInstanceStorageMigrationSetting returns the in-flight attachment storage migration, or a
+// zero-valued setting (state STATE_UNSPECIFIED) when no migration exists. Callers must treat the
+// zero value as "no migration": it is by far the common case, so returning nil would put a nil
+// check in front of every read.
+func (s *Store) GetInstanceStorageMigrationSetting(ctx context.Context) (*storepb.InstanceStorageMigrationSetting, error) {
+	instanceSetting, err := s.GetInstanceSetting(ctx, &FindInstanceSetting{
+		Name: storepb.InstanceSettingKey_STORAGE_MIGRATION.String(),
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get instance storage migration setting")
+	}
+	if instanceSetting == nil || instanceSetting.GetStorageMigrationSetting() == nil {
+		return &storepb.InstanceStorageMigrationSetting{}, nil
+	}
+	// A copy, not the cached object: every caller of this advances the state machine by mutating
+	// what it gets back and then saving. Handing out the cached pointer would mean a save that
+	// fails still leaves the cache claiming the new state, and the write gate reads that cache.
+	migration, ok := proto.Clone(instanceSetting.GetStorageMigrationSetting()).(*storepb.InstanceStorageMigrationSetting)
+	if !ok {
+		return &storepb.InstanceStorageMigrationSetting{}, nil
+	}
+	return migration, nil
 }
 
 func convertInstanceSettingFromRaw(instanceSettingRaw *InstanceSetting) (*storepb.InstanceSetting, error) {
@@ -368,6 +471,12 @@ func convertInstanceSettingFromRaw(instanceSettingRaw *InstanceSetting) (*storep
 			return nil, err
 		}
 		instanceSetting.Value = &storepb.InstanceSetting_BackupSetting{BackupSetting: backupSetting}
+	case storepb.InstanceSettingKey_STORAGE_MIGRATION.String():
+		storageMigrationSetting := &storepb.InstanceStorageMigrationSetting{}
+		if err := protojsonUnmarshaler.Unmarshal([]byte(instanceSettingRaw.Value), storageMigrationSetting); err != nil {
+			return nil, err
+		}
+		instanceSetting.Value = &storepb.InstanceSetting_StorageMigrationSetting{StorageMigrationSetting: storageMigrationSetting}
 	default:
 		// Skip unsupported instance setting key.
 		return nil, nil

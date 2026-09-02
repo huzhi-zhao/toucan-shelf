@@ -722,6 +722,142 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/v1/instance/settings/storageMigration:abandon:
+        post:
+            tags:
+                - InstanceService
+            description: |-
+                AbandonStorageMigration drops the work list and unfreezes attachment writes. Objects already
+                 copied to the target are left where they are for the operator to delete. Admin only.
+            operationId: InstanceService_AbandonStorageMigration
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/AbandonStorageMigrationRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/InstanceSetting'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/instance/settings/storageMigration:precheck:
+        post:
+            tags:
+                - InstanceService
+            description: |-
+                PrecheckStorageMigration writes, reads back and deletes a probe object at the drafted
+                 migration target, then records the outcome on the migration setting. Admin only.
+            operationId: InstanceService_PrecheckStorageMigration
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/PrecheckStorageMigrationRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/InstanceSetting'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/instance/settings/storageMigration:retry:
+        post:
+            tags:
+                - InstanceService
+            description: |-
+                RetryStorageMigration puts every failed object back in the queue and resumes copying.
+                 Admin only.
+            operationId: InstanceService_RetryStorageMigration
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/RetryStorageMigrationRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/InstanceSetting'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/instance/settings/storageMigration:start:
+        post:
+            tags:
+                - InstanceService
+            description: |-
+                StartStorageMigration freezes attachment writes, builds the work list and starts copying
+                 objects to the prechecked target. Admin only.
+            operationId: InstanceService_StartStorageMigration
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/StartStorageMigrationRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/InstanceSetting'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/instance/settings/storageMigration:switch:
+        post:
+            tags:
+                - InstanceService
+            description: |-
+                SwitchStorageMigration points the instance at the target: every attachment's object key and
+                 the instance storage configuration are rewritten in one transaction, and attachment writes
+                 are unfrozen. Refused while any object has failed. Admin only.
+            operationId: InstanceService_SwitchStorageMigration
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/SwitchStorageMigrationRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/InstanceSetting'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/instance/settings:batchGet:
         post:
             tags:
@@ -3864,6 +4000,9 @@ paths:
                                 $ref: '#/components/schemas/Status'
 components:
     schemas:
+        AbandonStorageMigrationRequest:
+            type: object
+            properties: {}
         Attachment:
             required:
                 - filename
@@ -4555,6 +4694,8 @@ components:
                     $ref: '#/components/schemas/InstanceSetting_AISetting'
                 backupSetting:
                     $ref: '#/components/schemas/InstanceSetting_BackupSetting'
+                storageMigrationSetting:
+                    $ref: '#/components/schemas/InstanceSetting_StorageMigrationSetting'
             description: An instance setting resource.
         InstanceSetting_AIModelConfig:
             type: object
@@ -4737,6 +4878,52 @@ components:
                 email:
                     $ref: '#/components/schemas/NotificationSetting_EmailSetting'
             description: Notification transport configuration.
+        InstanceSetting_StorageMigrationSetting:
+            type: object
+            properties:
+                state:
+                    enum:
+                        - STATE_UNSPECIFIED
+                        - DRAFT
+                        - PRECHECKED
+                        - FROZEN
+                        - MIGRATING
+                        - RECONCILING
+                        - READY
+                    type: string
+                    format: enum
+                targetS3Config:
+                    allOf:
+                        - $ref: '#/components/schemas/StorageSetting_S3Config'
+                    description: |-
+                        target_s3_config is where the attachments are going. Only the location triple may differ
+                         from the live configuration; a migration that moves nowhere is rejected.
+                createTime:
+                    readOnly: true
+                    type: string
+                    format: date-time
+                updateTime:
+                    readOnly: true
+                    type: string
+                    format: date-time
+                precheck:
+                    readOnly: true
+                    allOf:
+                        - $ref: '#/components/schemas/StorageMigrationSetting_PrecheckResult'
+                progress:
+                    readOnly: true
+                    allOf:
+                        - $ref: '#/components/schemas/StorageMigrationSetting_Progress'
+                lastError:
+                    readOnly: true
+                    type: string
+                    description: |-
+                        last_error is the most recent failure of the background worker itself, as opposed to a
+                         single object's failure.
+            description: |-
+                StorageMigrationSetting is the target configuration and state machine of an attachment
+                 storage migration: moving every S3 attachment object to a new
+                 (endpoint, bucket, root_prefix) location without changing a single attachment's URI.
         InstanceSetting_StorageSetting:
             type: object
             properties:
@@ -4752,7 +4939,9 @@ components:
                 filepathTemplate:
                     type: string
                     description: |-
-                        The template of file path.
+                        LEGACY-COMPAT(storage/three-level-path): the whole object path as a single free-form
+                         string. Still the source of truth for LOCAL storage; for S3 the path is now
+                         root_prefix + workspace directory + filename_template.
                          e.g. assets/{timestamp}_{filename}
                 uploadSizeLimitMb:
                     type: string
@@ -4761,6 +4950,13 @@ components:
                     allOf:
                         - $ref: '#/components/schemas/StorageSetting_S3Config'
                     description: The S3 config.
+                filenameTemplate:
+                    type: string
+                    description: |-
+                        filename_template names the final path segment of an S3 object; it governs the file name
+                         only, never directories. The directory between the root prefix and the file name is the
+                         owning workspace's storage slug and is not configurable.
+                         e.g. {timestamp}_{uuid}_{filename}
             description: Storage configuration settings for instance attachments.
         InstanceSetting_TagMetadata:
             type: object
@@ -5624,6 +5820,9 @@ components:
                 text:
                     type: string
                     description: The rewritten text.
+        PrecheckStorageMigrationRequest:
+            type: object
+            properties: {}
         PreviewPublishRequest:
             required:
                 - parent
@@ -5930,6 +6129,9 @@ components:
                     description: |-
                         Required. The resource name of the version to restore.
                          Format: memos/{memo}/histories/{history}
+        RetryStorageMigrationRequest:
+            type: object
+            properties: {}
         SearchHit:
             type: object
             properties:
@@ -6365,6 +6567,9 @@ components:
             description: |-
                 SiteNavItem is one node of the site's navigation tree. A node either points
                  at a page (`slug`), groups other nodes, or both.
+        StartStorageMigrationRequest:
+            type: object
+            properties: {}
         Status:
             type: object
             properties:
@@ -6381,6 +6586,48 @@ components:
                         $ref: '#/components/schemas/GoogleProtobufAny'
                     description: A list of messages that carry the error details.  There is a common set of message types for APIs to use.
             description: 'The `Status` type defines a logical error model that is suitable for different programming environments, including REST APIs and RPC APIs. It is used by [gRPC](https://github.com/grpc). Each `Status` message contains three pieces of data: error code, error message, and error details. You can find out more about this error model and how to work with it in the [API Design Guide](https://cloud.google.com/apis/design/errors).'
+        StorageMigrationSetting_PrecheckResult:
+            type: object
+            properties:
+                passed:
+                    type: boolean
+                error:
+                    type: string
+                    description: error is the failure reason, verbatim enough for an admin to act on.
+                checkTime:
+                    type: string
+                    format: date-time
+                probeKey:
+                    type: string
+                    description: |-
+                        probe_key is the object key the probe used, so an object left behind by a crash
+                         between write and delete can be found and removed by hand.
+                serverSideCopy:
+                    type: boolean
+                    description: |-
+                        server_side_copy reports whether the migration can hand the copy to S3 itself instead
+                         of streaming every byte through Toucan.
+            description: PrecheckResult records the outcome of the write-read-delete probe against the target.
+        StorageMigrationSetting_Progress:
+            type: object
+            properties:
+                total:
+                    type: string
+                pending:
+                    type: string
+                done:
+                    type: string
+                skipped:
+                    type: string
+                    description: |-
+                        skipped counts attachments whose source object does not exist. They were already broken
+                         before the migration and do not block it.
+                failed:
+                    type: string
+                    description: |-
+                        failed counts attachments that could not be copied or did not verify. Any of these
+                         blocks the switch.
+            description: Progress mirrors the per-status counts of the migration's work list.
         StorageSetting_S3Config:
             type: object
             properties:
@@ -6403,9 +6650,19 @@ components:
                         insecure_skip_tls_verify disables TLS certificate verification when connecting
                          to the S3 endpoint. Only enable this for trusted endpoints that use a self-signed
                          certificate; it removes protection against man-in-the-middle attacks.
+                rootPrefix:
+                    type: string
+                    description: |-
+                        root_prefix is the directory every attachment object is written under, relative to
+                         the bucket root. Empty means the bucket root itself. Together with `endpoint` and
+                         `bucket` it says which storage the data lives in, so all three are read-only once S3
+                         attachments exist and can only be changed through an attachment storage migration.
             description: |-
                 S3 configuration for cloud storage backend.
                  Reference: https://developers.cloudflare.com/r2/examples/aws/aws-sdk-go/
+        SwitchStorageMigrationRequest:
+            type: object
+            properties: {}
         TestAIProviderRequest:
             type: object
             properties:

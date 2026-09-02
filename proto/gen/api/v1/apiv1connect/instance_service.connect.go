@@ -55,6 +55,21 @@ const (
 	// InstanceServiceBackupNowProcedure is the fully-qualified name of the InstanceService's BackupNow
 	// RPC.
 	InstanceServiceBackupNowProcedure = "/memos.api.v1.InstanceService/BackupNow"
+	// InstanceServicePrecheckStorageMigrationProcedure is the fully-qualified name of the
+	// InstanceService's PrecheckStorageMigration RPC.
+	InstanceServicePrecheckStorageMigrationProcedure = "/memos.api.v1.InstanceService/PrecheckStorageMigration"
+	// InstanceServiceStartStorageMigrationProcedure is the fully-qualified name of the
+	// InstanceService's StartStorageMigration RPC.
+	InstanceServiceStartStorageMigrationProcedure = "/memos.api.v1.InstanceService/StartStorageMigration"
+	// InstanceServiceRetryStorageMigrationProcedure is the fully-qualified name of the
+	// InstanceService's RetryStorageMigration RPC.
+	InstanceServiceRetryStorageMigrationProcedure = "/memos.api.v1.InstanceService/RetryStorageMigration"
+	// InstanceServiceSwitchStorageMigrationProcedure is the fully-qualified name of the
+	// InstanceService's SwitchStorageMigration RPC.
+	InstanceServiceSwitchStorageMigrationProcedure = "/memos.api.v1.InstanceService/SwitchStorageMigration"
+	// InstanceServiceAbandonStorageMigrationProcedure is the fully-qualified name of the
+	// InstanceService's AbandonStorageMigration RPC.
+	InstanceServiceAbandonStorageMigrationProcedure = "/memos.api.v1.InstanceService/AbandonStorageMigration"
 	// InstanceServiceTestAIProviderProcedure is the fully-qualified name of the InstanceService's
 	// TestAIProvider RPC.
 	InstanceServiceTestAIProviderProcedure = "/memos.api.v1.InstanceService/TestAIProvider"
@@ -77,6 +92,22 @@ type InstanceServiceClient interface {
 	// BackupNow triggers an immediate database backup to the configured S3 storage.
 	// Only available when the instance uses SQLite and S3 storage is configured. Admin only.
 	BackupNow(context.Context, *connect.Request[v1.BackupNowRequest]) (*connect.Response[v1.BackupNowResponse], error)
+	// PrecheckStorageMigration writes, reads back and deletes a probe object at the drafted
+	// migration target, then records the outcome on the migration setting. Admin only.
+	PrecheckStorageMigration(context.Context, *connect.Request[v1.PrecheckStorageMigrationRequest]) (*connect.Response[v1.InstanceSetting], error)
+	// StartStorageMigration freezes attachment writes, builds the work list and starts copying
+	// objects to the prechecked target. Admin only.
+	StartStorageMigration(context.Context, *connect.Request[v1.StartStorageMigrationRequest]) (*connect.Response[v1.InstanceSetting], error)
+	// RetryStorageMigration puts every failed object back in the queue and resumes copying.
+	// Admin only.
+	RetryStorageMigration(context.Context, *connect.Request[v1.RetryStorageMigrationRequest]) (*connect.Response[v1.InstanceSetting], error)
+	// SwitchStorageMigration points the instance at the target: every attachment's object key and
+	// the instance storage configuration are rewritten in one transaction, and attachment writes
+	// are unfrozen. Refused while any object has failed. Admin only.
+	SwitchStorageMigration(context.Context, *connect.Request[v1.SwitchStorageMigrationRequest]) (*connect.Response[v1.InstanceSetting], error)
+	// AbandonStorageMigration drops the work list and unfreezes attachment writes. Objects already
+	// copied to the target are left where they are for the operator to delete. Admin only.
+	AbandonStorageMigration(context.Context, *connect.Request[v1.AbandonStorageMigrationRequest]) (*connect.Response[v1.InstanceSetting], error)
 	// TestAIProvider verifies connectivity to an AI provider by making a minimal live API call.
 	// The provider connection may be given inline (for testing before save) or by provider_id
 	// (for testing an already-stored provider, optionally overriding its API key).
@@ -136,6 +167,36 @@ func NewInstanceServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(instanceServiceMethods.ByName("BackupNow")),
 			connect.WithClientOptions(opts...),
 		),
+		precheckStorageMigration: connect.NewClient[v1.PrecheckStorageMigrationRequest, v1.InstanceSetting](
+			httpClient,
+			baseURL+InstanceServicePrecheckStorageMigrationProcedure,
+			connect.WithSchema(instanceServiceMethods.ByName("PrecheckStorageMigration")),
+			connect.WithClientOptions(opts...),
+		),
+		startStorageMigration: connect.NewClient[v1.StartStorageMigrationRequest, v1.InstanceSetting](
+			httpClient,
+			baseURL+InstanceServiceStartStorageMigrationProcedure,
+			connect.WithSchema(instanceServiceMethods.ByName("StartStorageMigration")),
+			connect.WithClientOptions(opts...),
+		),
+		retryStorageMigration: connect.NewClient[v1.RetryStorageMigrationRequest, v1.InstanceSetting](
+			httpClient,
+			baseURL+InstanceServiceRetryStorageMigrationProcedure,
+			connect.WithSchema(instanceServiceMethods.ByName("RetryStorageMigration")),
+			connect.WithClientOptions(opts...),
+		),
+		switchStorageMigration: connect.NewClient[v1.SwitchStorageMigrationRequest, v1.InstanceSetting](
+			httpClient,
+			baseURL+InstanceServiceSwitchStorageMigrationProcedure,
+			connect.WithSchema(instanceServiceMethods.ByName("SwitchStorageMigration")),
+			connect.WithClientOptions(opts...),
+		),
+		abandonStorageMigration: connect.NewClient[v1.AbandonStorageMigrationRequest, v1.InstanceSetting](
+			httpClient,
+			baseURL+InstanceServiceAbandonStorageMigrationProcedure,
+			connect.WithSchema(instanceServiceMethods.ByName("AbandonStorageMigration")),
+			connect.WithClientOptions(opts...),
+		),
 		testAIProvider: connect.NewClient[v1.TestAIProviderRequest, v1.TestAIProviderResponse](
 			httpClient,
 			baseURL+InstanceServiceTestAIProviderProcedure,
@@ -154,6 +215,11 @@ type instanceServiceClient struct {
 	testInstanceEmailSetting *connect.Client[v1.TestInstanceEmailSettingRequest, emptypb.Empty]
 	getInstanceStats         *connect.Client[v1.GetInstanceStatsRequest, v1.InstanceStats]
 	backupNow                *connect.Client[v1.BackupNowRequest, v1.BackupNowResponse]
+	precheckStorageMigration *connect.Client[v1.PrecheckStorageMigrationRequest, v1.InstanceSetting]
+	startStorageMigration    *connect.Client[v1.StartStorageMigrationRequest, v1.InstanceSetting]
+	retryStorageMigration    *connect.Client[v1.RetryStorageMigrationRequest, v1.InstanceSetting]
+	switchStorageMigration   *connect.Client[v1.SwitchStorageMigrationRequest, v1.InstanceSetting]
+	abandonStorageMigration  *connect.Client[v1.AbandonStorageMigrationRequest, v1.InstanceSetting]
 	testAIProvider           *connect.Client[v1.TestAIProviderRequest, v1.TestAIProviderResponse]
 }
 
@@ -192,6 +258,31 @@ func (c *instanceServiceClient) BackupNow(ctx context.Context, req *connect.Requ
 	return c.backupNow.CallUnary(ctx, req)
 }
 
+// PrecheckStorageMigration calls memos.api.v1.InstanceService.PrecheckStorageMigration.
+func (c *instanceServiceClient) PrecheckStorageMigration(ctx context.Context, req *connect.Request[v1.PrecheckStorageMigrationRequest]) (*connect.Response[v1.InstanceSetting], error) {
+	return c.precheckStorageMigration.CallUnary(ctx, req)
+}
+
+// StartStorageMigration calls memos.api.v1.InstanceService.StartStorageMigration.
+func (c *instanceServiceClient) StartStorageMigration(ctx context.Context, req *connect.Request[v1.StartStorageMigrationRequest]) (*connect.Response[v1.InstanceSetting], error) {
+	return c.startStorageMigration.CallUnary(ctx, req)
+}
+
+// RetryStorageMigration calls memos.api.v1.InstanceService.RetryStorageMigration.
+func (c *instanceServiceClient) RetryStorageMigration(ctx context.Context, req *connect.Request[v1.RetryStorageMigrationRequest]) (*connect.Response[v1.InstanceSetting], error) {
+	return c.retryStorageMigration.CallUnary(ctx, req)
+}
+
+// SwitchStorageMigration calls memos.api.v1.InstanceService.SwitchStorageMigration.
+func (c *instanceServiceClient) SwitchStorageMigration(ctx context.Context, req *connect.Request[v1.SwitchStorageMigrationRequest]) (*connect.Response[v1.InstanceSetting], error) {
+	return c.switchStorageMigration.CallUnary(ctx, req)
+}
+
+// AbandonStorageMigration calls memos.api.v1.InstanceService.AbandonStorageMigration.
+func (c *instanceServiceClient) AbandonStorageMigration(ctx context.Context, req *connect.Request[v1.AbandonStorageMigrationRequest]) (*connect.Response[v1.InstanceSetting], error) {
+	return c.abandonStorageMigration.CallUnary(ctx, req)
+}
+
 // TestAIProvider calls memos.api.v1.InstanceService.TestAIProvider.
 func (c *instanceServiceClient) TestAIProvider(ctx context.Context, req *connect.Request[v1.TestAIProviderRequest]) (*connect.Response[v1.TestAIProviderResponse], error) {
 	return c.testAIProvider.CallUnary(ctx, req)
@@ -214,6 +305,22 @@ type InstanceServiceHandler interface {
 	// BackupNow triggers an immediate database backup to the configured S3 storage.
 	// Only available when the instance uses SQLite and S3 storage is configured. Admin only.
 	BackupNow(context.Context, *connect.Request[v1.BackupNowRequest]) (*connect.Response[v1.BackupNowResponse], error)
+	// PrecheckStorageMigration writes, reads back and deletes a probe object at the drafted
+	// migration target, then records the outcome on the migration setting. Admin only.
+	PrecheckStorageMigration(context.Context, *connect.Request[v1.PrecheckStorageMigrationRequest]) (*connect.Response[v1.InstanceSetting], error)
+	// StartStorageMigration freezes attachment writes, builds the work list and starts copying
+	// objects to the prechecked target. Admin only.
+	StartStorageMigration(context.Context, *connect.Request[v1.StartStorageMigrationRequest]) (*connect.Response[v1.InstanceSetting], error)
+	// RetryStorageMigration puts every failed object back in the queue and resumes copying.
+	// Admin only.
+	RetryStorageMigration(context.Context, *connect.Request[v1.RetryStorageMigrationRequest]) (*connect.Response[v1.InstanceSetting], error)
+	// SwitchStorageMigration points the instance at the target: every attachment's object key and
+	// the instance storage configuration are rewritten in one transaction, and attachment writes
+	// are unfrozen. Refused while any object has failed. Admin only.
+	SwitchStorageMigration(context.Context, *connect.Request[v1.SwitchStorageMigrationRequest]) (*connect.Response[v1.InstanceSetting], error)
+	// AbandonStorageMigration drops the work list and unfreezes attachment writes. Objects already
+	// copied to the target are left where they are for the operator to delete. Admin only.
+	AbandonStorageMigration(context.Context, *connect.Request[v1.AbandonStorageMigrationRequest]) (*connect.Response[v1.InstanceSetting], error)
 	// TestAIProvider verifies connectivity to an AI provider by making a minimal live API call.
 	// The provider connection may be given inline (for testing before save) or by provider_id
 	// (for testing an already-stored provider, optionally overriding its API key).
@@ -269,6 +376,36 @@ func NewInstanceServiceHandler(svc InstanceServiceHandler, opts ...connect.Handl
 		connect.WithSchema(instanceServiceMethods.ByName("BackupNow")),
 		connect.WithHandlerOptions(opts...),
 	)
+	instanceServicePrecheckStorageMigrationHandler := connect.NewUnaryHandler(
+		InstanceServicePrecheckStorageMigrationProcedure,
+		svc.PrecheckStorageMigration,
+		connect.WithSchema(instanceServiceMethods.ByName("PrecheckStorageMigration")),
+		connect.WithHandlerOptions(opts...),
+	)
+	instanceServiceStartStorageMigrationHandler := connect.NewUnaryHandler(
+		InstanceServiceStartStorageMigrationProcedure,
+		svc.StartStorageMigration,
+		connect.WithSchema(instanceServiceMethods.ByName("StartStorageMigration")),
+		connect.WithHandlerOptions(opts...),
+	)
+	instanceServiceRetryStorageMigrationHandler := connect.NewUnaryHandler(
+		InstanceServiceRetryStorageMigrationProcedure,
+		svc.RetryStorageMigration,
+		connect.WithSchema(instanceServiceMethods.ByName("RetryStorageMigration")),
+		connect.WithHandlerOptions(opts...),
+	)
+	instanceServiceSwitchStorageMigrationHandler := connect.NewUnaryHandler(
+		InstanceServiceSwitchStorageMigrationProcedure,
+		svc.SwitchStorageMigration,
+		connect.WithSchema(instanceServiceMethods.ByName("SwitchStorageMigration")),
+		connect.WithHandlerOptions(opts...),
+	)
+	instanceServiceAbandonStorageMigrationHandler := connect.NewUnaryHandler(
+		InstanceServiceAbandonStorageMigrationProcedure,
+		svc.AbandonStorageMigration,
+		connect.WithSchema(instanceServiceMethods.ByName("AbandonStorageMigration")),
+		connect.WithHandlerOptions(opts...),
+	)
 	instanceServiceTestAIProviderHandler := connect.NewUnaryHandler(
 		InstanceServiceTestAIProviderProcedure,
 		svc.TestAIProvider,
@@ -291,6 +428,16 @@ func NewInstanceServiceHandler(svc InstanceServiceHandler, opts ...connect.Handl
 			instanceServiceGetInstanceStatsHandler.ServeHTTP(w, r)
 		case InstanceServiceBackupNowProcedure:
 			instanceServiceBackupNowHandler.ServeHTTP(w, r)
+		case InstanceServicePrecheckStorageMigrationProcedure:
+			instanceServicePrecheckStorageMigrationHandler.ServeHTTP(w, r)
+		case InstanceServiceStartStorageMigrationProcedure:
+			instanceServiceStartStorageMigrationHandler.ServeHTTP(w, r)
+		case InstanceServiceRetryStorageMigrationProcedure:
+			instanceServiceRetryStorageMigrationHandler.ServeHTTP(w, r)
+		case InstanceServiceSwitchStorageMigrationProcedure:
+			instanceServiceSwitchStorageMigrationHandler.ServeHTTP(w, r)
+		case InstanceServiceAbandonStorageMigrationProcedure:
+			instanceServiceAbandonStorageMigrationHandler.ServeHTTP(w, r)
 		case InstanceServiceTestAIProviderProcedure:
 			instanceServiceTestAIProviderHandler.ServeHTTP(w, r)
 		default:
@@ -328,6 +475,26 @@ func (UnimplementedInstanceServiceHandler) GetInstanceStats(context.Context, *co
 
 func (UnimplementedInstanceServiceHandler) BackupNow(context.Context, *connect.Request[v1.BackupNowRequest]) (*connect.Response[v1.BackupNowResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.InstanceService.BackupNow is not implemented"))
+}
+
+func (UnimplementedInstanceServiceHandler) PrecheckStorageMigration(context.Context, *connect.Request[v1.PrecheckStorageMigrationRequest]) (*connect.Response[v1.InstanceSetting], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.InstanceService.PrecheckStorageMigration is not implemented"))
+}
+
+func (UnimplementedInstanceServiceHandler) StartStorageMigration(context.Context, *connect.Request[v1.StartStorageMigrationRequest]) (*connect.Response[v1.InstanceSetting], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.InstanceService.StartStorageMigration is not implemented"))
+}
+
+func (UnimplementedInstanceServiceHandler) RetryStorageMigration(context.Context, *connect.Request[v1.RetryStorageMigrationRequest]) (*connect.Response[v1.InstanceSetting], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.InstanceService.RetryStorageMigration is not implemented"))
+}
+
+func (UnimplementedInstanceServiceHandler) SwitchStorageMigration(context.Context, *connect.Request[v1.SwitchStorageMigrationRequest]) (*connect.Response[v1.InstanceSetting], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.InstanceService.SwitchStorageMigration is not implemented"))
+}
+
+func (UnimplementedInstanceServiceHandler) AbandonStorageMigration(context.Context, *connect.Request[v1.AbandonStorageMigrationRequest]) (*connect.Response[v1.InstanceSetting], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.InstanceService.AbandonStorageMigration is not implemented"))
 }
 
 func (UnimplementedInstanceServiceHandler) TestAIProvider(context.Context, *connect.Request[v1.TestAIProviderRequest]) (*connect.Response[v1.TestAIProviderResponse], error) {

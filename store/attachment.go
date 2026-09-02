@@ -238,6 +238,12 @@ func (s *Store) deleteAttachmentStorageImpl(ctx context.Context, attachment *Att
 	if attachment == nil {
 		return nil
 	}
+	// Deleting during a migration produces states nobody wants to write compensation logic for:
+	// a row gone while its old object is still there, or an object deleted right after it was
+	// copied to the target. Freezing is cheaper than reconciling either one.
+	if err := s.EnsureAttachmentWritesAllowed(ctx); err != nil {
+		return err
+	}
 	if shouldFailDeleteAttachmentStorage(ctx) {
 		return ErrDeleteAttachmentStorageFailpoint
 	}

@@ -58,6 +58,14 @@ type Driver interface {
 	DeleteMemoIndexJob(ctx context.Context, memoID int32) error
 	CountMemoIndexJobsByStatus(ctx context.Context) (map[string]int, error)
 
+	// AttachmentMigrationJob related methods (attachment storage migration).
+	UpsertAttachmentMigrationJobs(ctx context.Context, jobs []*AttachmentMigrationJob) error
+	ListAttachmentMigrationJobs(ctx context.Context, find *FindAttachmentMigrationJob) ([]*AttachmentMigrationJob, error)
+	UpdateAttachmentMigrationJob(ctx context.Context, update *UpdateAttachmentMigrationJob) error
+	CountAttachmentMigrationJobsByStatus(ctx context.Context) (map[string]int, error)
+	ClearAttachmentMigrationJobs(ctx context.Context) error
+	ApplyAttachmentStorageMigration(ctx context.Context, rewrites []*AttachmentStorageRewriteRow, settings []*InstanceSetting) error
+
 	// InstanceSetting model related methods.
 	UpsertInstanceSetting(ctx context.Context, upsert *InstanceSetting) (*InstanceSetting, error)
 	ListInstanceSettings(ctx context.Context, find *FindInstanceSetting) ([]*InstanceSetting, error)

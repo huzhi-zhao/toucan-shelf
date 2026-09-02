@@ -65,6 +65,52 @@ service InstanceService {
     };
   }
 
+  // PrecheckStorageMigration writes, reads back and deletes a probe object at the drafted
+  // migration target, then records the outcome on the migration setting. Admin only.
+  rpc PrecheckStorageMigration(PrecheckStorageMigrationRequest) returns (InstanceSetting) {
+    option (google.api.http) = {
+      post: "/api/v1/instance/settings/storageMigration:precheck"
+      body: "*"
+    };
+  }
+
+  // StartStorageMigration freezes attachment writes, builds the work list and starts copying
+  // objects to the prechecked target. Admin only.
+  rpc StartStorageMigration(StartStorageMigrationRequest) returns (InstanceSetting) {
+    option (google.api.http) = {
+      post: "/api/v1/instance/settings/storageMigration:start"
+      body: "*"
+    };
+  }
+
+  // RetryStorageMigration puts every failed object back in the queue and resumes copying.
+  // Admin only.
+  rpc RetryStorageMigration(RetryStorageMigrationRequest) returns (InstanceSetting) {
+    option (google.api.http) = {
+      post: "/api/v1/instance/settings/storageMigration:retry"
+      body: "*"
+    };
+  }
+
+  // SwitchStorageMigration points the instance at the target: every attachment's object key and
+  // the instance storage configuration are rewritten in one transaction, and attachment writes
+  // are unfrozen. Refused while any object has failed. Admin only.
+  rpc SwitchStorageMigration(SwitchStorageMigrationRequest) returns (InstanceSetting) {
+    option (google.api.http) = {
+      post: "/api/v1/instance/settings/storageMigration:switch"
+      body: "*"
+    };
+  }
+
+  // AbandonStorageMigration drops the work list and unfreezes attachment writes. Objects already
+  // copied to the target are left where they are for the operator to delete. Admin only.
+  rpc AbandonStorageMigration(AbandonStorageMigrationRequest) returns (InstanceSetting) {
+    option (google.api.http) = {
+      post: "/api/v1/instance/settings/storageMigration:abandon"
+      body: "*"
+    };
+  }
+
   // TestAIProvider verifies connectivity to an AI provider by making a minimal live API call.
   // The provider connection may be given inline (for testing before save) or by provider_id
   // (for testing an already-stored provider, optionally overriding its API key).
@@ -75,6 +121,16 @@ service InstanceService {
     };
   }
 }
+
+message PrecheckStorageMigrationRequest {}
+
+message StartStorageMigrationRequest {}
+
+message RetryStorageMigrationRequest {}
+
+message SwitchStorageMigrationRequest {}
+
+message AbandonStorageMigrationRequest {}
 
 message BackupNowRequest {}
 
@@ -132,6 +188,7 @@ message InstanceSetting {
     NotificationSetting notification_setting = 6;
     AISetting ai_setting = 7;
     BackupSetting backup_setting = 8;
+    StorageMigrationSetting storage_migration_setting = 9;
   }
 
   // Enumeration of instance setting keys.
@@ -151,6 +208,8 @@ message InstanceSetting {
     AI = 6;
     // BACKUP is the key for database backup settings/status.
     BACKUP = 7;
+    // STORAGE_MIGRATION is the key for the in-flight attachment storage migration.
+    STORAGE_MIGRATION = 8;
   }
 
   // General instance settings configuration.
@@ -197,7 +256,9 @@ message InstanceSetting {
     }
     // storage_type is the storage type.
     StorageType storage_type = 1;
-    // The template of file path.
+    // LEGACY-COMPAT(storage/three-level-path): the whole object path as a single free-form
+    // string. Still the source of truth for LOCAL storage; for S3 the path is now
+    // root_prefix + workspace directory + filename_template.
     // e.g. assets/{timestamp}_{filename}
     string filepath_template = 2;
     // The max upload size in megabytes.
@@ -216,9 +277,19 @@ message InstanceSetting {
       // to the S3 endpoint. Only enable this for trusted endpoints that use a self-signed
       // certificate; it removes protection against man-in-the-middle attacks.
       bool insecure_skip_tls_verify = 7;
+      // root_prefix is the directory every attachment object is written under, relative to
+      // the bucket root. Empty means the bucket root itself. Together with `endpoint` and
+      // `bucket` it says which storage the data lives in, so all three are read-only once S3
+      // attachments exist and can only be changed through an attachment storage migration.
+      string root_prefix = 8;
     }
     // The S3 config.
     S3Config s3_config = 4;
+    // filename_template names the final path segment of an S3 object; it governs the file name
+    // only, never directories. The directory between the root prefix and the file name is the
+    // owning workspace's storage slug and is not configurable.
+    // e.g. {timestamp}_{uuid}_{filename}
+    string filename_template = 5;
   }
 
   // Memo-related instance settings and policies.
@@ -330,6 +401,69 @@ message InstanceSetting {
     bool last_backup_success = 2;
     // last_backup_error holds the error message when last_backup_success is false.
     string last_backup_error = 3;
+  }
+
+  // StorageMigrationSetting is the target configuration and state machine of an attachment
+  // storage migration: moving every S3 attachment object to a new
+  // (endpoint, bucket, root_prefix) location without changing a single attachment's URI.
+  message StorageMigrationSetting {
+    // State is the migration lifecycle. An absent setting (or STATE_UNSPECIFIED) means no
+    // migration exists.
+    enum State {
+      STATE_UNSPECIFIED = 0;
+      // DRAFT: the target configuration is being edited; nothing is frozen or copied.
+      DRAFT = 1;
+      // PRECHECKED: a probe object round-tripped at the target. Editing the target drops
+      // back to DRAFT.
+      PRECHECKED = 2;
+      // FROZEN: attachment writes are closed instance-wide. Reads are unaffected.
+      FROZEN = 3;
+      // MIGRATING: objects are being copied to the target location.
+      MIGRATING = 4;
+      // RECONCILING: every attachment's target object is being verified.
+      RECONCILING = 5;
+      // READY: reconciliation passed; the switch may be applied.
+      READY = 6;
+    }
+
+    State state = 1;
+    // target_s3_config is where the attachments are going. Only the location triple may differ
+    // from the live configuration; a migration that moves nowhere is rejected.
+    StorageSetting.S3Config target_s3_config = 2;
+    google.protobuf.Timestamp create_time = 3 [(google.api.field_behavior) = OUTPUT_ONLY];
+    google.protobuf.Timestamp update_time = 4 [(google.api.field_behavior) = OUTPUT_ONLY];
+    PrecheckResult precheck = 5 [(google.api.field_behavior) = OUTPUT_ONLY];
+    Progress progress = 6 [(google.api.field_behavior) = OUTPUT_ONLY];
+    // last_error is the most recent failure of the background worker itself, as opposed to a
+    // single object's failure.
+    string last_error = 7 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+    // Progress mirrors the per-status counts of the migration's work list.
+    message Progress {
+      int64 total = 1;
+      int64 pending = 2;
+      int64 done = 3;
+      // skipped counts attachments whose source object does not exist. They were already broken
+      // before the migration and do not block it.
+      int64 skipped = 4;
+      // failed counts attachments that could not be copied or did not verify. Any of these
+      // blocks the switch.
+      int64 failed = 5;
+    }
+
+    // PrecheckResult records the outcome of the write-read-delete probe against the target.
+    message PrecheckResult {
+      bool passed = 1;
+      // error is the failure reason, verbatim enough for an admin to act on.
+      string error = 2;
+      google.protobuf.Timestamp check_time = 3;
+      // probe_key is the object key the probe used, so an object left behind by a crash
+      // between write and delete can be found and removed by hand.
+      string probe_key = 4;
+      // server_side_copy reports whether the migration can hand the copy to S3 itself instead
+      // of streaming every byte through Toucan.
+      bool server_side_copy = 5;
+    }
   }
 
   // AIProviderConfig represents one callable AI provider connection.

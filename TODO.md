@@ -43,6 +43,14 @@
       改成字符串资源名 + 后端解析 UID→id，再动 F2。另与 `Notebook.tsx` 的预览区
       耦合较深。
 
+- [ ] **附件存储迁移（换源/换桶/换根目录前缀）** —— P0～P3 全部实现（三级路径模型、位置三元组
+      直改拦截、迁移设置与预检、搬运/对账/切换与冻结闸门、设置页迁移面板）。
+      **尚未在真实 S3 上端到端验证过**：单测只能覆盖到状态机和 key 重算，真正的复制、预检探针、
+      服务端 `CopyObject` 都要连真桶才验得了。见
+      [attachment-storage-migration.md](docs/dev/requirements/storage/attachment-storage-migration.md)
+      与 [design/20260902](docs/dev/design/20260902-attachment-storage-migration.md)
+      的 P0~P3 切分。历史平铺附件的归位随这次迁移一起做，不再单独写搬迁脚本。
+
 - [ ] **知识库级授权收紧到文档/文件夹粒度** —— 现在"分配到库 = 库内文档最大读写"
       是第一期的粗粒度方案。见
       [workspace-member-access.md §5](docs/dev/requirements/collaboration/workspace-member-access.md)。
@@ -58,13 +66,6 @@
       包/解包主密钥。见 [secret-block.md](docs/dev/requirements/editor/secret-block.md)。
 
 ### 定了方向、暂不排期
-
-- [ ] **外部资源根（NAS 资源接入）** —— 索引 NAS 上已存在的文件而不要求重新上传，
-      产品边界为"引用而非接管"。需求见
-      [external-resource-roots.md](docs/dev/requirements/storage/external-resource-roots.md)，
-      方案与分阶段见
-      [design/20260827-external-resource-roots.md](docs/dev/design/20260827-external-resource-roots.md)。
-      **权限模型未定，定不下来之前不应开工**；P0 的容量判断点若不成立，整个方案中止。
 
 - [ ] **公开附件的实例级 kill switch** —— 管理员一键停掉全实例的公开附件。
       落点不在 `attachmentacl` 内部（public 分支的价值就是不查任何东西就早退），
@@ -126,7 +127,6 @@
       `mediaInsertService.ts` 里没找到对应校验常量。
       见 [upload-and-inline-media.md](docs/dev/requirements/attachments/upload-and-inline-media.md)。
 - [ ] **`rehype-sanitize` 的 SANITIZE_SCHEMA 当前实际配置** —— 出处同上。
-- [ ] **附件搬迁脚本是否已执行** —— 出处同上。
 - [ ] **standalone 部署的三条** —— 自动备份的两个已知 bug 是否仍在、无 S3 时的
       警告条是否实现、S3 凭证的环境变量读取路径是否落地。
       见 [standalone-local-deploy.md](docs/dev/standalone-local-deploy.md)。
@@ -136,3 +136,32 @@
       见 [calendar-block.md](docs/dev/requirements/editor/calendar-block.md)。
 - [ ] **sheets 的 `commitFromInstance`** 当前实现是否仍是原设计描述的样子。
       见 [sheets-block.md](docs/dev/requirements/editor/sheets-block.md)。
+
+---
+
+## 四、明确不做（决策已定，不要再提）
+
+这一节是**死需求**：不是没排期，是评估过后决定不做。列在这里是为了避免同一个
+想法被反复重新提出，每条都写清楚"为什么不做"。
+
+- **外部资源根（NAS 资源接入）** —— 2026-09-01 决定永久不做。
+      让 Toucan 索引并引用 NAS 上已存在的文件，产品边界曾定为"引用而非接管"。
+      需求与方案保留作决策记录：
+      [external-resource-roots.md](docs/dev/requirements/storage/external-resource-roots.md)、
+      [design/20260827-external-resource-roots.md](docs/dev/design/20260827-external-resource-roots.md)。
+
+      **不做的理由**：这本就是个外围能力，实现它会迫使核心去认识 NAS 的存储细节，
+      违反"核心不得认识外围"的子域边界划分。而且它真正该长的样子，是 **NAS 上一个
+      独立的东西**：本地跑 CLIP 一类模型分析用户存储，用户通过聊天 + RAG 混合检索
+      找到想要的那份资料或图片，复制出内网静态资源 URL，粘回 Toucan。那个形态里
+      扫描、缩略图、索引全在 NAS 本地，既绕开了容量与权限模型两个死结，也不必把
+      私人相册发给云端 provider；Toucan 侧只需要能渲染一个内网 URL 的媒体，
+      两边的接口就是一根字符串。
+
+      **这只是"如果要做，该做在哪"的判断，不是立项。** 目前无意开这个项目，
+      以后想到更强的价值再说。（调研过一轮：照片视频有 Immich 自带 CLIP 检索，
+      文档有 AnythingLLM / RAGFlow / Onyx，但没有一个是"媒体与文档一起索引、
+      只读旁观现有目录、输出内网 URL"的形态。）
+
+      **唯一遗留给 Toucan 的小事**：Toucan 走 https 时，页面里嵌 http 内网 URL 会被
+      浏览器按 mixed content 拦掉，视频不播。这条与本需求无关，独立处理。

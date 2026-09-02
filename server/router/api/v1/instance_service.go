@@ -124,6 +124,8 @@ func (s *APIV1Service) getInstanceSettingByName(ctx context.Context, name string
 		_, err = s.Store.GetInstanceAISetting(ctx)
 	case storepb.InstanceSettingKey_BACKUP:
 		_, err = s.Store.GetInstanceBackupSetting(ctx)
+	case storepb.InstanceSettingKey_STORAGE_MIGRATION:
+		_, err = s.Store.GetInstanceStorageMigrationSetting(ctx)
 	default:
 		return nil, status.Errorf(codes.InvalidArgument, "unsupported instance setting key: %v", instanceSettingKey)
 	}
@@ -139,6 +141,16 @@ func (s *APIV1Service) getInstanceSettingByName(ctx context.Context, name string
 	}
 	// BACKUP has no seeding migration (unlike e.g. STORAGE): it's only written once a backup has
 	// actually run, so "not configured yet" is the common case rather than an error.
+	// STORAGE_MIGRATION is unset whenever no migration is in flight, which is the overwhelmingly
+	// common case; answering 404 would make every settings page treat normality as an error.
+	if instanceSetting == nil && instanceSettingKey == storepb.InstanceSettingKey_STORAGE_MIGRATION {
+		instanceSetting = &storepb.InstanceSetting{
+			Key: storepb.InstanceSettingKey_STORAGE_MIGRATION,
+			Value: &storepb.InstanceSetting_StorageMigrationSetting{
+				StorageMigrationSetting: &storepb.InstanceStorageMigrationSetting{},
+			},
+		}
+	}
 	if instanceSetting == nil && instanceSettingKey == storepb.InstanceSettingKey_BACKUP {
 		instanceSetting = &storepb.InstanceSetting{
 			Key: storepb.InstanceSettingKey_BACKUP,
@@ -154,7 +166,8 @@ func (s *APIV1Service) getInstanceSettingByName(ctx context.Context, name string
 	// Storage and notification settings contain credentials; restrict to admins only.
 	if instanceSetting.Key == storepb.InstanceSettingKey_STORAGE ||
 		instanceSetting.Key == storepb.InstanceSettingKey_NOTIFICATION ||
-		instanceSetting.Key == storepb.InstanceSettingKey_BACKUP {
+		instanceSetting.Key == storepb.InstanceSettingKey_BACKUP ||
+		instanceSetting.Key == storepb.InstanceSettingKey_STORAGE_MIGRATION {
 		user, err := caller.currentUser(ctx, s)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
@@ -242,6 +255,10 @@ func (s *APIV1Service) UpdateInstanceSetting(ctx context.Context, request *v1pb.
 			s3Config.Endpoint = strings.TrimSpace(s3Config.Endpoint)
 			s3Config.Region = strings.TrimSpace(s3Config.Region)
 			s3Config.Bucket = strings.TrimSpace(s3Config.Bucket)
+			// Normalize the root prefix so "assets", "assets/" and "/assets" are the same
+			// location: the guard below compares these strings to decide whether the update
+			// moves the data, and a stray slash must not read as a move.
+			s3Config.RootPrefix = strings.Trim(strings.TrimSpace(s3Config.RootPrefix), "/")
 
 			if s3Config.AccessKeySecret == "" {
 				existing, err := s.Store.GetInstanceStorageSetting(ctx)
@@ -249,6 +266,24 @@ func (s *APIV1Service) UpdateInstanceSetting(ctx context.Context, request *v1pb.
 					s3Config.AccessKeySecret = existing.S3Config.AccessKeySecret
 				}
 			}
+		}
+		if storage := updateSetting.GetStorageSetting(); storage != nil {
+			// An empty filename_template means "no change", not "reset it": a client that
+			// predates the three-level path model does not send the field, and letting the
+			// blank through would make the next read decompose filepath_template again and
+			// overwrite a deliberately-empty root prefix.
+			if strings.TrimSpace(storage.FilenameTemplate) == "" {
+				if existing, err := s.Store.GetInstanceStorageSetting(ctx); err == nil && existing != nil {
+					storage.FilenameTemplate = existing.FilenameTemplate
+				}
+			}
+			if err := s.guardS3StorageLocation(ctx, storage); err != nil {
+				return nil, err
+			}
+		}
+	case storepb.InstanceSettingKey_STORAGE_MIGRATION:
+		if err := s.prepareStorageMigrationSettingForUpdate(ctx, updateSetting); err != nil {
+			return nil, err
 		}
 	case storepb.InstanceSettingKey_AI:
 		if err := s.prepareInstanceAISettingForUpdate(ctx, updateSetting.GetAiSetting()); err != nil {
@@ -296,6 +331,79 @@ func (s *APIV1Service) UpdateInstanceSetting(ctx context.Context, request *v1pb.
 	}
 
 	return convertInstanceSettingFromStore(instanceSetting), nil
+}
+
+// guardS3StorageLocation rejects a settings update that would move where existing S3 attachments
+// live.
+//
+// StorageS3Config splits in two by meaning. `endpoint`, `bucket` and `root_prefix` are the
+// location triple: together they say *which pile of bytes* this instance's attachments are.
+// Changing any of the three points the instance at a different pile while every attachment keeps
+// the object key it was written under, and because the read path trusts the instance config
+// (Store.ResolveAttachmentS3Config prefers it over each attachment's upload-time snapshot) the
+// whole site's attachments 404 with no warning. The triple therefore only moves through an
+// attachment storage migration, and this gate is what turns ResolveAttachmentS3Config's
+// assumption into an enforced invariant instead of a hope.
+//
+// The remaining fields (region, credentials, path style, TLS) only say *how to reach* the same
+// pile, so they stay freely editable — key rotation must not require a migration.
+//
+// root_prefix is the softest of the three: because the key is stored per attachment, raising it
+// does not break existing reads, it just leaves old and new objects under different directories
+// forever. It is gated anyway, so that "where the attachments are" stays expressible as one
+// (endpoint, bucket, root_prefix) triple — which is what makes bucket lifecycle rules, migration
+// comparison and target key recomputation possible at all.
+//
+// Do not make any of the three editable without replacing this gate.
+//
+// The gate only bites once S3 attachments exist; before that there is nothing to strand.
+func (s *APIV1Service) guardS3StorageLocation(ctx context.Context, setting *storepb.InstanceStorageSetting) error {
+	existing, err := s.Store.GetInstanceStorageSetting(ctx)
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to read current storage setting: %v", err)
+	}
+	current := existing.GetS3Config()
+	if current == nil {
+		// Nothing configured yet, so the first location can be anything.
+		return nil
+	}
+	next := setting.GetS3Config()
+	if next != nil && next.Endpoint == current.Endpoint && next.Bucket == current.Bucket && next.RootPrefix == current.RootPrefix {
+		return nil
+	}
+
+	inUse, err := s.hasS3Attachments(ctx)
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to check for existing S3 attachments: %v", err)
+	}
+	if !inUse {
+		return nil
+	}
+
+	if next == nil {
+		// Dropping the config would leave every read falling back to per-attachment snapshots,
+		// and the next config could then name a different bucket without this gate ever seeing
+		// the change. Same invariant, so same answer.
+		return status.Error(codes.FailedPrecondition,
+			"cannot remove the S3 configuration while attachments are stored in it: run an attachment storage migration instead")
+	}
+	return status.Errorf(codes.FailedPrecondition,
+		"cannot change the S3 location in place while attachments are stored there (endpoint %q -> %q, bucket %q -> %q, root prefix %q -> %q): existing objects would stay at their old keys and stop resolving; run an attachment storage migration instead",
+		current.Endpoint, next.Endpoint, current.Bucket, next.Bucket, current.RootPrefix, next.RootPrefix)
+}
+
+// hasS3Attachments reports whether any attachment's blob currently lives in S3.
+func (s *APIV1Service) hasS3Attachments(ctx context.Context) (bool, error) {
+	limit := 1
+	storageType := storepb.AttachmentStorageType_S3
+	attachments, err := s.Store.ListAttachments(ctx, &store.FindAttachment{
+		StorageType: &storageType,
+		Limit:       &limit,
+	})
+	if err != nil {
+		return false, err
+	}
+	return len(attachments) > 0, nil
 }
 
 // embeddingSignature returns a stable identity for an embedding config so a change
@@ -504,6 +612,10 @@ func convertInstanceSettingFromStore(setting *storepb.InstanceSetting) *v1pb.Ins
 		instanceSetting.Value = &v1pb.InstanceSetting_BackupSetting_{
 			BackupSetting: convertInstanceBackupSettingFromStore(setting.GetBackupSetting()),
 		}
+	case *storepb.InstanceSetting_StorageMigrationSetting:
+		instanceSetting.Value = &v1pb.InstanceSetting_StorageMigrationSetting_{
+			StorageMigrationSetting: convertStorageMigrationSettingFromStore(setting.GetStorageMigrationSetting()),
+		}
 	default:
 		// Leave Value unset for unsupported setting variants.
 	}
@@ -577,6 +689,10 @@ func convertInstanceSettingToStore(setting *v1pb.InstanceSetting) *storepb.Insta
 		instanceSetting.Value = &storepb.InstanceSetting_BackupSetting{
 			BackupSetting: convertInstanceBackupSettingToStore(setting.GetBackupSetting()),
 		}
+	case storepb.InstanceSettingKey_STORAGE_MIGRATION:
+		instanceSetting.Value = &storepb.InstanceSetting_StorageMigrationSetting{
+			StorageMigrationSetting: convertStorageMigrationSettingToStore(setting.GetStorageMigrationSetting()),
+		}
 	default:
 		// Keep the default GeneralSetting value
 	}
@@ -637,20 +753,43 @@ func convertInstanceStorageSettingFromStore(settingpb *storepb.InstanceStorageSe
 	setting := &v1pb.InstanceSetting_StorageSetting{
 		StorageType:       v1pb.InstanceSetting_StorageSetting_StorageType(settingpb.StorageType),
 		FilepathTemplate:  settingpb.FilepathTemplate,
+		FilenameTemplate:  settingpb.FilenameTemplate,
 		UploadSizeLimitMb: settingpb.UploadSizeLimitMb,
 	}
-	if settingpb.S3Config != nil {
-		setting.S3Config = &v1pb.InstanceSetting_StorageSetting_S3Config{
-			AccessKeyId: settingpb.S3Config.AccessKeyId,
-			// AccessKeySecret is write-only: never returned in responses.
-			Endpoint:              settingpb.S3Config.Endpoint,
-			Region:                settingpb.S3Config.Region,
-			Bucket:                settingpb.S3Config.Bucket,
-			UsePathStyle:          settingpb.S3Config.UsePathStyle,
-			InsecureSkipTlsVerify: settingpb.S3Config.InsecureSkipTlsVerify,
-		}
-	}
+	setting.S3Config = convertS3ConfigFromStore(settingpb.S3Config)
 	return setting
+}
+
+// convertS3ConfigFromStore drops the secret: it is write-only and never leaves the server.
+func convertS3ConfigFromStore(config *storepb.StorageS3Config) *v1pb.InstanceSetting_StorageSetting_S3Config {
+	if config == nil {
+		return nil
+	}
+	return &v1pb.InstanceSetting_StorageSetting_S3Config{
+		AccessKeyId:           config.AccessKeyId,
+		Endpoint:              config.Endpoint,
+		Region:                config.Region,
+		Bucket:                config.Bucket,
+		UsePathStyle:          config.UsePathStyle,
+		InsecureSkipTlsVerify: config.InsecureSkipTlsVerify,
+		RootPrefix:            config.RootPrefix,
+	}
+}
+
+func convertS3ConfigToStore(config *v1pb.InstanceSetting_StorageSetting_S3Config) *storepb.StorageS3Config {
+	if config == nil {
+		return nil
+	}
+	return &storepb.StorageS3Config{
+		AccessKeyId:           config.AccessKeyId,
+		AccessKeySecret:       config.AccessKeySecret,
+		Endpoint:              config.Endpoint,
+		Region:                config.Region,
+		Bucket:                config.Bucket,
+		UsePathStyle:          config.UsePathStyle,
+		InsecureSkipTlsVerify: config.InsecureSkipTlsVerify,
+		RootPrefix:            config.RootPrefix,
+	}
 }
 
 func convertInstanceStorageSettingToStore(setting *v1pb.InstanceSetting_StorageSetting) *storepb.InstanceStorageSetting {
@@ -660,19 +799,10 @@ func convertInstanceStorageSettingToStore(setting *v1pb.InstanceSetting_StorageS
 	settingpb := &storepb.InstanceStorageSetting{
 		StorageType:       storepb.InstanceStorageSetting_StorageType(setting.StorageType),
 		FilepathTemplate:  setting.FilepathTemplate,
+		FilenameTemplate:  setting.FilenameTemplate,
 		UploadSizeLimitMb: setting.UploadSizeLimitMb,
 	}
-	if setting.S3Config != nil {
-		settingpb.S3Config = &storepb.StorageS3Config{
-			AccessKeyId:           setting.S3Config.AccessKeyId,
-			AccessKeySecret:       setting.S3Config.AccessKeySecret,
-			Endpoint:              setting.S3Config.Endpoint,
-			Region:                setting.S3Config.Region,
-			Bucket:                setting.S3Config.Bucket,
-			UsePathStyle:          setting.S3Config.UsePathStyle,
-			InsecureSkipTlsVerify: setting.S3Config.InsecureSkipTlsVerify,
-		}
-	}
+	settingpb.S3Config = convertS3ConfigToStore(setting.S3Config)
 	return settingpb
 }
 

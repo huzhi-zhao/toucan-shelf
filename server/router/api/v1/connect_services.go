@@ -79,6 +79,46 @@ func (s *ConnectServiceHandler) BackupNow(ctx context.Context, req *connect.Requ
 	return connect.NewResponse(resp), nil
 }
 
+func (s *ConnectServiceHandler) PrecheckStorageMigration(ctx context.Context, req *connect.Request[v1pb.PrecheckStorageMigrationRequest]) (*connect.Response[v1pb.InstanceSetting], error) {
+	resp, err := s.APIV1Service.PrecheckStorageMigration(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) StartStorageMigration(ctx context.Context, req *connect.Request[v1pb.StartStorageMigrationRequest]) (*connect.Response[v1pb.InstanceSetting], error) {
+	resp, err := s.APIV1Service.StartStorageMigration(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) RetryStorageMigration(ctx context.Context, req *connect.Request[v1pb.RetryStorageMigrationRequest]) (*connect.Response[v1pb.InstanceSetting], error) {
+	resp, err := s.APIV1Service.RetryStorageMigration(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) SwitchStorageMigration(ctx context.Context, req *connect.Request[v1pb.SwitchStorageMigrationRequest]) (*connect.Response[v1pb.InstanceSetting], error) {
+	resp, err := s.APIV1Service.SwitchStorageMigration(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) AbandonStorageMigration(ctx context.Context, req *connect.Request[v1pb.AbandonStorageMigrationRequest]) (*connect.Response[v1pb.InstanceSetting], error) {
+	resp, err := s.APIV1Service.AbandonStorageMigration(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 // AuthService
 //
 // Auth service methods need special handling for response headers (cookies).

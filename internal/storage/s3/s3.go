@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/pkg/errors"
@@ -152,6 +154,59 @@ func (c *Client) GetObjectStream(ctx context.Context, key string) (io.ReadCloser
 		return nil, errors.Wrap(err, "failed to get object")
 	}
 	return output.Body, nil
+}
+
+// CopyObject asks S3 to copy an object into this client's bucket without the bytes passing
+// through Toucan. sourceBucket/sourceKey must be reachable with the same credentials, which is
+// why the caller decides whether this path applies (see canServerSideCopy): between two buckets
+// of different accounts a server-side copy needs bucket policy on both sides that cannot be
+// assumed, and the failure would only surface object by object.
+func (c *Client) CopyObject(ctx context.Context, sourceBucket, sourceKey, targetKey string) error {
+	// CopySource is a URL path, so a key containing spaces or non-ASCII (both ordinary in
+	// attachment file names) has to be escaped or the provider looks up a different key.
+	// EscapedPath escapes the characters that need it while leaving the separators alone --
+	// url.PathEscape would turn every "/" into %2F and flatten the whole thing into one segment.
+	source := (&url.URL{Path: sourceBucket + "/" + sourceKey}).EscapedPath()
+	if _, err := c.Client.CopyObject(ctx, &s3.CopyObjectInput{
+		Bucket:     c.Bucket,
+		Key:        aws.String(targetKey),
+		CopySource: aws.String(source),
+	}); err != nil {
+		return errors.Wrap(err, "failed to copy object")
+	}
+	return nil
+}
+
+// ObjectStat is what StatObject reports about an object: whether it is there, and how big.
+type ObjectStat struct {
+	Exists bool
+	Size   int64
+}
+
+// StatObject reports the existence and size of an object without downloading it.
+//
+// It is the workhorse of the attachment storage migration: the precheck reads its probe back
+// with it, the copier skips objects already present at the target with it (which is what makes
+// a resumed migration idempotent), and reconciliation verifies every target object with it.
+// A missing object is not an error -- it is the answer to the question.
+func (c *Client) StatObject(ctx context.Context, key string) (ObjectStat, error) {
+	output, err := c.Client.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: c.Bucket,
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		var notFound *types.NotFound
+		if errors.As(err, &notFound) {
+			return ObjectStat{}, nil
+		}
+		// Providers that do not map a missing key to NotFound still answer 404 on the wire.
+		var respErr *awshttp.ResponseError
+		if errors.As(err, &respErr) && respErr.HTTPStatusCode() == http.StatusNotFound {
+			return ObjectStat{}, nil
+		}
+		return ObjectStat{}, errors.Wrap(err, "failed to stat object")
+	}
+	return ObjectStat{Exists: true, Size: aws.ToInt64(output.ContentLength)}, nil
 }
 
 // DeleteObject deletes an object in S3.

@@ -21,7 +21,7 @@
 | [editor/](editor/) | calendar 块、sheets 块、secret 加密块、受限内联样式渲染、draw.io 图、粘贴 HTML 转 Markdown | 6 |
 | [attachments/](attachments/) | 上传与媒体内联、访问控制与私密附件 | 2 |
 | [collaboration/](collaboration/) | memogit 同步、memogit 文档身份、MCP 协作写作、团队成员与知识库授权 | 4 |
-| [storage/](storage/) | 数据源、持久化边界、容量与迁移承诺、全站备份、外部资源接入 | 3 |
+| [storage/](storage/) | 数据源、持久化边界、容量与迁移承诺、全站备份、附件存储迁移、外部资源接入 | 4 |
 
 ## 规划中的域
 
@@ -79,6 +79,9 @@
   —— 以 SQLite 为唯一数据源：为什么不上 postgres、三驱动的维护成本、
   sqlite 的容量边界与复评触发条件
 - [backup.md](storage/backup.md) —— 全站 SQLite 数据库备份
+- [attachment-storage-migration.md](storage/attachment-storage-migration.md)
+  —— 附件存储迁移：换源/换桶/换根目录前缀、存储路径的三级模型、
+  迁移生命周期与五条不变量、历史平铺附件的收编
 - [external-resource-roots.md](storage/external-resource-roots.md)
   —— 外部资源根：索引 NAS 上已存在的文件、只读边界、能力分层与扫描策略
 

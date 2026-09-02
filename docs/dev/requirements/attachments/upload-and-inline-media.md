@@ -67,10 +67,16 @@ TODO(确认)：`rehype-sanitize` 的 `SANITIZE_SCHEMA`（[constants.ts](../../..
   不再变动——目录名变了会让已写入对象的 key 指向不存在的路径。
 - 上传时**没有**提供 workspace 落到 `_unassigned/`（不报错）；提供了但查不到/不属于当前用户
   直接报错，不静默兜底。若上传请求带了 `memo`，从该 memo 的 workspace 推导，调用方不必重复传。
-- 存量附件（改动前已写入默认前缀的对象）**不做统一搬迁**：读路径按记录里的
-  `payload.s3_object.key` 走，新旧混存不影响访问；只搬迁指定的重要 workspace，脚本先以
-  只读模式产出待搬迁清单供人工核对。TODO(确认)：该搬迁脚本是否已经跑过/是否仍待执行，
-  未在代码库中找到对应脚本，需向用户确认当前状态。
+- 存量附件（改动前已写入默认前缀、平铺在桶根的对象）在本篇范围内**不搬迁**：读路径按记录里的
+  `payload.s3_object.key` 走，新旧混存不影响访问。原先设想的"只搬迁指定的重要 workspace"
+  的一次性脚本**不做了**——它从未写出来，且归位已被
+  [storage/attachment-storage-migration.md](../storage/attachment-storage-migration.md)
+  收编：那次迁移逐条重算目标 key（目录重算、文件名段沿用），平铺附件在同一趟里自动归位。
+
+> 上面这段描述的是当前实现。存储路径的模型会随
+> [attachment-storage-migration.md](../storage/attachment-storage-migration.md) 改成
+> `root_prefix`（管理员可配）+ 知识库目录（系统内定、不可配）+ 文件名模板三级，
+> 届时 `filepath_template` 不再能表达目录。本节到时候原地改写。
 
 ## PDF 上传与预览（不在本文档范围）
 

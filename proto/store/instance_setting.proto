@@ -25,6 +25,8 @@ enum InstanceSettingKey {
   AI = 7;
   // BACKUP is the key for database backup settings/status.
   BACKUP = 8;
+  // STORAGE_MIGRATION is the key for the in-flight attachment storage migration.
+  STORAGE_MIGRATION = 9;
 }
 
 message InstanceSetting {
@@ -38,6 +40,7 @@ message InstanceSetting {
     InstanceNotificationSetting notification_setting = 7;
     InstanceAISetting ai_setting = 8;
     InstanceBackupSetting backup_setting = 9;
+    InstanceStorageMigrationSetting storage_migration_setting = 10;
   }
 }
 
@@ -103,13 +106,22 @@ message InstanceStorageSetting {
   }
   // storage_type is the storage type.
   StorageType storage_type = 1;
-  // The template of file path.
+  // LEGACY-COMPAT(storage/three-level-path): filepath_template is the whole object path as a
+  // single free-form string. It is still the source of truth for LOCAL storage, but for S3 the
+  // path is now expressed as root_prefix + workspace directory + filename_template. It is kept
+  // because it is the only thing an old instance can be decomposed from; see
+  // Store.GetInstanceStorageSetting.
   // e.g. assets/{timestamp}_{filename}
   string filepath_template = 2;
   // The max upload size in megabytes.
   int64 upload_size_limit_mb = 3;
   // The S3 config.
   StorageS3Config s3_config = 4;
+  // filename_template names the final path segment of an S3 object; it governs the file name
+  // only, never directories. The directory between the root prefix and the file name is decided
+  // by the system (it is the owning workspace's storage slug) and is not configurable.
+  // e.g. {timestamp}_{uuid}_{filename}
+  string filename_template = 5;
 }
 
 // Reference: https://developers.cloudflare.com/r2/examples/aws/aws-sdk-go/
@@ -124,6 +136,88 @@ message StorageS3Config {
   // to the S3 endpoint. Only enable this for trusted endpoints that use a self-signed
   // certificate; it removes protection against man-in-the-middle attacks.
   bool insecure_skip_tls_verify = 7;
+  // root_prefix is the directory every attachment object is written under, relative to the
+  // bucket root. Empty means the bucket root itself. Together with `endpoint` and `bucket` it
+  // forms the location triple that answers "which pile of bytes are the attachments" -- unlike
+  // the remaining fields, which only say how to reach the same pile, changing any of the three
+  // strands every existing object, so all three are rejected by UpdateInstanceSetting once S3
+  // attachments exist and can only be changed through an attachment storage migration.
+  string root_prefix = 8;
+}
+
+// InstanceStorageMigrationSetting holds the target configuration and the state machine of an
+// attachment storage migration: moving every S3 attachment object to a new
+// (endpoint, bucket, root_prefix) location without changing a single attachment's public URI.
+//
+// It is a singleton whose shape keeps changing as the flow is built out, and nothing queries it
+// by field, which is exactly the shape a settings blob is good at. The opposite kind of data --
+// one row per attachment, claimed by status -- lives in the attachment_migration_job table.
+// See docs/dev/design/20260902-attachment-storage-migration.md.
+message InstanceStorageMigrationSetting {
+  // State is the migration lifecycle. Absent setting (or STATE_UNSPECIFIED) means no migration
+  // exists and the instance behaves exactly as it did before this feature.
+  enum State {
+    STATE_UNSPECIFIED = 0;
+    // DRAFT: the target configuration is being edited. Nothing is frozen, nothing is copied,
+    // and discarding it is free.
+    DRAFT = 1;
+    // PRECHECKED: a probe object was written, read back and deleted at the target location.
+    // Editing the target configuration drops back to DRAFT.
+    PRECHECKED = 2;
+    // FROZEN: attachment writes are closed instance-wide. Reads are unaffected.
+    FROZEN = 3;
+    // MIGRATING: objects are being copied to the target location. Resumable.
+    MIGRATING = 4;
+    // RECONCILING: every attachment's target object is being verified.
+    RECONCILING = 5;
+    // READY: reconciliation passed; the switch may be applied.
+    READY = 6;
+  }
+
+  State state = 1;
+  // target_s3_config is where the attachments are going. Only the location triple is allowed to
+  // differ from the live config; a migration that moves nowhere is rejected at entry.
+  StorageS3Config target_s3_config = 2;
+  google.protobuf.Timestamp create_time = 3;
+  google.protobuf.Timestamp update_time = 4;
+  PrecheckResult precheck = 5;
+  Progress progress = 6;
+  // last_error is the most recent failure of the background worker itself (as opposed to a
+  // single object's failure, which is recorded on that object's row).
+  string last_error = 7;
+
+  // Progress mirrors the per-status counts of the work list so the settings blob alone answers
+  // "how far along is this", including after the work list has been dropped at switch time.
+  message Progress {
+    int64 total = 1;
+    int64 pending = 2;
+    int64 done = 3;
+    // skipped counts attachments whose source object does not exist. They were already broken
+    // before the migration and deliberately do not block it.
+    int64 skipped = 4;
+    // failed counts attachments that could not be copied or did not verify. Any of these blocks
+    // the switch.
+    int64 failed = 5;
+  }
+
+  // PrecheckResult records the outcome of the write-read-delete probe against the target. A
+  // bucket that exists and credentials that authenticate prove nothing on their own: missing
+  // PutObject permission, a bucket policy that rejects the prefix, or a header-rewriting proxy
+  // in front of the endpoint only ever surface on a real round trip.
+  message PrecheckResult {
+    bool passed = 1;
+    // error is the failure reason, verbatim enough for an admin to act on. Empty when passed.
+    string error = 2;
+    google.protobuf.Timestamp check_time = 3;
+    // probe_key is the object key the probe used, so a probe object left behind by a crash
+    // between write and delete can be found and removed by hand.
+    string probe_key = 4;
+    // server_side_copy reports whether the migration can hand the copy to S3 itself
+    // (CopyObject) instead of streaming every byte through Toucan. It requires the endpoint,
+    // credentials and path style to be identical on both sides, which is the common
+    // "same account, different bucket or prefix" case.
+    bool server_side_copy = 5;
+  }
 }
 
 message InstanceMemoRelatedSetting {

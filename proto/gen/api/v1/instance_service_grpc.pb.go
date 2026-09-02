@@ -27,6 +27,11 @@ const (
 	InstanceService_TestInstanceEmailSetting_FullMethodName = "/memos.api.v1.InstanceService/TestInstanceEmailSetting"
 	InstanceService_GetInstanceStats_FullMethodName         = "/memos.api.v1.InstanceService/GetInstanceStats"
 	InstanceService_BackupNow_FullMethodName                = "/memos.api.v1.InstanceService/BackupNow"
+	InstanceService_PrecheckStorageMigration_FullMethodName = "/memos.api.v1.InstanceService/PrecheckStorageMigration"
+	InstanceService_StartStorageMigration_FullMethodName    = "/memos.api.v1.InstanceService/StartStorageMigration"
+	InstanceService_RetryStorageMigration_FullMethodName    = "/memos.api.v1.InstanceService/RetryStorageMigration"
+	InstanceService_SwitchStorageMigration_FullMethodName   = "/memos.api.v1.InstanceService/SwitchStorageMigration"
+	InstanceService_AbandonStorageMigration_FullMethodName  = "/memos.api.v1.InstanceService/AbandonStorageMigration"
 	InstanceService_TestAIProvider_FullMethodName           = "/memos.api.v1.InstanceService/TestAIProvider"
 )
 
@@ -49,6 +54,22 @@ type InstanceServiceClient interface {
 	// BackupNow triggers an immediate database backup to the configured S3 storage.
 	// Only available when the instance uses SQLite and S3 storage is configured. Admin only.
 	BackupNow(ctx context.Context, in *BackupNowRequest, opts ...grpc.CallOption) (*BackupNowResponse, error)
+	// PrecheckStorageMigration writes, reads back and deletes a probe object at the drafted
+	// migration target, then records the outcome on the migration setting. Admin only.
+	PrecheckStorageMigration(ctx context.Context, in *PrecheckStorageMigrationRequest, opts ...grpc.CallOption) (*InstanceSetting, error)
+	// StartStorageMigration freezes attachment writes, builds the work list and starts copying
+	// objects to the prechecked target. Admin only.
+	StartStorageMigration(ctx context.Context, in *StartStorageMigrationRequest, opts ...grpc.CallOption) (*InstanceSetting, error)
+	// RetryStorageMigration puts every failed object back in the queue and resumes copying.
+	// Admin only.
+	RetryStorageMigration(ctx context.Context, in *RetryStorageMigrationRequest, opts ...grpc.CallOption) (*InstanceSetting, error)
+	// SwitchStorageMigration points the instance at the target: every attachment's object key and
+	// the instance storage configuration are rewritten in one transaction, and attachment writes
+	// are unfrozen. Refused while any object has failed. Admin only.
+	SwitchStorageMigration(ctx context.Context, in *SwitchStorageMigrationRequest, opts ...grpc.CallOption) (*InstanceSetting, error)
+	// AbandonStorageMigration drops the work list and unfreezes attachment writes. Objects already
+	// copied to the target are left where they are for the operator to delete. Admin only.
+	AbandonStorageMigration(ctx context.Context, in *AbandonStorageMigrationRequest, opts ...grpc.CallOption) (*InstanceSetting, error)
 	// TestAIProvider verifies connectivity to an AI provider by making a minimal live API call.
 	// The provider connection may be given inline (for testing before save) or by provider_id
 	// (for testing an already-stored provider, optionally overriding its API key).
@@ -133,6 +154,56 @@ func (c *instanceServiceClient) BackupNow(ctx context.Context, in *BackupNowRequ
 	return out, nil
 }
 
+func (c *instanceServiceClient) PrecheckStorageMigration(ctx context.Context, in *PrecheckStorageMigrationRequest, opts ...grpc.CallOption) (*InstanceSetting, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(InstanceSetting)
+	err := c.cc.Invoke(ctx, InstanceService_PrecheckStorageMigration_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *instanceServiceClient) StartStorageMigration(ctx context.Context, in *StartStorageMigrationRequest, opts ...grpc.CallOption) (*InstanceSetting, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(InstanceSetting)
+	err := c.cc.Invoke(ctx, InstanceService_StartStorageMigration_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *instanceServiceClient) RetryStorageMigration(ctx context.Context, in *RetryStorageMigrationRequest, opts ...grpc.CallOption) (*InstanceSetting, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(InstanceSetting)
+	err := c.cc.Invoke(ctx, InstanceService_RetryStorageMigration_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *instanceServiceClient) SwitchStorageMigration(ctx context.Context, in *SwitchStorageMigrationRequest, opts ...grpc.CallOption) (*InstanceSetting, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(InstanceSetting)
+	err := c.cc.Invoke(ctx, InstanceService_SwitchStorageMigration_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *instanceServiceClient) AbandonStorageMigration(ctx context.Context, in *AbandonStorageMigrationRequest, opts ...grpc.CallOption) (*InstanceSetting, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(InstanceSetting)
+	err := c.cc.Invoke(ctx, InstanceService_AbandonStorageMigration_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *instanceServiceClient) TestAIProvider(ctx context.Context, in *TestAIProviderRequest, opts ...grpc.CallOption) (*TestAIProviderResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(TestAIProviderResponse)
@@ -162,6 +233,22 @@ type InstanceServiceServer interface {
 	// BackupNow triggers an immediate database backup to the configured S3 storage.
 	// Only available when the instance uses SQLite and S3 storage is configured. Admin only.
 	BackupNow(context.Context, *BackupNowRequest) (*BackupNowResponse, error)
+	// PrecheckStorageMigration writes, reads back and deletes a probe object at the drafted
+	// migration target, then records the outcome on the migration setting. Admin only.
+	PrecheckStorageMigration(context.Context, *PrecheckStorageMigrationRequest) (*InstanceSetting, error)
+	// StartStorageMigration freezes attachment writes, builds the work list and starts copying
+	// objects to the prechecked target. Admin only.
+	StartStorageMigration(context.Context, *StartStorageMigrationRequest) (*InstanceSetting, error)
+	// RetryStorageMigration puts every failed object back in the queue and resumes copying.
+	// Admin only.
+	RetryStorageMigration(context.Context, *RetryStorageMigrationRequest) (*InstanceSetting, error)
+	// SwitchStorageMigration points the instance at the target: every attachment's object key and
+	// the instance storage configuration are rewritten in one transaction, and attachment writes
+	// are unfrozen. Refused while any object has failed. Admin only.
+	SwitchStorageMigration(context.Context, *SwitchStorageMigrationRequest) (*InstanceSetting, error)
+	// AbandonStorageMigration drops the work list and unfreezes attachment writes. Objects already
+	// copied to the target are left where they are for the operator to delete. Admin only.
+	AbandonStorageMigration(context.Context, *AbandonStorageMigrationRequest) (*InstanceSetting, error)
 	// TestAIProvider verifies connectivity to an AI provider by making a minimal live API call.
 	// The provider connection may be given inline (for testing before save) or by provider_id
 	// (for testing an already-stored provider, optionally overriding its API key).
@@ -196,6 +283,21 @@ func (UnimplementedInstanceServiceServer) GetInstanceStats(context.Context, *Get
 }
 func (UnimplementedInstanceServiceServer) BackupNow(context.Context, *BackupNowRequest) (*BackupNowResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method BackupNow not implemented")
+}
+func (UnimplementedInstanceServiceServer) PrecheckStorageMigration(context.Context, *PrecheckStorageMigrationRequest) (*InstanceSetting, error) {
+	return nil, status.Error(codes.Unimplemented, "method PrecheckStorageMigration not implemented")
+}
+func (UnimplementedInstanceServiceServer) StartStorageMigration(context.Context, *StartStorageMigrationRequest) (*InstanceSetting, error) {
+	return nil, status.Error(codes.Unimplemented, "method StartStorageMigration not implemented")
+}
+func (UnimplementedInstanceServiceServer) RetryStorageMigration(context.Context, *RetryStorageMigrationRequest) (*InstanceSetting, error) {
+	return nil, status.Error(codes.Unimplemented, "method RetryStorageMigration not implemented")
+}
+func (UnimplementedInstanceServiceServer) SwitchStorageMigration(context.Context, *SwitchStorageMigrationRequest) (*InstanceSetting, error) {
+	return nil, status.Error(codes.Unimplemented, "method SwitchStorageMigration not implemented")
+}
+func (UnimplementedInstanceServiceServer) AbandonStorageMigration(context.Context, *AbandonStorageMigrationRequest) (*InstanceSetting, error) {
+	return nil, status.Error(codes.Unimplemented, "method AbandonStorageMigration not implemented")
 }
 func (UnimplementedInstanceServiceServer) TestAIProvider(context.Context, *TestAIProviderRequest) (*TestAIProviderResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method TestAIProvider not implemented")
@@ -347,6 +449,96 @@ func _InstanceService_BackupNow_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _InstanceService_PrecheckStorageMigration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PrecheckStorageMigrationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InstanceServiceServer).PrecheckStorageMigration(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: InstanceService_PrecheckStorageMigration_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InstanceServiceServer).PrecheckStorageMigration(ctx, req.(*PrecheckStorageMigrationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _InstanceService_StartStorageMigration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StartStorageMigrationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InstanceServiceServer).StartStorageMigration(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: InstanceService_StartStorageMigration_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InstanceServiceServer).StartStorageMigration(ctx, req.(*StartStorageMigrationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _InstanceService_RetryStorageMigration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RetryStorageMigrationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InstanceServiceServer).RetryStorageMigration(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: InstanceService_RetryStorageMigration_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InstanceServiceServer).RetryStorageMigration(ctx, req.(*RetryStorageMigrationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _InstanceService_SwitchStorageMigration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SwitchStorageMigrationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InstanceServiceServer).SwitchStorageMigration(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: InstanceService_SwitchStorageMigration_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InstanceServiceServer).SwitchStorageMigration(ctx, req.(*SwitchStorageMigrationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _InstanceService_AbandonStorageMigration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AbandonStorageMigrationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InstanceServiceServer).AbandonStorageMigration(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: InstanceService_AbandonStorageMigration_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InstanceServiceServer).AbandonStorageMigration(ctx, req.(*AbandonStorageMigrationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _InstanceService_TestAIProvider_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(TestAIProviderRequest)
 	if err := dec(in); err != nil {
@@ -399,6 +591,26 @@ var InstanceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BackupNow",
 			Handler:    _InstanceService_BackupNow_Handler,
+		},
+		{
+			MethodName: "PrecheckStorageMigration",
+			Handler:    _InstanceService_PrecheckStorageMigration_Handler,
+		},
+		{
+			MethodName: "StartStorageMigration",
+			Handler:    _InstanceService_StartStorageMigration_Handler,
+		},
+		{
+			MethodName: "RetryStorageMigration",
+			Handler:    _InstanceService_RetryStorageMigration_Handler,
+		},
+		{
+			MethodName: "SwitchStorageMigration",
+			Handler:    _InstanceService_SwitchStorageMigration_Handler,
+		},
+		{
+			MethodName: "AbandonStorageMigration",
+			Handler:    _InstanceService_AbandonStorageMigration_Handler,
 		},
 		{
 			MethodName: "TestAIProvider",
