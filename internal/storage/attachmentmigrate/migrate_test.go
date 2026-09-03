@@ -331,7 +331,7 @@ func TestApplyCopiesAndRepoints(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "assets/notes/old.png", reloaded.Reference)
 	require.Equal(t, "assets/notes/old.png", reloaded.Payload.GetS3Object().Key)
-	require.Equal(t, testBucket, reloaded.Payload.GetS3Object().S3Config.Bucket)
+	require.Nil(t, reloaded.Payload.GetS3Object().S3Config)
 
 	// Re-running finds nothing left to do.
 	second, err := migrator.Plan(ctx, true)
@@ -364,6 +364,30 @@ func TestApplyIsIdempotentWhenObjectAlreadyCopied(t *testing.T) {
 
 	require.Equal(t, attachmentmigrate.OutcomeReused, plan.Items[0].Outcome)
 	require.Empty(t, bucket.copies)
+}
+
+func TestApplyRemovesLegacyConfigFromAnInPlaceAttachment(t *testing.T) {
+	ctx := context.Background()
+	ts := storetest.NewTestingStore(ctx, t)
+	config := s3Config(testEndpoint, testBucket)
+	setStorageSetting(ctx, t, ts, "assets/{workspace}/{filename}", config)
+
+	user := createUser(ctx, t, ts)
+	workspace := createWorkspace(ctx, t, ts, user, "笔记", "notes")
+	memo := createMemo(ctx, t, ts, user, workspace.ID)
+	attachment := createS3Attachment(ctx, t, ts, user, &memo.ID, "a.png", "assets/notes/a.png", 10, config)
+
+	migrator := attachmentmigrate.NewWithClientFactory(ts, newFakeS3().factory())
+	plan, err := migrator.Plan(ctx, true)
+	require.NoError(t, err)
+	require.Equal(t, attachmentmigrate.StatusInPlace, plan.Items[0].Status)
+	require.True(t, plan.Items[0].EmbeddedS3Config)
+	require.NoError(t, migrator.Apply(ctx, plan))
+	require.Equal(t, attachmentmigrate.OutcomeConfigRemoved, plan.Items[0].Outcome)
+
+	reloaded, err := ts.GetAttachment(ctx, &store.FindAttachment{ID: &attachment.ID})
+	require.NoError(t, err)
+	require.Nil(t, reloaded.Payload.GetS3Object().S3Config)
 }
 
 func TestApplyRefusesToOverwriteADifferentObject(t *testing.T) {
@@ -426,6 +450,34 @@ func TestApplyStreamsAcrossEndpoints(t *testing.T) {
 	require.Equal(t, attachmentmigrate.OutcomeCopied, plan.Items[0].Outcome)
 	require.Equal(t, []string{"assets/notes/old.png"}, fake.store(testEndpoint, testBucket).uploads)
 	require.Empty(t, fake.store(testEndpoint, testBucket).copies)
+}
+
+func TestApplyUsesExplicitSourceForKeyOnlyAttachment(t *testing.T) {
+	ctx := context.Background()
+	ts := storetest.NewTestingStore(ctx, t)
+	oldEndpoint, oldBucket := "https://old.example.com", "old-bucket"
+	newConfig := s3Config(testEndpoint, testBucket)
+	setStorageSetting(ctx, t, ts, "assets/{workspace}/{filename}", newConfig)
+
+	user := createUser(ctx, t, ts)
+	workspace := createWorkspace(ctx, t, ts, user, "笔记", "notes")
+	memo := createMemo(ctx, t, ts, user, workspace.ID)
+	attachment := createS3Attachment(ctx, t, ts, user, &memo.ID, "old.png", "assets/notes/old.png", 10, nil)
+
+	fake := newFakeS3()
+	fake.store(oldEndpoint, oldBucket).objects["assets/notes/old.png"] = 10
+	migrator := attachmentmigrate.NewWithClientFactory(ts, fake.factory()).WithSourceLocation(oldEndpoint, oldBucket)
+
+	plan, err := migrator.Plan(ctx, true)
+	require.NoError(t, err)
+	require.Equal(t, attachmentmigrate.StatusPending, plan.Items[0].Status)
+	require.NoError(t, migrator.Apply(ctx, plan))
+	require.Equal(t, attachmentmigrate.OutcomeCopied, plan.Items[0].Outcome)
+
+	reloaded, err := ts.GetAttachment(ctx, &store.FindAttachment{ID: &attachment.ID})
+	require.NoError(t, err)
+	require.Nil(t, reloaded.Payload.GetS3Object().S3Config)
+	require.Contains(t, fake.store(testEndpoint, testBucket).objects, "assets/notes/old.png")
 }
 
 // A row pointing at an object that is not in the source bucket is a hole that predates the

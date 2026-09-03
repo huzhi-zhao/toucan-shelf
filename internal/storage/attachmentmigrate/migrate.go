@@ -71,6 +71,9 @@ const (
 	// investigate, a missing source is a pre-existing hole the migration cannot fill and did
 	// not create.
 	OutcomeSourceMissing Outcome = "SOURCE_MISSING"
+	// OutcomeConfigRemoved means the object was already in place and the only change was
+	// removing the legacy per-attachment S3 config snapshot.
+	OutcomeConfigRemoved Outcome = "CONFIG_REMOVED"
 )
 
 // Item is one attachment's place in the plan.
@@ -92,6 +95,9 @@ type Item struct {
 	SourceEndpoint string
 	SourceKey      string
 	TargetKey      string
+	// EmbeddedS3Config records legacy rows that duplicate the instance-level S3 config.
+	// A successful apply removes it; new attachments never create it.
+	EmbeddedS3Config bool
 
 	Status Status
 	Reason string
@@ -124,10 +130,23 @@ func (p *Plan) Counts() (inPlace, pending, skipped int) {
 	return inPlace, pending, skipped
 }
 
+// EmbeddedConfigCount returns how many legacy attachment rows still duplicate the instance S3
+// connection config. Apply removes these snapshots from every row it successfully reconciles.
+func (p *Plan) EmbeddedConfigCount() (count int) {
+	for _, item := range p.Items {
+		if item.EmbeddedS3Config {
+			count++
+		}
+	}
+	return count
+}
+
 // Migrator plans and applies attachment object migrations.
 type Migrator struct {
-	store     *store.Store
-	newClient ClientFactory
+	store          *store.Store
+	newClient      ClientFactory
+	sourceEndpoint string
+	sourceBucket   string
 }
 
 // New returns a Migrator talking to the real S3 endpoints.
@@ -138,6 +157,15 @@ func New(s *store.Store) *Migrator {
 // NewWithClientFactory returns a Migrator that builds object stores through factory. For tests.
 func NewWithClientFactory(s *store.Store, factory ClientFactory) *Migrator {
 	return &Migrator{store: s, newClient: factory}
+}
+
+// WithSourceLocation supplies an operator-provided legacy source location. It is used after a
+// real bucket/provider move now that attachment rows no longer duplicate S3 connection details.
+// Empty values fall back to the legacy row snapshot and then to the current instance setting.
+func (m *Migrator) WithSourceLocation(endpoint, bucket string) *Migrator {
+	m.sourceEndpoint = endpoint
+	m.sourceBucket = bucket
+	return m
 }
 
 // listLimit is high enough to hold every attachment of an instance this migration targets in
@@ -210,14 +238,22 @@ func (m *Migrator) planItem(attachment *store.Attachment, dirTemplate string, ta
 		return item
 	}
 	item.SourceKey = s3Object.Key
-	// The snapshot taken at upload time says where the object actually is. Without one the
-	// only thing we can assume is that it is where the instance currently points.
+	item.EmbeddedS3Config = s3Object.S3Config != nil
+	// Explicit CLI source values win for rows created under the new key-only model. Legacy
+	// snapshots remain readable so upgrades can finish an already-planned migration. Otherwise
+	// the object belongs to the instance's current S3 backend.
 	sourceConfig := s3Object.S3Config
 	if sourceConfig == nil {
 		sourceConfig = targetConfig
 	}
 	item.SourceBucket = sourceConfig.Bucket
 	item.SourceEndpoint = sourceConfig.Endpoint
+	if m.sourceBucket != "" {
+		item.SourceBucket = m.sourceBucket
+	}
+	if m.sourceEndpoint != "" {
+		item.SourceEndpoint = m.sourceEndpoint
+	}
 
 	var slug workspaceSlug
 	if attachment.MemoID != nil {
@@ -339,6 +375,15 @@ func (m *Migrator) Apply(ctx context.Context, plan *Plan) error {
 	}
 
 	for _, item := range plan.Items {
+		if item.Status == StatusInPlace && item.EmbeddedS3Config {
+			if err := m.repoint(ctx, item); err != nil {
+				item.Outcome = OutcomeFailed
+				item.Error = err.Error()
+				continue
+			}
+			item.Outcome = OutcomeConfigRemoved
+			continue
+		}
 		if item.Status != StatusPending {
 			continue
 		}
@@ -385,7 +430,7 @@ func (m *Migrator) applyItem(ctx context.Context, item *Item, targetClient Objec
 		return "", errors.Errorf("target key %q already holds a different object (%d bytes, expected %d)", item.TargetKey, existing.Size, item.Size)
 	}
 
-	if err := m.repoint(ctx, item, targetConfig); err != nil {
+	if err := m.repoint(ctx, item); err != nil {
 		return "", err
 	}
 	return outcome, nil
@@ -455,9 +500,9 @@ func (m *Migrator) copyObject(ctx context.Context, item *Item, targetClient Obje
 }
 
 // repoint rewrites where the row says its object lives. The key is stored twice — the
-// `reference` column and the payload — and the payload's config snapshot is refreshed at the
-// same time so it describes the bucket the object is actually in now.
-func (m *Migrator) repoint(ctx context.Context, item *Item, targetConfig *storepb.StorageS3Config) error {
+// `reference` column and the payload — while S3 connection details live only in the instance
+// STORAGE setting. Omitting s3_config also cleans legacy per-attachment config snapshots.
+func (m *Migrator) repoint(ctx context.Context, item *Item) error {
 	attachment, err := m.store.GetAttachment(ctx, &store.FindAttachment{ID: &item.AttachmentID})
 	if err != nil {
 		return errors.Wrap(err, "failed to reload attachment")
@@ -471,8 +516,7 @@ func (m *Migrator) repoint(ctx context.Context, item *Item, targetConfig *storep
 	}
 	payload.Payload = &storepb.AttachmentPayload_S3Object_{
 		S3Object: &storepb.AttachmentPayload_S3Object{
-			S3Config: targetConfig,
-			Key:      item.TargetKey,
+			Key: item.TargetKey,
 		},
 	}
 	if err := m.store.UpdateAttachment(ctx, &store.UpdateAttachment{
