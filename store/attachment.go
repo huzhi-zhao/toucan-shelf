@@ -213,11 +213,9 @@ func (s *Store) DeleteAttachmentStorage(ctx context.Context, attachment *Attachm
 }
 
 // ResolveAttachmentS3Config returns the S3 config to use when reading or deleting an attachment
-// object. Each attachment snapshots the S3 config that was active at upload time, so changing the
-// endpoint or credentials later (e.g. moving MinIO to a new domain) would leave existing
-// attachments pointing at a backend that no longer answers. The instance storage setting is the
-// source of truth for where the S3 backend currently lives, so prefer it and only fall back to the
-// stored snapshot when the instance is no longer configured for S3.
+// object. The instance storage setting is the source of truth. The stored argument exists only
+// for legacy rows created before attachments became key-only; it is a compatibility fallback
+// when the instance is no longer configured for S3.
 func (s *Store) ResolveAttachmentS3Config(ctx context.Context, stored *storepb.StorageS3Config) (*storepb.StorageS3Config, error) {
 	instanceStorageSetting, err := s.GetInstanceStorageSetting(ctx)
 	if err != nil {
@@ -269,8 +267,7 @@ func (s *Store) deleteAttachmentStorageImpl(ctx context.Context, attachment *Att
 			if s3ObjectPayload == nil {
 				return errors.Errorf("No s3 object found")
 			}
-			// Prefer the instance's current S3 config over the snapshot taken at upload time, so
-			// objects stay reachable after the endpoint or credentials change.
+			// Prefer the instance's current S3 config. The payload config is legacy-only.
 			s3Config := s3ObjectPayload.S3Config
 			if instanceStorageSetting != nil {
 				if instanceStorageSetting.StorageType == storepb.InstanceStorageSetting_S3 && instanceStorageSetting.S3Config != nil {

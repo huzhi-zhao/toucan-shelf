@@ -414,9 +414,8 @@ func (s *FileServerService) readLocalFile(reference string) ([]byte, error) {
 	return blob, nil
 }
 
-// createS3Client creates an S3 client for an attachment. The endpoint/credentials come from the
-// instance's current storage setting rather than the config snapshotted into the attachment
-// payload at upload time, so objects stay reachable after the S3/MinIO endpoint changes.
+// createS3Client creates an S3 client for an attachment. Endpoint and credentials come from the
+// instance's current storage setting; an attachment carries only its object key.
 func (s *FileServerService) createS3Client(ctx context.Context, attachment *store.Attachment) (*s3.Client, *storepb.AttachmentPayload_S3Object, error) {
 	if attachment.Payload == nil {
 		return nil, nil, errors.New("attachment payload is missing")

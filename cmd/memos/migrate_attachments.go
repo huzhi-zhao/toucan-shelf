@@ -24,6 +24,11 @@ Objects are copied, never moved: the source objects are left behind for you to
 clean up once you have verified the result. Attachment URLs do not change — they
 are derived from the attachment's uid, not from the object key.
 
+For key-only attachment rows after a real bucket/provider move, pass the old
+location once with --source-endpoint and/or --source-bucket. S3 credentials stay
+centralized in the instance STORAGE setting and are never copied into attachment
+rows.
+
 Without --apply nothing is changed and nothing is written; you get a report of
 what a run would do. Read it first.`,
 	// A failure here is a runtime problem, not a usage problem; dumping the flag list after
@@ -57,14 +62,23 @@ what a run would do. Read it first.`,
 			return fmt.Errorf("database at %q is not initialized; start memos once first", instanceProfile.DSN)
 		}
 
-		migrator := attachmentmigrate.New(storeInstance)
+		sourceEndpoint, err := cmd.Flags().GetString("source-endpoint")
+		if err != nil {
+			return err
+		}
+		sourceBucket, err := cmd.Flags().GetString("source-bucket")
+		if err != nil {
+			return err
+		}
+		migrator := attachmentmigrate.New(storeInstance).WithSourceLocation(sourceEndpoint, sourceBucket)
 		plan, err := migrator.Plan(ctx, apply)
 		if err != nil {
 			return err
 		}
 		plan.WritePlanReport(os.Stdout)
 
-		if _, pending, _ := plan.Counts(); pending == 0 {
+		_, pending, _ := plan.Counts()
+		if pending == 0 && plan.EmbeddedConfigCount() == 0 {
 			fmt.Println("\nNothing to migrate.")
 			return nil
 		}
@@ -86,5 +100,7 @@ what a run would do. Read it first.`,
 
 func init() {
 	migrateAttachmentsCmd.Flags().Bool("apply", false, "actually copy the objects and repoint the database (default: report only)")
+	migrateAttachmentsCmd.Flags().String("source-endpoint", "", "legacy source S3 endpoint for key-only attachment rows")
+	migrateAttachmentsCmd.Flags().String("source-bucket", "", "legacy source S3 bucket for key-only attachment rows")
 	rootCmd.AddCommand(migrateAttachmentsCmd)
 }

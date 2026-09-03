@@ -12,10 +12,14 @@ import (
 // thing to read before deciding to apply anything.
 func (p *Plan) WritePlanReport(w io.Writer) {
 	inPlace, pending, skipped := p.Counts()
+	embeddedConfigs := p.EmbeddedConfigCount()
 	fmt.Fprintf(w, "Filepath template: %s\n", p.Template)
 	fmt.Fprintf(w, "Target: bucket %s at %s\n", p.TargetBucket, p.TargetEndpoint)
 	fmt.Fprintf(w, "\nS3 attachments: %d total — %d already in place, %d to migrate, %d cannot be processed\n",
 		len(p.Items), inPlace, pending, skipped)
+	if embeddedConfigs > 0 {
+		fmt.Fprintf(w, "Legacy per-attachment S3 configs: %d to remove on successful apply\n", embeddedConfigs)
+	}
 
 	if pending > 0 {
 		fmt.Fprintf(w, "\nTo migrate, by knowledge base:\n")
@@ -59,7 +63,7 @@ func (p *Plan) WritePlanReport(w io.Writer) {
 // hole that was already there and that no re-run will fill. Lumping them together would leave a
 // wall of red where most of it is nothing new.
 func (p *Plan) WriteApplyReport(w io.Writer) (failed int) {
-	copied, reused, sourceMissing := 0, 0, 0
+	copied, reused, sourceMissing, configsRemoved := 0, 0, 0, 0
 	for _, item := range p.Items {
 		switch item.Outcome {
 		case OutcomeCopied:
@@ -68,12 +72,17 @@ func (p *Plan) WriteApplyReport(w io.Writer) (failed int) {
 			reused++
 		case OutcomeSourceMissing:
 			sourceMissing++
+		case OutcomeConfigRemoved:
+			configsRemoved++
 		case OutcomeFailed:
 			failed++
 		}
 	}
 	fmt.Fprintf(w, "\nMigrated: %d copied, %d already at the target key, %d source object missing, %d failed\n",
 		copied, reused, sourceMissing, failed)
+	if configsRemoved > 0 {
+		fmt.Fprintf(w, "Legacy per-attachment S3 configs removed: %d\n", configsRemoved)
+	}
 	if sourceMissing > 0 {
 		fmt.Fprintf(w, "\nSource object missing (already broken before this migration — the row points at\nan object that is not in the source bucket; re-running will not change this):\n")
 		for _, item := range p.Items {

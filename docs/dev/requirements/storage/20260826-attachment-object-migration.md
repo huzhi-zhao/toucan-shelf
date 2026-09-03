@@ -78,13 +78,14 @@ S3 配置改掉之后，读附件用的是新配置（见 §5 的既有事实）
 - **URL 与 key 解耦**：`/file/attachments/:uid/:filename`
   （[fileserver.go](../../../../server/router/fileserver/fileserver.go)），S3 附件的
   `external_link` 刻意留空，所有读取走服务端代理（见
-  [adr/0001](../../adr/0001-attachment-proxy-not-presigned-url.md)）。
+  [adr/0001](../../adr/0001-attachment-proxy-not-presigned-url.md)）。站点公开域名只由
+  `.env` 的 `MEMOS_INSTANCE_URL` 提供，不进入附件记录。
 - **key 存两处**：`attachment.reference` 字段与 `payload.s3_object.key`。
   实际读取只用后者，前者目前没有读取方，但仍须一并更新，否则两处不一致。
-- **每个附件快照了上传时的 S3 配置**（`payload.s3_object.s3_config`），
-  但 `Store.ResolveAttachmentS3Config` 优先用实例当前配置，快照只做兜底。
-  这就是"换 endpoint 之后读还是通的"的原因，也是"迁移只需要搬对象、
-  不需要逐条改配置"的前提。
+- **附件只记录对象 key，不记录 S3 配置。** endpoint、bucket 和凭证只保存在实例级
+  `STORAGE` 设置中；`Store.ResolveAttachmentS3Config` 从该设置统一解析。
+  旧版本写入 `payload.s3_object.s3_config` 的快照仅用于兼容尚未完成的迁移，
+  `migrate-attachments --apply` 在对象成功就位后会将其删除。
 - **缩略图与 motion 缓存按附件 UID 命名**（`.thumbnail_cache/{uid}.jpeg` 等），
   与存储路径无关，迁移不需要动它们。
 - **数据库备份用同一份 S3 配置但独立的 `path_template`**，不在本能力范围内。

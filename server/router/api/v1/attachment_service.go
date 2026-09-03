@@ -796,8 +796,11 @@ func SaveAttachmentBlob(ctx context.Context, profile *profile.Profile, stores *s
 		payload := ensureAttachmentPayload(create.Payload)
 		payload.Payload = &storepb.AttachmentPayload_S3Object_{
 			S3Object: &storepb.AttachmentPayload_S3Object{
-				S3Config: s3Config,
-				Key:      key,
+				// The object belongs to this instance's active S3 backend. Keep the
+				// connection details in the instance STORAGE setting only; copying them
+				// into every attachment makes an endpoint rename a row-by-row data
+				// migration and duplicates credentials throughout the database.
+				Key: key,
 			},
 		}
 		create.Payload = payload
@@ -841,8 +844,7 @@ func (s *APIV1Service) GetAttachmentBlob(attachment *store.Attachment) ([]byte, 
 			return nil, errors.New("S3 object key is missing")
 		}
 
-		// The instance's current S3 config wins over the snapshot stored at upload time, so
-		// attachments survive an endpoint/credential change (see Store.ResolveAttachmentS3Config).
+		// S3 connection details are instance-level; legacy payload snapshots are fallback-only.
 		s3Config, err := s.Store.ResolveAttachmentS3Config(context.Background(), s3Object.S3Config)
 		if err != nil {
 			return nil, err
