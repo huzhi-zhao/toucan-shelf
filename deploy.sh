@@ -14,9 +14,19 @@
 #
 set -euo pipefail
 
-REPO_URL="${REPO_URL:-https://github.com/huzhi-zhao/ToucanShelf.git}"
+REPO_URL="${REPO_URL:-https://github.com/huzhi-zhao/toucan-shelf.git}"
 BRANCH="${BRANCH:-main}"
-TARGET_DIR="${TARGET_DIR:-memos}"
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# Running ./deploy.sh from an existing checkout should update that checkout. The
+# fallback directory is only for the curl-pipe/bootstrap form, where the script
+# itself does not live in a Git worktree.
+if [ -z "${TARGET_DIR:-}" ]; then
+  if [ -d "$SCRIPT_DIR/.git" ]; then
+    TARGET_DIR="$SCRIPT_DIR"
+  else
+    TARGET_DIR="memos"
+  fi
+fi
 MEMOS_INSTANCE_URL="${MEMOS_INSTANCE_URL:-https://toucan.huzhi.dev}"
 
 while [ $# -gt 0 ]; do
