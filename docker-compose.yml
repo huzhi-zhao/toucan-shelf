@@ -1,3 +1,5 @@
+name: toucan-shelf
+
 services:
   toucan-shelf:
     build:
@@ -21,3 +23,6 @@ services:
 
 volumes:
   memos-data:
+    # Keep the physical volume name stable across checkout-directory and Compose
+    # project-name changes. Existing deployments already use this volume.
+    name: ${MEMOS_DATA_VOLUME:-memos_memos-data}
