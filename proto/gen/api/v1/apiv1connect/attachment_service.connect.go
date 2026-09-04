@@ -61,6 +61,9 @@ const (
 	// AttachmentServiceLockVaultProcedure is the fully-qualified name of the AttachmentService's
 	// LockVault RPC.
 	AttachmentServiceLockVaultProcedure = "/memos.api.v1.AttachmentService/LockVault"
+	// AttachmentServiceGetDownloadUrlProcedure is the fully-qualified name of the AttachmentService's
+	// GetDownloadUrl RPC.
+	AttachmentServiceGetDownloadUrlProcedure = "/memos.api.v1.AttachmentService/GetDownloadUrl"
 )
 
 // AttachmentServiceClient is a client for the memos.api.v1.AttachmentService service.
@@ -92,6 +95,22 @@ type AttachmentServiceClient interface {
 	// LockVault clears the vault cookie, immediately re-locking every locked
 	// attachment for this browser session.
 	LockVault(context.Context, *connect.Request[v1.LockVaultRequest]) (*connect.Response[emptypb.Empty], error)
+	// GetDownloadUrl issues a short-lived URL for one attachment's bytes,
+	// carrying its own authorization so a client with no session of its own can
+	// fetch it once. The flow is: get the URL, fetch it to a local file, read the
+	// file. Bytes are never returned inline.
+	//
+	// Only formats a reader can actually open are served: text, PDF, common
+	// raster images and SVG. Office files, audio, video and vault-locked
+	// attachments are refused outright rather than handed a URL to bytes nothing
+	// can use.
+	//
+	// The caller's own read access is checked when the URL is issued and again
+	// when it is fetched. POST rather than GET because the request field is
+	// deliberately lenient about its input shape; it mutates nothing.
+	//
+	// See docs/dev/requirements/collaboration/agent-attachment-reading.md §3.
+	GetDownloadUrl(context.Context, *connect.Request[v1.GetDownloadUrlRequest]) (*connect.Response[v1.GetDownloadUrlResponse], error)
 }
 
 // NewAttachmentServiceClient constructs a client for the memos.api.v1.AttachmentService service. By
@@ -159,6 +178,12 @@ func NewAttachmentServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(attachmentServiceMethods.ByName("LockVault")),
 			connect.WithClientOptions(opts...),
 		),
+		getDownloadUrl: connect.NewClient[v1.GetDownloadUrlRequest, v1.GetDownloadUrlResponse](
+			httpClient,
+			baseURL+AttachmentServiceGetDownloadUrlProcedure,
+			connect.WithSchema(attachmentServiceMethods.ByName("GetDownloadUrl")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -173,6 +198,7 @@ type attachmentServiceClient struct {
 	batchDeleteAttachments *connect.Client[v1.BatchDeleteAttachmentsRequest, emptypb.Empty]
 	unlockVault            *connect.Client[v1.UnlockVaultRequest, emptypb.Empty]
 	lockVault              *connect.Client[v1.LockVaultRequest, emptypb.Empty]
+	getDownloadUrl         *connect.Client[v1.GetDownloadUrlRequest, v1.GetDownloadUrlResponse]
 }
 
 // CreateAttachment calls memos.api.v1.AttachmentService.CreateAttachment.
@@ -220,6 +246,11 @@ func (c *attachmentServiceClient) LockVault(ctx context.Context, req *connect.Re
 	return c.lockVault.CallUnary(ctx, req)
 }
 
+// GetDownloadUrl calls memos.api.v1.AttachmentService.GetDownloadUrl.
+func (c *attachmentServiceClient) GetDownloadUrl(ctx context.Context, req *connect.Request[v1.GetDownloadUrlRequest]) (*connect.Response[v1.GetDownloadUrlResponse], error) {
+	return c.getDownloadUrl.CallUnary(ctx, req)
+}
+
 // AttachmentServiceHandler is an implementation of the memos.api.v1.AttachmentService service.
 type AttachmentServiceHandler interface {
 	// CreateAttachment creates a new attachment.
@@ -249,6 +280,22 @@ type AttachmentServiceHandler interface {
 	// LockVault clears the vault cookie, immediately re-locking every locked
 	// attachment for this browser session.
 	LockVault(context.Context, *connect.Request[v1.LockVaultRequest]) (*connect.Response[emptypb.Empty], error)
+	// GetDownloadUrl issues a short-lived URL for one attachment's bytes,
+	// carrying its own authorization so a client with no session of its own can
+	// fetch it once. The flow is: get the URL, fetch it to a local file, read the
+	// file. Bytes are never returned inline.
+	//
+	// Only formats a reader can actually open are served: text, PDF, common
+	// raster images and SVG. Office files, audio, video and vault-locked
+	// attachments are refused outright rather than handed a URL to bytes nothing
+	// can use.
+	//
+	// The caller's own read access is checked when the URL is issued and again
+	// when it is fetched. POST rather than GET because the request field is
+	// deliberately lenient about its input shape; it mutates nothing.
+	//
+	// See docs/dev/requirements/collaboration/agent-attachment-reading.md §3.
+	GetDownloadUrl(context.Context, *connect.Request[v1.GetDownloadUrlRequest]) (*connect.Response[v1.GetDownloadUrlResponse], error)
 }
 
 // NewAttachmentServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -312,6 +359,12 @@ func NewAttachmentServiceHandler(svc AttachmentServiceHandler, opts ...connect.H
 		connect.WithSchema(attachmentServiceMethods.ByName("LockVault")),
 		connect.WithHandlerOptions(opts...),
 	)
+	attachmentServiceGetDownloadUrlHandler := connect.NewUnaryHandler(
+		AttachmentServiceGetDownloadUrlProcedure,
+		svc.GetDownloadUrl,
+		connect.WithSchema(attachmentServiceMethods.ByName("GetDownloadUrl")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/memos.api.v1.AttachmentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AttachmentServiceCreateAttachmentProcedure:
@@ -332,6 +385,8 @@ func NewAttachmentServiceHandler(svc AttachmentServiceHandler, opts ...connect.H
 			attachmentServiceUnlockVaultHandler.ServeHTTP(w, r)
 		case AttachmentServiceLockVaultProcedure:
 			attachmentServiceLockVaultHandler.ServeHTTP(w, r)
+		case AttachmentServiceGetDownloadUrlProcedure:
+			attachmentServiceGetDownloadUrlHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -375,4 +430,8 @@ func (UnimplementedAttachmentServiceHandler) UnlockVault(context.Context, *conne
 
 func (UnimplementedAttachmentServiceHandler) LockVault(context.Context, *connect.Request[v1.LockVaultRequest]) (*connect.Response[emptypb.Empty], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.AttachmentService.LockVault is not implemented"))
+}
+
+func (UnimplementedAttachmentServiceHandler) GetDownloadUrl(context.Context, *connect.Request[v1.GetDownloadUrlRequest]) (*connect.Response[v1.GetDownloadUrlResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.AttachmentService.GetDownloadUrl is not implemented"))
 }

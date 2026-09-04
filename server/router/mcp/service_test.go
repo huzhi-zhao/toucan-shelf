@@ -185,7 +185,13 @@ func TestMCPInitializeReturnsServerInstructions(t *testing.T) {
 	require.Contains(t, instructions, "NO file extension")
 
 	// Resident context: keep it a briefing, not a manual (see tech-design P0).
-	require.Less(t, len(instructions), 1600)
+	//
+	// Raised from 1600 when the attachment download path was added: the text now
+	// covers three topics rather than one, and 1600 left no room for a third.
+	// The intent has not changed — this is a ceiling to argue against, not a
+	// budget to spend, so an addition that does not fit should first ask what it
+	// is displacing.
+	require.Less(t, len(instructions), 2000)
 }
 
 func TestMCPToolCallReturnsObjectStructuredContent(t *testing.T) {

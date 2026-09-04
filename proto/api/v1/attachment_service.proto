@@ -75,6 +75,27 @@ service AttachmentService {
   rpc LockVault(LockVaultRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {post: "/api/v1/attachments:lockVault"};
   }
+  // GetDownloadUrl issues a short-lived URL for one attachment's bytes,
+  // carrying its own authorization so a client with no session of its own can
+  // fetch it once. The flow is: get the URL, fetch it to a local file, read the
+  // file. Bytes are never returned inline.
+  //
+  // Only formats a reader can actually open are served: text, PDF, common
+  // raster images and SVG. Office files, audio, video and vault-locked
+  // attachments are refused outright rather than handed a URL to bytes nothing
+  // can use.
+  //
+  // The caller's own read access is checked when the URL is issued and again
+  // when it is fetched. POST rather than GET because the request field is
+  // deliberately lenient about its input shape; it mutates nothing.
+  //
+  // See docs/dev/requirements/collaboration/agent-attachment-reading.md §3.
+  rpc GetDownloadUrl(GetDownloadUrlRequest) returns (GetDownloadUrlResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/attachments:downloadUrl"
+      body: "*"
+    };
+  }
 }
 
 enum MotionMediaFamily {
@@ -281,3 +302,35 @@ message UnlockVaultRequest {
 }
 
 message LockVaultRequest {}
+
+message GetDownloadUrlRequest {
+  // Required. Which attachment to issue a URL for. Lenient about shape, because
+  // this is usually pasted by a person: a resource name ("attachments/{uid}"),
+  // a /file/... link relative or absolute, or the markdown reference the app's
+  // attachment menu copies ("![report.pdf](/file/attachments/{uid}/report.pdf)")
+  // all address the same attachment.
+  string attachment = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetDownloadUrlResponse {
+  // The URL to fetch. Absolute, carries its own authorization, and is valid
+  // only for this one attachment until expire_time.
+  string url = 1;
+
+  // The attachment's resource name, resolved from the request.
+  // Format: attachments/{attachment}
+  string name = 2;
+
+  // The display filename, suitable as the local filename to save under.
+  string filename = 3;
+
+  // The MIME type of the bytes the URL will serve.
+  string type = 4;
+
+  // Size in bytes, so a caller can decide whether it wants the file at all
+  // before fetching it.
+  int64 size = 5;
+
+  // When the URL stops working.
+  google.protobuf.Timestamp expire_time = 6;
+}

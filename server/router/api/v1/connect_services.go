@@ -573,6 +573,14 @@ func (s *ConnectServiceHandler) LockVault(ctx context.Context, req *connect.Requ
 	})
 }
 
+func (s *ConnectServiceHandler) GetDownloadUrl(ctx context.Context, req *connect.Request[v1pb.GetDownloadUrlRequest]) (*connect.Response[v1pb.GetDownloadUrlResponse], error) {
+	resp, err := s.APIV1Service.GetDownloadUrl(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 // AIService
 
 func (s *ConnectServiceHandler) Transcribe(ctx context.Context, req *connect.Request[v1pb.TranscribeRequest]) (*connect.Response[v1pb.TranscribeResponse], error) {

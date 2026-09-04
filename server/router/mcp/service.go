@@ -28,6 +28,15 @@ import (
 // session, so it must only carry what the model cannot infer from the tool names
 // and schemas: the hierarchy, the order to chain calls in, and the fact that an
 // update is a full-content replacement.
+//
+// This is a hand-written summary of docs/skill/SKILL.md (the single source of
+// truth for agent-facing operating rules, also embedded verbatim for the
+// memogit/file channel — see internal/memogit/agentdocs.go). It is not
+// generated: MCP's context budget can't fit SKILL.md plus references/ in
+// full, only the "两者"/"仅 MCP" rules that apply here. Editing SKILL.md or
+// references/*.md means checking whether this needs a matching update — see
+// the Change Routing table in AGENTS.md and
+// docs/dev/requirements/collaboration/agent-manual-unification.md.
 const serverInstructions = `ToucanShelf is a hierarchical knowledge base
 (workspace -> folder tree -> document), not a scratch-note app. Tool names keep
 the underlying CRUD naming: a "memo" is a document.
@@ -48,6 +57,10 @@ Creating:
 - title is the document's display name and takes NO file extension. Pass
   "plan", not "plan.md".
 
+Writing:
+- Plain Markdown. Never author callouts, ==highlight== or click counters, even
+  on request; keep existing ones verbatim. No punctuation in headings.
+
 Updating:
 - memo_update_memo replaces the whole content field; it is not an incremental
   patch. Always memo_get_memo first, edit the full text, then write it back.
@@ -55,13 +68,27 @@ Updating:
   your write are silently overwritten.
 - Writable fields: content, title, folder_path, workspace, state, pinned. Any
   other update_mask path is rejected. There is no delete tool; archiving through
-  state is the closest thing, and it is reversible.`
+  state is the closest thing, and it is reversible.
+
+Attachments:
+- memo_get_memo lists them but carries no bytes. attachment_get_download_url
+  turns one into a short-lived URL: fetch it to a local file and read that.
+- Read-only here: no upload, no replace, no delete.`
 
 // scopeHeader carries the scopes granted to an OAuth-authenticated session from
 // the endpoint handler down to the individual tool handlers. It is set on the
 // inbound request after the token is validated and is never trusted from the
 // wire: RegisterRoutes strips whatever the client sent first.
 const scopeHeader = "X-Memos-MCP-Scope"
+
+// originHeader carries the scheme+host the MCP request actually arrived on down
+// to the tool handlers, which replay it against a synthetic in-process request
+// whose own Host is a stand-in. A handler that has to build an absolute URL
+// back to this instance (attachment downloads) needs the real one.
+//
+// Set from the request itself, never from the wire: RegisterRoutes strips
+// whatever the client sent, exactly as it does for scopeHeader.
+const originHeader = "X-Memos-MCP-Origin"
 
 // Authorizer validates the credentials on an MCP request.
 //
@@ -168,10 +195,11 @@ func newMCPToolHandler(adapter *apiAdapter, operation *registeredOperation) sdkm
 			return newToolErrorResult(err.Error()), nil
 		}
 
-		authorization, scope := "", ""
+		authorization, scope, origin := "", "", ""
 		if request.Extra != nil {
 			authorization = request.Extra.Header.Get("Authorization")
 			scope = request.Extra.Header.Get(scopeHeader)
+			origin = request.Extra.Header.Get(originHeader)
 		}
 		// A scope is only present on OAuth-authenticated sessions; a personal
 		// access token carries the whole account and is left unrestricted, as
@@ -179,7 +207,7 @@ func newMCPToolHandler(adapter *apiAdapter, operation *registeredOperation) sdkm
 		if scope != "" && operation.Method != http.MethodGet && !hasScope(scope, auth.MCPScopeWrite) {
 			return newToolErrorResult("this connection was not granted the " + auth.MCPScopeWrite + " scope"), nil
 		}
-		return adapter.execute(ctx, operation.Operation, arguments, authorization)
+		return adapter.execute(ctx, operation.Operation, arguments, authorization, origin)
 	}
 }
 
@@ -190,6 +218,12 @@ func (s *MCPService) RegisterRoutes(echoServer *echo.Echo) {
 		if !isAllowedMCPOrigin(request.Host, request.Header.Get("Origin"), s.profile) {
 			return c.NoContent(http.StatusForbidden)
 		}
+		// Unconditionally: a client must never be able to name the origin a tool
+		// handler will build absolute URLs from. The Host is trustworthy here
+		// only because isAllowedMCPOrigin has just vetted it.
+		request.Header.Del(originHeader)
+		request.Header.Set(originHeader, requestOrigin(request))
+
 		if s.authorizer != nil {
 			// Never let a client smuggle its own scope grant in.
 			request.Header.Del(scopeHeader)

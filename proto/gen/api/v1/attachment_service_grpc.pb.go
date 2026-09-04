@@ -29,6 +29,7 @@ const (
 	AttachmentService_BatchDeleteAttachments_FullMethodName = "/memos.api.v1.AttachmentService/BatchDeleteAttachments"
 	AttachmentService_UnlockVault_FullMethodName            = "/memos.api.v1.AttachmentService/UnlockVault"
 	AttachmentService_LockVault_FullMethodName              = "/memos.api.v1.AttachmentService/LockVault"
+	AttachmentService_GetDownloadUrl_FullMethodName         = "/memos.api.v1.AttachmentService/GetDownloadUrl"
 )
 
 // AttachmentServiceClient is the client API for AttachmentService service.
@@ -62,6 +63,22 @@ type AttachmentServiceClient interface {
 	// LockVault clears the vault cookie, immediately re-locking every locked
 	// attachment for this browser session.
 	LockVault(ctx context.Context, in *LockVaultRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// GetDownloadUrl issues a short-lived URL for one attachment's bytes,
+	// carrying its own authorization so a client with no session of its own can
+	// fetch it once. The flow is: get the URL, fetch it to a local file, read the
+	// file. Bytes are never returned inline.
+	//
+	// Only formats a reader can actually open are served: text, PDF, common
+	// raster images and SVG. Office files, audio, video and vault-locked
+	// attachments are refused outright rather than handed a URL to bytes nothing
+	// can use.
+	//
+	// The caller's own read access is checked when the URL is issued and again
+	// when it is fetched. POST rather than GET because the request field is
+	// deliberately lenient about its input shape; it mutates nothing.
+	//
+	// See docs/dev/requirements/collaboration/agent-attachment-reading.md §3.
+	GetDownloadUrl(ctx context.Context, in *GetDownloadUrlRequest, opts ...grpc.CallOption) (*GetDownloadUrlResponse, error)
 }
 
 type attachmentServiceClient struct {
@@ -162,6 +179,16 @@ func (c *attachmentServiceClient) LockVault(ctx context.Context, in *LockVaultRe
 	return out, nil
 }
 
+func (c *attachmentServiceClient) GetDownloadUrl(ctx context.Context, in *GetDownloadUrlRequest, opts ...grpc.CallOption) (*GetDownloadUrlResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDownloadUrlResponse)
+	err := c.cc.Invoke(ctx, AttachmentService_GetDownloadUrl_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AttachmentServiceServer is the server API for AttachmentService service.
 // All implementations must embed UnimplementedAttachmentServiceServer
 // for forward compatibility.
@@ -193,6 +220,22 @@ type AttachmentServiceServer interface {
 	// LockVault clears the vault cookie, immediately re-locking every locked
 	// attachment for this browser session.
 	LockVault(context.Context, *LockVaultRequest) (*emptypb.Empty, error)
+	// GetDownloadUrl issues a short-lived URL for one attachment's bytes,
+	// carrying its own authorization so a client with no session of its own can
+	// fetch it once. The flow is: get the URL, fetch it to a local file, read the
+	// file. Bytes are never returned inline.
+	//
+	// Only formats a reader can actually open are served: text, PDF, common
+	// raster images and SVG. Office files, audio, video and vault-locked
+	// attachments are refused outright rather than handed a URL to bytes nothing
+	// can use.
+	//
+	// The caller's own read access is checked when the URL is issued and again
+	// when it is fetched. POST rather than GET because the request field is
+	// deliberately lenient about its input shape; it mutates nothing.
+	//
+	// See docs/dev/requirements/collaboration/agent-attachment-reading.md §3.
+	GetDownloadUrl(context.Context, *GetDownloadUrlRequest) (*GetDownloadUrlResponse, error)
 	mustEmbedUnimplementedAttachmentServiceServer()
 }
 
@@ -229,6 +272,9 @@ func (UnimplementedAttachmentServiceServer) UnlockVault(context.Context, *Unlock
 }
 func (UnimplementedAttachmentServiceServer) LockVault(context.Context, *LockVaultRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method LockVault not implemented")
+}
+func (UnimplementedAttachmentServiceServer) GetDownloadUrl(context.Context, *GetDownloadUrlRequest) (*GetDownloadUrlResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDownloadUrl not implemented")
 }
 func (UnimplementedAttachmentServiceServer) mustEmbedUnimplementedAttachmentServiceServer() {}
 func (UnimplementedAttachmentServiceServer) testEmbeddedByValue()                           {}
@@ -413,6 +459,24 @@ func _AttachmentService_LockVault_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AttachmentService_GetDownloadUrl_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDownloadUrlRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttachmentServiceServer).GetDownloadUrl(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttachmentService_GetDownloadUrl_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttachmentServiceServer).GetDownloadUrl(ctx, req.(*GetDownloadUrlRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AttachmentService_ServiceDesc is the grpc.ServiceDesc for AttachmentService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -455,6 +519,10 @@ var AttachmentService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "LockVault",
 			Handler:    _AttachmentService_LockVault_Handler,
+		},
+		{
+			MethodName: "GetDownloadUrl",
+			Handler:    _AttachmentService_GetDownloadUrl_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

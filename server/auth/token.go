@@ -61,6 +61,21 @@ const (
 
 	// VaultCookieName is the cookie name for the attachment-vault unlock token.
 	VaultCookieName = "memos_vault"
+
+	// DownloadTokenAudienceName is the audience claim for single-attachment
+	// download tokens.
+	DownloadTokenAudienceName = "user.attachment-download-token"
+
+	// DownloadTokenDuration is how long a download URL stays fetchable (5
+	// minutes). Long enough for a client to be handed the URL and run a fetch,
+	// short enough that a URL leaked into a log or a chat transcript is dead by
+	// the time anyone reads it.
+	DownloadTokenDuration = 5 * time.Minute
+
+	// DownloadTokenQueryParam is the query parameter the file route reads the
+	// download token from. It travels in the URL because the whole point is a
+	// URL a plain HTTP fetch can use with no headers of its own.
+	DownloadTokenQueryParam = "download_token"
 )
 
 // ClaimsMessage represents the claims structure in a JWT token.
@@ -102,6 +117,23 @@ type RefreshTokenClaims struct {
 // minute TTL elapses.
 type VaultTokenClaims struct {
 	Type string `json:"type"` // "vault"
+	jwt.RegisteredClaims
+}
+
+// DownloadTokenClaims contains claims for a single-attachment download token.
+// Validated by signature, audience and expiry only (stateless, like the vault
+// token): there is nothing to revoke, because the token dies on its own within
+// minutes and names exactly one attachment.
+//
+// Attachment is the attachment's uid, and it is the reason this is not simply a
+// short-lived access token: a token that authorized the bearer as the user
+// would authorize everything that user can reach. This one authorizes one file.
+// The subject is still the user, so the file route re-runs that user's normal
+// read check when the URL is fetched — the token says which file may be asked
+// for, never that the answer is yes.
+type DownloadTokenClaims struct {
+	Type       string `json:"type"` // "attachment-download"
+	Attachment string `json:"att"`  // Attachment uid this token is valid for
 	jwt.RegisteredClaims
 }
 
@@ -233,6 +265,34 @@ func GenerateVaultToken(userID int32, secret []byte) (string, time.Time, error) 
 	return tokenString, expiresAt, nil
 }
 
+// GenerateDownloadToken generates a short-lived token authorizing a fetch of
+// one attachment on behalf of one user.
+func GenerateDownloadToken(userID int32, attachmentUID string, secret []byte) (string, time.Time, error) {
+	expiresAt := time.Now().Add(DownloadTokenDuration)
+
+	claims := &DownloadTokenClaims{
+		Type:       "attachment-download",
+		Attachment: attachmentUID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    Issuer,
+			Audience:  jwt.ClaimStrings{DownloadTokenAudienceName},
+			Subject:   fmt.Sprint(userID),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(expiresAt),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token.Header["kid"] = KeyID
+
+	tokenString, err := token.SignedString(secret)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+
+	return tokenString, expiresAt, nil
+}
+
 // GeneratePersonalAccessToken generates a random PAT string.
 func GeneratePersonalAccessToken() string {
 	randomStr, err := util.RandomString(32)
@@ -291,6 +351,29 @@ func ParseRefreshToken(tokenString string, secret []byte) (*RefreshTokenClaims, 
 	}
 	if claims.Type != "refresh" {
 		return nil, errors.New("invalid token type: expected refresh token")
+	}
+	return claims, nil
+}
+
+// ParseDownloadToken parses and validates a single-attachment download token,
+// rejecting one issued for a different attachment. Passing the attachment in
+// rather than letting the caller compare afterwards makes the check impossible
+// to forget: a token honoured for the wrong file would turn one authorized
+// download into a key for every attachment on the instance.
+func ParseDownloadToken(tokenString, attachmentUID string, secret []byte) (*DownloadTokenClaims, error) {
+	claims := &DownloadTokenClaims{}
+	_, err := jwt.ParseWithClaims(tokenString, claims, verifyJWTKeyFunc(secret),
+		jwt.WithIssuer(Issuer),
+		jwt.WithAudience(DownloadTokenAudienceName),
+	)
+	if err != nil {
+		return nil, err
+	}
+	if claims.Type != "attachment-download" {
+		return nil, errors.New("invalid token type: expected attachment download token")
+	}
+	if claims.Attachment == "" || claims.Attachment != attachmentUID {
+		return nil, errors.New("download token was issued for a different attachment")
 	}
 	return claims, nil
 }

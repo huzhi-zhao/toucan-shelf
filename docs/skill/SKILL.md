@@ -58,14 +58,21 @@ d=$PWD; while [ "$d" != / ] && [ ! -d "$d/.memogit" ]; do d=$(dirname "$d"); don
      `memogit-id`，**通过 MCP 写入时也不要手写这一行**。
 2. **【仅 memogit】别在文件顶部加任何 memogit 头部。** 第一个 `---` 块永远属于用户自己的
    Obsidian frontmatter（喂给画廊视图和看板的属性）。身份标记放在文件末尾正是为了让开这个位置。
-3. **【两者】别主动写 `==背景着色==`。** 着色是读者在 app 里选中文字做的动作（会连带评论），
-   不是作者写在正文里的东西。遇到已有的原样保留，要强调就用加粗或 callout。
-4. **【两者】别改写内联附件引用 `![](...)`**，即使看起来"链接坏了"。引用指向的字节你多半
-   看不到（MCP 根本不暴露附件），改了只会真的弄坏它；在 memogit 下还会被误判成本地编辑，
-   制造假冲突。
+3. **【两者】默认只写基本 Markdown，装饰语法一概不写。** callout（`> [!NOTE]` / `[!Collapse]` /
+   `[!TAGS]` 系列）、`==背景着色==`、点击计数器 `- [1] `，这些纯粹是视觉效果，而你看不到
+   渲染结果，判断不了该不该用——**用户明确要求也不写**，让他在 app 里加。遇到已有的
+   **原样保留**（尤其别把 callout 当普通引用去重排）。要强调就用加粗或列表层级。
+   结构化的交互块（kanban / grid / sheets / calendar / `.view.json`）不受这条限制，
+   但同样**不主动发起**，只在用户明确要求时写。详见 `references/markdown-syntax.md`。
+4. **【两者】别改写内联附件引用 `![](...)`**，即使看起来"链接坏了"。那个引用本来就是对的，
+   改了只会真的弄坏它；在 memogit 下还会被误判成本地编辑，制造假冲突。
+   要读它指向的字节，memogit 下去 `_attachments/`，MCP 下用 `attachment_get_download_url`。
 5. **【仅 memogit】附件只读。** `_attachments/**` 下的字节可以**读**（这正是它们被下载下来的原因），
-   但绝不编辑、不删除、不移动、不上传。详见 `references/attachments.md`。
-   （MCP 通道下不存在这个目录，附件完全不暴露。）
+   但绝不编辑、不删除、不移动、不上传。一篇文档挂了哪些附件、落在哪，
+   看文件末尾的 `memogit-attachments` 注释块（和 `memogit-id` 一样是本地标记，别动它）；
+   **判断该读哪个、以及必须汇报你没读哪些**，详见 `references/attachments.md`。
+   （MCP 通道下没有这个目录，也没有附件清单：由用户点名某个附件，你用
+   `attachment_get_download_url` 换一个短期链接下载到本地再读，见 `references/mcp.md` §7。）
 6. **【两者】标题里不要放标点。** 标题会被 slugify 成锚点 ID（只保留字母/数字/空格），
    供大纲跳转和评论定位使用。只靠标点区分的标题会撞成同一个 slug，
    纯标点标题拿不到 ID。批量润色标题时把标点移出标题。
@@ -76,7 +83,9 @@ d=$PWD; while [ "$d" != / ] && [ ! -d "$d/.memogit" ]; do d=$(dirname "$d"); don
 
 | 通道 | 对象 | 能不能改 | 说明 |
 |------|------|---------|------|
-| 两者 | Markdown 正文、frontmatter、内嵌块 | ✅ | 主要工作面 |
+| 两者 | Markdown 正文、frontmatter | ✅ | 主要工作面；正文默认只用基本 Markdown |
+| 两者 | 交互块（kanban / grid / sheets / calendar） | ✅ 被要求时 | 结构化数据，用户明确要求才写，不主动发起，见 `references/blocks-and-views.md` |
+| 两者 | callout / `==着色==` / 点击计数器 | ❌ 只读 | 装饰语法：认得、原样保留，任何情况都不写（铁律 3） |
 | 两者 | HTML 文档 | ✅ | 直接改源码 |
 | 两者 | VIEW 文档（`*.view.json` / `content` 里的 JSON） | ✅ 谨慎 | 结构化配置，必须保持合法 JSON，见 `references/blocks-and-views.md` |
 | 两者 | ` ```toucan-secret ` 块 | ❌ 只读 | 只有 `hint`（明文标题）在用户明确要求时可改，`id` 一个字符都别动 |
@@ -85,6 +94,7 @@ d=$PWD; while [ "$d" != / ] && [ ! -d "$d/.memogit" ]; do d=$(dirname "$d"); don
 | 仅 memogit | `*.pdf.md` | ❌ | 生成的引用桩，push 会忽略 |
 | 仅 memogit | `_attachments/**` | ❌ 只读 | 可以阅读内容，不能编辑/删除；push 从不上传附件 |
 | 仅 memogit | 末尾 `memogit-id` 行 | ❌ | 见铁律 1 |
+| 仅 memogit | 末尾 `memogit-attachments` 块 | ❌ 只读 | 本文档附件的本地路径清单，用它找附件；本地生成物，改了不同步 |
 | 仅 memogit | `.memogit/**` | ❌ | 同步状态账本，不要手改 |
 | 仅 memogit | `AGENTS.md` / `CLAUDE.md` / `.cursor/rules/` | ⚠️ | memogit 生成的简报，不是知识库文档；只在 `<!-- BEGIN memogit -->` 块**外面**写自己的规则 |
 | 仅 MCP | `title` / `folder_path` / `workspace` / `state` / `pinned` | ✅ | 即改名、移动、归档、置顶，见 `references/mcp.md` |
@@ -116,9 +126,9 @@ d=$PWD; while [ "$d" != / ] && [ ! -d "$d/.memogit" ]; do d=$(dirname "$d"); don
 | 通道 | 主题 | 文件 |
 |------|------|------|
 | 两者 | workspace / folder_path / 4 种 doc_type / 路径映射 / 唯一性约束 | `references/hierarchy-and-doc-types.md` |
-| 两者 | frontmatter、callout（含折叠/悬浮/标签行）、点击计数器、高亮、标题锚点、`toucan-secret` 密文块 | `references/markdown-syntax.md` |
+| 两者 | frontmatter（可写）、装饰语法（callout / 着色 / 计数器，只读不写）、标题锚点、批注机制、`toucan-secret` 密文块、内联媒体 | `references/markdown-syntax.md` |
 | 两者 | ` ```kanban ` / ` ```sheets ` / ` ```grid ` / ` ```calendar ` 四种交互块，以及画廊视图 | `references/blocks-and-views.md` |
-| 主要 memogit | 附件工作原理、AI 何时该读附件、PDF/EPUB 的边界 | `references/attachments.md` |
+| 两者 | 附件工作原理、该不该读某个附件怎么判断、PDF/EPUB 的边界 | `references/attachments.md` |
 | 仅 memogit | `memogit status/pull/push`、冲突 `.remote`、检出布局、排障 | `references/memogit.md` |
 | 仅 MCP | MCP 工具集、寻址方式、全量覆写语义、并发风险 | `references/mcp.md` |
 

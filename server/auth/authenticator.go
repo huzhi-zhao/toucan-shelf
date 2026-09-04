@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"log/slog"
+	"strconv"
 	"strings"
 	"time"
 
@@ -31,6 +32,11 @@ const (
 	CredentialKindSession
 	CredentialKindPAT
 	CredentialKindMCP
+	// CredentialKindDownloadToken is a request carrying a single-attachment
+	// download token in its URL. It authenticates the user it was issued for,
+	// but only for the one attachment named in the token — and, being distinct
+	// from CredentialKindSession, it can never satisfy the vault check.
+	CredentialKindDownloadToken
 )
 
 // Authenticator provides shared authentication and authorization logic.
@@ -199,6 +205,37 @@ func (a *Authenticator) resolveBearer(ctx context.Context, token string) (*beare
 		return &bearerAuth{user: user, pat: pat, kind: kind}, nil
 	}
 	return nil, nil
+}
+
+// AuthenticateByDownloadToken resolves a single-attachment download token to the
+// user it was issued for, or (nil, nil) when the token is absent, invalid,
+// expired, issued for a different attachment, or resolves to an archived user.
+//
+// It grants identity, not access: the caller still runs that user's ordinary
+// read check on the attachment, so a document unshared or deleted after the URL
+// was handed out stops answering even while the token is still within its few
+// minutes of life.
+func (a *Authenticator) AuthenticateByDownloadToken(ctx context.Context, token, attachmentUID string) (*store.User, error) {
+	if token == "" {
+		return nil, nil
+	}
+	claims, err := ParseDownloadToken(token, attachmentUID, []byte(a.secret))
+	if err != nil {
+		return nil, nil
+	}
+	userID, err := strconv.ParseInt(claims.Subject, 10, 32)
+	if err != nil {
+		return nil, nil
+	}
+	id := int32(userID)
+	user, err := a.store.GetUser(ctx, &store.FindUser{ID: &id})
+	if err != nil {
+		return nil, err
+	}
+	if user == nil || user.RowStatus == store.Archived {
+		return nil, nil
+	}
+	return user, nil
 }
 
 // recordPATUsage updates a personal access token's last-used timestamp
