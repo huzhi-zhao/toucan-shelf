@@ -347,3 +347,113 @@ func memoUIDFromName(t *testing.T, name string) string {
 	require.Greater(t, len(name), len(prefix))
 	return name[len(prefix):]
 }
+
+// TestCrossWorkspaceLinkIndexAndAccess covers R2.2: the workspace-qualified
+// form resolves against the *named* knowledge base's tree, and the batch
+// prefetch endpoint that the renderer uses refuses to distinguish "no such
+// knowledge base" from "not yours".
+func TestCrossWorkspaceLinkIndexAndAccess(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestService(t)
+	defer ts.Cleanup()
+
+	owner, err := ts.CreateHostUser(ctx, "owner")
+	require.NoError(t, err)
+	ownerCtx := ts.CreateUserContext(ctx, owner.ID)
+
+	home, err := ts.Service.CreateWorkspace(ownerCtx, &apiv1.CreateWorkspaceRequest{
+		Workspace: &apiv1.Workspace{Title: "Home Workspace"},
+	})
+	require.NoError(t, err)
+	handbook, err := ts.Service.CreateWorkspace(ownerCtx, &apiv1.CreateWorkspaceRequest{
+		Workspace: &apiv1.Workspace{Title: "Handbook"},
+	})
+	require.NoError(t, err)
+
+	_, err = ts.Service.CreateWorkspaceFolder(ownerCtx, &apiv1.CreateWorkspaceFolderRequest{
+		Parent: handbook.Name, Folder: &apiv1.WorkspaceFolder{Path: "fb"},
+	})
+	require.NoError(t, err)
+	target, err := ts.Service.CreateMemo(ownerCtx, &apiv1.CreateMemoRequest{
+		Memo: &apiv1.Memo{Workspace: handbook.Name, FolderPath: "fb", Title: "Spec", Content: "spec"},
+	})
+	require.NoError(t, err)
+	targetUID := memoUIDFromName(t, target.Name)
+	targetMemo, err := ts.Store.GetMemo(ctx, &store.FindMemo{UID: &targetUID})
+	require.NoError(t, err)
+
+	t.Run("a qualified href is indexed as a cross-workspace edge", func(t *testing.T) {
+		source, err := ts.Service.CreateMemo(ownerCtx, &apiv1.CreateMemoRequest{
+			Memo: &apiv1.Memo{Workspace: home.Name, Title: "Referrer", Content: "See [spec](@Handbook/fb/Spec)."},
+		})
+		require.NoError(t, err)
+		sourceUID := memoUIDFromName(t, source.Name)
+		sourceMemo, err := ts.Store.GetMemo(ctx, &store.FindMemo{UID: &sourceUID})
+		require.NoError(t, err)
+
+		links, err := ts.Store.ListMemoLinks(ctx, &store.FindMemoLink{MemoID: &sourceMemo.ID})
+		require.NoError(t, err)
+		require.Len(t, links, 1)
+		require.Equal(t, targetMemo.ID, links[0].TargetMemoID)
+	})
+
+	t.Run("the title is matched case-insensitively, like the route", func(t *testing.T) {
+		source, err := ts.Service.CreateMemo(ownerCtx, &apiv1.CreateMemoRequest{
+			Memo: &apiv1.Memo{Workspace: home.Name, Title: "Lowercase Referrer", Content: "See [spec](@handbook/fb/Spec)."},
+		})
+		require.NoError(t, err)
+		sourceUID := memoUIDFromName(t, source.Name)
+		sourceMemo, err := ts.Store.GetMemo(ctx, &store.FindMemo{UID: &sourceUID})
+		require.NoError(t, err)
+
+		links, err := ts.Store.ListMemoLinks(ctx, &store.FindMemoLink{MemoID: &sourceMemo.ID})
+		require.NoError(t, err)
+		require.Len(t, links, 1)
+	})
+
+	t.Run("a qualified href naming no knowledge base is not indexed", func(t *testing.T) {
+		source, err := ts.Service.CreateMemo(ownerCtx, &apiv1.CreateMemoRequest{
+			Memo: &apiv1.Memo{Workspace: home.Name, Title: "Dangling Referrer", Content: "See [x](@No%20Such%20Base/fb/Spec)."},
+		})
+		require.NoError(t, err)
+		sourceUID := memoUIDFromName(t, source.Name)
+		sourceMemo, err := ts.Store.GetMemo(ctx, &store.FindMemo{UID: &sourceUID})
+		require.NoError(t, err)
+
+		links, err := ts.Store.ListMemoLinks(ctx, &store.FindMemoLink{MemoID: &sourceMemo.ID})
+		require.NoError(t, err)
+		require.Empty(t, links)
+	})
+
+	t.Run("the batch endpoint returns a tree the caller may read", func(t *testing.T) {
+		resp, err := ts.Service.BatchGetWorkspaceTreesByTitle(ownerCtx, &apiv1.BatchGetWorkspaceTreesByTitleRequest{
+			Titles: []string{"handbook"},
+		})
+		require.NoError(t, err)
+		require.Len(t, resp.Workspaces, 1)
+		require.True(t, resp.Workspaces[0].Available)
+		require.Equal(t, "handbook", resp.Workspaces[0].RequestedTitle, "the requested spelling is echoed back")
+		require.Equal(t, "Handbook", resp.Workspaces[0].Title)
+		require.NotEmpty(t, resp.Workspaces[0].Nodes)
+	})
+
+	t.Run("a knowledge base the caller may not read looks exactly like one that does not exist", func(t *testing.T) {
+		stranger, err := ts.CreateRegularUser(ctx, "stranger")
+		require.NoError(t, err)
+		strangerCtx := ts.CreateUserContext(ctx, stranger.ID)
+
+		resp, err := ts.Service.BatchGetWorkspaceTreesByTitle(strangerCtx, &apiv1.BatchGetWorkspaceTreesByTitleRequest{
+			Titles: []string{"Handbook", "No Such Base"},
+		})
+		require.NoError(t, err)
+		require.Len(t, resp.Workspaces, 2)
+		for _, entry := range resp.Workspaces {
+			require.False(t, entry.Available)
+			// Every other field must stay empty, or the difference between the
+			// two cases would be observable.
+			require.Empty(t, entry.Name)
+			require.Empty(t, entry.Title)
+			require.Empty(t, entry.Nodes)
+		}
+	})
+}

@@ -46,7 +46,9 @@ func (s *APIV1Service) buildWorkspaceLinkTree(ctx context.Context, workspaceID i
 // buildWorkspaceLinkTreeAsOf is buildWorkspaceLinkTree with one document's
 // folder/title overridden, for resolving hrefs that were written against an
 // earlier state of the tree (P4/P5 repair, after the rename/move has already
-// committed to the DB).
+// committed to the DB). If the document is no longer in this workspace at all
+// (a cross-workspace move), it is added back at its old location, since that
+// is precisely the view its stale referencers were written against.
 func (s *APIV1Service) buildWorkspaceLinkTreeAsOf(ctx context.Context, workspaceID int32, overrideUID, overrideFolderPath, overrideTitle string) ([]*linkindex.TreeNode, error) {
 	normal := store.Normal
 	memos, err := s.Store.ListMemos(ctx, &store.FindMemo{
@@ -60,6 +62,7 @@ func (s *APIV1Service) buildWorkspaceLinkTreeAsOf(ctx context.Context, workspace
 	}
 
 	docs := make([]linkindex.DocRef, 0, len(memos))
+	found := false
 	for _, m := range memos {
 		if isHomeFolder(m.FolderPath) {
 			continue
@@ -67,10 +70,109 @@ func (s *APIV1Service) buildWorkspaceLinkTreeAsOf(ctx context.Context, workspace
 		folderPath, title := m.FolderPath, m.Title
 		if m.UID == overrideUID {
 			folderPath, title = overrideFolderPath, overrideTitle
+			found = true
 		}
 		docs = append(docs, linkindex.DocRef{UID: m.UID, Title: title, FolderPath: folderPath})
 	}
+	if !found && overrideUID != "" {
+		// The document is not in this workspace any more — it moved out (P6).
+		// Its referencers stayed behind and still spell the path it used to
+		// occupy here, so it has to be put back into the as-of view for those
+		// hrefs to resolve at all; without it the repair would silently find
+		// nothing to fix.
+		docs = append(docs, linkindex.DocRef{UID: overrideUID, Title: overrideTitle, FolderPath: overrideFolderPath})
+	}
 	return linkindex.BuildTree(docs), nil
+}
+
+// workspaceLinkTrees resolves document hrefs that may point into *another*
+// knowledge base (库限定路径, "@库标题/fb/dc.md"), caching both the workspace
+// lookup and each workspace's link tree for the lifetime of one call.
+//
+// Workspace titles are matched case-insensitively, the same way the URL route
+// (":workspaceTitle") and document titles are matched, so a link written as
+// "@career/..." reaches the workspace titled "Career". Titles are unique, and
+// CreateWorkspace/UpdateWorkspace forbid "/" and a leading "@" in them
+// (validateWorkspaceTitle), which is what makes the form parseable at all.
+//
+// This is deliberately NOT permission-filtered: it feeds the memo_link index,
+// which is derived from content, not from who is reading. Access control lives
+// on the read paths that render links. Cross-workspace edges were already
+// possible through the "/memos/{uid}" form and are indexed the same way.
+type workspaceLinkTrees struct {
+	s          *APIV1Service
+	byTitle    map[string]*store.Workspace
+	titleReady bool
+	trees      map[int32][]*linkindex.TreeNode
+	uidToIDs   map[int32]map[string]int32
+}
+
+func (s *APIV1Service) newWorkspaceLinkTrees() *workspaceLinkTrees {
+	return &workspaceLinkTrees{
+		s:        s,
+		trees:    map[int32][]*linkindex.TreeNode{},
+		uidToIDs: map[int32]map[string]int32{},
+	}
+}
+
+// workspaceByTitle returns the workspace with this title, or nil.
+func (w *workspaceLinkTrees) workspaceByTitle(ctx context.Context, title string) (*store.Workspace, error) {
+	if !w.titleReady {
+		list, err := w.s.Store.ListWorkspaces(ctx, &store.FindWorkspace{})
+		if err != nil {
+			return nil, err
+		}
+		w.byTitle = make(map[string]*store.Workspace, len(list))
+		for _, ws := range list {
+			w.byTitle[ws.Title] = ws
+			// Case-insensitive fallback, exact match wins — same rule as
+			// BatchGetWorkspaceTreesByTitle, which the renderer uses. The two
+			// must agree or a link would index one way and render another.
+			if folded := workspaceTitleKey(ws.Title); folded != ws.Title {
+				if _, taken := w.byTitle[folded]; !taken {
+					w.byTitle[folded] = ws
+				}
+			}
+		}
+		w.titleReady = true
+	}
+	if ws, ok := w.byTitle[title]; ok {
+		return ws, nil
+	}
+	return w.byTitle[workspaceTitleKey(title)], nil
+}
+
+// resolve resolves a workspace-qualified href to the target memo's ID. ok is
+// false when the href is not that form, names no known workspace, or addresses
+// no document in it.
+func (w *workspaceLinkTrees) resolve(ctx context.Context, href string) (int32, bool, error) {
+	title, path, ok := linkindex.ParseWorkspaceQualifiedHref(href)
+	if !ok {
+		return 0, false, nil
+	}
+	target, err := w.workspaceByTitle(ctx, title)
+	if err != nil {
+		return 0, false, err
+	}
+	if target == nil {
+		return 0, false, nil
+	}
+
+	tree, cached := w.trees[target.ID]
+	if !cached {
+		var uidToID map[string]int32
+		tree, uidToID, err = w.s.buildWorkspaceLinkTree(ctx, target.ID)
+		if err != nil {
+			return 0, false, err
+		}
+		w.trees[target.ID], w.uidToIDs[target.ID] = tree, uidToID
+	}
+	uid, ok := linkindex.ResolveRootRelativePath(tree, path)
+	if !ok {
+		return 0, false, nil
+	}
+	id, ok := w.uidToIDs[target.ID][uid]
+	return id, ok, nil
 }
 
 // resolveMemoLinkTargets parses memo.Content for markdown links and resolves
@@ -80,8 +182,9 @@ func (s *APIV1Service) buildWorkspaceLinkTreeAsOf(ctx context.Context, workspace
 // "{host}/memos/{uid}") resolve directly by uid; the in-workspace path forms
 // (root-relative "/doc/api.md", and document-relative "./api.md" resolved
 // against this memo's own folder — see
-// docs/dev/requirements/document-reference-forms.md) resolve against the
-// workspace tree, mirroring
+// docs/dev/requirements/document-reference-forms.md) resolve against this
+// workspace's tree, and the workspace-qualified form ("@库标题/fb/dc.md")
+// against the named workspace's tree (see workspaceLinkTrees), mirroring
 // web/src/components/MemoContent/DocumentLinkContext.tsx. Any other href
 // shape is not a document link at all — no tree-wide title fallback, so an
 // unresolvable path stays unresolved. Links that fail to resolve
@@ -104,12 +207,26 @@ func (s *APIV1Service) resolveMemoLinkTargets(ctx context.Context, memo *store.M
 		tree      []*linkindex.TreeNode
 		uidToID   map[string]int32
 		treeBuilt bool
+		crossWS   *workspaceLinkTrees
 	)
 
 	targetIDs := make(map[int32]struct{}, len(links))
 	for _, link := range links {
 		uid, ok := linkindex.ResolveAbsoluteMemoHref(link.Href)
 		if !ok {
+			if linkindex.IsWorkspaceQualifiedHref(link.Href) {
+				if crossWS == nil {
+					crossWS = s.newWorkspaceLinkTrees()
+				}
+				id, resolved, err := crossWS.resolve(ctx, link.Href)
+				if err != nil {
+					return nil, err
+				}
+				if resolved && id != memo.ID {
+					targetIDs[id] = struct{}{}
+				}
+				continue
+			}
 			if !linkindex.IsInWorkspaceDocHref(link.Href) {
 				continue
 			}

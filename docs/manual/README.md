@@ -11,7 +11,7 @@ one.
 
 | # | Manual | What it covers |
 |---|--------|----------------|
-| 1 | [Knowledge Base & Hierarchy](./01-knowledge-base.md) | Workspaces, folder trees, the Notebook home page, the Bookshelf, the reworked Explore page, document outline, and "resume where you left off". |
+| 1 | [Knowledge Base & Hierarchy](./01-knowledge-base.md) | Workspaces, folder trees, the Notebook home page, **linking between documents** (the four path forms, `[]()` vs `![[]]`, what happens to relative links when a document moves), the Bookshelf, the reworked Explore page, document outline, and "resume where you left off". |
 | 2 | [Rich Documents & Media](./02-rich-documents.md) | The four document types (Markdown / HTML / PDF / View), uploading docs vs. files, the HTML sandbox renderer, the PDF viewer with annotations & text extraction, inline audio/video, and S3 storage + backup. |
 | 3 | [Gallery Views](./03-gallery-views.md) | Notion-style `view` documents: creating a gallery, scopes, sorting, cover rules, card fields, and how views stay live. |
 | 4 | [Markdown Editor Optimization ](04-md-editor-optimization.md) | Callouts (including **collapsible**, **hover-popover** and **tag-row** ones), Notion / Obsidian–style formatting shortcuts in the CodeMirror editor, frontmatter properties, highlights, **click counters**, and AI rewrite. |
@@ -42,19 +42,19 @@ types, custom Markdown syntax, view blocks & gallery views, attachments,
 memogit, MCP), read on demand rather than up front. **This is where agent-facing
 documentation goes from now on.**
 
-> **Not yet wired into the binary.** `memogit` still embeds an older single-file
-> guide (`internal/memogit/assets/pumpkin_book_for_llms.md`, the former "pumpkin
-> book") and drops it into every checkout as `.memogit/toucanshelf-guide.md` —
-> see [§5.2a](./05-memogit-cli.md). Until the embed is switched over to
-> `docs/skill/`, a checkout carries the **old** rules, and editing `docs/skill/`
-> alone does not reach agents working in one. The embedded copy is now the only
-> copy of that text; it has no counterpart under `docs/manual/`.
-
-`docs/skill/` covers both channels. Agents on the MCP channel never see a file
-tree, so they are additionally briefed by the server's own `initialize`
-instructions — maintained next to the tool list in
-[`server/router/mcp/`](../../server/router/mcp/), see
-[§10.4](./10-mcp-agent-access.md).
+`docs/skill/` covers both channels. `memogit` embeds it verbatim
+(`internal/memogit/assets/skill/`, a generated mirror kept in sync by
+`scripts/sync-agent-skill-docs.sh` — building with `scripts/build-memogit.sh`
+runs that automatically; `go test ./internal/memogit/...` also fails loudly if
+the two have drifted) and drops it into every checkout as `.memogit/skill/`,
+see [§5.2a](./05-memogit-cli.md). Agents on the MCP
+channel never see a file tree, so they are additionally briefed by the
+server's own `initialize` instructions — a hand-written summary of `SKILL.md`,
+short enough to stay resident in every session, maintained next to the tool
+list in [`server/router/mcp/`](../../server/router/mcp/), see
+[§10.4](./10-mcp-agent-access.md). **Editing `docs/skill/SKILL.md` or
+`references/*.md` means checking whether that summary needs updating too** —
+see the root [`AGENTS.md`](../../AGENTS.md) Change Routing table.
 
 ## Core concepts at a glance
 

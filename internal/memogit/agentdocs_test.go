@@ -1,6 +1,7 @@
 package memogit
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,13 +14,22 @@ func TestWriteAgentDocs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	guide := read(t, filepath.Join(root, MetaDir, GuideFile))
-	if guide != guideDoc {
-		t.Errorf("guide content mismatch")
+	guidePath := MetaDir + "/" + GuideDir + "/" + GuideEntryFile
+	entry := read(t, filepath.Join(root, filepath.FromSlash(guidePath)))
+	wantEntry, err := fs.ReadFile(guideRoot, GuideEntryFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if entry != string(wantEntry) {
+		t.Errorf("guide entry content mismatch")
+	}
+	// references/ must come along too, since SKILL.md links to it by relative path.
+	if _, err := os.Stat(filepath.Join(root, MetaDir, GuideDir, "references", "memogit.md")); err != nil {
+		t.Errorf("references/ was not written alongside the guide entry: %v", err)
 	}
 	for _, name := range []string{"AGENTS.md", "CLAUDE.md", filepath.Join(".cursor", "rules", "toucanshelf-memogit.mdc")} {
 		got := read(t, filepath.Join(root, name))
-		if !strings.Contains(got, MetaDir+"/"+GuideFile) {
+		if !strings.Contains(got, guidePath) {
 			t.Errorf("%s does not point at the guide:\n%s", name, got)
 		}
 	}
@@ -70,14 +80,14 @@ func TestWriteAgentDocsPerWorkspace(t *testing.T) {
 
 	for _, dir := range []string{"Default", "Life"} {
 		got := read(t, filepath.Join(root, dir, "AGENTS.md"))
-		if !strings.Contains(got, "../"+MetaDir+"/"+GuideFile) {
+		if !strings.Contains(got, "../"+MetaDir+"/"+GuideDir+"/"+GuideEntryFile) {
 			t.Errorf("%s/AGENTS.md does not link up to the guide:\n%s", dir, got)
 		}
 		if !strings.Contains(got, dir+"/`") {
 			t.Errorf("%s/AGENTS.md does not say which knowledge base it is:\n%s", dir, got)
 		}
 		claude := read(t, filepath.Join(root, dir, "CLAUDE.md"))
-		if !strings.Contains(claude, "../"+MetaDir+"/"+GuideFile) {
+		if !strings.Contains(claude, "../"+MetaDir+"/"+GuideDir+"/"+GuideEntryFile) {
 			t.Errorf("%s/CLAUDE.md does not link up to the guide:\n%s", dir, claude)
 		}
 		if _, err := os.Stat(filepath.Join(root, dir, ".cursor", "rules", "toucanshelf-memogit.mdc")); err != nil {
@@ -135,7 +145,7 @@ func TestAgentDocsYieldToExistingDocument(t *testing.T) {
 		t.Errorf("a tracked document was overwritten:\n%s", got)
 	}
 	// CLAUDE.md is free, so the brief still reaches an agent working in here.
-	if got := read(t, filepath.Join(contentRoot, "CLAUDE.md")); !strings.Contains(got, GuideFile) {
+	if got := read(t, filepath.Join(contentRoot, "CLAUDE.md")); !strings.Contains(got, GuideDir+"/"+GuideEntryFile) {
 		t.Errorf("CLAUDE.md should still be written:\n%s", got)
 	}
 

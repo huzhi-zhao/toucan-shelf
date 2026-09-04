@@ -118,11 +118,12 @@ func TestFolderRenameDoesNotTouchOtherWorkspaces(t *testing.T) {
 	require.Contains(t, got.Content, "/memos/"+targetUID, "the uid link is workspace-independent and needs no repair")
 }
 
-// TestCrossWorkspaceMovePinsOutboundLinksToUID covers the other side of P6:
-// the reference check blocks documents linking INTO the moved one, but the
-// moved document's own root-relative hrefs name paths in the workspace it
-// just left. They're pinned to uid form rather than left to rot.
-func TestCrossWorkspaceMovePinsOutboundLinksToUID(t *testing.T) {
+// TestCrossWorkspaceMovePinsOutboundLinks covers the moved document's own
+// outbound links: its root-relative hrefs name paths in the workspace it just
+// left, so they are rewritten to the workspace-qualified form pointing back at
+// that knowledge base (R2.5). Before R2 this pinned them to "/memos/{uid}",
+// which is still the fallback when the old knowledge base cannot be named.
+func TestCrossWorkspaceMovePinsOutboundLinks(t *testing.T) {
 	ctx := context.Background()
 	ts := NewTestService(t)
 	defer ts.Cleanup()
@@ -138,11 +139,10 @@ func TestCrossWorkspaceMovePinsOutboundLinksToUID(t *testing.T) {
 	w2, err := ts.Service.CreateWorkspace(userCtx, &apiv1.CreateWorkspaceRequest{Workspace: &apiv1.Workspace{Title: "Dest"}})
 	require.NoError(t, err)
 
-	stayer, err := ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
+	_, err = ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
 		Memo: &apiv1.Memo{Workspace: w1.Name, Title: "Stayer", Content: "stays put"},
 	})
 	require.NoError(t, err)
-	stayerUID := memoUIDFromName(t, stayer.Name)
 
 	traveler, err := ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
 		Memo: &apiv1.Memo{Workspace: w1.Name, Title: "Traveler", Content: "see [Stayer](/Stayer) and [ext](https://example.com)"},
@@ -157,7 +157,7 @@ func TestCrossWorkspaceMovePinsOutboundLinksToUID(t *testing.T) {
 
 	got, err := ts.Service.GetMemo(userCtx, &apiv1.GetMemoRequest{Name: traveler.Name})
 	require.NoError(t, err)
-	require.Contains(t, got.Content, "[Stayer](/memos/"+stayerUID+")",
-		"a path that only meant something in the old workspace becomes a uid link")
+	require.Contains(t, got.Content, "[Stayer](@Source/Stayer)",
+		"a path that only meant something in the old workspace is qualified with that workspace")
 	require.Contains(t, got.Content, "https://example.com", "external links are untouched")
 }

@@ -24,6 +24,11 @@ type resolveCaseFile struct {
 		Href string  `json:"href"`
 		Form string  `json:"form"`
 		UID  *string `json:"uid"`
+		// Workspace-qualified cases only: the title and root-relative path
+		// ParseWorkspaceQualifiedHref must split the href into. "tree" then
+		// names the *target* workspace's tree, which "uid" is resolved in.
+		WorkspaceTitle *string `json:"workspaceTitle"`
+		Path           *string `json:"path"`
 	} `json:"cases"`
 }
 
@@ -73,6 +78,20 @@ func TestSharedResolveCases(t *testing.T) {
 				gotUID, resolved = ResolveRootRelativePath(tree, c.Href)
 			case FormRelativeExplicit, FormRelativeBare:
 				gotUID, resolved = ResolveRelativePath(tree, c.Base, c.Href)
+			case FormWorkspaceQualified:
+				title, path, ok := ParseWorkspaceQualifiedHref(c.Href)
+				if !ok {
+					t.Fatalf("ParseWorkspaceQualifiedHref(%q) failed but the form says it should parse", c.Href)
+				}
+				if c.WorkspaceTitle == nil || c.Path == nil {
+					t.Fatalf("%s: a workspaceQualified case must state workspaceTitle and path", c.Name)
+				}
+				if title != *c.WorkspaceTitle || path != *c.Path {
+					t.Fatalf("ParseWorkspaceQualifiedHref(%q) = %q, %q; want %q, %q", c.Href, title, path, *c.WorkspaceTitle, *c.Path)
+				}
+				// The path inside the target workspace is an ordinary
+				// root-relative path — the same resolver, a different tree.
+				gotUID, resolved = ResolveRootRelativePath(tree, path)
 			case FormExternal:
 				// Nothing to resolve; the classification assertion is the test.
 			}

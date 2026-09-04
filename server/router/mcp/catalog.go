@@ -27,6 +27,12 @@ var curatedOperationIDs = []string{
 	"MemoService_GetMemo",
 	"MemoService_CreateMemo",
 	"MemoService_UpdateMemo",
+	// The only attachment operation, and deliberately the only one: it hands out
+	// a short-lived URL for bytes the caller can already read, so an agent can
+	// fetch a PDF and read it. Listing, uploading, updating and deleting
+	// attachments stay off the channel — see
+	// docs/dev/requirements/collaboration/agent-attachment-reading.md §4.
+	"AttachmentService_GetDownloadUrl",
 	// The only allowed auth/identity operation: a read-only "whoami" so agents
 	// can resolve the current user.
 	"AuthService_GetCurrentUser",
@@ -202,8 +208,13 @@ func extractSchemaDefs(schema jsonSchema) map[string]any {
 // RagService_Search is POST only because its query is too large for a query
 // string; it is a pure read, and clients should be free to run it without a
 // write confirmation.
+// AttachmentService_GetDownloadUrl mints a token, but changes nothing a user
+// can observe: it hands back a time-limited way to read bytes the caller could
+// already read. Making a client confirm it as a write would put a prompt in
+// front of every attachment an agent tries to open.
 var readOnlyOperationIDs = map[string]bool{
-	"RagService_Search": true,
+	"RagService_Search":                true,
+	"AttachmentService_GetDownloadUrl": true,
 }
 
 // annotationsForOperation derives the method-based annotations and then applies

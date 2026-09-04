@@ -573,6 +573,14 @@ func (s *ConnectServiceHandler) LockVault(ctx context.Context, req *connect.Requ
 	})
 }
 
+func (s *ConnectServiceHandler) GetDownloadUrl(ctx context.Context, req *connect.Request[v1pb.GetDownloadUrlRequest]) (*connect.Response[v1pb.GetDownloadUrlResponse], error) {
+	resp, err := s.APIV1Service.GetDownloadUrl(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 // AIService
 
 func (s *ConnectServiceHandler) Transcribe(ctx context.Context, req *connect.Request[v1pb.TranscribeRequest]) (*connect.Response[v1pb.TranscribeResponse], error) {
@@ -803,6 +811,14 @@ func (s *ConnectServiceHandler) DeleteWorkspace(ctx context.Context, req *connec
 
 func (s *ConnectServiceHandler) GetWorkspaceTree(ctx context.Context, req *connect.Request[v1pb.GetWorkspaceTreeRequest]) (*connect.Response[v1pb.GetWorkspaceTreeResponse], error) {
 	resp, err := s.APIV1Service.GetWorkspaceTree(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) BatchGetWorkspaceTreesByTitle(ctx context.Context, req *connect.Request[v1pb.BatchGetWorkspaceTreesByTitleRequest]) (*connect.Response[v1pb.BatchGetWorkspaceTreesByTitleResponse], error) {
+	resp, err := s.APIV1Service.BatchGetWorkspaceTreesByTitle(ctx, req.Msg)
 	if err != nil {
 		return nil, convertGRPCError(err)
 	}

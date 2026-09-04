@@ -174,6 +174,130 @@ database, and without upstream Memos' flat namespace.
 
 ---
 
+## 1.2a Linking between documents
+
+Three Markdown forms are **three separate mechanisms** here, and mixing them up
+is the most common source of "why doesn't my link work":
+
+| You write | You get |
+| --- | --- |
+| `[label](path)` | a **document link** — click to navigate |
+| `![[path]]` | a **document embed** — the target's body is pulled into this document's flow |
+| `![alt](path)` | **media** (image / video / audio), dispatched by file extension |
+
+`![]()` is media only. It is not, and will not become, a way to reference a
+document: the link index and the automatic link repair don't traverse image
+nodes at all, so a document reference written that way is invisible to both.
+
+### The four path forms
+
+Say the document you are writing lives in knowledge base "技术笔记" at
+`/fa/da.md`:
+
+| Form | Example | When to use it |
+| --- | --- | --- |
+| **Workspace-root-relative** | `[API notes](/fa/db.md)` | The canonical form for links inside one knowledge base. Its value depends only on where the target is, never on where the link lives — that is what lets automatic repair fix every reference in one pass. |
+| **Document-relative** | explicit `./db.md`, `../fb/dc.md`; bare `db.md`, `sub/dd.md` | Resolved against the **linking document's folder**. Supported so links are quick to type and so documents imported from Obsidian and friends keep working. |
+| **Workspace-qualified** | `[Spec](@产品手册/fb/dc.md)` | Crossing knowledge bases: `@` + the knowledge base's title + a root-relative path inside it. |
+| **UID** | `[Spec](/memos/abc123)` | The stable but unreadable form. It is what **Copy link** pastes, and what the system falls back to when no path can express the target. |
+
+`/fa/db.md` is deliberately *not* called an "absolute path": in this codebase
+`absolute` already means `/memos/{uid}`, and this form is only absolute *within
+one knowledge base*.
+
+**Spaces in a path must be percent-encoded.** A bare Markdown destination ends
+at the first space, so `[x](/Notes/Long Report)` isn't parsed as a link at all —
+the destination becomes `/Notes/Long` and `Report)` leaks into the visible text.
+Write `[x](/Notes/Long%20Report)`. Links the app generates already do this, and
+only the characters that actually break the parse are encoded — a Chinese folder
+name stays readable as `/设计/接口`, not as percent-escapes.
+
+### Which form works with which syntax
+
+| Form | `[]()` | `![[]]` |
+| --- | --- | --- |
+| Workspace-root-relative | ✅ | ✅ |
+| Document-relative | ✅ | ✅ |
+| Workspace-qualified (`@…`) | ✅ | ❌ **not supported** |
+| Document-relative *across* workspaces (`@产品手册/fb/../fc/dd.md`) | ❌ | ❌ |
+| UID | ✅ | ✅ |
+
+**Cross-workspace embedding is a deliberate non-goal**, not a missing feature.
+An embed splices the target's body into the host document; the moment that host
+is shared or published, another knowledge base's content goes out with it. That
+needs its own visibility rules before it can exist.
+
+**`..` is not allowed in a cross-workspace path** either — when you link across
+knowledge bases you aren't standing in the target's directory, so `..` has no
+intuitive meaning. The path after `@库标题/` is always root-relative.
+
+### Explicit vs. bare relative paths
+
+`[x](example.com/page)` (a site link with the scheme left off) and a bare
+relative path `[x](db.md)` are indistinguishable as text, so they differ only in
+what happens when the path resolves to nothing:
+
+- **Explicit** (`./…`, `../…`) states the intent "this is a document". Fails to
+  resolve → shown as a **broken link**.
+- **Bare** (`db.md`) is tried as a document first, and if nothing matches it
+  falls back to **external-link** behaviour (opens in a new tab), with no broken
+  styling.
+
+So write `./db.md` when you want a wrong path to be flagged loudly.
+
+### Relative paths are stored as written — with one exception
+
+What you type is what's stored; nothing is normalized on save, and reopening the
+document shows the same string back. The **one** automatic rewrite happens when
+the linking document itself is moved (or its folder is moved or renamed): its
+relative outbound links are resolved against the **old** location and frozen
+into workspace-root-relative form. The relative meaning becomes absolute at that
+moment — lossy, but at a predictable time with a predictable result, which beats
+silently becoming a dead link.
+
+Renaming a knowledge base likewise rewrites the `@库标题` segment of every
+workspace-qualified path pointing at it.
+
+### Attachments don't use any of this
+
+Attachment hrefs are uid-addressed (`/file/attachments/{uid}/…`). They have no
+path component, so they work across knowledge bases on their own — never write
+`@库/diagram.png`. Access is still checked against the workspace the attachment's
+own document lives in, so a reader without access to that knowledge base sees a
+broken image even when the document embedding it is one they can read.
+
+### Knowledge-base titles have two rules
+
+Because a cross-workspace path is `@` + title + `/` + path, a title may not
+contain `/` and may not start with `@`. Both are rejected when you create or
+rename a knowledge base. A title containing `/` was already broken for the
+`/{workspaceTitle}/{docId}` URL, so this closes an older hole too.
+
+Titles are matched **case-insensitively**, the same way the URL is:
+`@career/…` finds the knowledge base titled "Career".
+
+### Three link states
+
+| State | How it looks |
+| --- | --- |
+| Target knowledge base readable, path resolves | a normal link; following a cross-workspace one switches knowledge base context |
+| Target knowledge base not available | an inert restricted marker showing only the anchor text — never the target's title, path, or whether it exists |
+| Target knowledge base readable, path resolves to nothing | the broken-link style |
+
+**"Not available" deliberately covers two different situations**: the knowledge
+base doesn't exist, and you have no access to it. They are indistinguishable on
+purpose — if they weren't, anyone could enumerate which knowledge bases exist on
+the instance just by trying titles. It is the same reason opening a knowledge
+base you were never granted says "not found" rather than "no permission".
+
+The practical consequence: a **mistyped knowledge-base name also shows the
+restricted marker**, not a broken link. If a cross-workspace link comes up
+restricted and you expected it to work, check the spelling of the title before
+assuming it's a permissions problem. Within a knowledge base you can reach, a
+wrong *path* still shows the ordinary broken-link style.
+
+---
+
 ## 1.3 The Bookshelf (`/shelf`)
 
 The Bookshelf displays every knowledge base as a **book on a shelf** — a visual

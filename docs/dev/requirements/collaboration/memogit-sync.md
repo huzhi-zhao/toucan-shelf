@@ -47,11 +47,24 @@ my-kb/
 ## 3. sparse checkout
 
 `memogit clone <workspace-title> --sparse-checkout <folder-path>` 只检出服务端
-指定文件夹（及其子树）下的文档，本地路径去掉这段前缀，push 时再补回去
-（`ServerFolderPath` / `LocalRelPath` / `stripSparse`）。因为内容落在 checkout
-root 本身（`Dir` 记为 `"."`），无法再用目录名当唯一标识，所以 sparse checkout
-必须显式指定 `--dir`（见下）并在 config 里带一个 `name` 字段作为该条目的身份键
-（同步状态文件名、命令行选择名）。
+指定文件夹（及其子树）下的文档。因为内容落在 checkout root 本身（`Dir` 记为
+`"."`），无法再用目录名当唯一标识，所以 sparse checkout 必须显式指定 `--dir`
+（见下）并在 config 里带一个 `name` 字段作为该条目的身份键（同步状态文件名、
+命令行选择名）。
+
+本地路径怎么映射这个文件夹，由 `--sparse-subdir` 决定两种模式：
+
+- **默认（不带 `--sparse-subdir`）**：映射文件夹的前缀被去掉，内容直接落在
+  checkout 根——`Home/Journal/2024.md` 落地成 `<root>/Journal/2024.md`。适合
+  "把知识库的一个子域整个搬出去，当成独立仓库"的场景。
+- **带 `--sparse-subdir`**：映射文件夹保留成一层子目录，本地路径与服务端
+  `folder_path` 完全一致——`Home/Journal/2024.md` 落地成
+  `<root>/Home/Journal/2024.md`。适合"只想要知识库下某一个目录、但要保留它
+  相对知识库根的层级"的场景，比如给 agent 一份只读、路径与线上一致的子树。
+
+两种模式都通过 `ServerFolderPath` / `LocalRelPath` / `inScope` 这三个函数实现，
+`pull`/`push`/`status` 不需要单独适配。方案取舍见
+[design/20260903-memogit-sparse-checkout-subdir.md](../../design/20260903-memogit-sparse-checkout-subdir.md)。
 
 ## 4. `--dir`：把某个知识库检出到独立目录
 
@@ -117,6 +130,13 @@ memogit agents                                               # （重新）写 A
 **单向**的：字节只为本地/AI 上下文而拉取，从不反向上传。已存在且大小相同的本地
 文件会被跳过，不重新下载。PDF 文档的 `.pdf.md` 占位文件会指向下载后的第一个
 附件路径（`pdfLocalPath`，优先选 `.pdf` 后缀的那个）。
+
+其余文档靠**文件末尾的 `memogit-attachments` 注释块**指向本地字节
+（`internal/memogit/manifest.go`）：按 inline / mounted 分组，每条带 MIME、
+大小和相对于 workspace 根的路径。它和 `memogit-id` 一样是纯本地标记，
+`StripLocalID` 会剥掉，push 永远不会把它写回服务器。为什么需要它、
+agent 该怎么用它判断读哪个附件，见
+[agent-attachment-reading](agent-attachment-reading.md)。
 
 TODO(确认)：附件上传（本地新增附件 push 回服务端）目前代码里没有对应实现，
 plan 原文档 §10 提到"附件同步"是"阶段 5"的开放项；现状确认是下载已落地、上传未

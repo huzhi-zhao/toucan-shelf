@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"log/slog"
+	"strings"
 
 	"github.com/usememos/memos/internal/linkindex"
 	"github.com/usememos/memos/server/runner/memopayload"
@@ -37,6 +38,12 @@ func (s *APIV1Service) repairInboundLinksBestEffort(ctx context.Context, renamed
 	}
 
 	newHref := linkindex.CanonicalHref(renamed.FolderPath, renamed.Title)
+	// A referencer left behind in another knowledge base cannot use the
+	// root-relative form — that names a path in ITS OWN knowledge base. It gets
+	// the workspace-qualified form instead (库限定路径). This is what makes a
+	// cross-workspace move repairable at all, and is why P6 no longer rejects
+	// one; see docs/dev/design/20260829-relative-and-cross-workspace-refs.md R2.5.
+	crossHref := s.crossWorkspaceHrefFor(ctx, renamed)
 
 	// Cache one "as-of" workspace link tree per workspace ID: it reflects
 	// every document's CURRENT folder/title except renamed, which is patched
@@ -69,11 +76,30 @@ func (s *APIV1Service) repairInboundLinksBestEffort(ctx context.Context, renamed
 			// hrefs needs fixing regardless of target.
 			continue
 		}
-		if err := s.repairOneInboundLink(ctx, link.MemoID, renamed, previousTitle, newHref, getOldTree); err != nil {
+		if err := s.repairOneInboundLink(ctx, link.MemoID, renamed, previousTitle, newHref, crossHref, getOldTree); err != nil {
 			slog.Warn("failed to repair inbound link",
 				slog.Int("sourceMemoID", int(link.MemoID)), slog.Int("targetMemoID", int(renamed.ID)), slog.Any("err", err))
 		}
 	}
+}
+
+// crossWorkspaceHrefFor builds the workspace-qualified href
+// ("@库标题/fb/dc.md") that a document in another knowledge base must use to
+// reach memo. Falls back to the uid form when the target's knowledge base
+// cannot be named — its title violates the constraints the form needs
+// (validateWorkspaceTitle), or the lookup failed. The uid form always works and
+// is never wrong, only less readable.
+func (s *APIV1Service) crossWorkspaceHrefFor(ctx context.Context, memo *store.Memo) string {
+	uidHref := "/memos/" + memo.UID
+	workspace, err := s.Store.GetWorkspace(ctx, &store.FindWorkspace{ID: &memo.WorkspaceID})
+	if err != nil || workspace == nil {
+		return uidHref
+	}
+	href := linkindex.WorkspaceQualifiedHref(workspace.Title, memo.FolderPath, memo.Title)
+	if !linkindex.IsWorkspaceQualifiedHref(href) {
+		return uidHref
+	}
+	return href
 }
 
 func (s *APIV1Service) repairOneInboundLink(
@@ -82,11 +108,17 @@ func (s *APIV1Service) repairOneInboundLink(
 	renamed *store.Memo,
 	previousTitle string,
 	newHref string,
+	crossHref string,
 	getOldTree func(workspaceID int32) ([]*linkindex.TreeNode, error),
 ) error {
 	source, err := s.Store.GetMemo(ctx, &store.FindMemo{ID: &sourceMemoID})
 	if err != nil || source == nil {
 		return err
+	}
+	// Which form this referencer must use depends on where IT lives, not on
+	// where the target went.
+	if source.WorkspaceID != renamed.WorkspaceID {
+		newHref = crossHref
 	}
 
 	var repairs []SSELinkRepair
@@ -193,19 +225,22 @@ func (s *APIV1Service) notifyRepairedMemo(ctx context.Context, memoID int32, rep
 	s.dispatchMemoUpdatedSideEffectsWithLinkRepairs(ctx, memo, parentMemo, memoMessage, repairs)
 }
 
-// rewriteOutboundLinksToUIDBestEffort converts the root-relative hrefs of
-// documents that just left oldWorkspaceID into the uid-addressed
-// "/memos/{uid}" form, so they keep pointing at what they always pointed at.
+// rewriteOutboundLinksAfterWorkspaceMoveBestEffort repoints the in-workspace hrefs of
+// documents that just left oldWorkspaceID at the knowledge base they came
+// from, so they keep naming what they always named.
 //
-// Root-relative paths are only meaningful inside one workspace: the moment a
+// In-workspace paths are only meaningful inside one workspace: the moment a
 // document crosses a workspace boundary, "/guides/API" stops naming the
-// document the author meant and starts naming whatever (usually nothing)
-// sits at that path in the destination. The P6 checks guard the other
-// direction — documents linking INTO the moved set — but a moved document's
-// own outbound links have no such protection, and would simply go dead.
-// Rewriting to uid form is lossless: it's an already-supported canonical link
-// shape (see ResolveAbsoluteMemoHref) and, being uid-addressed, immune to
-// every later rename and move.
+// document the author meant and starts naming whatever (usually nothing) sits
+// at that path in the destination. A moved document's own outbound links have
+// no protection against that and would simply go dead.
+//
+// The repair writes the workspace-qualified form ("@旧库标题/guides/API"),
+// which keeps the link readable and keeps naming the same document. The
+// uid-addressed "/memos/{uid}" form is the fallback for when the old knowledge
+// base cannot be named (see crossWorkspaceHrefFor): always correct, just less
+// legible. Both are canonical link shapes immune to the destination
+// workspace's own layout.
 //
 // keepUIDs names targets that moved along with the source (a folder subtree
 // moving as a unit): those stay root-relative, because their paths are
@@ -215,7 +250,7 @@ func (s *APIV1Service) notifyRepairedMemo(ctx context.Context, memoID int32, rep
 // oldFolderPaths maps each moved memo's ID to the folder it occupied BEFORE
 // the move — document-relative hrefs must be resolved against that, not
 // against where the memo has since landed.
-func (s *APIV1Service) rewriteOutboundLinksToUIDBestEffort(ctx context.Context, oldFolderPaths map[int32]string, oldWorkspaceID int32, keepUIDs map[string]bool) {
+func (s *APIV1Service) rewriteOutboundLinksAfterWorkspaceMoveBestEffort(ctx context.Context, oldFolderPaths map[int32]string, oldWorkspaceID int32, keepUIDs map[string]bool) {
 	if len(oldFolderPaths) == 0 {
 		return
 	}
@@ -229,14 +264,14 @@ func (s *APIV1Service) rewriteOutboundLinksToUIDBestEffort(ctx context.Context, 
 	}
 
 	for memoID, oldFolderPath := range oldFolderPaths {
-		if err := s.rewriteOneMemoOutboundLinksToUID(ctx, memoID, oldFolderPath, tree, keepUIDs); err != nil {
+		if err := s.rewriteOneMemoOutboundLinksAfterWorkspaceMove(ctx, memoID, oldFolderPath, tree, keepUIDs); err != nil {
 			slog.Warn("failed to rewrite outbound links after cross-workspace move",
 				slog.Int("memoID", int(memoID)), slog.Any("err", err))
 		}
 	}
 }
 
-func (s *APIV1Service) rewriteOneMemoOutboundLinksToUID(ctx context.Context, memoID int32, oldFolderPath string, oldTree []*linkindex.TreeNode, keepUIDs map[string]bool) error {
+func (s *APIV1Service) rewriteOneMemoOutboundLinksAfterWorkspaceMove(ctx context.Context, memoID int32, oldFolderPath string, oldTree []*linkindex.TreeNode, keepUIDs map[string]bool) error {
 	source, err := s.Store.GetMemo(ctx, &store.FindMemo{ID: &memoID})
 	if err != nil || source == nil {
 		return err
@@ -253,7 +288,14 @@ func (s *APIV1Service) rewriteOneMemoOutboundLinksToUID(ctx context.Context, mem
 			// names a sibling that moved too) — not ours to rewrite.
 			return href, text, false
 		}
-		newHref := "/memos/" + uid
+		target, err := s.Store.GetMemo(ctx, &store.FindMemo{UID: &uid})
+		if err != nil || target == nil {
+			return href, text, false
+		}
+		newHref := s.crossWorkspaceHrefFor(ctx, target)
+		if newHref == href {
+			return href, text, false
+		}
 		repairs = append(repairs, SSELinkRepair{OldHref: href, NewHref: newHref, OldText: text, NewText: text})
 		return newHref, text, true
 	}
@@ -361,6 +403,106 @@ func (s *APIV1Service) fossilizeOneMemoOutboundRelativeLinks(
 		}
 		newHref, ok := linkindex.ResolveRelativeToCanonical(oldFolderPath, href)
 		if !ok {
+			return href, text, false
+		}
+		repairs = append(repairs, SSELinkRepair{OldHref: href, NewHref: newHref, OldText: text, NewText: text})
+		return newHref, text, true
+	}
+
+	newContent, changed, err := s.MarkdownService.RewriteLinks([]byte(source.Content), decide)
+	if err != nil {
+		return err
+	}
+	if !changed {
+		return nil
+	}
+
+	source.Content = newContent
+	if err := memopayload.RebuildMemoPayload(ctx, source, s.MarkdownService); err != nil {
+		return err
+	}
+	if err := s.Store.UpdateMemo(ctx, &store.UpdateMemo{
+		ID:      source.ID,
+		Content: &source.Content,
+		Payload: source.Payload,
+	}); err != nil {
+		return err
+	}
+	s.syncMemoLinkIndex(ctx, source)
+	s.notifyRepairedMemo(ctx, source.ID, repairs)
+	return nil
+}
+
+// repairWorkspaceTitleReferencesBestEffort rewrites "@旧库标题/…" hrefs to
+// "@新库标题/…" after a knowledge base is renamed (R2.6).
+//
+// Simpler than every other repair in this file: the workspace-qualified form
+// addresses a knowledge base by title, so a rename changes exactly one value
+// and every referencer changes by the same substitution — no as-of tree, no
+// per-target href computation.
+//
+// The referencers are found through the memo_link index: an "@" href resolves
+// to a target memo ID at index time (see workspaceLinkTrees), so every document
+// holding one has a row pointing into this workspace.
+//
+// Best-effort and non-blocking, like the rest of this file: the rename has
+// already committed, and a document whose repair fails simply keeps a link that
+// no longer resolves until the next content edit re-runs it.
+//
+// TODO: this can rewrite many documents in one call, so it multiplies the
+// "batch writes should share one transaction and one index rebuild" TODO
+// already recorded in
+// docs/dev/requirements/cross-reference-repair-on-move-rename.md.
+func (s *APIV1Service) repairWorkspaceTitleReferencesBestEffort(ctx context.Context, workspaceID int32, oldTitle, newTitle string) {
+	if oldTitle == newTitle {
+		return
+	}
+	targets, err := s.Store.ListMemos(ctx, &store.FindMemo{
+		WorkspaceID:     &workspaceID,
+		ExcludeContent:  true,
+		ExcludeComments: true,
+	})
+	if err != nil {
+		slog.Warn("failed to list workspace documents for rename repair",
+			slog.Int("workspaceID", int(workspaceID)), slog.Any("err", err))
+		return
+	}
+
+	sourceIDs := map[int32]struct{}{}
+	for _, target := range targets {
+		links, err := s.Store.ListMemoLinks(ctx, &store.FindMemoLink{TargetMemoID: &target.ID})
+		if err != nil {
+			slog.Warn("failed to list inbound links for workspace rename repair",
+				slog.Int("memoID", int(target.ID)), slog.Any("err", err))
+			continue
+		}
+		for _, link := range links {
+			sourceIDs[link.MemoID] = struct{}{}
+		}
+	}
+
+	for sourceID := range sourceIDs {
+		if err := s.repairOneMemoWorkspaceTitleReference(ctx, sourceID, oldTitle, newTitle); err != nil {
+			slog.Warn("failed to repair workspace-qualified links after rename",
+				slog.Int("memoID", int(sourceID)), slog.Any("err", err))
+		}
+	}
+}
+
+func (s *APIV1Service) repairOneMemoWorkspaceTitleReference(ctx context.Context, memoID int32, oldTitle, newTitle string) error {
+	source, err := s.Store.GetMemo(ctx, &store.FindMemo{ID: &memoID})
+	if err != nil || source == nil {
+		return err
+	}
+
+	var repairs []SSELinkRepair
+	decide := func(href, text string) (string, string, bool) {
+		title, _, ok := linkindex.ParseWorkspaceQualifiedHref(href)
+		if !ok || !strings.EqualFold(strings.TrimSpace(title), strings.TrimSpace(oldTitle)) {
+			return href, text, false
+		}
+		newHref, ok := linkindex.RetitleWorkspaceQualifiedHref(href, newTitle)
+		if !ok || newHref == href {
 			return href, text, false
 		}
 		repairs = append(repairs, SSELinkRepair{OldHref: href, NewHref: newHref, OldText: text, NewText: text})

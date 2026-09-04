@@ -19,12 +19,25 @@ func TestCuratedOperationIDsAreTheKnowledgeBaseSet(t *testing.T) {
 		"MemoService_GetMemo",
 		"MemoService_CreateMemo",
 		"MemoService_UpdateMemo",
+		"AttachmentService_GetDownloadUrl",
 		"AuthService_GetCurrentUser",
 	}, curatedOperationIDs)
 
 	// Deliberately excluded: deleting documents, and the social/scratch-note
 	// surface inherited from upstream memos.
 	require.NotContains(t, curatedOperationIDs, "MemoService_DeleteMemo")
+
+	// Attachments are readable over MCP and nothing more: no listing, no
+	// upload, no edit, no delete.
+	for _, operationID := range []string{
+		"AttachmentService_ListAttachments",
+		"AttachmentService_CreateAttachment",
+		"AttachmentService_UpdateAttachment",
+		"AttachmentService_DeleteAttachment",
+		"AttachmentService_UnlockVault",
+	} {
+		require.NotContains(t, curatedOperationIDs, operationID)
+	}
 }
 
 func TestCuratedOperationIDsStayMemoFocused(t *testing.T) {

@@ -70,9 +70,15 @@ type WorkspaceConfig struct {
 	// serve as a unique name.
 	Name string `yaml:"name,omitempty"`
 	// Sparse, when non-empty, is the server folder_path prefix this checkout maps
-	// to its root: only memos under that folder are checked out, and the prefix is
-	// stripped from every local path (and re-added on push). Empty = full checkout.
+	// to its root: only memos under that folder are checked out. By default the
+	// prefix is stripped from every local path (and re-added on push), so the
+	// mapped folder's own contents sit at the checkout root. Empty = full checkout.
 	Sparse string `yaml:"sparse,omitempty"`
+	// SparseSubdir, when true, keeps the mapped folder as a subdirectory under the
+	// checkout root instead of stripping it — the local tree mirrors the server
+	// folder_path exactly, just scoped to that subtree. Meaningless when Sparse is
+	// empty. See LocalRelPath/ServerFolderPath for the two modes.
+	SparseSubdir bool `yaml:"sparse_subdir,omitempty"`
 	// Filter is an optional CEL clause applied on clone/pull for this workspace
 	// (in addition to the implicit "own memos only" scoping), e.g. `"work" in tags`.
 	Filter string `yaml:"filter,omitempty"`

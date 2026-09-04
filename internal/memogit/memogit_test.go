@@ -123,6 +123,33 @@ func TestSparseCheckoutPathMapping(t *testing.T) {
 	}
 }
 
+func TestSparseSubdirPathMapping(t *testing.T) {
+	sparse := &WorkspaceConfig{Sparse: "Home", SparseSubdir: true}
+
+	// inScope is unaffected by SparseSubdir: still gated on the Sparse prefix.
+	if !sparse.inScope("Home/Journal") {
+		t.Error("inScope(Home/Journal) = false, want true")
+	}
+	if sparse.inScope("Other") {
+		t.Error("inScope(Other) = true, want false")
+	}
+
+	// LocalRelPath keeps the mapped folder as a subdirectory instead of stripping it.
+	if got := sparse.LocalRelPath("Home", "Index", "MARKDOWN"); got != filepath.Join("Home", "Index.md") {
+		t.Errorf("LocalRelPath at folder root = %q, want %q", got, filepath.Join("Home", "Index.md"))
+	}
+	if got := sparse.LocalRelPath("Home/Journal", "2024", "MARKDOWN"); got != filepath.Join("Home", "Journal", "2024.md") {
+		t.Errorf("LocalRelPath nested = %q, want %q", got, filepath.Join("Home", "Journal", "2024.md"))
+	}
+
+	// ServerFolderPath is the identity: the local folder already is the server folder_path.
+	for _, folder := range []string{"Home", "Home/Journal", "Home/a/b/c"} {
+		if got := sparse.ServerFolderPath(folder); got != folder {
+			t.Errorf("ServerFolderPath(%q) = %q, want %q (identity)", folder, got, folder)
+		}
+	}
+}
+
 func TestSanitizeFolderPathNoTraversal(t *testing.T) {
 	// A malicious folder path must never escape the repo root.
 	got := sanitizeFolderPath("../../secret/../x")

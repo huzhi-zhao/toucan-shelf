@@ -58,6 +58,7 @@ folders are slash-separated path prefixes; documents are memos.
 | UpdateWorkspace | `PATCH /api/v1/{workspace.name=workspaces/*}` | Update (needs `update_mask`). |
 | DeleteWorkspace | `DELETE /api/v1/{name=workspaces/*}` | Delete a workspace. |
 | GetWorkspaceTree | `GET /api/v1/{name=workspaces/*}/tree` | Full folder + document tree. |
+| BatchGetWorkspaceTreesByTitle | `GET /api/v1/workspaces:batchGetTreesByTitle` | Resolve several knowledge-base **titles** to their trees at once, for rendering cross-workspace links. |
 | CreateWorkspaceFolder | `POST /api/v1/{parent=workspaces/*}/folders` | Create an (empty) folder. |
 | RenameWorkspaceFolder | `POST /api/v1/{parent=workspaces/*}/folders:rename` | Rename a folder (prefix update). |
 | DeleteWorkspaceFolder | `POST /api/v1/{parent=workspaces/*}/folders:delete` | Delete a folder. |
@@ -70,6 +71,16 @@ folders are slash-separated path prefixes; documents are memos.
 
 **Tree nodes** (`GetWorkspaceTree`) are `FOLDER` or `DOCUMENT`; each carries
 `path`, and documents also carry `memo`, `archived`, `doc_type`, and timestamps.
+
+**`BatchGetWorkspaceTreesByTitle`** takes `titles` (max 32, matched
+case-insensitively) and answers with one entry per requested title:
+`requested_title` (echoed back), `available`, and — only when `available` —
+`name`, `title` (stored casing) and `nodes`. A title that names no knowledge
+base and one the caller may not read both return `available: false` with every
+other field empty; the two are **deliberately indistinguishable**, so the
+endpoint cannot be used to enumerate which knowledge bases exist. `title` must
+not contain `/` or start with `@` (enforced by Create/UpdateWorkspace), which is
+what makes `@title/path` parseable.
 Pass `?archived=true` to list archived documents instead of live ones.
 
 ```bash
