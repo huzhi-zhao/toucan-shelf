@@ -52,6 +52,9 @@ const (
 	// WorkspaceServiceGetWorkspaceTreeProcedure is the fully-qualified name of the WorkspaceService's
 	// GetWorkspaceTree RPC.
 	WorkspaceServiceGetWorkspaceTreeProcedure = "/memos.api.v1.WorkspaceService/GetWorkspaceTree"
+	// WorkspaceServiceBatchGetWorkspaceTreesByTitleProcedure is the fully-qualified name of the
+	// WorkspaceService's BatchGetWorkspaceTreesByTitle RPC.
+	WorkspaceServiceBatchGetWorkspaceTreesByTitleProcedure = "/memos.api.v1.WorkspaceService/BatchGetWorkspaceTreesByTitle"
 	// WorkspaceServiceCreateWorkspaceFolderProcedure is the fully-qualified name of the
 	// WorkspaceService's CreateWorkspaceFolder RPC.
 	WorkspaceServiceCreateWorkspaceFolderProcedure = "/memos.api.v1.WorkspaceService/CreateWorkspaceFolder"
@@ -95,6 +98,14 @@ type WorkspaceServiceClient interface {
 	DeleteWorkspace(context.Context, *connect.Request[v1.DeleteWorkspaceRequest]) (*connect.Response[emptypb.Empty], error)
 	// GetWorkspaceTree returns the folder/document hierarchy for a workspace.
 	GetWorkspaceTree(context.Context, *connect.Request[v1.GetWorkspaceTreeRequest]) (*connect.Response[v1.GetWorkspaceTreeResponse], error)
+	// BatchGetWorkspaceTreesByTitle resolves knowledge-base titles to their trees
+	// in one call, so a document containing cross-workspace links
+	// ("@库标题/fb/dc.md") can be rendered without one request per title.
+	//
+	// A title the caller may not read and a title that does not exist come back
+	// in exactly the same shape (available = false, no other field set): telling
+	// them apart would let anyone probe which knowledge bases exist.
+	BatchGetWorkspaceTreesByTitle(context.Context, *connect.Request[v1.BatchGetWorkspaceTreesByTitleRequest]) (*connect.Response[v1.BatchGetWorkspaceTreesByTitleResponse], error)
 	// CreateWorkspaceFolder creates a (possibly empty) folder within a workspace.
 	CreateWorkspaceFolder(context.Context, *connect.Request[v1.CreateWorkspaceFolderRequest]) (*connect.Response[v1.WorkspaceFolder], error)
 	// RenameWorkspaceFolder renames a folder and moves all memos/subfolders under it.
@@ -161,6 +172,12 @@ func NewWorkspaceServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(workspaceServiceMethods.ByName("GetWorkspaceTree")),
 			connect.WithClientOptions(opts...),
 		),
+		batchGetWorkspaceTreesByTitle: connect.NewClient[v1.BatchGetWorkspaceTreesByTitleRequest, v1.BatchGetWorkspaceTreesByTitleResponse](
+			httpClient,
+			baseURL+WorkspaceServiceBatchGetWorkspaceTreesByTitleProcedure,
+			connect.WithSchema(workspaceServiceMethods.ByName("BatchGetWorkspaceTreesByTitle")),
+			connect.WithClientOptions(opts...),
+		),
 		createWorkspaceFolder: connect.NewClient[v1.CreateWorkspaceFolderRequest, v1.WorkspaceFolder](
 			httpClient,
 			baseURL+WorkspaceServiceCreateWorkspaceFolderProcedure,
@@ -214,20 +231,21 @@ func NewWorkspaceServiceClient(httpClient connect.HTTPClient, baseURL string, op
 
 // workspaceServiceClient implements WorkspaceServiceClient.
 type workspaceServiceClient struct {
-	createWorkspace       *connect.Client[v1.CreateWorkspaceRequest, v1.Workspace]
-	listWorkspaces        *connect.Client[v1.ListWorkspacesRequest, v1.ListWorkspacesResponse]
-	getWorkspace          *connect.Client[v1.GetWorkspaceRequest, v1.Workspace]
-	updateWorkspace       *connect.Client[v1.UpdateWorkspaceRequest, v1.Workspace]
-	deleteWorkspace       *connect.Client[v1.DeleteWorkspaceRequest, emptypb.Empty]
-	getWorkspaceTree      *connect.Client[v1.GetWorkspaceTreeRequest, v1.GetWorkspaceTreeResponse]
-	createWorkspaceFolder *connect.Client[v1.CreateWorkspaceFolderRequest, v1.WorkspaceFolder]
-	renameWorkspaceFolder *connect.Client[v1.RenameWorkspaceFolderRequest, emptypb.Empty]
-	moveWorkspaceFolder   *connect.Client[v1.MoveWorkspaceFolderRequest, v1.MoveWorkspaceFolderResponse]
-	deleteWorkspaceFolder *connect.Client[v1.DeleteWorkspaceFolderRequest, emptypb.Empty]
-	listWorkspaceGrants   *connect.Client[v1.ListWorkspaceGrantsRequest, v1.ListWorkspaceGrantsResponse]
-	createWorkspaceGrant  *connect.Client[v1.CreateWorkspaceGrantRequest, v1.WorkspaceGrant]
-	updateWorkspaceGrant  *connect.Client[v1.UpdateWorkspaceGrantRequest, v1.WorkspaceGrant]
-	deleteWorkspaceGrant  *connect.Client[v1.DeleteWorkspaceGrantRequest, emptypb.Empty]
+	createWorkspace               *connect.Client[v1.CreateWorkspaceRequest, v1.Workspace]
+	listWorkspaces                *connect.Client[v1.ListWorkspacesRequest, v1.ListWorkspacesResponse]
+	getWorkspace                  *connect.Client[v1.GetWorkspaceRequest, v1.Workspace]
+	updateWorkspace               *connect.Client[v1.UpdateWorkspaceRequest, v1.Workspace]
+	deleteWorkspace               *connect.Client[v1.DeleteWorkspaceRequest, emptypb.Empty]
+	getWorkspaceTree              *connect.Client[v1.GetWorkspaceTreeRequest, v1.GetWorkspaceTreeResponse]
+	batchGetWorkspaceTreesByTitle *connect.Client[v1.BatchGetWorkspaceTreesByTitleRequest, v1.BatchGetWorkspaceTreesByTitleResponse]
+	createWorkspaceFolder         *connect.Client[v1.CreateWorkspaceFolderRequest, v1.WorkspaceFolder]
+	renameWorkspaceFolder         *connect.Client[v1.RenameWorkspaceFolderRequest, emptypb.Empty]
+	moveWorkspaceFolder           *connect.Client[v1.MoveWorkspaceFolderRequest, v1.MoveWorkspaceFolderResponse]
+	deleteWorkspaceFolder         *connect.Client[v1.DeleteWorkspaceFolderRequest, emptypb.Empty]
+	listWorkspaceGrants           *connect.Client[v1.ListWorkspaceGrantsRequest, v1.ListWorkspaceGrantsResponse]
+	createWorkspaceGrant          *connect.Client[v1.CreateWorkspaceGrantRequest, v1.WorkspaceGrant]
+	updateWorkspaceGrant          *connect.Client[v1.UpdateWorkspaceGrantRequest, v1.WorkspaceGrant]
+	deleteWorkspaceGrant          *connect.Client[v1.DeleteWorkspaceGrantRequest, emptypb.Empty]
 }
 
 // CreateWorkspace calls memos.api.v1.WorkspaceService.CreateWorkspace.
@@ -258,6 +276,11 @@ func (c *workspaceServiceClient) DeleteWorkspace(ctx context.Context, req *conne
 // GetWorkspaceTree calls memos.api.v1.WorkspaceService.GetWorkspaceTree.
 func (c *workspaceServiceClient) GetWorkspaceTree(ctx context.Context, req *connect.Request[v1.GetWorkspaceTreeRequest]) (*connect.Response[v1.GetWorkspaceTreeResponse], error) {
 	return c.getWorkspaceTree.CallUnary(ctx, req)
+}
+
+// BatchGetWorkspaceTreesByTitle calls memos.api.v1.WorkspaceService.BatchGetWorkspaceTreesByTitle.
+func (c *workspaceServiceClient) BatchGetWorkspaceTreesByTitle(ctx context.Context, req *connect.Request[v1.BatchGetWorkspaceTreesByTitleRequest]) (*connect.Response[v1.BatchGetWorkspaceTreesByTitleResponse], error) {
+	return c.batchGetWorkspaceTreesByTitle.CallUnary(ctx, req)
 }
 
 // CreateWorkspaceFolder calls memos.api.v1.WorkspaceService.CreateWorkspaceFolder.
@@ -317,6 +340,14 @@ type WorkspaceServiceHandler interface {
 	DeleteWorkspace(context.Context, *connect.Request[v1.DeleteWorkspaceRequest]) (*connect.Response[emptypb.Empty], error)
 	// GetWorkspaceTree returns the folder/document hierarchy for a workspace.
 	GetWorkspaceTree(context.Context, *connect.Request[v1.GetWorkspaceTreeRequest]) (*connect.Response[v1.GetWorkspaceTreeResponse], error)
+	// BatchGetWorkspaceTreesByTitle resolves knowledge-base titles to their trees
+	// in one call, so a document containing cross-workspace links
+	// ("@库标题/fb/dc.md") can be rendered without one request per title.
+	//
+	// A title the caller may not read and a title that does not exist come back
+	// in exactly the same shape (available = false, no other field set): telling
+	// them apart would let anyone probe which knowledge bases exist.
+	BatchGetWorkspaceTreesByTitle(context.Context, *connect.Request[v1.BatchGetWorkspaceTreesByTitleRequest]) (*connect.Response[v1.BatchGetWorkspaceTreesByTitleResponse], error)
 	// CreateWorkspaceFolder creates a (possibly empty) folder within a workspace.
 	CreateWorkspaceFolder(context.Context, *connect.Request[v1.CreateWorkspaceFolderRequest]) (*connect.Response[v1.WorkspaceFolder], error)
 	// RenameWorkspaceFolder renames a folder and moves all memos/subfolders under it.
@@ -377,6 +408,12 @@ func NewWorkspaceServiceHandler(svc WorkspaceServiceHandler, opts ...connect.Han
 		WorkspaceServiceGetWorkspaceTreeProcedure,
 		svc.GetWorkspaceTree,
 		connect.WithSchema(workspaceServiceMethods.ByName("GetWorkspaceTree")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workspaceServiceBatchGetWorkspaceTreesByTitleHandler := connect.NewUnaryHandler(
+		WorkspaceServiceBatchGetWorkspaceTreesByTitleProcedure,
+		svc.BatchGetWorkspaceTreesByTitle,
+		connect.WithSchema(workspaceServiceMethods.ByName("BatchGetWorkspaceTreesByTitle")),
 		connect.WithHandlerOptions(opts...),
 	)
 	workspaceServiceCreateWorkspaceFolderHandler := connect.NewUnaryHandler(
@@ -441,6 +478,8 @@ func NewWorkspaceServiceHandler(svc WorkspaceServiceHandler, opts ...connect.Han
 			workspaceServiceDeleteWorkspaceHandler.ServeHTTP(w, r)
 		case WorkspaceServiceGetWorkspaceTreeProcedure:
 			workspaceServiceGetWorkspaceTreeHandler.ServeHTTP(w, r)
+		case WorkspaceServiceBatchGetWorkspaceTreesByTitleProcedure:
+			workspaceServiceBatchGetWorkspaceTreesByTitleHandler.ServeHTTP(w, r)
 		case WorkspaceServiceCreateWorkspaceFolderProcedure:
 			workspaceServiceCreateWorkspaceFolderHandler.ServeHTTP(w, r)
 		case WorkspaceServiceRenameWorkspaceFolderProcedure:
@@ -488,6 +527,10 @@ func (UnimplementedWorkspaceServiceHandler) DeleteWorkspace(context.Context, *co
 
 func (UnimplementedWorkspaceServiceHandler) GetWorkspaceTree(context.Context, *connect.Request[v1.GetWorkspaceTreeRequest]) (*connect.Response[v1.GetWorkspaceTreeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.WorkspaceService.GetWorkspaceTree is not implemented"))
+}
+
+func (UnimplementedWorkspaceServiceHandler) BatchGetWorkspaceTreesByTitle(context.Context, *connect.Request[v1.BatchGetWorkspaceTreesByTitleRequest]) (*connect.Response[v1.BatchGetWorkspaceTreesByTitleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.WorkspaceService.BatchGetWorkspaceTreesByTitle is not implemented"))
 }
 
 func (UnimplementedWorkspaceServiceHandler) CreateWorkspaceFolder(context.Context, *connect.Request[v1.CreateWorkspaceFolderRequest]) (*connect.Response[v1.WorkspaceFolder], error) {

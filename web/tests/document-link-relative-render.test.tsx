@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import type { CrossWorkspaceTarget } from "@/components/MemoContent/DocumentLinkContext";
 import { DocumentLinkProvider } from "@/components/MemoContent/DocumentLinkContext";
 import { Link } from "@/components/MemoContent/markdown/Link";
 
@@ -52,8 +53,61 @@ describe("<Link /> with document-relative hrefs", () => {
     expect(a).not.toHaveAttribute("title");
   });
 
-  it("leaves an @-prefixed href external (reserved for the workspace-qualified form)", () => {
+  it("leaves an @-prefixed href external when the surface has no cross-workspace support", () => {
+    // No resolveCrossWorkspace in this provider, so the qualified form gets the
+    // same treatment as any other destination this surface cannot resolve.
     renderLink("@产品手册/fb/dc.md");
     expect(screen.getByText("anchor").closest("a")).toHaveAttribute("target", "_blank");
+  });
+
+  it("leaves a malformed @-href external even where cross-workspace links are supported", () => {
+    // "@handle" has no path, so it never was a document reference.
+    renderCrossWorkspaceLink("@handle", () => ({ status: "unavailable" }));
+    expect(screen.getByText("anchor").closest("a")).toHaveAttribute("target", "_blank");
+  });
+});
+
+/**
+ * R2.4 acceptance: the three states a workspace-qualified href renders in, plus
+ * the pending state while the knowledge-base trees are still being fetched.
+ */
+const renderCrossWorkspaceLink = (href: string, resolveCrossWorkspace: (h: string) => CrossWorkspaceTarget) =>
+  render(
+    <DocumentLinkProvider value={{ resolve: () => undefined, navigate: vi.fn(), resolveCrossWorkspace }}>
+      <Link href={href}>anchor</Link>
+    </DocumentLinkProvider>,
+  );
+
+describe("<Link /> with workspace-qualified hrefs", () => {
+  it("navigates in-app when the target knowledge base is readable and the path resolves", () => {
+    renderCrossWorkspaceLink("@产品手册/fb/dc.md", () => ({
+      status: "resolved",
+      workspaceName: "workspaces/w2",
+      workspaceTitle: "产品手册",
+      memoName: "memos/dc",
+    }));
+    const a = screen.getByText("anchor").closest("a")!;
+    expect(a).toHaveAttribute("href", "/memos/dc");
+    expect(a).not.toHaveAttribute("target", "_blank");
+  });
+
+  it("renders an unreadable knowledge base as a restricted, unclickable marker", () => {
+    renderCrossWorkspaceLink("@产品手册/fb/dc.md", () => ({ status: "unavailable" }));
+    expect(screen.queryByText("anchor").closest("a")).toBeNull();
+    const span = screen.getByText("anchor");
+    expect(span).toHaveAttribute("title", "无法访问该知识库");
+    // Nothing about the target may reach the DOM — not its title, not its path.
+    expect(document.body.innerHTML).not.toContain("产品手册");
+    expect(document.body.innerHTML).not.toContain("fb/dc.md");
+  });
+
+  it("marks a readable knowledge base with an unresolvable path as broken", () => {
+    renderCrossWorkspaceLink("@产品手册/fb/missing.md", () => ({ status: "unresolved" }));
+    expect(screen.getByText("anchor").closest("a")).toHaveAttribute("title", "链接的文档不存在，可能已被移动或删除");
+  });
+
+  it("renders as plain text while the trees are still being fetched", () => {
+    renderCrossWorkspaceLink("@产品手册/fb/dc.md", () => ({ status: "pending" }));
+    expect(screen.getByText("anchor").closest("a")).toBeNull();
   });
 });

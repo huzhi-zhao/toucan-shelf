@@ -11,7 +11,7 @@ one.
 
 | # | Manual | What it covers |
 |---|--------|----------------|
-| 1 | [Knowledge Base & Hierarchy](./01-knowledge-base.md) | Workspaces, folder trees, the Notebook home page, the Bookshelf, the reworked Explore page, document outline, and "resume where you left off". |
+| 1 | [Knowledge Base & Hierarchy](./01-knowledge-base.md) | Workspaces, folder trees, the Notebook home page, **linking between documents** (the four path forms, `[]()` vs `![[]]`, what happens to relative links when a document moves), the Bookshelf, the reworked Explore page, document outline, and "resume where you left off". |
 | 2 | [Rich Documents & Media](./02-rich-documents.md) | The four document types (Markdown / HTML / PDF / View), uploading docs vs. files, the HTML sandbox renderer, the PDF viewer with annotations & text extraction, inline audio/video, and S3 storage + backup. |
 | 3 | [Gallery Views](./03-gallery-views.md) | Notion-style `view` documents: creating a gallery, scopes, sorting, cover rules, card fields, and how views stay live. |
 | 4 | [Markdown Editor Optimization ](04-md-editor-optimization.md) | Callouts (including **collapsible**, **hover-popover** and **tag-row** ones), Notion / Obsidian–style formatting shortcuts in the CodeMirror editor, frontmatter properties, highlights, **click counters**, and AI rewrite. |

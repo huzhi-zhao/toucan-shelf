@@ -121,8 +121,9 @@ memos 是 REST 不是 git remote，`git fetch` 拿不出 "theirs"，所以 memog
 2. **改正文**：像改普通 Markdown 一样改，但守住定制语法（见 `markdown-syntax.md`、
    `blocks-and-views.md`）和能改/不能改的边界。
 3. **移动/重命名**：直接改路径 = 移动服务器文档，历史/评论/分享链接/引用关系全跟着走。
-   注意 `(folder_path, title)` 唯一性，别撞名——**已归档的文档也占用这个名额**，
-   同名文档删掉后不能立刻用同名新建，需要在网页端彻底删除。
+   注意 `(folder_path, title)` 唯一性，别撞名（归档文档也占名额，见
+   `hierarchy-and-doc-types.md` §1）。副作用：被移动文档正文里的相对链接会被固化成
+   库根相对形式（`document-links.md` §5），服务端自己做，别手工模拟。
 4. **frontmatter 改动有涟漪**：改了某文档的 `status`/`tags`/自定义属性，
    可能改变消费它的画廊视图或看板分组。跨文档改属性前扫一眼有没有 `.view.json` 在用。
 5. **收尾三步**：改完 → `memogit status` → `push --dry-run` → `push`。

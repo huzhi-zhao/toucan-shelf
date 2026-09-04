@@ -28,6 +28,13 @@ interface LinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement>, React
  * was most likely never a document reference, so it falls through to external-link behaviour rather
  * than being reported broken. Writing "./db.md" opts into the strict reading.
  *
+ * A workspace-qualified href (`@库标题/fb/dc.md`, 库限定路径) resolves against the knowledge-base
+ * trees prefetched for this document (see useCrossWorkspaceTrees). It has one state the in-workspace
+ * forms do not: the target knowledge base may be unreadable, which renders as a muted, unclickable
+ * span. That state covers "no such knowledge base" and "not granted to you" alike — the server
+ * returns those identically so that this endpoint cannot be used to probe which knowledge bases
+ * exist, and the rendering must not undo that.
+ *
  * Everything else (external URLs, `/memos/{uid}` compat links, anything without a document-link
  * context) opens in a new tab with security attributes, same as before.
  */
@@ -48,6 +55,59 @@ export const Link = ({ children, className, href, node: _node, ...props }: LinkP
   }
 
   const form = classifyDocHref(href);
+
+  if (docLinkContext?.resolveCrossWorkspace && form === "workspaceQualified") {
+    const target = docLinkContext.resolveCrossWorkspace(href!);
+    switch (target.status) {
+      case "resolved":
+        return (
+          <a
+            href={`/${target.memoName}`}
+            className={cn(markdownStyles.link, className)}
+            title={`${target.workspaceTitle} · 跨知识库`}
+            onClick={(e) => {
+              if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+              e.preventDefault();
+              if (docLinkContext.navigateCrossWorkspace) {
+                docLinkContext.navigateCrossWorkspace(target.memoName, target.workspaceName, href!);
+              } else {
+                docLinkContext.navigate(target.memoName, href!);
+              }
+            }}
+            {...props}
+          >
+            {children}
+          </a>
+        );
+      case "unavailable":
+        // One wording for "no such knowledge base" and "not yours" alike: the
+        // server refuses to tell them apart, and neither may this tooltip.
+        // Nothing about the target — not its title, not its path — reaches the
+        // DOM here.
+        return (
+          <span className={cn(markdownStyles.restrictedLink, className)} title="无法访问该知识库">
+            {children}
+          </span>
+        );
+      case "pending":
+        // The trees are still being fetched. Render as plain text rather than
+        // flashing a broken link that is about to turn into a working one.
+        return <span className={className}>{children}</span>;
+      case "unresolved":
+        return (
+          <a
+            href={href}
+            className={cn(markdownStyles.brokenLink, className)}
+            title="链接的文档不存在，可能已被移动或删除"
+            onClick={(e) => e.preventDefault()}
+            {...props}
+          >
+            {children}
+          </a>
+        );
+    }
+  }
+
   if (docLinkContext && (form === "rootRelative" || form === "relativeExplicit" || form === "relativeBare")) {
     const target = docLinkContext.resolve(href!);
     if (target) {

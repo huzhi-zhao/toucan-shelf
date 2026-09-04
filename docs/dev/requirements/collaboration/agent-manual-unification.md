@@ -18,7 +18,12 @@
   SKILL.md 是路由 + 常驻铁律，references/ 按需 `cat`。这个模式可以照搬。
 - **MCP 通道**：agent **没有文件系统**，只能看到协议 `initialize` 响应里注入的文本，
   这段文本是"resident context for the whole session"（[service.go:27](../../../../server/router/mcp/service.go) 注释原话），
-  必须保持短，不能把 SKILL.md + 6 篇 references（约 5 万字）整段塞进去。
+  不能把 SKILL.md + 6 篇 references（约 5 万字）整段塞进去——但**它没有字数上限**
+  （2026-09-04 去掉，原为 2000 字节）。理由：需求只会不断增加，而一条规则的精确表达有其
+  长度下限，硬上限最终只会逼出两种坏结果——要么漏掉一条准确的规则，要么把已有的规则压到
+  产生歧义。agent 按歧义规则动手会毁掉文档，多读几十个 token 不会。取而代之的判据是
+  质的：每句话都必须是模型无法从工具名与 schema 推断的内容，并用「只剩一种读法」的最少
+  措辞表达；可以精简措辞，不可以牺牲语义；真要缩，整块砍掉一个主题，而不是把它压糊。
   MCP server 目前只声明 `tools` 能力，不声明 `resources`
   （[server/router/mcp/README.md](../../../../server/router/mcp/README.md)："The service advertises the **tools** capability only —
   no prompts, no resources"），也不打算为此新增按需读取的工具或 resource——

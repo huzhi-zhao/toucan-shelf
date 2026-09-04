@@ -127,6 +127,7 @@ d=$PWD; while [ "$d" != / ] && [ ! -d "$d/.memogit" ]; do d=$(dirname "$d"); don
 |------|------|------|
 | 两者 | workspace / folder_path / 4 种 doc_type / 路径映射 / 唯一性约束 | `references/hierarchy-and-doc-types.md` |
 | 两者 | frontmatter（可写）、装饰语法（callout / 着色 / 计数器，只读不写）、标题锚点、批注机制、`toucan-secret` 密文块、内联媒体 | `references/markdown-syntax.md` |
+| 两者 | 文档之间的引用：四种路径形式（库根相对 / 文档相对 / 跨库库限定 / UID）、`[]()` 与 `![[]]` 的边界、移动时的自动固化 | `references/document-links.md` |
 | 两者 | ` ```kanban ` / ` ```sheets ` / ` ```grid ` / ` ```calendar ` 四种交互块，以及画廊视图 | `references/blocks-and-views.md` |
 | 两者 | 附件工作原理、该不该读某个附件怎么判断、PDF/EPUB 的边界 | `references/attachments.md` |
 | 仅 memogit | `memogit status/pull/push`、冲突 `.remote`、检出布局、排障 | `references/memogit.md` |

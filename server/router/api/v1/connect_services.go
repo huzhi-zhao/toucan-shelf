@@ -817,6 +817,14 @@ func (s *ConnectServiceHandler) GetWorkspaceTree(ctx context.Context, req *conne
 	return connect.NewResponse(resp), nil
 }
 
+func (s *ConnectServiceHandler) BatchGetWorkspaceTreesByTitle(ctx context.Context, req *connect.Request[v1pb.BatchGetWorkspaceTreesByTitleRequest]) (*connect.Response[v1pb.BatchGetWorkspaceTreesByTitleResponse], error) {
+	resp, err := s.APIV1Service.BatchGetWorkspaceTreesByTitle(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (s *ConnectServiceHandler) CreateWorkspaceFolder(ctx context.Context, req *connect.Request[v1pb.CreateWorkspaceFolderRequest]) (*connect.Response[v1pb.WorkspaceFolder], error) {
 	resp, err := s.APIV1Service.CreateWorkspaceFolder(ctx, req.Msg)
 	if err != nil {

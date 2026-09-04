@@ -50,6 +50,16 @@ service WorkspaceService {
   rpc GetWorkspaceTree(GetWorkspaceTreeRequest) returns (GetWorkspaceTreeResponse) {
     option (google.api.http) = {get: "/api/v1/{name=workspaces/*}/tree"};
   }
+  // BatchGetWorkspaceTreesByTitle resolves knowledge-base titles to their trees
+  // in one call, so a document containing cross-workspace links
+  // ("@库标题/fb/dc.md") can be rendered without one request per title.
+  //
+  // A title the caller may not read and a title that does not exist come back
+  // in exactly the same shape (available = false, no other field set): telling
+  // them apart would let anyone probe which knowledge bases exist.
+  rpc BatchGetWorkspaceTreesByTitle(BatchGetWorkspaceTreesByTitleRequest) returns (BatchGetWorkspaceTreesByTitleResponse) {
+    option (google.api.http) = {get: "/api/v1/workspaces:batchGetTreesByTitle"};
+  }
   // CreateWorkspaceFolder creates a (possibly empty) folder within a workspace.
   rpc CreateWorkspaceFolder(CreateWorkspaceFolderRequest) returns (WorkspaceFolder) {
     option (google.api.http) = {
@@ -253,6 +263,34 @@ message GetWorkspaceTreeRequest {
 
 message GetWorkspaceTreeResponse {
   repeated WorkspaceTreeNode nodes = 1;
+}
+
+message BatchGetWorkspaceTreesByTitleRequest {
+  // Required. Knowledge-base titles to resolve, matched case-insensitively.
+  repeated string titles = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message BatchGetWorkspaceTreesByTitleResponse {
+  repeated WorkspaceTreeByTitle workspaces = 1;
+}
+
+message WorkspaceTreeByTitle {
+  // The title as it was requested, so the caller can match responses to
+  // requests without re-normalizing.
+  string requested_title = 1;
+
+  // False when the knowledge base does not exist OR the caller may not read it.
+  // The two cases are deliberately indistinguishable; every other field is left
+  // empty in that case.
+  bool available = 2;
+
+  // Format: workspaces/{workspace}
+  string name = 3;
+
+  // The title in its stored casing.
+  string title = 4;
+
+  repeated WorkspaceTreeNode nodes = 5;
 }
 
 message CreateWorkspaceFolderRequest {

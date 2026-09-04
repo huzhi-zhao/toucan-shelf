@@ -82,6 +82,15 @@ export const markdownStyles = {
    */
   brokenLink:
     "text-destructive/80 underline decoration-destructive/40 decoration-dashed underline-offset-2 transition-colors hover:decoration-destructive cursor-help",
+  /**
+   * A cross-workspace link (库限定路径) whose target knowledge base the reader
+   * cannot open — either it does not exist, or it was never granted to them.
+   * The two are deliberately indistinguishable (see
+   * BatchGetWorkspaceTreesByTitle), so this state must never be styled or
+   * worded differently from one case to the other. Muted rather than
+   * destructive: nothing is broken, the door is simply closed.
+   */
+  restrictedLink: "text-muted-foreground underline decoration-muted-foreground/40 decoration-dotted underline-offset-2 cursor-not-allowed",
   horizontalRule: "my-[var(--md-rule-gap)] h-0 border-0 border-b border-border",
   /** Wrapper spacing for block-level embeds (tables, code fences, mermaid, sheets…). */
   blockWrapper: "mt-0 mb-[var(--md-block-gap)]",

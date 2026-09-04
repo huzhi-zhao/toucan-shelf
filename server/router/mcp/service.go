@@ -24,10 +24,20 @@ import (
 // the knowledge-base structure or about the write semantics that can silently
 // destroy content.
 //
-// Keep it short. Like `tools/list`, this text is resident context for the whole
-// session, so it must only carry what the model cannot infer from the tool names
-// and schemas: the hierarchy, the order to chain calls in, and the fact that an
-// update is a full-content replacement.
+// Like `tools/list`, this text is resident context for the whole session, so
+// every sentence must earn its place: it may only carry what the model cannot
+// infer from the tool names and schemas — the hierarchy, the order to chain
+// calls in, how documents reference each other, and the fact that an update is
+// a full-content replacement.
+//
+// The constraint is precision first, brevity second, and there is deliberately
+// no length limit (see TestMCPInitializeReturnsServerInstructions for why the
+// old byte ceiling was removed). Say each rule in the fewest words that leave
+// exactly one reading — but never trade an unambiguous rule for a shorter one.
+// An agent that misreads a rule here silently destroys a document; an agent
+// that reads a few more tokens does not. If the text has to shrink, drop a
+// whole topic rather than compressing one into something that reads fine and
+// means less.
 //
 // This is a hand-written summary of docs/skill/SKILL.md (the single source of
 // truth for agent-facing operating rules, also embedded verbatim for the
@@ -60,6 +70,13 @@ Creating:
 Writing:
 - Plain Markdown. Never author callouts, ==highlight== or click counters, even
   on request; keep existing ones verbatim. No punctuation in headings.
+- Reference another document with [text](/folder/Title): a path from the
+  workspace root whose last segment is the target's title (no extension).
+  Percent-encode spaces in the destination - [x](/Notes/Long Report) does not
+  parse, [x](/Notes/Long%20Report) does. Across knowledge bases prefix the
+  target's knowledge-base title: [x](@Handbook/Notes/Long%20Report).
+  ![](...) is media only and never a document reference. Do not hand-write
+  /memos/{uid} links.
 
 Updating:
 - memo_update_memo replaces the whole content field; it is not an incremental

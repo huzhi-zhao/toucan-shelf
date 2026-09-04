@@ -189,10 +189,17 @@ semantics. The load-bearing line is that **`memo_update_memo` replaces the entir
 content field**; an agent that treats it as an incremental patch silently
 destroys the rest of the document.
 
-Like `tools/list`, this text is resident context for the whole session, so keep
-it a briefing rather than a manual: only what the model cannot infer from tool
-names and schemas. `service_test.go` asserts both its presence and an upper
-bound on its length.
+Like `tools/list`, this text is resident context for the whole session, so it
+carries only what the model cannot infer from tool names and schemas.
+
+There is **no length limit**, by decision: requirements keep accumulating, and a
+byte budget can only be met by leaving an accurate rule out or by compressing an
+existing one until it is ambiguous — and an agent acting on an ambiguous rule
+destroys content, whereas one reading a few more tokens does not. The rule is
+precision first, brevity second: state each rule in the fewest words that leave
+exactly one reading, trim wording but never meaning, and if the text must shrink,
+drop a whole topic rather than blur one. `service_test.go` asserts the presence
+of the load-bearing lines and explains why the old ceiling was removed.
 
 `OpenWorldHint` is `false` for all tools. Annotations are client hints; they do
 not replace API authorization.

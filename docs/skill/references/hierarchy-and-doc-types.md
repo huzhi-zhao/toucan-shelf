@@ -57,6 +57,9 @@ workspace（知识库 / 项目）
   通过 MCP 创建时传 `plan.md` 会得到一篇字面名为 "plan.md" 的文档，
   memogit 再检出成 `plan.md.md`。
 
+> 正文里**引用**另一篇文档时用哪种路径（库根相对 / 文档相对 / 跨库库限定 / UID），
+> 见 `document-links.md`。
+
 ## 4. 文档属性 vs 文档设置（别混）
 
 这是一条常被弄错的分界：
@@ -86,11 +89,5 @@ workspace（知识库 / 项目）
   但它不销毁任何东西，一键可撤销。
 - 归档文档仍占用 `(folder_path, title)` 唯一名额。
 
-## 6. 只同步你自己的文档
-
-memos 的可见性模型允许任何登录用户读别人的 `PROTECTED` / `PUBLIC` 文档。
-memogit 的 `clone`/`pull` 因此**刻意只抓 `creator == 你`** 的文档——别人共享的文档
-不会灌进本地库（你也 push 不回去）。所以本地看不到某篇文档，可能只是它不是你创建的。
-
-**管理员例外**：服务器按 workspace 角色而不是作者判写权限，所以管理员账号的 token
-不受这条 creator 过滤——管理员的 checkout 覆盖整个 workspace，包括别人建的文档。
+> memogit 检出**只包含 `creator == 你`** 的文档（管理员 token 除外），
+> 所以本地看不到某篇文档不一定是出错了，见 `memogit.md` §6。
