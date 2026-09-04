@@ -72,6 +72,12 @@ TODO(确认)：`rehype-sanitize` 的 `SANITIZE_SCHEMA`（[constants.ts](../../..
   只读模式产出待搬迁清单供人工核对。TODO(确认)：该搬迁脚本是否已经跑过/是否仍待执行，
   未在代码库中找到对应脚本，需向用户确认当前状态。
 
+## Agent 读附件（不在本文档范围）
+
+agent 经 memogit / MCP 读取附件字节的能力，归 `collaboration/` 域，见
+[agent-attachment-reading](../collaboration/agent-attachment-reading.md)。附件对 agent
+恒为只读：本篇描述的上传链路不对 agent 开放，memogit `push` 永不上传附件。
+
 ## PDF 上传与预览（不在本文档范围）
 
 上传 `.pdf` 生成一篇不可编辑、只能预览的文档，复用附件上传链路但落地成一条 doc 记录，涉及
