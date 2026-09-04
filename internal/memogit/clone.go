@@ -17,7 +17,7 @@ import (
 // check out; if empty, the user's default (first) workspace is used, but only
 // when they have exactly one — with several, the title must be given
 // explicitly so clone never guesses the wrong knowledge base.
-func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter, sparse string, out io.Writer) error {
+func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter, sparse string, sparseSubdir bool, out io.Writer) error {
 	client := NewClient(cfg)
 	user, err := client.CurrentUser(ctx)
 	if err != nil {
@@ -40,6 +40,7 @@ func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter
 	// (Sparse), and a separate Name identifies the state file since "." can't.
 	if sparse = sanitizeFolderPath(sparse); sparse != "" {
 		wsCfg.Sparse = sparse
+		wsCfg.SparseSubdir = sparseSubdir
 		wsCfg.Dir = "."
 		wsCfg.Name = workspaceDir(remote.GetTitle())
 	}
@@ -59,6 +60,9 @@ func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter
 	if wsCfg.Sparse != "" {
 		fmt.Fprintf(out, "Authenticated as %q, fetching memos under folder %q of workspace %q (%s) on %s ...\n",
 			username, wsCfg.Sparse, wsCfg.Title, wsCfg.Workspace, cfg.Server)
+		if wsCfg.SparseSubdir {
+			fmt.Fprintf(out, "  (keeping %q as a subdirectory of the checkout root)\n", wsCfg.Sparse)
+		}
 	} else {
 		fmt.Fprintf(out, "Authenticated as %q, fetching memos from workspace %q (%s) on %s ...\n",
 			username, wsCfg.Title, wsCfg.Workspace, cfg.Server)

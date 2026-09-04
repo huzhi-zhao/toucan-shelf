@@ -49,6 +49,10 @@ cd web && pnpm release             # Build SPA into server/router/frontend/dist
 cd proto && buf generate           # Regenerate Go + TypeScript + OpenAPI
 cd proto && buf lint               # Lint proto files
 cd proto && buf format -w          # Format proto files
+
+# Agent-facing docs
+./scripts/sync-agent-skill-docs.sh # Mirror docs/skill/ into internal/memogit/assets/skill/ (go:embed source)
+./scripts/build-memogit.sh         # Sync (above) + build the memogit CLI -> ./build/memogit
 ```
 
 ## Code Map
@@ -85,6 +89,7 @@ cd proto && buf format -w          # Format proto files
 | Frontend production output | Vite config or release-sensitive UI | `cd web && pnpm build` or `pnpm release` |
 | Proto API | `.proto` source plus generated outputs | `cd proto && buf generate && buf lint` |
 | Public unauthenticated route | `server/router/api/v1/acl_config.go` | Targeted server test or manual route check |
+| Agent-facing manual (`docs/skill/SKILL.md` or `references/*.md`) | Run `scripts/sync-agent-skill-docs.sh` to regenerate `internal/memogit/assets/skill/` (or just use `scripts/build-memogit.sh`, which syncs then builds); also check whether `serverInstructions` in `server/router/mcp/service.go` (a short hand-written summary of the same rules, resident in every MCP session) needs a matching update | `go test ./internal/memogit/...` — `TestSkillAssetsMatchSource` fails if the sync was skipped |
 
 ## Go Conventions
 
