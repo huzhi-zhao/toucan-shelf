@@ -39,7 +39,9 @@ func ListWorkspaces(ctx context.Context, cfg *Config, out io.Writer) error {
 	available := 0
 	for _, w := range remote {
 		if ws, ok := cloned[w.GetName()]; ok {
-			if ws.Sparse != "" {
+			if ws.Sparse != "" && ws.SparseSubdir {
+				fmt.Fprintf(out, "  ✓ %-24s → ./%s/ (sparse, subdir kept)\n", w.GetTitle(), ws.Sparse)
+			} else if ws.Sparse != "" {
 				fmt.Fprintf(out, "  ✓ %-24s → ./ (sparse: folder %q)\n", w.GetTitle(), ws.Sparse)
 			} else {
 				fmt.Fprintf(out, "  ✓ %-24s → %s/\n", w.GetTitle(), ws.Dir)

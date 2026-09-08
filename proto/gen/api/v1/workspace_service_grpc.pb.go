@@ -20,20 +20,21 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	WorkspaceService_CreateWorkspace_FullMethodName       = "/memos.api.v1.WorkspaceService/CreateWorkspace"
-	WorkspaceService_ListWorkspaces_FullMethodName        = "/memos.api.v1.WorkspaceService/ListWorkspaces"
-	WorkspaceService_GetWorkspace_FullMethodName          = "/memos.api.v1.WorkspaceService/GetWorkspace"
-	WorkspaceService_UpdateWorkspace_FullMethodName       = "/memos.api.v1.WorkspaceService/UpdateWorkspace"
-	WorkspaceService_DeleteWorkspace_FullMethodName       = "/memos.api.v1.WorkspaceService/DeleteWorkspace"
-	WorkspaceService_GetWorkspaceTree_FullMethodName      = "/memos.api.v1.WorkspaceService/GetWorkspaceTree"
-	WorkspaceService_CreateWorkspaceFolder_FullMethodName = "/memos.api.v1.WorkspaceService/CreateWorkspaceFolder"
-	WorkspaceService_RenameWorkspaceFolder_FullMethodName = "/memos.api.v1.WorkspaceService/RenameWorkspaceFolder"
-	WorkspaceService_MoveWorkspaceFolder_FullMethodName   = "/memos.api.v1.WorkspaceService/MoveWorkspaceFolder"
-	WorkspaceService_DeleteWorkspaceFolder_FullMethodName = "/memos.api.v1.WorkspaceService/DeleteWorkspaceFolder"
-	WorkspaceService_ListWorkspaceGrants_FullMethodName   = "/memos.api.v1.WorkspaceService/ListWorkspaceGrants"
-	WorkspaceService_CreateWorkspaceGrant_FullMethodName  = "/memos.api.v1.WorkspaceService/CreateWorkspaceGrant"
-	WorkspaceService_UpdateWorkspaceGrant_FullMethodName  = "/memos.api.v1.WorkspaceService/UpdateWorkspaceGrant"
-	WorkspaceService_DeleteWorkspaceGrant_FullMethodName  = "/memos.api.v1.WorkspaceService/DeleteWorkspaceGrant"
+	WorkspaceService_CreateWorkspace_FullMethodName               = "/memos.api.v1.WorkspaceService/CreateWorkspace"
+	WorkspaceService_ListWorkspaces_FullMethodName                = "/memos.api.v1.WorkspaceService/ListWorkspaces"
+	WorkspaceService_GetWorkspace_FullMethodName                  = "/memos.api.v1.WorkspaceService/GetWorkspace"
+	WorkspaceService_UpdateWorkspace_FullMethodName               = "/memos.api.v1.WorkspaceService/UpdateWorkspace"
+	WorkspaceService_DeleteWorkspace_FullMethodName               = "/memos.api.v1.WorkspaceService/DeleteWorkspace"
+	WorkspaceService_GetWorkspaceTree_FullMethodName              = "/memos.api.v1.WorkspaceService/GetWorkspaceTree"
+	WorkspaceService_BatchGetWorkspaceTreesByTitle_FullMethodName = "/memos.api.v1.WorkspaceService/BatchGetWorkspaceTreesByTitle"
+	WorkspaceService_CreateWorkspaceFolder_FullMethodName         = "/memos.api.v1.WorkspaceService/CreateWorkspaceFolder"
+	WorkspaceService_RenameWorkspaceFolder_FullMethodName         = "/memos.api.v1.WorkspaceService/RenameWorkspaceFolder"
+	WorkspaceService_MoveWorkspaceFolder_FullMethodName           = "/memos.api.v1.WorkspaceService/MoveWorkspaceFolder"
+	WorkspaceService_DeleteWorkspaceFolder_FullMethodName         = "/memos.api.v1.WorkspaceService/DeleteWorkspaceFolder"
+	WorkspaceService_ListWorkspaceGrants_FullMethodName           = "/memos.api.v1.WorkspaceService/ListWorkspaceGrants"
+	WorkspaceService_CreateWorkspaceGrant_FullMethodName          = "/memos.api.v1.WorkspaceService/CreateWorkspaceGrant"
+	WorkspaceService_UpdateWorkspaceGrant_FullMethodName          = "/memos.api.v1.WorkspaceService/UpdateWorkspaceGrant"
+	WorkspaceService_DeleteWorkspaceGrant_FullMethodName          = "/memos.api.v1.WorkspaceService/DeleteWorkspaceGrant"
 )
 
 // WorkspaceServiceClient is the client API for WorkspaceService service.
@@ -55,6 +56,14 @@ type WorkspaceServiceClient interface {
 	DeleteWorkspace(ctx context.Context, in *DeleteWorkspaceRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// GetWorkspaceTree returns the folder/document hierarchy for a workspace.
 	GetWorkspaceTree(ctx context.Context, in *GetWorkspaceTreeRequest, opts ...grpc.CallOption) (*GetWorkspaceTreeResponse, error)
+	// BatchGetWorkspaceTreesByTitle resolves knowledge-base titles to their trees
+	// in one call, so a document containing cross-workspace links
+	// ("@库标题/fb/dc.md") can be rendered without one request per title.
+	//
+	// A title the caller may not read and a title that does not exist come back
+	// in exactly the same shape (available = false, no other field set): telling
+	// them apart would let anyone probe which knowledge bases exist.
+	BatchGetWorkspaceTreesByTitle(ctx context.Context, in *BatchGetWorkspaceTreesByTitleRequest, opts ...grpc.CallOption) (*BatchGetWorkspaceTreesByTitleResponse, error)
 	// CreateWorkspaceFolder creates a (possibly empty) folder within a workspace.
 	CreateWorkspaceFolder(ctx context.Context, in *CreateWorkspaceFolderRequest, opts ...grpc.CallOption) (*WorkspaceFolder, error)
 	// RenameWorkspaceFolder renames a folder and moves all memos/subfolders under it.
@@ -136,6 +145,16 @@ func (c *workspaceServiceClient) GetWorkspaceTree(ctx context.Context, in *GetWo
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetWorkspaceTreeResponse)
 	err := c.cc.Invoke(ctx, WorkspaceService_GetWorkspaceTree_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workspaceServiceClient) BatchGetWorkspaceTreesByTitle(ctx context.Context, in *BatchGetWorkspaceTreesByTitleRequest, opts ...grpc.CallOption) (*BatchGetWorkspaceTreesByTitleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BatchGetWorkspaceTreesByTitleResponse)
+	err := c.cc.Invoke(ctx, WorkspaceService_BatchGetWorkspaceTreesByTitle_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -241,6 +260,14 @@ type WorkspaceServiceServer interface {
 	DeleteWorkspace(context.Context, *DeleteWorkspaceRequest) (*emptypb.Empty, error)
 	// GetWorkspaceTree returns the folder/document hierarchy for a workspace.
 	GetWorkspaceTree(context.Context, *GetWorkspaceTreeRequest) (*GetWorkspaceTreeResponse, error)
+	// BatchGetWorkspaceTreesByTitle resolves knowledge-base titles to their trees
+	// in one call, so a document containing cross-workspace links
+	// ("@库标题/fb/dc.md") can be rendered without one request per title.
+	//
+	// A title the caller may not read and a title that does not exist come back
+	// in exactly the same shape (available = false, no other field set): telling
+	// them apart would let anyone probe which knowledge bases exist.
+	BatchGetWorkspaceTreesByTitle(context.Context, *BatchGetWorkspaceTreesByTitleRequest) (*BatchGetWorkspaceTreesByTitleResponse, error)
 	// CreateWorkspaceFolder creates a (possibly empty) folder within a workspace.
 	CreateWorkspaceFolder(context.Context, *CreateWorkspaceFolderRequest) (*WorkspaceFolder, error)
 	// RenameWorkspaceFolder renames a folder and moves all memos/subfolders under it.
@@ -285,6 +312,9 @@ func (UnimplementedWorkspaceServiceServer) DeleteWorkspace(context.Context, *Del
 }
 func (UnimplementedWorkspaceServiceServer) GetWorkspaceTree(context.Context, *GetWorkspaceTreeRequest) (*GetWorkspaceTreeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetWorkspaceTree not implemented")
+}
+func (UnimplementedWorkspaceServiceServer) BatchGetWorkspaceTreesByTitle(context.Context, *BatchGetWorkspaceTreesByTitleRequest) (*BatchGetWorkspaceTreesByTitleResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method BatchGetWorkspaceTreesByTitle not implemented")
 }
 func (UnimplementedWorkspaceServiceServer) CreateWorkspaceFolder(context.Context, *CreateWorkspaceFolderRequest) (*WorkspaceFolder, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateWorkspaceFolder not implemented")
@@ -435,6 +465,24 @@ func _WorkspaceService_GetWorkspaceTree_Handler(srv interface{}, ctx context.Con
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(WorkspaceServiceServer).GetWorkspaceTree(ctx, req.(*GetWorkspaceTreeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkspaceService_BatchGetWorkspaceTreesByTitle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BatchGetWorkspaceTreesByTitleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkspaceServiceServer).BatchGetWorkspaceTreesByTitle(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkspaceService_BatchGetWorkspaceTreesByTitle_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkspaceServiceServer).BatchGetWorkspaceTreesByTitle(ctx, req.(*BatchGetWorkspaceTreesByTitleRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -613,6 +661,10 @@ var WorkspaceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetWorkspaceTree",
 			Handler:    _WorkspaceService_GetWorkspaceTree_Handler,
+		},
+		{
+			MethodName: "BatchGetWorkspaceTreesByTitle",
+			Handler:    _WorkspaceService_BatchGetWorkspaceTreesByTitle_Handler,
 		},
 		{
 			MethodName: "CreateWorkspaceFolder",

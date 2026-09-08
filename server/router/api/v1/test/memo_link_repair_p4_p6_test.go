@@ -268,10 +268,14 @@ func TestFolderRenameRepairP5(t *testing.T) {
 	})
 }
 
-// TestCrossWorkspaceMoveRejectedP6 covers P6: extending the P1
-// reject-with-references check to cross-workspace moves, both entry points
+// TestCrossWorkspaceMoveRepairsReferences covers R2.5, the reversal of P6
+// (docs/dev/design/20260829-relative-and-cross-workspace-refs.md): a
+// cross-workspace move used to be rejected outright whenever anything linked
+// into the moved set, because no href form survived the crossing. The
+// workspace-qualified form does, so the move now succeeds and the referencers
+// are repaired to "@目标库标题/…" instead. Both entry points are covered
 // (single-document UpdateMemo's workspace change, and MoveWorkspaceFolder).
-func TestCrossWorkspaceMoveRejectedP6(t *testing.T) {
+func TestCrossWorkspaceMoveRepairsReferences(t *testing.T) {
 	ctx := context.Background()
 	ts := NewTestService(t)
 	defer ts.Cleanup()
@@ -300,15 +304,14 @@ func TestCrossWorkspaceMoveRejectedP6(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	t.Run("single document move is rejected when referenced", func(t *testing.T) {
+	t.Run("single document move repairs the referencer to the qualified form", func(t *testing.T) {
 		target, err := ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
 			Memo: &apiv1.Memo{Workspace: homeWorkspace.Name, Title: "Doc To Move", Content: "content"},
 		})
 		require.NoError(t, err)
-		targetUID := memoUIDFromName(t, target.Name)
 
-		_, err = ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
-			Memo: &apiv1.Memo{Workspace: homeWorkspace.Name, Title: "Referrer", Content: "See [Doc To Move](/memos/" + targetUID + ")."},
+		referrer, err := ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
+			Memo: &apiv1.Memo{Workspace: homeWorkspace.Name, Title: "Referrer", Content: "See [Doc To Move](/Doc%20To%20Move)."},
 		})
 		require.NoError(t, err)
 
@@ -316,9 +319,36 @@ func TestCrossWorkspaceMoveRejectedP6(t *testing.T) {
 			Memo:       &apiv1.Memo{Name: target.Name, Workspace: otherWorkspace.Name},
 			UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"workspace"}},
 		})
-		require.Error(t, err)
-		require.Equal(t, codes.FailedPrecondition, status.Code(err))
-		require.Contains(t, err.Error(), "Referrer")
+		require.NoError(t, err, "the move is no longer rejected by P6")
+
+		after, err := ts.Service.GetMemo(userCtx, &apiv1.GetMemoRequest{Name: referrer.Name})
+		require.NoError(t, err)
+		require.Equal(t, "See [Doc To Move](@Other%20Workspace/Doc%20To%20Move).", after.Content,
+			"the referencer stayed behind, so its href must name the destination knowledge base")
+	})
+
+	t.Run("the mover's own outbound links point back at the workspace it left", func(t *testing.T) {
+		stayer, err := ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
+			Memo: &apiv1.Memo{Workspace: homeWorkspace.Name, Title: "Stayer", Content: "content"},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, stayer)
+
+		mover, err := ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
+			Memo: &apiv1.Memo{Workspace: homeWorkspace.Name, Title: "Outbound Mover", Content: "See [Stayer](/Stayer)."},
+		})
+		require.NoError(t, err)
+
+		_, err = ts.Service.UpdateMemo(userCtx, &apiv1.UpdateMemoRequest{
+			Memo:       &apiv1.Memo{Name: mover.Name, Workspace: otherWorkspace.Name},
+			UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"workspace"}},
+		})
+		require.NoError(t, err)
+
+		after, err := ts.Service.GetMemo(userCtx, &apiv1.GetMemoRequest{Name: mover.Name})
+		require.NoError(t, err)
+		require.Equal(t, "See [Stayer](@Home%20Workspace/Stayer).", after.Content,
+			"the target stayed behind, so the mover's href must name the knowledge base it left")
 	})
 
 	t.Run("single document move succeeds once unreferenced", func(t *testing.T) {
@@ -334,7 +364,7 @@ func TestCrossWorkspaceMoveRejectedP6(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("folder cross-workspace move is rejected when referenced", func(t *testing.T) {
+	t.Run("folder cross-workspace move repairs outside referencers", func(t *testing.T) {
 		workspaceName := homeWorkspace.Name
 
 		_, err = ts.Service.CreateWorkspaceFolder(userCtx, &apiv1.CreateWorkspaceFolderRequest{
@@ -342,24 +372,110 @@ func TestCrossWorkspaceMoveRejectedP6(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		inFolder, err := ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
+		_, err := ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
 			Memo: &apiv1.Memo{Workspace: workspaceName, FolderPath: "movable", Title: "In Movable Folder", Content: "content"},
 		})
 		require.NoError(t, err)
-		inFolderUID := memoUIDFromName(t, inFolder.Name)
-
+		// A sibling inside the same subtree: it moves too, so its reference
+		// stays an ordinary in-workspace path rather than becoming qualified.
 		_, err = ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
-			Memo: &apiv1.Memo{Workspace: workspaceName, Title: "Folder Referrer", Content: "See [it](/memos/" + inFolderUID + ")."},
+			Memo: &apiv1.Memo{
+				Workspace: workspaceName, FolderPath: "movable", Title: "Sibling Referrer",
+				Content: "See [it](/movable/In%20Movable%20Folder).",
+			},
+		})
+		require.NoError(t, err)
+
+		outsideReferrer, err := ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
+			Memo: &apiv1.Memo{
+				Workspace: workspaceName, Title: "Folder Referrer",
+				Content: "See [it](/movable/In%20Movable%20Folder).",
+			},
 		})
 		require.NoError(t, err)
 
 		_, err = ts.Service.MoveWorkspaceFolder(userCtx, &apiv1.MoveWorkspaceFolderRequest{
 			Parent: workspaceName, Path: "movable", DestinationWorkspace: otherWorkspace.Name,
 		})
-		require.Error(t, err)
-		require.Equal(t, codes.FailedPrecondition, status.Code(err))
-		require.Contains(t, err.Error(), "Folder Referrer")
+		require.NoError(t, err, "the move is no longer rejected by P6")
+
+		after, err := ts.Service.GetMemo(userCtx, &apiv1.GetMemoRequest{Name: outsideReferrer.Name})
+		require.NoError(t, err)
+		require.Equal(t, "See [it](@Other%20Workspace/movable/In%20Movable%20Folder).", after.Content)
 	})
+}
+
+// TestWorkspaceRenameRepairsQualifiedLinks covers R2.6: the workspace-qualified
+// form addresses a knowledge base by title, so renaming one must carry every
+// reference to it along. Nothing else in the href changes.
+func TestWorkspaceRenameRepairsQualifiedLinks(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestService(t)
+	defer ts.Cleanup()
+
+	user, err := ts.CreateHostUser(ctx, "user")
+	require.NoError(t, err)
+	userCtx := ts.CreateUserContext(ctx, user.ID)
+
+	home, err := ts.Service.CreateWorkspace(userCtx, &apiv1.CreateWorkspaceRequest{
+		Workspace: &apiv1.Workspace{Title: "Home Workspace"},
+	})
+	require.NoError(t, err)
+	other, err := ts.Service.CreateWorkspace(userCtx, &apiv1.CreateWorkspaceRequest{
+		Workspace: &apiv1.Workspace{Title: "Handbook"},
+	})
+	require.NoError(t, err)
+
+	_, err = ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
+		Memo: &apiv1.Memo{Workspace: other.Name, Title: "Spec", Content: "content"},
+	})
+	require.NoError(t, err)
+	referrer, err := ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
+		Memo: &apiv1.Memo{Workspace: home.Name, Title: "Referrer", Content: "See [spec](@Handbook/Spec)."},
+	})
+	require.NoError(t, err)
+
+	_, err = ts.Service.UpdateWorkspace(userCtx, &apiv1.UpdateWorkspaceRequest{
+		Workspace:  &apiv1.Workspace{Name: other.Name, Title: "Product Handbook"},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"title"}},
+	})
+	require.NoError(t, err)
+
+	after, err := ts.Service.GetMemo(userCtx, &apiv1.GetMemoRequest{Name: referrer.Name})
+	require.NoError(t, err)
+	require.Equal(t, "See [spec](@Product%20Handbook/Spec).", after.Content)
+}
+
+// TestWorkspaceTitleConstraints covers R2.0: the workspace-qualified form can
+// only be parsed if a title never contains "/" and never starts with "@".
+func TestWorkspaceTitleConstraints(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestService(t)
+	defer ts.Cleanup()
+
+	user, err := ts.CreateHostUser(ctx, "user")
+	require.NoError(t, err)
+	userCtx := ts.CreateUserContext(ctx, user.ID)
+
+	for _, title := range []string{"a/b", "@handbook"} {
+		_, err := ts.Service.CreateWorkspace(userCtx, &apiv1.CreateWorkspaceRequest{
+			Workspace: &apiv1.Workspace{Title: title},
+		})
+		require.Error(t, err, "title %q must be rejected", title)
+		require.Equal(t, codes.InvalidArgument, status.Code(err))
+	}
+
+	ok, err := ts.Service.CreateWorkspace(userCtx, &apiv1.CreateWorkspaceRequest{
+		Workspace: &apiv1.Workspace{Title: "Handbook"},
+	})
+	require.NoError(t, err)
+
+	_, err = ts.Service.UpdateWorkspace(userCtx, &apiv1.UpdateWorkspaceRequest{
+		Workspace:  &apiv1.Workspace{Name: ok.Name, Title: "bad/title"},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"title"}},
+	})
+	require.Error(t, err)
+	require.Equal(t, codes.InvalidArgument, status.Code(err))
 }
 
 func uidPtr(uid string) *string { return &uid }

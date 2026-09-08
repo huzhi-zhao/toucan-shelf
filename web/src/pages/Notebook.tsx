@@ -4,7 +4,13 @@ import copy from "copy-to-clipboard";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { DocumentLinkProvider, flattenWorkspaceDocuments, resolveInWorkspace } from "@/components/MemoContent/DocumentLinkContext";
+import { extractWorkspaceQualifiedTitles } from "@/components/MemoContent/crossWorkspace";
+import {
+  DocumentLinkProvider,
+  flattenWorkspaceDocuments,
+  makeCrossWorkspaceResolver,
+  resolveInWorkspace,
+} from "@/components/MemoContent/DocumentLinkContext";
 import { EmbedAncestryProvider } from "@/components/MemoContent/EmbedAncestryContext";
 import DocumentView from "@/components/Notebook/DocumentView";
 import LibrarySearchResults from "@/components/Notebook/LibrarySearchResults";
@@ -15,6 +21,7 @@ import PromptDialog from "@/components/Notebook/PromptDialog";
 import { memoServiceClient, ragServiceClient } from "@/connect";
 import { useInstance } from "@/contexts/InstanceContext";
 import { useCreateAttachment } from "@/hooks/useAttachmentQueries";
+import { useCrossWorkspaceTrees } from "@/hooks/useCrossWorkspaceTrees";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import { useLastOpened } from "@/hooks/useLastOpened";
 import useMediaQuery from "@/hooks/useMediaQuery";
@@ -141,6 +148,13 @@ const Notebook = () => {
     enabled: !!selectedMemo,
   });
   usePageTitle(memo?.title);
+
+  // Cross-workspace links resolve synchronously during render, so the knowledge
+  // bases this document names are fetched up front rather than per link. The
+  // scan and the render read the same `memo.content`.
+  const crossWorkspaceTitles = useMemo(() => extractWorkspaceQualifiedTitles(memo?.content ?? ""), [memo?.content]);
+  const crossWorkspaceTrees = useCrossWorkspaceTrees(crossWorkspaceTitles);
+  const resolveCrossWorkspace = useMemo(() => makeCrossWorkspaceResolver(crossWorkspaceTrees), [crossWorkspaceTrees]);
 
   // When an in-workspace link carried an anchor (`document/abc#h-…`), scroll to the heading once
   // the newly-selected document has rendered. The markdown renders asynchronously, so retry across
@@ -633,7 +647,12 @@ const Notebook = () => {
               baseFolderPath: memo.folderPath,
               resolve: (href) => resolveInWorkspace(tree, memo.folderPath, href),
               resolveFrom: (baseFolderPath, href) => resolveInWorkspace(tree, baseFolderPath, href),
+              resolveCrossWorkspace,
               navigate: (memoName, href) => handleSelectDocument(memoName, href),
+              // handleSelectDocument selects a node in *this* knowledge base's
+              // tree, so a document in another one has to leave the notebook
+              // for the global document URL.
+              navigateCrossWorkspace: (memoName) => navigate(`/${memoName}`),
               listDocuments: () => flattenWorkspaceDocuments(tree, memo.name),
             }}
           >

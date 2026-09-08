@@ -694,6 +694,16 @@ func (s *FileServerService) checkAttachmentPermission(ctx context.Context, c *ec
 		Store: s.Store,
 		CurrentUser: func(ctx context.Context) (*store.User, error) {
 			identityUsed = true
+			// A download token names one attachment and one user, so it stands in
+			// as that user's identity for this request only. What it buys is the
+			// chance to be asked; the checks below still decide the answer.
+			if user, err := s.authenticator.AuthenticateByDownloadToken(ctx,
+				c.QueryParam(auth.DownloadTokenQueryParam), attachment.UID); err != nil {
+				return nil, err
+			} else if user != nil {
+				credentialKind = auth.CredentialKindDownloadToken
+				return user, nil
+			}
 			user, kind, err := s.getCurrentUser(ctx, c)
 			credentialKind = kind
 			return user, err

@@ -91,18 +91,26 @@ func (w *WorkspaceConfig) inScope(serverFolder string) bool {
 	return serverFolder == w.Sparse || strings.HasPrefix(serverFolder, w.Sparse+"/")
 }
 
-// LocalRelPath is the repo-relative file path for a memo, with the sparse folder
-// prefix (if any) stripped so a sparse checkout's files sit at its root.
+// LocalRelPath is the repo-relative file path for a memo. For a sparse checkout
+// it is scoped to the mapped folder (see inScope) and, unless SparseSubdir is
+// set, has that folder's prefix stripped so its contents sit at the checkout
+// root; with SparseSubdir the folder is kept as-is, so the local tree mirrors
+// the server folder_path exactly.
 func (w *WorkspaceConfig) LocalRelPath(serverFolder, title, docType string) string {
+	if w.Sparse != "" && w.SparseSubdir {
+		return RelPath(serverFolder, title, docType)
+	}
 	return RelPath(w.stripSparse(serverFolder), title, docType)
 }
 
-// ServerFolderPath is the inverse of the strip done by LocalRelPath: it prepends
-// the sparse prefix to a locally-derived folder so push targets the right server
-// folder_path. Used when creating memos found under a sparse checkout.
+// ServerFolderPath is the inverse of LocalRelPath's mapping: it recovers the
+// server folder_path from a locally-derived folder so push targets the right
+// place. Used when creating memos found under a sparse checkout. With
+// SparseSubdir the local folder already is the server folder_path (nothing to
+// re-add); otherwise the stripped prefix is prepended back.
 func (w *WorkspaceConfig) ServerFolderPath(localFolder string) string {
 	localFolder = strings.Trim(filepath.ToSlash(localFolder), "/")
-	if w.Sparse == "" {
+	if w.Sparse == "" || w.SparseSubdir {
 		return localFolder
 	}
 	if localFolder == "" {

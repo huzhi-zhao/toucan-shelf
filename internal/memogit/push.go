@@ -232,8 +232,8 @@ func pushNewDoc(ctx context.Context, client *Client, ws *WorkspaceConfig, conten
 		return "", nil
 	}
 	folderPath, title, docType := deriveMemoFromPath(doc.Path)
-	// Sparse checkout: local paths have the mapped folder stripped, so re-add the
-	// prefix to target the right server folder_path.
+	// Sparse checkout: recover the server folder_path from the local path (see
+	// ServerFolderPath for the two mapping modes).
 	folderPath = ws.ServerFolderPath(folderPath)
 	fmt.Fprintf(out, "  + %s (new)\n", doc.Path)
 	if dryRun {

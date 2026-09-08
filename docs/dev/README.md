@@ -240,6 +240,8 @@ design doc 是给三个月后的人读的，下面这四类内容三个月后全
   —— 对外发布：快照模型的数据表、发布管线、站点搜索索引、分阶段切分与风险登记
 - [20260826-attachment-object-migration.md](design/20260826-attachment-object-migration.md)
   —— 附件对象迁移：目标 key 的计算规则与幂等性、复制路径、存储后端锁定、分阶段与风险登记
+- [20260903-memogit-sparse-checkout-subdir.md](design/20260903-memogit-sparse-checkout-subdir.md)
+  —— memogit sparse checkout 新增保留目录层级的模式（`--sparse-subdir`），被否决的选项
 
 > `docs/plans/` 下 2026-07-03 及之后的方案文档已按上述计划拆入本目录并从 `docs/plans/`
 > 删除（原文保留在 git history）。2026-03～2026-04 的 6 个方案目录判定与本 fork 增量

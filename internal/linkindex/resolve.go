@@ -229,9 +229,13 @@ const (
 	// "example.com/page", so renderers must fall back to external-link
 	// behaviour when it doesn't resolve rather than showing a broken link.
 	FormRelativeBare HrefForm = "relativeBare"
+	// FormWorkspaceQualified is the cross-workspace form (库限定路径):
+	// "@库标题/fb/dc.md". The first segment names the target workspace by
+	// title, the rest is a root-relative path inside it.
+	FormWorkspaceQualified HrefForm = "workspaceQualified"
 	// FormExternal is everything else: scheme-qualified URLs, bare fragments,
-	// queries, the empty string, and "@"-prefixed hrefs (reserved for the
-	// workspace-qualified form, 库限定路径).
+	// queries, the empty string, and "@"-prefixed hrefs that do not parse as
+	// the workspace-qualified form.
 	FormExternal HrefForm = "external"
 )
 
@@ -255,11 +259,18 @@ func ClassifyDocHref(href string) HrefForm {
 	if strings.HasPrefix(href, "/") {
 		return FormRootRelative
 	}
-	// "@" is reserved for the workspace-qualified form. Excluded here up front
-	// so a cross-workspace href is never silently resolved as an in-workspace
-	// relative path (which would render it as a broken link in its own
-	// workspace instead of reaching the other one).
-	if strings.HasPrefix(href, "#") || strings.HasPrefix(href, "?") || strings.HasPrefix(href, "@") {
+	// "@" is reserved for the workspace-qualified form, and is handled before
+	// the relative forms so a cross-workspace href is never silently resolved
+	// as an in-workspace relative path (which would render it as a broken link
+	// in its own workspace instead of reaching the other one). An "@" href that
+	// does not parse as that form is external, not a document reference.
+	if strings.HasPrefix(href, "@") {
+		if _, _, ok := ParseWorkspaceQualifiedHref(href); ok {
+			return FormWorkspaceQualified
+		}
+		return FormExternal
+	}
+	if strings.HasPrefix(href, "#") || strings.HasPrefix(href, "?") {
 		return FormExternal
 	}
 	if hasSchemeRe.MatchString(href) {
@@ -383,4 +394,87 @@ func IsInWorkspaceDocHref(href string) bool {
 	default:
 		return false
 	}
+}
+
+// ParseWorkspaceQualifiedHref splits a workspace-qualified href
+// ("@库标题/fb/dc.md", 库限定路径) into the target workspace title and the
+// root-relative path inside it (leading "/" included, so it can be handed
+// straight to ResolveRootRelativePath).
+//
+// Rejected, with ok false:
+//   - anything not starting with "@";
+//   - an empty title ("@/x.md") or an empty path ("@lib", "@lib/");
+//   - any "." or ".." segment in the path. Document-relative navigation is
+//     deliberately confined to a single workspace (see the requirements doc),
+//     so a cross-workspace path is always absolute inside its target.
+//
+// The title is percent-decoded, since a title may contain spaces or characters
+// a markdown destination has to escape. It is NOT trimmed or case-folded here;
+// title matching is the caller's business.
+//
+// Mirrors parseWorkspaceQualifiedHref in
+// web/src/components/MemoContent/DocumentLinkContext.tsx.
+func ParseWorkspaceQualifiedHref(href string) (title, rootRelativePath string, ok bool) {
+	if !strings.HasPrefix(href, "@") {
+		return "", "", false
+	}
+	rest := href[1:]
+	if idx := strings.IndexAny(rest, "?#"); idx >= 0 {
+		rest = rest[:idx]
+	}
+	slash := strings.Index(rest, "/")
+	if slash <= 0 {
+		return "", "", false
+	}
+	rawTitle, rawPath := rest[:slash], rest[slash:]
+
+	segments := splitPath(rawPath)
+	if len(segments) == 0 {
+		return "", "", false
+	}
+	for _, seg := range segments {
+		if seg == "." || seg == ".." {
+			return "", "", false
+		}
+	}
+
+	title = rawTitle
+	if decoded, err := url.PathUnescape(rawTitle); err == nil {
+		title = decoded
+	}
+	if strings.TrimSpace(title) == "" {
+		return "", "", false
+	}
+	return title, rawPath, true
+}
+
+// IsWorkspaceQualifiedHref reports whether href is a well-formed
+// workspace-qualified path (库限定路径).
+func IsWorkspaceQualifiedHref(href string) bool {
+	return ClassifyDocHref(href) == FormWorkspaceQualified
+}
+
+// WorkspaceQualifiedHref builds the canonical cross-workspace href for a
+// document: "@" + workspace title + the same root-relative path
+// CanonicalHref produces. The inverse of ParseWorkspaceQualifiedHref.
+func WorkspaceQualifiedHref(workspaceTitle, folderPath, title string) string {
+	return "@" + destinationEscaper.Replace(workspaceTitle) + CanonicalHref(folderPath, title)
+}
+
+// RetitleWorkspaceQualifiedHref rewrites the workspace title of a
+// workspace-qualified href, leaving the path inside it exactly as written
+// (including its original escaping). Used when a knowledge base is renamed:
+// every reference to it changes by the same substitution, so no tree is needed.
+// ok is false when href is not that form.
+func RetitleWorkspaceQualifiedHref(href, newTitle string) (string, bool) {
+	if _, _, ok := ParseWorkspaceQualifiedHref(href); !ok {
+		return href, false
+	}
+	rest := href[1:]
+	suffix := ""
+	if idx := strings.IndexAny(rest, "?#"); idx >= 0 {
+		rest, suffix = rest[:idx], rest[idx:]
+	}
+	slash := strings.Index(rest, "/")
+	return "@" + destinationEscaper.Replace(newTitle) + rest[slash:] + suffix, true
 }

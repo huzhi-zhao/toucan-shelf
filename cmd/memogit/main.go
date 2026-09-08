@@ -38,7 +38,7 @@ knowledge bases, each in its own subfolder:
 
   my-kb/
   |- .memogit/          config.yaml (server + token), state/ (sync baseline),
-  |                     toucanshelf-guide.md (the manual for AI agents)
+  |                     skill/ (the manual for AI agents)
   |- Default/           one document tree per knowledge base
   '- Life/
 
@@ -90,6 +90,7 @@ func loginCmd() *cobra.Command {
 
 func cloneCmd() *cobra.Command {
 	var filter, sparse, dir string
+	var sparseSubdir bool
 	cmd := &cobra.Command{
 		Use:   "clone [workspace-title]",
 		Short: "First export of a workspace (or one folder via --sparse-checkout) + git init + baseline commit",
@@ -131,11 +132,12 @@ func cloneCmd() *cobra.Command {
 			if len(args) == 1 {
 				workspaceTitle = args[0]
 			}
-			return memogit.Clone(cmd.Context(), root, cfg, workspaceTitle, filter, sparse, cmd.OutOrStdout())
+			return memogit.Clone(cmd.Context(), root, cfg, workspaceTitle, filter, sparse, sparseSubdir, cmd.OutOrStdout())
 		},
 	}
 	cmd.Flags().StringVar(&filter, "filter", "", "optional CEL filter, e.g. '\"work\" in tags'")
-	cmd.Flags().StringVar(&sparse, "sparse-checkout", "", "check out only this server folder (its prefix is stripped locally)")
+	cmd.Flags().StringVar(&sparse, "sparse-checkout", "", "check out only this server folder")
+	cmd.Flags().BoolVar(&sparseSubdir, "sparse-subdir", false, "keep --sparse-checkout's folder as a subdirectory of the checkout root, instead of stripping it (default: stripped, so the folder's contents sit at the root)")
 	cmd.Flags().StringVar(&dir, "dir", "", "check out into this directory as a standalone root (metadata lives inside it)")
 	return cmd
 }
@@ -353,7 +355,7 @@ A checkout looks like an ordinary Markdown folder but isn't one, so memogit
 drops its own manual into the tree along with the entry points each tool reads
 by itself:
 
-  .memogit/` + memogit.GuideFile + `   the full manual (compiled into this binary)
+  .memogit/` + memogit.GuideDir + `/          the full manual (compiled into this binary)
   AGENTS.md                       Codex and other AGENTS.md-aware agents
   CLAUDE.md                       Claude Code
   .cursor/rules/                  Cursor

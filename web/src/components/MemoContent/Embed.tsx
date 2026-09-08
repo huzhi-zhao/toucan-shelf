@@ -1,10 +1,12 @@
 import { FileTextIcon } from "lucide-react";
 import { useMemo as useReactMemo } from "react";
 import MemoContent from "@/components/MemoContent";
+import { useCrossWorkspaceTrees } from "@/hooks/useCrossWorkspaceTrees";
 import { useMemo as useMemoDetail } from "@/hooks/useMemoQueries";
 import { cn } from "@/lib/utils";
 import { parseFrontmatter } from "@/utils/frontmatter";
-import { DocumentLinkProvider, useDocumentLinkContext } from "./DocumentLinkContext";
+import { extractWorkspaceQualifiedTitles } from "./crossWorkspace";
+import { classifyDocHref, DocumentLinkProvider, makeCrossWorkspaceResolver, useDocumentLinkContext } from "./DocumentLinkContext";
 import { EmbedAncestryProvider, MAX_EMBED_DEPTH, useEmbedAncestry } from "./EmbedAncestryContext";
 
 interface EmbedProps {
@@ -29,6 +31,14 @@ function EmbedNotice({ children, tone }: { children: React.ReactNode; tone?: "mu
 export const Embed: React.FC<EmbedProps> = ({ target }) => {
   const documentLinkContext = useDocumentLinkContext();
   const ancestry = useEmbedAncestry();
+  // Cross-workspace embedding is deliberately not supported (v1). Short-circuit
+  // *before* resolving, so an "@库标题/…" embed never causes a read of another
+  // knowledge base at all — refusing after the fact would still have performed
+  // the lookup.
+  if (classifyDocHref(target) === "workspaceQualified") {
+    return <EmbedNotice tone="muted">暂不支持跨知识库嵌入：{target}</EmbedNotice>;
+  }
+
   const resolvedName = documentLinkContext?.resolve(target);
 
   if (!resolvedName) {
@@ -54,6 +64,13 @@ const EmbedContent: React.FC<{
   const documentLinkContext = useDocumentLinkContext();
   const { data: memo, isLoading, isError } = useMemoDetail(resolvedName);
   const body = useReactMemo(() => (memo ? parseFrontmatter(memo.content).body : ""), [memo]);
+  // The host document's prefetch only saw the host's own content, so an embedded
+  // document's cross-workspace links need their own. Same rebasing argument as
+  // the base folder below: what the embedded content resolves to must not depend
+  // on who embedded it.
+  const crossWorkspaceTitles = useReactMemo(() => extractWorkspaceQualifiedTitles(body), [body]);
+  const crossWorkspaceTrees = useCrossWorkspaceTrees(crossWorkspaceTitles);
+  const resolveCrossWorkspace = useReactMemo(() => makeCrossWorkspaceResolver(crossWorkspaceTrees), [crossWorkspaceTrees]);
 
   if (isLoading) {
     return <EmbedNotice tone="muted">加载中…</EmbedNotice>;
@@ -83,6 +100,7 @@ const EmbedContent: React.FC<{
               ...documentLinkContext,
               baseFolderPath: memo.folderPath,
               resolve: (href) => documentLinkContext.resolveFrom!(memo.folderPath, href),
+              resolveCrossWorkspace: documentLinkContext.resolveCrossWorkspace ? resolveCrossWorkspace : undefined,
             }}
           >
             <MemoContent content={body} memoName={resolvedName} showProperties={false} />

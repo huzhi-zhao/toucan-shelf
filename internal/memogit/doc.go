@@ -121,15 +121,17 @@ func relationUIDs(m *v1pb.Memo) []string {
 // get a small human-/AI-readable reference stub pointing at the downloaded
 // attachment bytes. refs are the memo's downloaded attachments (may be nil).
 //
-// This is the single place the local identity marker is added; StripLocalID is
-// the single place it comes back off. See localid.go for why files carry one.
+// This is the single place the local markers — the identity marker and the
+// attachment manifest — are built from server data; StripLocalID is the single
+// place they come back off. See localid.go and manifest.go for why files carry
+// them.
 func FileContent(m *v1pb.Memo, refs []AttachmentRef) string {
 	docType := docTypeString(m)
 	body := m.GetContent()
 	if docType == "PDF" {
 		body = pdfPlaceholder(m, refs)
 	}
-	return InjectLocalID(body, uidFromName(m.GetName()), docType)
+	return injectMarkers(body, renderManifest(m, refs), uidFromName(m.GetName()), docType)
 }
 
 // pdfPlaceholder builds the stub body for a PDF document (no editable content),

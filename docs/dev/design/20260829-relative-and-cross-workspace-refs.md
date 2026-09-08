@@ -13,9 +13,11 @@
 
 ---
 
-> **实施状态（2026-08-29）**：R0、R1 已实现并通过全部静态检查（`go test ./...` 33 个包全绿，
-> `web` 侧 tsc / biome / vitest 无新增失败）。R2 未开工。实现过程中相对路径拆出了「显式 / 裸」
-> 两种子形式，理由与规则见需求文档「显式相对与裸相对：解析失败时的分岔」。
+> **实施状态（2026-09-04）**：R0、R1、R2 全部实现并通过静态检查（`go test ./...` 除既有失败
+> `TestMigrationCopiesInstanceTagsToUserSettings` 外全绿；`web` 侧 tsc / biome 干净，vitest
+> 无新增失败）。实现过程中的两处偏离设计：相对路径拆出了「显式 / 裸」两种子形式（见需求文档
+> 「显式相对与裸相对：解析失败时的分岔」）；跨库三态中的「受限」与「不存在」被合并（见需求
+> 文档「渲染：三态」，理由是可区分即等于给出库名探测接口）。
 
 ## R0 · 共享解析测试向量（前置，与 R1 同期交付）
 
@@ -123,13 +125,14 @@ uid，写回 `CanonicalHref(target.FolderPath, target.Title)`。解析不出的�
 
 ## R2 · 跨库链接
 
-### R2.0 前置：知识库标题约束与存量迁移
+### R2.0 前置：知识库标题约束
 
 `CreateWorkspace` / `UpdateWorkspace` 新增校验：标题不含 `/`、不以 `@` 开头
-（[workspace_service.go:34](../../../server/router/api/v1/workspace_service.go)、:136）。
+（`validateWorkspaceTitle`）。
 
-存量库可能已经违反。**不得静默改名**——上线前跑一次检查脚本列出违规库，由用户自行改名；
-迁移未完成时 R2 的解析对这些库直接判失败（而不是错误切分）。这条要先于 R2 其余部分合入。
+原设计在此处还有一段存量迁移方案。**已删除**：跨库链接没有存量数据（2026-09-04 确认），
+所以不存在「已写下的 `@库/…` 因库名违规而错误切分」的风险。违规的存量库不静默改名、不阻塞，
+只是暂时无法被跨库链接寻址。
 
 ### R2.1 解析层
 
@@ -210,8 +213,7 @@ uid，写回 `CanonicalHref(target.FolderPath, target.Title)`。解析不出的�
 限制在 Provider 一层，不扩散到每个渲染组件的中间态。若预取方案在实施中被推翻，需要重新
 评估 R2 的工作量，不要就地改成异步。
 
-**R3 · 库标题存量违规（高）** —— 见 R2.0。这是唯一一处需要用户配合迁移的改动，必须
-先行且不可静默处理。
+**R3 · ~~库标题存量违规~~（已消除）** —— 见 R2.0。跨库链接无存量，迁移步骤整段取消。
 
 **R4 · P6 不变式反转（中）** —— 见 R2.5。有测试覆盖是好事，但也意味着「改实现必然要改
 测试」，容易顺手把测试改成迁就实现。红线已写在 R2.5。
@@ -253,3 +255,38 @@ uid，写回 `CanonicalHref(target.FolderPath, target.Title)`。解析不出的�
 | R2 | 4d | 3d | 2d |
 
 R2 的后端 4 天中，P6 反转（R2.5）与库改名修链（R2.6）各占约 1.5 天，是主要不确定性来源。
+
+---
+
+## R2 实现落点（回填）
+
+| 位置 | 内容 |
+|---|---|
+| `validateWorkspaceTitle`（workspace_service.go） | R2.0 标题约束，创建与改名两条写路径 |
+| `linkindex.ParseWorkspaceQualifiedHref` / `WorkspaceQualifiedHref` / `RetitleWorkspaceQualifiedHref` | R2.1 解析、构造、改名替换 |
+| `parseWorkspaceQualifiedHref`（DocumentLinkContext.tsx） | 前端孪生实现 |
+| `internal/linkindex/testdata/resolve_cases.json` | 42 条共享向量（原 33 条 + 库限定 11 条），新增 `other` 目标库树 |
+| `workspaceLinkTrees`（link_index.go） | R2.2 索引侧按库标题取树；**不过权限**，索引由内容派生 |
+| `BatchGetWorkspaceTreesByTitle`（workspace_service.go） | R2.3 渲染侧批量预取；权限在这里判，受限与不存在同形返回 |
+| `extractWorkspaceQualifiedTitles` / `useCrossWorkspaceTrees` / `makeCrossWorkspaceResolver` | R2.3 预取链路，`resolve` 保持同步 |
+| `markdownStyles.restrictedLink` + `Link.tsx` 的 `workspaceQualified` 分支 | R2.4 三态 + pending 态 |
+| `Embed.tsx` 的 `classifyDocHref` 前置短路 | 跨库嵌入在**解析之前**拒绝，不产生跨库读取 |
+| `crossWorkspaceHrefFor` / `repairInboundLinksBestEffort` 的按引用者选形 | R2.5 入链修复 |
+| `rewriteOutboundLinksAfterWorkspaceMoveBestEffort`（原 …ToUIDBestEffort） | R2.5 出链改写为 `@旧库/…`，uid 为兜底 |
+| `repairWorkspaceTitleReferencesBestEffort`（link_repair.go） | R2.6 库改名修链 |
+| `buildWorkspaceLinkTreeAsOf` 的「文档已不在本库则补回」 | 跨库移动后，留守引用者的陈旧 href 才解析得出来 |
+
+设计中未预见的两点：
+
+1. **`buildWorkspaceLinkTreeAsOf` 的注入**。P4/P5 时被改名的文档一直在本库，覆盖即可；跨库
+   移动后它已经不在引用者所在库的文档列表里，不补回去的话入链修复会「什么都找不到」而静默
+   跳过。
+2. **库标题的大小写并存**。标题唯一索引是大小写敏感的，而路由与本形式的匹配是大小写不敏感
+   的，因此「Career」与「career」可以同时存在。索引侧与渲染侧用同一条规则化解：精确匹配优先，
+   折叠键不覆盖已占用的键——两侧必须一致，否则同一条链接会「索引到一个库、渲染到另一个库」。
+
+### R2 未做
+
+- `GridCard` 内的库限定路径仍按站外链接渲染（需求文档「开放问题」已记录）。
+- 已发布站点（`site_publish.go`）不解析库限定路径：快照是单库的，目标不在其中。
+- 隐藏库能否作为跨库目标，仍是开放问题；当前实现按普通库处理（可解析、按权限判定）。

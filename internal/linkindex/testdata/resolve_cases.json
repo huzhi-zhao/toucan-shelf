@@ -8,153 +8,379 @@
   ],
   "trees": {
     "default": [
-      { "uid": "root-a", "title": "Alpha", "folderPath": "" },
-      { "uid": "fa-da", "title": "da", "folderPath": "fa" },
-      { "uid": "fa-db", "title": "db", "folderPath": "fa" },
-      { "uid": "fb-dc", "title": "dc", "folderPath": "fb" },
-      { "uid": "fa-sub-dd", "title": "dd", "folderPath": "fa/sub" },
-      { "uid": "dup-notes", "title": "Beta", "folderPath": "notes" },
-      { "uid": "dup-archive", "title": "Beta", "folderPath": "archive" },
-      { "uid": "ext-md", "title": "Gamma.md", "folderPath": "notes" },
-      { "uid": "spaced", "title": "Long Report", "folderPath": "设计" }
+      {
+        "uid": "root-a",
+        "title": "Alpha",
+        "folderPath": ""
+      },
+      {
+        "uid": "fa-da",
+        "title": "da",
+        "folderPath": "fa"
+      },
+      {
+        "uid": "fa-db",
+        "title": "db",
+        "folderPath": "fa"
+      },
+      {
+        "uid": "fb-dc",
+        "title": "dc",
+        "folderPath": "fb"
+      },
+      {
+        "uid": "fa-sub-dd",
+        "title": "dd",
+        "folderPath": "fa/sub"
+      },
+      {
+        "uid": "dup-notes",
+        "title": "Beta",
+        "folderPath": "notes"
+      },
+      {
+        "uid": "dup-archive",
+        "title": "Beta",
+        "folderPath": "archive"
+      },
+      {
+        "uid": "ext-md",
+        "title": "Gamma.md",
+        "folderPath": "notes"
+      },
+      {
+        "uid": "spaced",
+        "title": "Long Report",
+        "folderPath": "设计"
+      }
+    ],
+    "other": [
+      {
+        "uid": "o-root",
+        "title": "Index",
+        "folderPath": ""
+      },
+      {
+        "uid": "o-fb-dc",
+        "title": "dc",
+        "folderPath": "fb"
+      },
+      {
+        "uid": "o-spaced",
+        "title": "Long Report",
+        "folderPath": "设计"
+      }
     ]
   },
   "cases": [
     {
       "name": "库根相对：命中",
-      "base": "fa", "href": "/fb/dc.md", "form": "rootRelative", "uid": "fb-dc"
+      "base": "fa",
+      "href": "/fb/dc.md",
+      "form": "rootRelative",
+      "uid": "fb-dc"
     },
     {
       "name": "库根相对：不受 base 影响",
-      "base": "fa/sub", "href": "/fa/db", "form": "rootRelative", "uid": "fa-db"
+      "base": "fa/sub",
+      "href": "/fa/db",
+      "form": "rootRelative",
+      "uid": "fa-db"
     },
     {
       "name": "库根相对：解析不到",
-      "base": "", "href": "/nope/missing.md", "form": "rootRelative", "uid": null
+      "base": "",
+      "href": "/nope/missing.md",
+      "form": "rootRelative",
+      "uid": null
     },
     {
       "name": "库根相对：根下文档",
-      "base": "fa", "href": "/Alpha", "form": "rootRelative", "uid": "root-a"
+      "base": "fa",
+      "href": "/Alpha",
+      "form": "rootRelative",
+      "uid": "root-a"
     },
     {
       "name": "库根相对：标题自带 .md 扩展名",
-      "base": "", "href": "/notes/Gamma.md", "form": "rootRelative", "uid": "ext-md"
+      "base": "",
+      "href": "/notes/Gamma.md",
+      "form": "rootRelative",
+      "uid": "ext-md"
     },
     {
       "name": "库根相对：大小写无关",
-      "base": "", "href": "/notes/BETA", "form": "rootRelative", "uid": "dup-notes"
+      "base": "",
+      "href": "/notes/BETA",
+      "form": "rootRelative",
+      "uid": "dup-notes"
     },
     {
       "name": "库根相对：百分号编码的空格",
-      "base": "", "href": "/%E8%AE%BE%E8%AE%A1/Long%20Report", "form": "rootRelative", "uid": "spaced"
+      "base": "",
+      "href": "/%E8%AE%BE%E8%AE%A1/Long%20Report",
+      "form": "rootRelative",
+      "uid": "spaced"
     },
     {
       "name": "库根相对：丢弃 query 与 fragment",
-      "base": "", "href": "/fb/dc.md?x=1#sec", "form": "rootRelative", "uid": "fb-dc"
+      "base": "",
+      "href": "/fb/dc.md?x=1#sec",
+      "form": "rootRelative",
+      "uid": "fb-dc"
     },
-
     {
       "name": "显式相对：同目录兄弟",
-      "base": "fa", "href": "./db.md", "form": "relativeExplicit", "uid": "fa-db"
+      "base": "fa",
+      "href": "./db.md",
+      "form": "relativeExplicit",
+      "uid": "fa-db"
     },
     {
       "name": "显式相对：上跳一级再进另一目录",
-      "base": "fa", "href": "../fb/dc.md", "form": "relativeExplicit", "uid": "fb-dc"
+      "base": "fa",
+      "href": "../fb/dc.md",
+      "form": "relativeExplicit",
+      "uid": "fb-dc"
     },
     {
       "name": "显式相对：从子目录上跳",
-      "base": "fa/sub", "href": "../db", "form": "relativeExplicit", "uid": "fa-db"
+      "base": "fa/sub",
+      "href": "../db",
+      "form": "relativeExplicit",
+      "uid": "fa-db"
     },
     {
       "name": "显式相对：多级上跳到根",
-      "base": "fa/sub", "href": "../../Alpha", "form": "relativeExplicit", "uid": "root-a"
+      "base": "fa/sub",
+      "href": "../../Alpha",
+      "form": "relativeExplicit",
+      "uid": "root-a"
     },
     {
       "name": "显式相对：越过工作区根即失败，不得逃逸",
-      "base": "fa", "href": "../../../fb/dc.md", "form": "relativeExplicit", "uid": null
+      "base": "fa",
+      "href": "../../../fb/dc.md",
+      "form": "relativeExplicit",
+      "uid": null
     },
     {
       "name": "显式相对：base 为根时上跳失败",
-      "base": "", "href": "../fb/dc.md", "form": "relativeExplicit", "uid": null
+      "base": "",
+      "href": "../fb/dc.md",
+      "form": "relativeExplicit",
+      "uid": null
     },
     {
       "name": "显式相对：./ 后接子目录",
-      "base": "fa", "href": "./sub/dd.md", "form": "relativeExplicit", "uid": "fa-sub-dd"
+      "base": "fa",
+      "href": "./sub/dd.md",
+      "form": "relativeExplicit",
+      "uid": "fa-sub-dd"
     },
     {
       "name": "显式相对：中间段的 . 与 .. 规约",
-      "base": "fa", "href": "./sub/../db.md", "form": "relativeExplicit", "uid": "fa-db"
+      "base": "fa",
+      "href": "./sub/../db.md",
+      "form": "relativeExplicit",
+      "uid": "fa-db"
     },
     {
       "name": "显式相对：解析不到",
-      "base": "fa", "href": "./missing.md", "form": "relativeExplicit", "uid": null
+      "base": "fa",
+      "href": "./missing.md",
+      "form": "relativeExplicit",
+      "uid": null
     },
     {
       "name": "显式相对：同名文档按 base 消歧（notes 侧）",
-      "base": "notes", "href": "./Beta", "form": "relativeExplicit", "uid": "dup-notes"
+      "base": "notes",
+      "href": "./Beta",
+      "form": "relativeExplicit",
+      "uid": "dup-notes"
     },
     {
       "name": "显式相对：同名文档按 base 消歧（archive 侧）",
-      "base": "archive", "href": "./Beta", "form": "relativeExplicit", "uid": "dup-archive"
+      "base": "archive",
+      "href": "./Beta",
+      "form": "relativeExplicit",
+      "uid": "dup-archive"
     },
     {
       "name": "显式相对：丢弃 query 与 fragment",
-      "base": "fa", "href": "./db.md#sec", "form": "relativeExplicit", "uid": "fa-db"
+      "base": "fa",
+      "href": "./db.md#sec",
+      "form": "relativeExplicit",
+      "uid": "fa-db"
     },
-
     {
       "name": "裸相对：同目录兄弟",
-      "base": "fa", "href": "db.md", "form": "relativeBare", "uid": "fa-db"
+      "base": "fa",
+      "href": "db.md",
+      "form": "relativeBare",
+      "uid": "fa-db"
     },
     {
       "name": "裸相对：子目录",
-      "base": "fa", "href": "sub/dd.md", "form": "relativeBare", "uid": "fa-sub-dd"
+      "base": "fa",
+      "href": "sub/dd.md",
+      "form": "relativeBare",
+      "uid": "fa-sub-dd"
     },
     {
       "name": "裸相对：解析不到（渲染侧应退回站外链接，见 form 说明）",
-      "base": "fa", "href": "example.com/page", "form": "relativeBare", "uid": null
+      "base": "fa",
+      "href": "example.com/page",
+      "form": "relativeBare",
+      "uid": null
     },
-
     {
       "name": "UID 引用：站内绝对",
-      "base": "fa", "href": "/memos/abc123", "form": "absoluteMemo", "uid": "abc123"
+      "base": "fa",
+      "href": "/memos/abc123",
+      "form": "absoluteMemo",
+      "uid": "abc123"
     },
     {
       "name": "UID 引用：完整 URL",
-      "base": "fa", "href": "https://example.com/memos/abc123", "form": "absoluteMemo", "uid": "abc123"
+      "base": "fa",
+      "href": "https://example.com/memos/abc123",
+      "form": "absoluteMemo",
+      "uid": "abc123"
     },
     {
       "name": "UID 引用：带 query",
-      "base": "", "href": "/memos/abc123?x=1", "form": "absoluteMemo", "uid": "abc123"
+      "base": "",
+      "href": "/memos/abc123?x=1",
+      "form": "absoluteMemo",
+      "uid": "abc123"
     },
     {
       "name": "UID 引用：多一段路径就不是 UID 形式",
-      "base": "", "href": "/memos/abc/extra", "form": "rootRelative", "uid": null
+      "base": "",
+      "href": "/memos/abc/extra",
+      "form": "rootRelative",
+      "uid": null
     },
-
     {
       "name": "站外：http",
-      "base": "fa", "href": "https://example.com/x", "form": "external", "uid": null
+      "base": "fa",
+      "href": "https://example.com/x",
+      "form": "external",
+      "uid": null
     },
     {
       "name": "站外：mailto",
-      "base": "fa", "href": "mailto:a@b.com", "form": "external", "uid": null
+      "base": "fa",
+      "href": "mailto:a@b.com",
+      "form": "external",
+      "uid": null
     },
     {
       "name": "站外：纯 fragment",
-      "base": "fa", "href": "#section", "form": "external", "uid": null
+      "base": "fa",
+      "href": "#section",
+      "form": "external",
+      "uid": null
     },
     {
       "name": "站外：空 href",
-      "base": "fa", "href": "", "form": "external", "uid": null
+      "base": "fa",
+      "href": "",
+      "form": "external",
+      "uid": null
     },
     {
-      "name": "R2 接缝：@ 开头不得被归为相对路径（库限定形式的占位）",
-      "base": "fa", "href": "@产品手册/fb/dc.md", "form": "external", "uid": null
+      "name": "库限定：解析出库标题与库内根相对路径",
+      "base": "fa",
+      "href": "@产品手册/fb/dc.md",
+      "form": "workspaceQualified",
+      "uid": "o-fb-dc",
+      "workspaceTitle": "产品手册",
+      "path": "/fb/dc.md",
+      "tree": "other"
     },
     {
-      "name": "R2 接缝：@ 开头且看似同库路径，同样不得被相对解析吞掉",
-      "base": "fa", "href": "@技术笔记/fa/db.md", "form": "external", "uid": null
+      "name": "库限定：路径看似同库路径，也必须走跨库分支",
+      "base": "fa",
+      "href": "@技术笔记/fa/db.md",
+      "form": "workspaceQualified",
+      "uid": null,
+      "workspaceTitle": "技术笔记",
+      "path": "/fa/db.md",
+      "tree": "other"
+    },
+    {
+      "name": "库限定：库根文档",
+      "base": "fa",
+      "href": "@产品手册/Index",
+      "form": "workspaceQualified",
+      "uid": "o-root",
+      "workspaceTitle": "产品手册",
+      "path": "/Index",
+      "tree": "other"
+    },
+    {
+      "name": "库限定：标题与路径中的百分号编码都要解码",
+      "base": "fa",
+      "href": "@%E4%BA%A7%E5%93%81%E6%89%8B%E5%86%8C/%E8%AE%BE%E8%AE%A1/Long%20Report",
+      "form": "workspaceQualified",
+      "uid": "o-spaced",
+      "workspaceTitle": "产品手册",
+      "path": "/%E8%AE%BE%E8%AE%A1/Long%20Report",
+      "tree": "other"
+    },
+    {
+      "name": "库限定：fragment 不属于路径",
+      "base": "fa",
+      "href": "@产品手册/fb/dc.md#sec",
+      "form": "workspaceQualified",
+      "uid": "o-fb-dc",
+      "workspaceTitle": "产品手册",
+      "path": "/fb/dc.md",
+      "tree": "other"
+    },
+    {
+      "name": "库限定畸形：只有 @ 与库名，没有路径",
+      "base": "fa",
+      "href": "@产品手册",
+      "form": "external",
+      "uid": null
+    },
+    {
+      "name": "库限定畸形：路径为空",
+      "base": "fa",
+      "href": "@产品手册/",
+      "form": "external",
+      "uid": null
+    },
+    {
+      "name": "库限定畸形：库标题为空",
+      "base": "fa",
+      "href": "@/fb/dc.md",
+      "form": "external",
+      "uid": null
+    },
+    {
+      "name": "库限定畸形：路径含 .. —— 跨库不接受相对导航",
+      "base": "fa",
+      "href": "@产品手册/../fb/dc.md",
+      "form": "external",
+      "uid": null
+    },
+    {
+      "name": "库限定畸形：路径含 . —— 同上",
+      "base": "fa",
+      "href": "@产品手册/./dc.md",
+      "form": "external",
+      "uid": null
+    },
+    {
+      "name": "站外：邮箱式 @ 开头（无斜杠）仍是站外",
+      "base": "fa",
+      "href": "@handle",
+      "form": "external",
+      "uid": null
     }
   ]
 }

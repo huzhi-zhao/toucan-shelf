@@ -123,7 +123,7 @@ func (x WorkspaceGrant_Role) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use WorkspaceGrant_Role.Descriptor instead.
 func (WorkspaceGrant_Role) EnumDescriptor() ([]byte, []int) {
-	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{16, 0}
+	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{19, 0}
 }
 
 type Workspace struct {
@@ -826,6 +826,178 @@ func (x *GetWorkspaceTreeResponse) GetNodes() []*WorkspaceTreeNode {
 	return nil
 }
 
+type BatchGetWorkspaceTreesByTitleRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required. Knowledge-base titles to resolve, matched case-insensitively.
+	Titles        []string `protobuf:"bytes,1,rep,name=titles,proto3" json:"titles,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BatchGetWorkspaceTreesByTitleRequest) Reset() {
+	*x = BatchGetWorkspaceTreesByTitleRequest{}
+	mi := &file_api_v1_workspace_service_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BatchGetWorkspaceTreesByTitleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BatchGetWorkspaceTreesByTitleRequest) ProtoMessage() {}
+
+func (x *BatchGetWorkspaceTreesByTitleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_workspace_service_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BatchGetWorkspaceTreesByTitleRequest.ProtoReflect.Descriptor instead.
+func (*BatchGetWorkspaceTreesByTitleRequest) Descriptor() ([]byte, []int) {
+	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *BatchGetWorkspaceTreesByTitleRequest) GetTitles() []string {
+	if x != nil {
+		return x.Titles
+	}
+	return nil
+}
+
+type BatchGetWorkspaceTreesByTitleResponse struct {
+	state         protoimpl.MessageState  `protogen:"open.v1"`
+	Workspaces    []*WorkspaceTreeByTitle `protobuf:"bytes,1,rep,name=workspaces,proto3" json:"workspaces,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BatchGetWorkspaceTreesByTitleResponse) Reset() {
+	*x = BatchGetWorkspaceTreesByTitleResponse{}
+	mi := &file_api_v1_workspace_service_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BatchGetWorkspaceTreesByTitleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BatchGetWorkspaceTreesByTitleResponse) ProtoMessage() {}
+
+func (x *BatchGetWorkspaceTreesByTitleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_workspace_service_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BatchGetWorkspaceTreesByTitleResponse.ProtoReflect.Descriptor instead.
+func (*BatchGetWorkspaceTreesByTitleResponse) Descriptor() ([]byte, []int) {
+	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *BatchGetWorkspaceTreesByTitleResponse) GetWorkspaces() []*WorkspaceTreeByTitle {
+	if x != nil {
+		return x.Workspaces
+	}
+	return nil
+}
+
+type WorkspaceTreeByTitle struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The title as it was requested, so the caller can match responses to
+	// requests without re-normalizing.
+	RequestedTitle string `protobuf:"bytes,1,opt,name=requested_title,json=requestedTitle,proto3" json:"requested_title,omitempty"`
+	// False when the knowledge base does not exist OR the caller may not read it.
+	// The two cases are deliberately indistinguishable; every other field is left
+	// empty in that case.
+	Available bool `protobuf:"varint,2,opt,name=available,proto3" json:"available,omitempty"`
+	// Format: workspaces/{workspace}
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// The title in its stored casing.
+	Title         string               `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
+	Nodes         []*WorkspaceTreeNode `protobuf:"bytes,5,rep,name=nodes,proto3" json:"nodes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WorkspaceTreeByTitle) Reset() {
+	*x = WorkspaceTreeByTitle{}
+	mi := &file_api_v1_workspace_service_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorkspaceTreeByTitle) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorkspaceTreeByTitle) ProtoMessage() {}
+
+func (x *WorkspaceTreeByTitle) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_workspace_service_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorkspaceTreeByTitle.ProtoReflect.Descriptor instead.
+func (*WorkspaceTreeByTitle) Descriptor() ([]byte, []int) {
+	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *WorkspaceTreeByTitle) GetRequestedTitle() string {
+	if x != nil {
+		return x.RequestedTitle
+	}
+	return ""
+}
+
+func (x *WorkspaceTreeByTitle) GetAvailable() bool {
+	if x != nil {
+		return x.Available
+	}
+	return false
+}
+
+func (x *WorkspaceTreeByTitle) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *WorkspaceTreeByTitle) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *WorkspaceTreeByTitle) GetNodes() []*WorkspaceTreeNode {
+	if x != nil {
+		return x.Nodes
+	}
+	return nil
+}
+
 type CreateWorkspaceFolderRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Required. Format: workspaces/{workspace}
@@ -838,7 +1010,7 @@ type CreateWorkspaceFolderRequest struct {
 
 func (x *CreateWorkspaceFolderRequest) Reset() {
 	*x = CreateWorkspaceFolderRequest{}
-	mi := &file_api_v1_workspace_service_proto_msgTypes[11]
+	mi := &file_api_v1_workspace_service_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -850,7 +1022,7 @@ func (x *CreateWorkspaceFolderRequest) String() string {
 func (*CreateWorkspaceFolderRequest) ProtoMessage() {}
 
 func (x *CreateWorkspaceFolderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_workspace_service_proto_msgTypes[11]
+	mi := &file_api_v1_workspace_service_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -863,7 +1035,7 @@ func (x *CreateWorkspaceFolderRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateWorkspaceFolderRequest.ProtoReflect.Descriptor instead.
 func (*CreateWorkspaceFolderRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{11}
+	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *CreateWorkspaceFolderRequest) GetParent() string {
@@ -894,7 +1066,7 @@ type RenameWorkspaceFolderRequest struct {
 
 func (x *RenameWorkspaceFolderRequest) Reset() {
 	*x = RenameWorkspaceFolderRequest{}
-	mi := &file_api_v1_workspace_service_proto_msgTypes[12]
+	mi := &file_api_v1_workspace_service_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -906,7 +1078,7 @@ func (x *RenameWorkspaceFolderRequest) String() string {
 func (*RenameWorkspaceFolderRequest) ProtoMessage() {}
 
 func (x *RenameWorkspaceFolderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_workspace_service_proto_msgTypes[12]
+	mi := &file_api_v1_workspace_service_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -919,7 +1091,7 @@ func (x *RenameWorkspaceFolderRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameWorkspaceFolderRequest.ProtoReflect.Descriptor instead.
 func (*RenameWorkspaceFolderRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{12}
+	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *RenameWorkspaceFolderRequest) GetParent() string {
@@ -963,7 +1135,7 @@ type MoveWorkspaceFolderRequest struct {
 
 func (x *MoveWorkspaceFolderRequest) Reset() {
 	*x = MoveWorkspaceFolderRequest{}
-	mi := &file_api_v1_workspace_service_proto_msgTypes[13]
+	mi := &file_api_v1_workspace_service_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -975,7 +1147,7 @@ func (x *MoveWorkspaceFolderRequest) String() string {
 func (*MoveWorkspaceFolderRequest) ProtoMessage() {}
 
 func (x *MoveWorkspaceFolderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_workspace_service_proto_msgTypes[13]
+	mi := &file_api_v1_workspace_service_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -988,7 +1160,7 @@ func (x *MoveWorkspaceFolderRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MoveWorkspaceFolderRequest.ProtoReflect.Descriptor instead.
 func (*MoveWorkspaceFolderRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{13}
+	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *MoveWorkspaceFolderRequest) GetParent() string {
@@ -1031,7 +1203,7 @@ type MoveWorkspaceFolderResponse struct {
 
 func (x *MoveWorkspaceFolderResponse) Reset() {
 	*x = MoveWorkspaceFolderResponse{}
-	mi := &file_api_v1_workspace_service_proto_msgTypes[14]
+	mi := &file_api_v1_workspace_service_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1043,7 +1215,7 @@ func (x *MoveWorkspaceFolderResponse) String() string {
 func (*MoveWorkspaceFolderResponse) ProtoMessage() {}
 
 func (x *MoveWorkspaceFolderResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_workspace_service_proto_msgTypes[14]
+	mi := &file_api_v1_workspace_service_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1056,7 +1228,7 @@ func (x *MoveWorkspaceFolderResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MoveWorkspaceFolderResponse.ProtoReflect.Descriptor instead.
 func (*MoveWorkspaceFolderResponse) Descriptor() ([]byte, []int) {
-	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{14}
+	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *MoveWorkspaceFolderResponse) GetNewPath() string {
@@ -1085,7 +1257,7 @@ type DeleteWorkspaceFolderRequest struct {
 
 func (x *DeleteWorkspaceFolderRequest) Reset() {
 	*x = DeleteWorkspaceFolderRequest{}
-	mi := &file_api_v1_workspace_service_proto_msgTypes[15]
+	mi := &file_api_v1_workspace_service_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1097,7 +1269,7 @@ func (x *DeleteWorkspaceFolderRequest) String() string {
 func (*DeleteWorkspaceFolderRequest) ProtoMessage() {}
 
 func (x *DeleteWorkspaceFolderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_workspace_service_proto_msgTypes[15]
+	mi := &file_api_v1_workspace_service_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1110,7 +1282,7 @@ func (x *DeleteWorkspaceFolderRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteWorkspaceFolderRequest.ProtoReflect.Descriptor instead.
 func (*DeleteWorkspaceFolderRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{15}
+	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *DeleteWorkspaceFolderRequest) GetParent() string {
@@ -1150,7 +1322,7 @@ type WorkspaceGrant struct {
 
 func (x *WorkspaceGrant) Reset() {
 	*x = WorkspaceGrant{}
-	mi := &file_api_v1_workspace_service_proto_msgTypes[16]
+	mi := &file_api_v1_workspace_service_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1162,7 +1334,7 @@ func (x *WorkspaceGrant) String() string {
 func (*WorkspaceGrant) ProtoMessage() {}
 
 func (x *WorkspaceGrant) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_workspace_service_proto_msgTypes[16]
+	mi := &file_api_v1_workspace_service_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1175,7 +1347,7 @@ func (x *WorkspaceGrant) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkspaceGrant.ProtoReflect.Descriptor instead.
 func (*WorkspaceGrant) Descriptor() ([]byte, []int) {
-	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{16}
+	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *WorkspaceGrant) GetName() string {
@@ -1234,7 +1406,7 @@ type ListWorkspaceGrantsRequest struct {
 
 func (x *ListWorkspaceGrantsRequest) Reset() {
 	*x = ListWorkspaceGrantsRequest{}
-	mi := &file_api_v1_workspace_service_proto_msgTypes[17]
+	mi := &file_api_v1_workspace_service_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1246,7 +1418,7 @@ func (x *ListWorkspaceGrantsRequest) String() string {
 func (*ListWorkspaceGrantsRequest) ProtoMessage() {}
 
 func (x *ListWorkspaceGrantsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_workspace_service_proto_msgTypes[17]
+	mi := &file_api_v1_workspace_service_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1259,7 +1431,7 @@ func (x *ListWorkspaceGrantsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWorkspaceGrantsRequest.ProtoReflect.Descriptor instead.
 func (*ListWorkspaceGrantsRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{17}
+	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ListWorkspaceGrantsRequest) GetParent() string {
@@ -1285,7 +1457,7 @@ type ListWorkspaceGrantsResponse struct {
 
 func (x *ListWorkspaceGrantsResponse) Reset() {
 	*x = ListWorkspaceGrantsResponse{}
-	mi := &file_api_v1_workspace_service_proto_msgTypes[18]
+	mi := &file_api_v1_workspace_service_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1297,7 +1469,7 @@ func (x *ListWorkspaceGrantsResponse) String() string {
 func (*ListWorkspaceGrantsResponse) ProtoMessage() {}
 
 func (x *ListWorkspaceGrantsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_workspace_service_proto_msgTypes[18]
+	mi := &file_api_v1_workspace_service_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1310,7 +1482,7 @@ func (x *ListWorkspaceGrantsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWorkspaceGrantsResponse.ProtoReflect.Descriptor instead.
 func (*ListWorkspaceGrantsResponse) Descriptor() ([]byte, []int) {
-	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{18}
+	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ListWorkspaceGrantsResponse) GetGrants() []*WorkspaceGrant {
@@ -1332,7 +1504,7 @@ type CreateWorkspaceGrantRequest struct {
 
 func (x *CreateWorkspaceGrantRequest) Reset() {
 	*x = CreateWorkspaceGrantRequest{}
-	mi := &file_api_v1_workspace_service_proto_msgTypes[19]
+	mi := &file_api_v1_workspace_service_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1344,7 +1516,7 @@ func (x *CreateWorkspaceGrantRequest) String() string {
 func (*CreateWorkspaceGrantRequest) ProtoMessage() {}
 
 func (x *CreateWorkspaceGrantRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_workspace_service_proto_msgTypes[19]
+	mi := &file_api_v1_workspace_service_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1357,7 +1529,7 @@ func (x *CreateWorkspaceGrantRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateWorkspaceGrantRequest.ProtoReflect.Descriptor instead.
 func (*CreateWorkspaceGrantRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{19}
+	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *CreateWorkspaceGrantRequest) GetParent() string {
@@ -1386,7 +1558,7 @@ type UpdateWorkspaceGrantRequest struct {
 
 func (x *UpdateWorkspaceGrantRequest) Reset() {
 	*x = UpdateWorkspaceGrantRequest{}
-	mi := &file_api_v1_workspace_service_proto_msgTypes[20]
+	mi := &file_api_v1_workspace_service_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1398,7 +1570,7 @@ func (x *UpdateWorkspaceGrantRequest) String() string {
 func (*UpdateWorkspaceGrantRequest) ProtoMessage() {}
 
 func (x *UpdateWorkspaceGrantRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_workspace_service_proto_msgTypes[20]
+	mi := &file_api_v1_workspace_service_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1411,7 +1583,7 @@ func (x *UpdateWorkspaceGrantRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateWorkspaceGrantRequest.ProtoReflect.Descriptor instead.
 func (*UpdateWorkspaceGrantRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{20}
+	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *UpdateWorkspaceGrantRequest) GetGrant() *WorkspaceGrant {
@@ -1438,7 +1610,7 @@ type DeleteWorkspaceGrantRequest struct {
 
 func (x *DeleteWorkspaceGrantRequest) Reset() {
 	*x = DeleteWorkspaceGrantRequest{}
-	mi := &file_api_v1_workspace_service_proto_msgTypes[21]
+	mi := &file_api_v1_workspace_service_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1450,7 +1622,7 @@ func (x *DeleteWorkspaceGrantRequest) String() string {
 func (*DeleteWorkspaceGrantRequest) ProtoMessage() {}
 
 func (x *DeleteWorkspaceGrantRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_workspace_service_proto_msgTypes[21]
+	mi := &file_api_v1_workspace_service_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1463,7 +1635,7 @@ func (x *DeleteWorkspaceGrantRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteWorkspaceGrantRequest.ProtoReflect.Descriptor instead.
 func (*DeleteWorkspaceGrantRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{21}
+	return file_api_v1_workspace_service_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *DeleteWorkspaceGrantRequest) GetName() string {
@@ -1544,7 +1716,19 @@ const file_api_v1_workspace_service_proto_rawDesc = "" +
 	"\x16memos.api.v1/WorkspaceR\x04name\x12\x1f\n" +
 	"\barchived\x18\x02 \x01(\bB\x03\xe0A\x01R\barchived\"Q\n" +
 	"\x18GetWorkspaceTreeResponse\x125\n" +
-	"\x05nodes\x18\x01 \x03(\v2\x1f.memos.api.v1.WorkspaceTreeNodeR\x05nodes\"w\n" +
+	"\x05nodes\x18\x01 \x03(\v2\x1f.memos.api.v1.WorkspaceTreeNodeR\x05nodes\"C\n" +
+	"$BatchGetWorkspaceTreesByTitleRequest\x12\x1b\n" +
+	"\x06titles\x18\x01 \x03(\tB\x03\xe0A\x02R\x06titles\"k\n" +
+	"%BatchGetWorkspaceTreesByTitleResponse\x12B\n" +
+	"\n" +
+	"workspaces\x18\x01 \x03(\v2\".memos.api.v1.WorkspaceTreeByTitleR\n" +
+	"workspaces\"\xbe\x01\n" +
+	"\x14WorkspaceTreeByTitle\x12'\n" +
+	"\x0frequested_title\x18\x01 \x01(\tR\x0erequestedTitle\x12\x1c\n" +
+	"\tavailable\x18\x02 \x01(\bR\tavailable\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x14\n" +
+	"\x05title\x18\x04 \x01(\tR\x05title\x125\n" +
+	"\x05nodes\x18\x05 \x03(\v2\x1f.memos.api.v1.WorkspaceTreeNodeR\x05nodes\"w\n" +
 	"\x1cCreateWorkspaceFolderRequest\x12\x1b\n" +
 	"\x06parent\x18\x01 \x01(\tB\x03\xe0A\x02R\x06parent\x12:\n" +
 	"\x06folder\x18\x02 \x01(\v2\x1d.memos.api.v1.WorkspaceFolderB\x03\xe0A\x02R\x06folder\"{\n" +
@@ -1590,14 +1774,15 @@ const file_api_v1_workspace_service_proto_rawDesc = "" +
 	"\vupdate_mask\x18\x02 \x01(\v2\x1a.google.protobuf.FieldMaskB\x03\xe0A\x02R\n" +
 	"updateMask\"6\n" +
 	"\x1bDeleteWorkspaceGrantRequest\x12\x17\n" +
-	"\x04name\x18\x01 \x01(\tB\x03\xe0A\x02R\x04name2\x9b\x10\n" +
+	"\x04name\x18\x01 \x01(\tB\x03\xe0A\x02R\x04name2\xd7\x11\n" +
 	"\x10WorkspaceService\x12\x83\x01\n" +
 	"\x0fCreateWorkspace\x12$.memos.api.v1.CreateWorkspaceRequest\x1a\x17.memos.api.v1.Workspace\"1\xdaA\tworkspace\x82\xd3\xe4\x93\x02\x1f:\tworkspace\"\x12/api/v1/workspaces\x12w\n" +
 	"\x0eListWorkspaces\x12#.memos.api.v1.ListWorkspacesRequest\x1a$.memos.api.v1.ListWorkspacesResponse\"\x1a\x82\xd3\xe4\x93\x02\x14\x12\x12/api/v1/workspaces\x12v\n" +
 	"\fGetWorkspace\x12!.memos.api.v1.GetWorkspaceRequest\x1a\x17.memos.api.v1.Workspace\"*\xdaA\x04name\x82\xd3\xe4\x93\x02\x1d\x12\x1b/api/v1/{name=workspaces/*}\x12\xa2\x01\n" +
 	"\x0fUpdateWorkspace\x12$.memos.api.v1.UpdateWorkspaceRequest\x1a\x17.memos.api.v1.Workspace\"P\xdaA\x15workspace,update_mask\x82\xd3\xe4\x93\x022:\tworkspace2%/api/v1/{workspace.name=workspaces/*}\x12{\n" +
 	"\x0fDeleteWorkspace\x12$.memos.api.v1.DeleteWorkspaceRequest\x1a\x16.google.protobuf.Empty\"*\xdaA\x04name\x82\xd3\xe4\x93\x02\x1d*\x1b/api/v1/{name=workspaces/*}\x12\x8b\x01\n" +
-	"\x10GetWorkspaceTree\x12%.memos.api.v1.GetWorkspaceTreeRequest\x1a&.memos.api.v1.GetWorkspaceTreeResponse\"(\x82\xd3\xe4\x93\x02\"\x12 /api/v1/{name=workspaces/*}/tree\x12\x99\x01\n" +
+	"\x10GetWorkspaceTree\x12%.memos.api.v1.GetWorkspaceTreeRequest\x1a&.memos.api.v1.GetWorkspaceTreeResponse\"(\x82\xd3\xe4\x93\x02\"\x12 /api/v1/{name=workspaces/*}/tree\x12\xb9\x01\n" +
+	"\x1dBatchGetWorkspaceTreesByTitle\x122.memos.api.v1.BatchGetWorkspaceTreesByTitleRequest\x1a3.memos.api.v1.BatchGetWorkspaceTreesByTitleResponse\"/\x82\xd3\xe4\x93\x02)\x12'/api/v1/workspaces:batchGetTreesByTitle\x12\x99\x01\n" +
 	"\x15CreateWorkspaceFolder\x12*.memos.api.v1.CreateWorkspaceFolderRequest\x1a\x1d.memos.api.v1.WorkspaceFolder\"5\x82\xd3\xe4\x93\x02/:\x06folder\"%/api/v1/{parent=workspaces/*}/folders\x12\x94\x01\n" +
 	"\x15RenameWorkspaceFolder\x12*.memos.api.v1.RenameWorkspaceFolderRequest\x1a\x16.google.protobuf.Empty\"7\x82\xd3\xe4\x93\x021:\x01*\",/api/v1/{parent=workspaces/*}/folders:rename\x12\xa1\x01\n" +
 	"\x13MoveWorkspaceFolder\x12(.memos.api.v1.MoveWorkspaceFolderRequest\x1a).memos.api.v1.MoveWorkspaceFolderResponse\"5\x82\xd3\xe4\x93\x02/:\x01*\"*/api/v1/{parent=workspaces/*}/folders:move\x12\x94\x01\n" +
@@ -1621,88 +1806,95 @@ func file_api_v1_workspace_service_proto_rawDescGZIP() []byte {
 }
 
 var file_api_v1_workspace_service_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_api_v1_workspace_service_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_api_v1_workspace_service_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_api_v1_workspace_service_proto_goTypes = []any{
-	(WorkspaceTreeNode_NodeType)(0),      // 0: memos.api.v1.WorkspaceTreeNode.NodeType
-	(WorkspaceGrant_Role)(0),             // 1: memos.api.v1.WorkspaceGrant.Role
-	(*Workspace)(nil),                    // 2: memos.api.v1.Workspace
-	(*WorkspaceFolder)(nil),              // 3: memos.api.v1.WorkspaceFolder
-	(*WorkspaceTreeNode)(nil),            // 4: memos.api.v1.WorkspaceTreeNode
-	(*CreateWorkspaceRequest)(nil),       // 5: memos.api.v1.CreateWorkspaceRequest
-	(*ListWorkspacesRequest)(nil),        // 6: memos.api.v1.ListWorkspacesRequest
-	(*ListWorkspacesResponse)(nil),       // 7: memos.api.v1.ListWorkspacesResponse
-	(*GetWorkspaceRequest)(nil),          // 8: memos.api.v1.GetWorkspaceRequest
-	(*UpdateWorkspaceRequest)(nil),       // 9: memos.api.v1.UpdateWorkspaceRequest
-	(*DeleteWorkspaceRequest)(nil),       // 10: memos.api.v1.DeleteWorkspaceRequest
-	(*GetWorkspaceTreeRequest)(nil),      // 11: memos.api.v1.GetWorkspaceTreeRequest
-	(*GetWorkspaceTreeResponse)(nil),     // 12: memos.api.v1.GetWorkspaceTreeResponse
-	(*CreateWorkspaceFolderRequest)(nil), // 13: memos.api.v1.CreateWorkspaceFolderRequest
-	(*RenameWorkspaceFolderRequest)(nil), // 14: memos.api.v1.RenameWorkspaceFolderRequest
-	(*MoveWorkspaceFolderRequest)(nil),   // 15: memos.api.v1.MoveWorkspaceFolderRequest
-	(*MoveWorkspaceFolderResponse)(nil),  // 16: memos.api.v1.MoveWorkspaceFolderResponse
-	(*DeleteWorkspaceFolderRequest)(nil), // 17: memos.api.v1.DeleteWorkspaceFolderRequest
-	(*WorkspaceGrant)(nil),               // 18: memos.api.v1.WorkspaceGrant
-	(*ListWorkspaceGrantsRequest)(nil),   // 19: memos.api.v1.ListWorkspaceGrantsRequest
-	(*ListWorkspaceGrantsResponse)(nil),  // 20: memos.api.v1.ListWorkspaceGrantsResponse
-	(*CreateWorkspaceGrantRequest)(nil),  // 21: memos.api.v1.CreateWorkspaceGrantRequest
-	(*UpdateWorkspaceGrantRequest)(nil),  // 22: memos.api.v1.UpdateWorkspaceGrantRequest
-	(*DeleteWorkspaceGrantRequest)(nil),  // 23: memos.api.v1.DeleteWorkspaceGrantRequest
-	(*timestamppb.Timestamp)(nil),        // 24: google.protobuf.Timestamp
-	(*fieldmaskpb.FieldMask)(nil),        // 25: google.protobuf.FieldMask
-	(*emptypb.Empty)(nil),                // 26: google.protobuf.Empty
+	(WorkspaceTreeNode_NodeType)(0),               // 0: memos.api.v1.WorkspaceTreeNode.NodeType
+	(WorkspaceGrant_Role)(0),                      // 1: memos.api.v1.WorkspaceGrant.Role
+	(*Workspace)(nil),                             // 2: memos.api.v1.Workspace
+	(*WorkspaceFolder)(nil),                       // 3: memos.api.v1.WorkspaceFolder
+	(*WorkspaceTreeNode)(nil),                     // 4: memos.api.v1.WorkspaceTreeNode
+	(*CreateWorkspaceRequest)(nil),                // 5: memos.api.v1.CreateWorkspaceRequest
+	(*ListWorkspacesRequest)(nil),                 // 6: memos.api.v1.ListWorkspacesRequest
+	(*ListWorkspacesResponse)(nil),                // 7: memos.api.v1.ListWorkspacesResponse
+	(*GetWorkspaceRequest)(nil),                   // 8: memos.api.v1.GetWorkspaceRequest
+	(*UpdateWorkspaceRequest)(nil),                // 9: memos.api.v1.UpdateWorkspaceRequest
+	(*DeleteWorkspaceRequest)(nil),                // 10: memos.api.v1.DeleteWorkspaceRequest
+	(*GetWorkspaceTreeRequest)(nil),               // 11: memos.api.v1.GetWorkspaceTreeRequest
+	(*GetWorkspaceTreeResponse)(nil),              // 12: memos.api.v1.GetWorkspaceTreeResponse
+	(*BatchGetWorkspaceTreesByTitleRequest)(nil),  // 13: memos.api.v1.BatchGetWorkspaceTreesByTitleRequest
+	(*BatchGetWorkspaceTreesByTitleResponse)(nil), // 14: memos.api.v1.BatchGetWorkspaceTreesByTitleResponse
+	(*WorkspaceTreeByTitle)(nil),                  // 15: memos.api.v1.WorkspaceTreeByTitle
+	(*CreateWorkspaceFolderRequest)(nil),          // 16: memos.api.v1.CreateWorkspaceFolderRequest
+	(*RenameWorkspaceFolderRequest)(nil),          // 17: memos.api.v1.RenameWorkspaceFolderRequest
+	(*MoveWorkspaceFolderRequest)(nil),            // 18: memos.api.v1.MoveWorkspaceFolderRequest
+	(*MoveWorkspaceFolderResponse)(nil),           // 19: memos.api.v1.MoveWorkspaceFolderResponse
+	(*DeleteWorkspaceFolderRequest)(nil),          // 20: memos.api.v1.DeleteWorkspaceFolderRequest
+	(*WorkspaceGrant)(nil),                        // 21: memos.api.v1.WorkspaceGrant
+	(*ListWorkspaceGrantsRequest)(nil),            // 22: memos.api.v1.ListWorkspaceGrantsRequest
+	(*ListWorkspaceGrantsResponse)(nil),           // 23: memos.api.v1.ListWorkspaceGrantsResponse
+	(*CreateWorkspaceGrantRequest)(nil),           // 24: memos.api.v1.CreateWorkspaceGrantRequest
+	(*UpdateWorkspaceGrantRequest)(nil),           // 25: memos.api.v1.UpdateWorkspaceGrantRequest
+	(*DeleteWorkspaceGrantRequest)(nil),           // 26: memos.api.v1.DeleteWorkspaceGrantRequest
+	(*timestamppb.Timestamp)(nil),                 // 27: google.protobuf.Timestamp
+	(*fieldmaskpb.FieldMask)(nil),                 // 28: google.protobuf.FieldMask
+	(*emptypb.Empty)(nil),                         // 29: google.protobuf.Empty
 }
 var file_api_v1_workspace_service_proto_depIdxs = []int32{
-	24, // 0: memos.api.v1.Workspace.create_time:type_name -> google.protobuf.Timestamp
-	24, // 1: memos.api.v1.Workspace.update_time:type_name -> google.protobuf.Timestamp
+	27, // 0: memos.api.v1.Workspace.create_time:type_name -> google.protobuf.Timestamp
+	27, // 1: memos.api.v1.Workspace.update_time:type_name -> google.protobuf.Timestamp
 	0,  // 2: memos.api.v1.WorkspaceTreeNode.type:type_name -> memos.api.v1.WorkspaceTreeNode.NodeType
-	24, // 3: memos.api.v1.WorkspaceTreeNode.create_time:type_name -> google.protobuf.Timestamp
+	27, // 3: memos.api.v1.WorkspaceTreeNode.create_time:type_name -> google.protobuf.Timestamp
 	4,  // 4: memos.api.v1.WorkspaceTreeNode.children:type_name -> memos.api.v1.WorkspaceTreeNode
-	24, // 5: memos.api.v1.WorkspaceTreeNode.update_time:type_name -> google.protobuf.Timestamp
+	27, // 5: memos.api.v1.WorkspaceTreeNode.update_time:type_name -> google.protobuf.Timestamp
 	2,  // 6: memos.api.v1.CreateWorkspaceRequest.workspace:type_name -> memos.api.v1.Workspace
 	2,  // 7: memos.api.v1.ListWorkspacesResponse.workspaces:type_name -> memos.api.v1.Workspace
 	2,  // 8: memos.api.v1.UpdateWorkspaceRequest.workspace:type_name -> memos.api.v1.Workspace
-	25, // 9: memos.api.v1.UpdateWorkspaceRequest.update_mask:type_name -> google.protobuf.FieldMask
+	28, // 9: memos.api.v1.UpdateWorkspaceRequest.update_mask:type_name -> google.protobuf.FieldMask
 	4,  // 10: memos.api.v1.GetWorkspaceTreeResponse.nodes:type_name -> memos.api.v1.WorkspaceTreeNode
-	3,  // 11: memos.api.v1.CreateWorkspaceFolderRequest.folder:type_name -> memos.api.v1.WorkspaceFolder
-	1,  // 12: memos.api.v1.WorkspaceGrant.role:type_name -> memos.api.v1.WorkspaceGrant.Role
-	24, // 13: memos.api.v1.WorkspaceGrant.create_time:type_name -> google.protobuf.Timestamp
-	18, // 14: memos.api.v1.ListWorkspaceGrantsResponse.grants:type_name -> memos.api.v1.WorkspaceGrant
-	18, // 15: memos.api.v1.CreateWorkspaceGrantRequest.grant:type_name -> memos.api.v1.WorkspaceGrant
-	18, // 16: memos.api.v1.UpdateWorkspaceGrantRequest.grant:type_name -> memos.api.v1.WorkspaceGrant
-	25, // 17: memos.api.v1.UpdateWorkspaceGrantRequest.update_mask:type_name -> google.protobuf.FieldMask
-	5,  // 18: memos.api.v1.WorkspaceService.CreateWorkspace:input_type -> memos.api.v1.CreateWorkspaceRequest
-	6,  // 19: memos.api.v1.WorkspaceService.ListWorkspaces:input_type -> memos.api.v1.ListWorkspacesRequest
-	8,  // 20: memos.api.v1.WorkspaceService.GetWorkspace:input_type -> memos.api.v1.GetWorkspaceRequest
-	9,  // 21: memos.api.v1.WorkspaceService.UpdateWorkspace:input_type -> memos.api.v1.UpdateWorkspaceRequest
-	10, // 22: memos.api.v1.WorkspaceService.DeleteWorkspace:input_type -> memos.api.v1.DeleteWorkspaceRequest
-	11, // 23: memos.api.v1.WorkspaceService.GetWorkspaceTree:input_type -> memos.api.v1.GetWorkspaceTreeRequest
-	13, // 24: memos.api.v1.WorkspaceService.CreateWorkspaceFolder:input_type -> memos.api.v1.CreateWorkspaceFolderRequest
-	14, // 25: memos.api.v1.WorkspaceService.RenameWorkspaceFolder:input_type -> memos.api.v1.RenameWorkspaceFolderRequest
-	15, // 26: memos.api.v1.WorkspaceService.MoveWorkspaceFolder:input_type -> memos.api.v1.MoveWorkspaceFolderRequest
-	17, // 27: memos.api.v1.WorkspaceService.DeleteWorkspaceFolder:input_type -> memos.api.v1.DeleteWorkspaceFolderRequest
-	19, // 28: memos.api.v1.WorkspaceService.ListWorkspaceGrants:input_type -> memos.api.v1.ListWorkspaceGrantsRequest
-	21, // 29: memos.api.v1.WorkspaceService.CreateWorkspaceGrant:input_type -> memos.api.v1.CreateWorkspaceGrantRequest
-	22, // 30: memos.api.v1.WorkspaceService.UpdateWorkspaceGrant:input_type -> memos.api.v1.UpdateWorkspaceGrantRequest
-	23, // 31: memos.api.v1.WorkspaceService.DeleteWorkspaceGrant:input_type -> memos.api.v1.DeleteWorkspaceGrantRequest
-	2,  // 32: memos.api.v1.WorkspaceService.CreateWorkspace:output_type -> memos.api.v1.Workspace
-	7,  // 33: memos.api.v1.WorkspaceService.ListWorkspaces:output_type -> memos.api.v1.ListWorkspacesResponse
-	2,  // 34: memos.api.v1.WorkspaceService.GetWorkspace:output_type -> memos.api.v1.Workspace
-	2,  // 35: memos.api.v1.WorkspaceService.UpdateWorkspace:output_type -> memos.api.v1.Workspace
-	26, // 36: memos.api.v1.WorkspaceService.DeleteWorkspace:output_type -> google.protobuf.Empty
-	12, // 37: memos.api.v1.WorkspaceService.GetWorkspaceTree:output_type -> memos.api.v1.GetWorkspaceTreeResponse
-	3,  // 38: memos.api.v1.WorkspaceService.CreateWorkspaceFolder:output_type -> memos.api.v1.WorkspaceFolder
-	26, // 39: memos.api.v1.WorkspaceService.RenameWorkspaceFolder:output_type -> google.protobuf.Empty
-	16, // 40: memos.api.v1.WorkspaceService.MoveWorkspaceFolder:output_type -> memos.api.v1.MoveWorkspaceFolderResponse
-	26, // 41: memos.api.v1.WorkspaceService.DeleteWorkspaceFolder:output_type -> google.protobuf.Empty
-	20, // 42: memos.api.v1.WorkspaceService.ListWorkspaceGrants:output_type -> memos.api.v1.ListWorkspaceGrantsResponse
-	18, // 43: memos.api.v1.WorkspaceService.CreateWorkspaceGrant:output_type -> memos.api.v1.WorkspaceGrant
-	18, // 44: memos.api.v1.WorkspaceService.UpdateWorkspaceGrant:output_type -> memos.api.v1.WorkspaceGrant
-	26, // 45: memos.api.v1.WorkspaceService.DeleteWorkspaceGrant:output_type -> google.protobuf.Empty
-	32, // [32:46] is the sub-list for method output_type
-	18, // [18:32] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	15, // 11: memos.api.v1.BatchGetWorkspaceTreesByTitleResponse.workspaces:type_name -> memos.api.v1.WorkspaceTreeByTitle
+	4,  // 12: memos.api.v1.WorkspaceTreeByTitle.nodes:type_name -> memos.api.v1.WorkspaceTreeNode
+	3,  // 13: memos.api.v1.CreateWorkspaceFolderRequest.folder:type_name -> memos.api.v1.WorkspaceFolder
+	1,  // 14: memos.api.v1.WorkspaceGrant.role:type_name -> memos.api.v1.WorkspaceGrant.Role
+	27, // 15: memos.api.v1.WorkspaceGrant.create_time:type_name -> google.protobuf.Timestamp
+	21, // 16: memos.api.v1.ListWorkspaceGrantsResponse.grants:type_name -> memos.api.v1.WorkspaceGrant
+	21, // 17: memos.api.v1.CreateWorkspaceGrantRequest.grant:type_name -> memos.api.v1.WorkspaceGrant
+	21, // 18: memos.api.v1.UpdateWorkspaceGrantRequest.grant:type_name -> memos.api.v1.WorkspaceGrant
+	28, // 19: memos.api.v1.UpdateWorkspaceGrantRequest.update_mask:type_name -> google.protobuf.FieldMask
+	5,  // 20: memos.api.v1.WorkspaceService.CreateWorkspace:input_type -> memos.api.v1.CreateWorkspaceRequest
+	6,  // 21: memos.api.v1.WorkspaceService.ListWorkspaces:input_type -> memos.api.v1.ListWorkspacesRequest
+	8,  // 22: memos.api.v1.WorkspaceService.GetWorkspace:input_type -> memos.api.v1.GetWorkspaceRequest
+	9,  // 23: memos.api.v1.WorkspaceService.UpdateWorkspace:input_type -> memos.api.v1.UpdateWorkspaceRequest
+	10, // 24: memos.api.v1.WorkspaceService.DeleteWorkspace:input_type -> memos.api.v1.DeleteWorkspaceRequest
+	11, // 25: memos.api.v1.WorkspaceService.GetWorkspaceTree:input_type -> memos.api.v1.GetWorkspaceTreeRequest
+	13, // 26: memos.api.v1.WorkspaceService.BatchGetWorkspaceTreesByTitle:input_type -> memos.api.v1.BatchGetWorkspaceTreesByTitleRequest
+	16, // 27: memos.api.v1.WorkspaceService.CreateWorkspaceFolder:input_type -> memos.api.v1.CreateWorkspaceFolderRequest
+	17, // 28: memos.api.v1.WorkspaceService.RenameWorkspaceFolder:input_type -> memos.api.v1.RenameWorkspaceFolderRequest
+	18, // 29: memos.api.v1.WorkspaceService.MoveWorkspaceFolder:input_type -> memos.api.v1.MoveWorkspaceFolderRequest
+	20, // 30: memos.api.v1.WorkspaceService.DeleteWorkspaceFolder:input_type -> memos.api.v1.DeleteWorkspaceFolderRequest
+	22, // 31: memos.api.v1.WorkspaceService.ListWorkspaceGrants:input_type -> memos.api.v1.ListWorkspaceGrantsRequest
+	24, // 32: memos.api.v1.WorkspaceService.CreateWorkspaceGrant:input_type -> memos.api.v1.CreateWorkspaceGrantRequest
+	25, // 33: memos.api.v1.WorkspaceService.UpdateWorkspaceGrant:input_type -> memos.api.v1.UpdateWorkspaceGrantRequest
+	26, // 34: memos.api.v1.WorkspaceService.DeleteWorkspaceGrant:input_type -> memos.api.v1.DeleteWorkspaceGrantRequest
+	2,  // 35: memos.api.v1.WorkspaceService.CreateWorkspace:output_type -> memos.api.v1.Workspace
+	7,  // 36: memos.api.v1.WorkspaceService.ListWorkspaces:output_type -> memos.api.v1.ListWorkspacesResponse
+	2,  // 37: memos.api.v1.WorkspaceService.GetWorkspace:output_type -> memos.api.v1.Workspace
+	2,  // 38: memos.api.v1.WorkspaceService.UpdateWorkspace:output_type -> memos.api.v1.Workspace
+	29, // 39: memos.api.v1.WorkspaceService.DeleteWorkspace:output_type -> google.protobuf.Empty
+	12, // 40: memos.api.v1.WorkspaceService.GetWorkspaceTree:output_type -> memos.api.v1.GetWorkspaceTreeResponse
+	14, // 41: memos.api.v1.WorkspaceService.BatchGetWorkspaceTreesByTitle:output_type -> memos.api.v1.BatchGetWorkspaceTreesByTitleResponse
+	3,  // 42: memos.api.v1.WorkspaceService.CreateWorkspaceFolder:output_type -> memos.api.v1.WorkspaceFolder
+	29, // 43: memos.api.v1.WorkspaceService.RenameWorkspaceFolder:output_type -> google.protobuf.Empty
+	19, // 44: memos.api.v1.WorkspaceService.MoveWorkspaceFolder:output_type -> memos.api.v1.MoveWorkspaceFolderResponse
+	29, // 45: memos.api.v1.WorkspaceService.DeleteWorkspaceFolder:output_type -> google.protobuf.Empty
+	23, // 46: memos.api.v1.WorkspaceService.ListWorkspaceGrants:output_type -> memos.api.v1.ListWorkspaceGrantsResponse
+	21, // 47: memos.api.v1.WorkspaceService.CreateWorkspaceGrant:output_type -> memos.api.v1.WorkspaceGrant
+	21, // 48: memos.api.v1.WorkspaceService.UpdateWorkspaceGrant:output_type -> memos.api.v1.WorkspaceGrant
+	29, // 49: memos.api.v1.WorkspaceService.DeleteWorkspaceGrant:output_type -> google.protobuf.Empty
+	35, // [35:50] is the sub-list for method output_type
+	20, // [20:35] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_api_v1_workspace_service_proto_init() }
@@ -1716,7 +1908,7 @@ func file_api_v1_workspace_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_v1_workspace_service_proto_rawDesc), len(file_api_v1_workspace_service_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   22,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

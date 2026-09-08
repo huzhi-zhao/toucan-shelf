@@ -18,6 +18,26 @@ import (
 	"github.com/usememos/memos/store"
 )
 
+// validateWorkspaceTitle enforces the two constraints the workspace-qualified
+// link form (库限定路径, `@库标题/路径`) needs in order to be parseable:
+// the title must not contain "/" (which separates the title from the path) and
+// must not start with "@" (which marks the form itself). See
+// docs/dev/requirements/document-reference-forms.md.
+//
+// Deliberately validated on create/rename only. Existing workspaces are never
+// renamed silently; one that violates these rules simply cannot be addressed by
+// a cross-workspace link until its owner renames it.
+func validateWorkspaceTitle(title string) error {
+	t := strings.TrimSpace(title)
+	if strings.Contains(t, "/") {
+		return status.Errorf(codes.InvalidArgument, `workspace title cannot contain "/"`)
+	}
+	if strings.HasPrefix(t, "@") {
+		return status.Errorf(codes.InvalidArgument, `workspace title cannot start with "@"`)
+	}
+	return nil
+}
+
 func (s *APIV1Service) CreateWorkspace(ctx context.Context, request *v1pb.CreateWorkspaceRequest) (*v1pb.Workspace, error) {
 	user, err := s.fetchCurrentUser(ctx)
 	if err != nil {
@@ -33,6 +53,9 @@ func (s *APIV1Service) CreateWorkspace(ctx context.Context, request *v1pb.Create
 	}
 	if request.Workspace == nil || strings.TrimSpace(request.Workspace.Title) == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "workspace title is required")
+	}
+	if err := validateWorkspaceTitle(request.Workspace.Title); err != nil {
+		return nil, err
 	}
 
 	// Titles are globally unique, not per creator: a workspace is addressable by
@@ -131,10 +154,14 @@ func (s *APIV1Service) UpdateWorkspace(ctx context.Context, request *v1pb.Update
 	}
 
 	update := &store.UpdateWorkspace{ID: workspace.ID}
+	previousTitle := ""
 	for _, field := range request.UpdateMask.Paths {
 		if field == "title" {
 			if strings.TrimSpace(request.Workspace.Title) == "" {
 				return nil, status.Errorf(codes.InvalidArgument, "workspace title cannot be empty")
+			}
+			if err := validateWorkspaceTitle(request.Workspace.Title); err != nil {
+				return nil, err
 			}
 			existing, err := s.Store.GetWorkspace(ctx, &store.FindWorkspace{Title: &request.Workspace.Title})
 			if err != nil {
@@ -143,6 +170,7 @@ func (s *APIV1Service) UpdateWorkspace(ctx context.Context, request *v1pb.Update
 			if existing != nil && existing.ID != workspace.ID {
 				return nil, status.Errorf(codes.AlreadyExists, "workspace with this title already exists")
 			}
+			previousTitle = workspace.Title
 			update.Title = &request.Workspace.Title
 		} else if field == "sort_field" {
 			if !isValidWorkspaceSortField(request.Workspace.SortField) {
@@ -170,6 +198,13 @@ func (s *APIV1Service) UpdateWorkspace(ctx context.Context, request *v1pb.Update
 	updated, err := s.Store.UpdateWorkspace(ctx, update)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to update workspace: %v", err)
+	}
+	// R2.6: cross-workspace links address a knowledge base by title, so a rename
+	// stales every "@旧库标题/…" href pointing into it. Best-effort and after the
+	// commit, like every other repair: the rename itself must not fail because a
+	// referencing document could not be rewritten.
+	if previousTitle != "" && previousTitle != updated.Title {
+		s.repairWorkspaceTitleReferencesBestEffort(ctx, workspace.ID, previousTitle, updated.Title)
 	}
 	return convertWorkspaceFromStore(updated, user.Username), nil
 }
@@ -237,15 +272,24 @@ func (s *APIV1Service) GetWorkspaceTree(ctx context.Context, request *v1pb.GetWo
 	if err != nil {
 		return nil, err
 	}
+	nodes, err := s.workspaceTreeNodes(ctx, workspace.ID, request.Archived)
+	if err != nil {
+		return nil, err
+	}
+	return &v1pb.GetWorkspaceTreeResponse{Nodes: nodes}, nil
+}
 
+// workspaceTreeNodes builds one workspace's folder/document hierarchy. Access
+// is the caller's business — every caller has already decided that.
+func (s *APIV1Service) workspaceTreeNodes(ctx context.Context, workspaceID int32, archived bool) ([]*v1pb.WorkspaceTreeNode, error) {
 	memos, err := s.Store.ListMemos(ctx, &store.FindMemo{
-		WorkspaceID:     &workspace.ID,
+		WorkspaceID:     &workspaceID,
 		ExcludeComments: true,
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list memos: %v", err)
 	}
-	folders, err := s.Store.ListWorkspaceFolders(ctx, &store.FindWorkspaceFolder{WorkspaceID: &workspace.ID})
+	folders, err := s.Store.ListWorkspaceFolders(ctx, &store.FindWorkspaceFolder{WorkspaceID: &workspaceID})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list folders: %v", err)
 	}
@@ -255,7 +299,7 @@ func (s *APIV1Service) GetWorkspaceTree(ctx context.Context, request *v1pb.GetWo
 		root.ensurePath(strings.Split(strings.Trim(f.Path, "/"), "/"))
 	}
 	for _, m := range memos {
-		if m.RowStatus == store.Archived != request.Archived {
+		if m.RowStatus == store.Archived != archived {
 			continue
 		}
 		if isHomeFolder(m.FolderPath) {
@@ -272,7 +316,103 @@ func (s *APIV1Service) GetWorkspaceTree(ctx context.Context, request *v1pb.GetWo
 		dir.docs = append(dir.docs, m)
 	}
 
-	return &v1pb.GetWorkspaceTreeResponse{Nodes: root.toNodes("")}, nil
+	return root.toNodes(""), nil
+}
+
+// BatchGetWorkspaceTreesByTitle resolves knowledge-base titles to their trees,
+// so the renderer can resolve every cross-workspace link ("@库标题/fb/dc.md")
+// in a document with one request instead of one per title.
+//
+// Titles are matched case-insensitively, the same way the ":workspaceTitle"
+// route and document titles are matched.
+//
+// A title that names no workspace and a title the caller may not read return
+// the identical shape (available = false, nothing else set). Distinguishing
+// them would turn this endpoint into an oracle for "does a knowledge base with
+// this title exist", which is exactly what getWorkspaceWithAccess's NotFound
+// for a non-member is there to prevent.
+func (s *APIV1Service) BatchGetWorkspaceTreesByTitle(ctx context.Context, request *v1pb.BatchGetWorkspaceTreesByTitleRequest) (*v1pb.BatchGetWorkspaceTreesByTitleResponse, error) {
+	user, err := s.fetchCurrentUser(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
+	}
+	if user == nil {
+		return nil, status.Errorf(codes.Unauthenticated, "user not authenticated")
+	}
+	if len(request.Titles) == 0 {
+		return &v1pb.BatchGetWorkspaceTreesByTitleResponse{}, nil
+	}
+	// One document can only mention so many knowledge bases; the cap keeps a
+	// crafted document from turning one render into an unbounded fan-out.
+	const maxTitles = 32
+	if len(request.Titles) > maxTitles {
+		return nil, status.Errorf(codes.InvalidArgument, "at most %d titles per request", maxTitles)
+	}
+
+	list, err := s.Store.ListWorkspaces(ctx, &store.FindWorkspace{})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list workspaces: %v", err)
+	}
+	byTitle := make(map[string]*store.Workspace, len(list))
+	for _, w := range list {
+		byTitle[w.Title] = w
+		// Case-insensitive fallback. The unique index on title is
+		// case-sensitive, so "Career" and "career" can both exist; an exact
+		// match always wins, and the folded key never overwrites one already
+		// claimed by a workspace whose title differs only in case, so which one
+		// a folded lookup finds does not depend on row order.
+		if folded := workspaceTitleKey(w.Title); folded != w.Title {
+			if _, taken := byTitle[folded]; !taken {
+				byTitle[folded] = w
+			}
+		}
+	}
+	lookup := func(title string) *store.Workspace {
+		if w, ok := byTitle[title]; ok {
+			return w
+		}
+		return byTitle[workspaceTitleKey(title)]
+	}
+
+	results := make([]*v1pb.WorkspaceTreeByTitle, 0, len(request.Titles))
+	// Two links into the same knowledge base must not cost two tree builds.
+	built := map[int32][]*v1pb.WorkspaceTreeNode{}
+	for _, requested := range request.Titles {
+		entry := &v1pb.WorkspaceTreeByTitle{RequestedTitle: requested}
+		results = append(results, entry)
+
+		workspace := lookup(requested)
+		if workspace == nil {
+			continue
+		}
+		role, err := s.resolveWorkspaceAccess(ctx, user, workspace.ID)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to resolve workspace access: %v", err)
+		}
+		if role == WorkspaceRoleNone {
+			continue
+		}
+
+		nodes, cached := built[workspace.ID]
+		if !cached {
+			nodes, err = s.workspaceTreeNodes(ctx, workspace.ID, false)
+			if err != nil {
+				return nil, err
+			}
+			built[workspace.ID] = nodes
+		}
+		entry.Available = true
+		entry.Name = WorkspaceNamePrefix + workspace.UID
+		entry.Title = workspace.Title
+		entry.Nodes = nodes
+	}
+	return &v1pb.BatchGetWorkspaceTreesByTitleResponse{Workspaces: results}, nil
+}
+
+// workspaceTitleKey normalizes a knowledge-base title for matching a
+// workspace-qualified link's "@库标题" segment against the stored titles.
+func workspaceTitleKey(title string) string {
+	return strings.ToLower(strings.TrimSpace(title))
 }
 
 // Folders are part of a knowledge base's contents, not of the knowledge base
@@ -553,25 +693,12 @@ func (s *APIV1Service) MoveWorkspaceFolder(ctx context.Context, request *v1pb.Mo
 		return nil, status.Errorf(codes.Internal, "failed to list folder contents: %v", err)
 	}
 
-	// P6: cross-workspace moves get the same reject-with-references check as
-	// archive/delete (P1) — root-relative hrefs can't be repaired across a
-	// workspace boundary, so a document outside this subtree that still links
-	// into it blocks the move instead of silently orphaning that link.
-	if len(memos) > 0 {
-		ids := make([]int32, len(memos))
-		inSubtree := make(map[int32]bool, len(memos))
-		for i, m := range memos {
-			ids[i] = m.ID
-			inSubtree[m.ID] = true
-		}
-		refs, err := s.findExternalLinkReferences(ctx, ids, inSubtree)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to check memo references: %v", err)
-		}
-		if len(refs) > 0 {
-			return nil, referenceDependencyError(refs)
-		}
-	}
+	// P6 used to reject this move whenever anything outside the subtree linked
+	// into it, because no href form survived a workspace boundary. The
+	// workspace-qualified form does, so the move now goes ahead and those
+	// referencers are repaired to "@目标库标题/…" after it commits (see the
+	// inbound sweep below, and
+	// docs/dev/design/20260829-relative-and-cross-workspace-refs.md R2.5).
 
 	// (workspace_id, folder_path, title) is unique, so a colliding title anywhere in
 	// the subtree would fail mid-move. Collect every conflict up front: a user told
@@ -638,15 +765,27 @@ func (s *APIV1Service) MoveWorkspaceFolder(ctx context.Context, request *v1pb.Mo
 		}
 	}
 
-	// The P6 check above rejected the move if anything OUTSIDE the subtree
-	// linked into it, so the only links left to worry about are the subtree's
-	// own cross-references — and those are stale now, because root-relative
-	// hrefs spell the full path and every document's path just gained (or
-	// changed) a prefix. Same prefix swap as the same-workspace rename path;
-	// the moved documents now live in the destination workspace, so that's the
-	// workspace the sweep runs against.
+	// The subtree's own cross-references are stale now: root-relative hrefs
+	// spell the full path and every document's path just gained (or changed) a
+	// prefix. Same prefix swap as the same-workspace rename path; the moved
+	// documents now live in the destination workspace, so that's the workspace
+	// the sweep runs against.
 	if path != newPath {
 		s.repairFolderMoveReferencesBestEffort(ctx, destination.ID, path, newPath)
+	}
+
+	// Referencers OUTSIDE the moved subtree — in the source workspace or any
+	// other — spell a path that no longer names anything. Each moved document
+	// gets the same inbound repair a single-document move gets, which picks the
+	// right form per referencer: root-relative for one that ended up in the
+	// destination workspace too, "@目标库标题/…" for one that did not.
+	// `memos` still holds pre-move folder paths, so the moved copy is rebuilt
+	// here with where each document actually landed.
+	for _, m := range memos {
+		movedMemo := *m
+		movedMemo.WorkspaceID = destination.ID
+		movedMemo.FolderPath = movedFolderPath(m.FolderPath, path, newPath)
+		s.repairInboundLinksBestEffort(ctx, &movedMemo, m.Title, m.FolderPath)
 	}
 
 	// Links pointing OUT of the subtree at documents left behind in the source
@@ -662,7 +801,7 @@ func (s *APIV1Service) MoveWorkspaceFolder(ctx context.Context, request *v1pb.Mo
 		movedOldFolders[m.ID] = m.FolderPath
 		movedUIDs[m.UID] = true
 	}
-	s.rewriteOutboundLinksToUIDBestEffort(ctx, movedOldFolders, source.ID, movedUIDs)
+	s.rewriteOutboundLinksAfterWorkspaceMoveBestEffort(ctx, movedOldFolders, source.ID, movedUIDs)
 
 	for _, f := range moved {
 		if err := s.Store.DeleteWorkspaceFolder(ctx, &store.DeleteWorkspaceFolder{WorkspaceID: source.ID, Path: f.Path}); err != nil {

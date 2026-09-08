@@ -32,7 +32,39 @@ export interface DocumentLinkContextValue {
    * own folder rather than the host's.
    */
   resolveFrom?: (baseFolderPath: string, href: string) => string | undefined;
+  /**
+   * Resolves a workspace-qualified href (`@库标题/fb/dc.md`) against the
+   * knowledge-base trees prefetched for this document. Stays synchronous — see
+   * useCrossWorkspaceTrees for why. Absent means the surface does not support
+   * cross-workspace links at all, and they render as plain external links.
+   */
+  resolveCrossWorkspace?: (href: string) => CrossWorkspaceTarget;
+  /**
+   * Navigates to a document in *another* knowledge base. Surfaces whose
+   * `navigate` is scoped to one knowledge base (the Notebook, which selects a
+   * node in its own tree) must supply this; when absent, `navigate` is used,
+   * which is correct for surfaces that address documents globally.
+   */
+  navigateCrossWorkspace?: (memoName: string, workspaceName: string, href: string) => void;
 }
+
+/**
+ * What a cross-workspace href resolved to.
+ *
+ * - `resolved` — the reader may open the target knowledge base and the path
+ *   names a document in it.
+ * - `unresolved` — the knowledge base is readable but the path names nothing:
+ *   an ordinary broken link.
+ * - `unavailable` — the knowledge base does not exist, *or* the reader may not
+ *   open it. The server refuses to distinguish these (telling them apart would
+ *   reveal which knowledge bases exist), so neither may the UI.
+ * - `pending` — the prefetch has not come back yet.
+ */
+export type CrossWorkspaceTarget =
+  | { status: "resolved"; workspaceName: string; workspaceTitle: string; memoName: string }
+  | { status: "unresolved" }
+  | { status: "unavailable" }
+  | { status: "pending" };
 
 const DocumentLinkContext = createContext<DocumentLinkContextValue | null>(null);
 
@@ -171,7 +203,7 @@ export function resolveWorkspacePath(tree: WorkspaceTreeNode[], href: string): s
 }
 
 /** The path form a markdown link destination is written in. Mirrors HrefForm in internal/linkindex/resolve.go. */
-export type HrefForm = "absoluteMemo" | "rootRelative" | "relativeExplicit" | "relativeBare" | "external";
+export type HrefForm = "absoluteMemo" | "rootRelative" | "relativeExplicit" | "relativeBare" | "workspaceQualified" | "external";
 
 /** Matches a URI scheme prefix ("https:", "mailto:") per RFC 3986. */
 const HAS_SCHEME_RE = /^[a-zA-Z][a-zA-Z0-9+.-]*:/;
@@ -190,15 +222,18 @@ const HAS_SCHEME_RE = /^[a-zA-Z][a-zA-Z0-9+.-]*:/;
  * - "relativeBare" (`x.md`, `sub/x.md`) is indistinguishable from a schemeless
  *   external destination such as `example.com/page`, so callers must fall back
  *   to external-link behaviour when it doesn't resolve, NOT show a broken link.
- * - "@"-prefixed hrefs are reserved for the workspace-qualified form
- *   (库限定路径) and are excluded up front, so a cross-workspace reference is
- *   never swallowed by in-workspace relative resolution.
+ * - "workspaceQualified" (`@库标题/fb/dc.md`) is the cross-workspace form
+ *   (库限定路径). It is decided before the relative forms, so a cross-workspace
+ *   reference is never swallowed by in-workspace relative resolution. An "@"
+ *   href that does not parse as that form is external, not a document
+ *   reference.
  */
 export function classifyDocHref(href: string | undefined): HrefForm {
   if (!href) return "external";
   if (isAbsoluteMemoHref(href)) return "absoluteMemo";
   if (href.startsWith("/")) return "rootRelative";
-  if (href.startsWith("#") || href.startsWith("?") || href.startsWith("@")) return "external";
+  if (href.startsWith("@")) return parseWorkspaceQualifiedHref(href) ? "workspaceQualified" : "external";
+  if (href.startsWith("#") || href.startsWith("?")) return "external";
   if (HAS_SCHEME_RE.test(href)) return "external";
   if (href.startsWith("./") || href.startsWith("../")) return "relativeExplicit";
   return "relativeBare";
@@ -276,4 +311,65 @@ export function resolveInWorkspace(tree: WorkspaceTreeNode[], baseFolderPath: st
     default:
       return undefined;
   }
+}
+
+/**
+ * Splits a workspace-qualified href ("@库标题/fb/dc.md", 库限定路径) into the
+ * target workspace title and the root-relative path inside it (leading "/"
+ * kept, so it can be handed straight to resolveWorkspacePath). Returns
+ * undefined for anything that is not that form.
+ *
+ * Rejected: an empty title ("@/x.md"), an empty path ("@lib", "@lib/"), and any
+ * "." or ".." segment — document-relative navigation is deliberately confined
+ * to a single workspace.
+ *
+ * Mirrors ParseWorkspaceQualifiedHref in internal/linkindex/resolve.go.
+ */
+export function parseWorkspaceQualifiedHref(href: string | undefined): { title: string; path: string } | undefined {
+  if (!href || !href.startsWith("@")) return undefined;
+  let rest = href.slice(1);
+  const cut = rest.search(/[?#]/);
+  if (cut >= 0) rest = rest.slice(0, cut);
+
+  const slash = rest.indexOf("/");
+  if (slash <= 0) return undefined;
+  const rawTitle = rest.slice(0, slash);
+  const path = rest.slice(slash);
+
+  const segments = path.split("/").filter((s) => s !== "");
+  if (segments.length === 0) return undefined;
+  if (segments.some((s) => s === "." || s === "..")) return undefined;
+
+  let title = rawTitle;
+  try {
+    title = decodeURIComponent(rawTitle);
+  } catch {
+    // keep the raw title if it isn't valid percent-encoding
+  }
+  if (title.trim() === "") return undefined;
+  return { title, path };
+}
+
+/** Whether `href` is a well-formed workspace-qualified path (库限定路径). */
+export function isWorkspaceQualifiedHref(href: string | undefined): href is string {
+  return classifyDocHref(href) === "workspaceQualified";
+}
+
+/**
+ * Builds a `resolveCrossWorkspace` over the trees prefetched by
+ * useCrossWorkspaceTrees, keyed by lower-cased knowledge-base title.
+ */
+export function makeCrossWorkspaceResolver(
+  trees: Map<string, { available: boolean; name: string; title: string; nodes: WorkspaceTreeNode[] }>,
+): (href: string) => CrossWorkspaceTarget {
+  return (href: string) => {
+    const parsed = parseWorkspaceQualifiedHref(href);
+    if (!parsed) return { status: "unresolved" };
+    const entry = trees.get(parsed.title.trim().toLowerCase());
+    if (!entry) return { status: "pending" };
+    if (!entry.available) return { status: "unavailable" };
+    const memoName = resolveWorkspacePath(entry.nodes, parsed.path);
+    if (!memoName) return { status: "unresolved" };
+    return { status: "resolved", workspaceName: entry.name, workspaceTitle: entry.title, memoName };
+  };
 }

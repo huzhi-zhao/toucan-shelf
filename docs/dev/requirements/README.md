@@ -20,7 +20,7 @@
 | [views/](views/) | html/pdf/view 三类渲染型文档、gallery view | 2 |
 | [editor/](editor/) | calendar 块、sheets 块、secret 加密块、受限内联样式渲染、draw.io 图、粘贴 HTML 转 Markdown | 6 |
 | [attachments/](attachments/) | 上传与媒体内联、访问控制与私密附件 | 2 |
-| [collaboration/](collaboration/) | memogit 同步、memogit 文档身份、MCP 协作写作、团队成员与知识库授权 | 4 |
+| [collaboration/](collaboration/) | memogit 同步、memogit 文档身份、MCP 协作写作、团队成员与知识库授权、agent 操作手册统一、agent 读附件 | 6 |
 | [storage/](storage/) | 数据源、持久化边界、容量与迁移承诺、全站备份、附件对象迁移 | 3 |
 
 ## 规划中的域
@@ -72,6 +72,10 @@
 - [mcp-authoring.md](collaboration/mcp-authoring.md) —— MCP 协作写作
 - [workspace-member-access.md](collaboration/workspace-member-access.md)
   —— 团队成员与知识库授权
+- [agent-manual-unification.md](collaboration/agent-manual-unification.md)
+  —— agent 操作手册统一到 `docs/skill/`：南瓜书与 MCP serverInstructions 的归并
+- [agent-attachment-reading.md](collaboration/agent-attachment-reading.md)
+  —— agent 读附件：memogit 本地清单与 MCP 短期下载令牌
 
 ### storage/
 

@@ -3,7 +3,13 @@ import { ArrowUpLeftFromCircleIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import MemoCommentSection from "@/components/MemoCommentSection";
-import { DocumentLinkProvider, flattenWorkspaceDocuments, resolveInWorkspace } from "@/components/MemoContent/DocumentLinkContext";
+import { extractWorkspaceQualifiedTitles } from "@/components/MemoContent/crossWorkspace";
+import {
+  DocumentLinkProvider,
+  flattenWorkspaceDocuments,
+  makeCrossWorkspaceResolver,
+  resolveInWorkspace,
+} from "@/components/MemoContent/DocumentLinkContext";
 import { EmbedAncestryProvider } from "@/components/MemoContent/EmbedAncestryContext";
 import { MentionResolutionProvider } from "@/components/MemoContent/MentionResolutionContext";
 import { MemoDetailSidebar, MemoDetailSidebarDrawer } from "@/components/MemoDetailSidebar";
@@ -11,6 +17,7 @@ import type { EditorController } from "@/components/MemoEditor/types/editorContr
 import MemoView from "@/components/MemoView";
 import MobileHeader from "@/components/MobileHeader";
 import { memoNamePrefix } from "@/helpers/resource-names";
+import { useCrossWorkspaceTrees } from "@/hooks/useCrossWorkspaceTrees";
 import useMediaQuery from "@/hooks/useMediaQuery";
 import useMemoDetailError from "@/hooks/useMemoDetailError";
 import { useInfiniteMemoComments, useMemo } from "@/hooks/useMemoQueries";
@@ -50,6 +57,13 @@ const MemoDetail = () => {
   // Workspace tree for resolving relative in-document links to their standard `/memos/{uid}` URLs.
   // Not fetched in share mode (no workspace context), so relative links there stay external.
   const { data: workspaceTree = [] } = useWorkspaceTree(isShareMode ? undefined : memo?.workspace, false);
+  // Cross-workspace links resolve synchronously during render, so the knowledge
+  // bases this document names are prefetched. Share mode is excluded along with
+  // the workspace tree: a share link carries no knowledge-base context, and a
+  // reader following one must not be able to reach into other knowledge bases.
+  const crossWorkspaceTitles = isShareMode ? [] : extractWorkspaceQualifiedTitles(memo?.content ?? "");
+  const crossWorkspaceTrees = useCrossWorkspaceTrees(crossWorkspaceTitles);
+  const resolveCrossWorkspace = makeCrossWorkspaceResolver(crossWorkspaceTrees);
   const error = isShareMode ? shareError : directError;
   const isLoading = isShareMode ? shareLoading : directLoading;
   const memoName = memo?.name ?? memoNameFromParams;
@@ -130,6 +144,10 @@ const MemoDetail = () => {
                 baseFolderPath: displayMemo.folderPath,
                 resolve: (href) => resolveInWorkspace(workspaceTree, displayMemo.folderPath, href),
                 resolveFrom: (baseFolderPath, href) => resolveInWorkspace(workspaceTree, baseFolderPath, href),
+                // No navigateCrossWorkspace here: this page already addresses
+                // documents globally by "/memos/{uid}", which works in any
+                // knowledge base.
+                resolveCrossWorkspace: isShareMode ? undefined : resolveCrossWorkspace,
                 navigate: (memoName, href) => {
                   // Carry the link's fragment across so the destination page can scroll to the
                   // heading (`document/abc#h-…`); the scroll effect above resolves it there.

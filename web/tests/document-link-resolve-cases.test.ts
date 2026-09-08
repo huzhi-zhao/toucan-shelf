@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   classifyDocHref,
+  parseWorkspaceQualifiedHref,
   resolveAbsoluteMemoHref,
   resolveRelativePath,
   resolveWorkspacePath,
@@ -33,7 +34,18 @@ const CASES_PATH = (() => {
 
 interface CaseFile {
   trees: Record<string, Array<{ uid: string; title: string; folderPath: string }>>;
-  cases: Array<{ name: string; tree?: string; base: string; href: string; form: string; uid: string | null }>;
+  cases: Array<{
+    name: string;
+    tree?: string;
+    base: string;
+    href: string;
+    form: string;
+    uid: string | null;
+    // Workspace-qualified cases only: the split the parser must produce, and
+    // `tree` then names the *target* workspace's tree that `uid` lives in.
+    workspaceTitle?: string;
+    path?: string;
+  }>;
 }
 
 const file: CaseFile = JSON.parse(readFileSync(CASES_PATH, "utf8"));
@@ -86,6 +98,15 @@ describe("shared resolver cases", () => {
         case "relativeBare":
           resolved = resolveRelativePath(tree, c.base, c.href);
           break;
+        case "workspaceQualified": {
+          const parsed = parseWorkspaceQualifiedHref(c.href);
+          expect(parsed).toBeDefined();
+          expect(parsed?.title).toBe(c.workspaceTitle);
+          expect(parsed?.path).toBe(c.path);
+          // Inside the target workspace it is an ordinary root-relative path.
+          resolved = resolveWorkspacePath(tree, parsed!.path);
+          break;
+        }
         case "external":
           // Nothing to resolve; the classification assertion is the test.
           break;

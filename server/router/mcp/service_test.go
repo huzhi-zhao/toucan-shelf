@@ -184,8 +184,22 @@ func TestMCPInitializeReturnsServerInstructions(t *testing.T) {
 	require.Contains(t, instructions, "resolve it to workspaces/{uid}")
 	require.Contains(t, instructions, "NO file extension")
 
-	// Resident context: keep it a briefing, not a manual (see tech-design P0).
-	require.Less(t, len(instructions), 1600)
+	// There is deliberately NO length assertion here any more (the old ceiling
+	// was 1600, then 2000).
+	//
+	// A byte budget was the wrong instrument. Requirements keep being added, and
+	// a rule that an agent must follow cannot be stated in fewer words than it
+	// takes to state it precisely — so a fixed cap only ever forces one of two
+	// bad outcomes: an accurate rule gets left out, or a rule already in here
+	// gets compressed until it is ambiguous. An agent acting on an ambiguous
+	// instruction destroys content; an agent reading fifty more tokens does not.
+	//
+	// The rule that replaces it is qualitative, and it is stricter than a cap in
+	// the direction that matters: every sentence must be something the model
+	// cannot infer from the tool names and schemas, and must say it in the
+	// fewest words that still leave exactly one reading. Trim wording, never
+	// meaning. If a topic can be dropped, drop the whole topic — do not shorten
+	// it into something that reads fine and means less.
 }
 
 func TestMCPToolCallReturnsObjectStructuredContent(t *testing.T) {

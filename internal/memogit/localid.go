@@ -67,13 +67,15 @@ func ParseLocalID(content string) string {
 	return ""
 }
 
-// StripLocalID removes the identity marker (either encoding, wherever it sits)
-// and normalizes trailing newlines. This is the inverse of the injection done
-// by FileContent, and every path that hashes or uploads a work-tree file must
-// go through it — otherwise the marker would read as a local edit and provoke
-// a phantom conflict on the very next sync.
+// StripLocalID removes every local-only marker — the identity marker in either
+// encoding, and the attachment manifest (see manifest.go) — and normalizes
+// trailing newlines. This is the inverse of the assembly done by injectMarkers,
+// and every path that hashes or uploads a work-tree file must go through it —
+// otherwise a marker would read as a local edit and provoke a phantom conflict
+// on the very next sync.
 func StripLocalID(content string) string {
 	content = jsonRe.ReplaceAllString(content, "")
+	content = stripManifest(content)
 	content = commentRe.ReplaceAllString(content, "")
 	return strings.TrimRight(content, "\n")
 }
@@ -82,7 +84,25 @@ func StripLocalID(content string) string {
 // An existing marker is replaced rather than duplicated, so re-exporting a file
 // is idempotent. Returns content unchanged when uid is empty (a document that
 // does not exist on the server yet).
+//
+// An attachment manifest already present in content is carried over verbatim.
+// Callers that re-stamp a file read off disk (ensureLocalIDs, push's write-back
+// after a create) hold no attachment list and could not rebuild one, so
+// stripping it here would silently drop the manifest until the document's
+// content next changed on the server.
 func InjectLocalID(content, uid, docType string) string {
+	return injectMarkers(content, extractManifest(content), uid, docType)
+}
+
+// injectMarkers assembles a work-tree file: the document body, then the
+// attachment manifest when there is one, then the identity marker last. The
+// identity marker stays at the very end so ParseLocalID's line-anchored match
+// keeps working regardless of what precedes it.
+//
+// VIEW/BLOGVIEW documents take no manifest: their bytes are JSON, and an HTML
+// comment would make the file unparseable for the gallery reader and for any
+// linter pointed at it.
+func injectMarkers(content, manifest, uid, docType string) string {
 	if uid == "" {
 		return content
 	}
@@ -90,7 +110,11 @@ func InjectLocalID(content, uid, docType string) string {
 	if docType == "VIEW" || docType == "BLOGVIEW" {
 		return injectJSONLocalID(body, uid)
 	}
-	return body + "\n\n" + localIDComment(uid)
+	out := body + "\n\n"
+	if manifest != "" {
+		out += manifest + "\n"
+	}
+	return out + localIDComment(uid)
 }
 
 // injectJSONLocalID inserts the marker as the first key of a VIEW/BLOGVIEW

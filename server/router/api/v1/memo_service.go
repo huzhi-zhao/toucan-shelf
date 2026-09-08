@@ -759,17 +759,17 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 				return nil, err
 			}
 			if workspace.ID != memo.WorkspaceID {
-				// P6: cross-workspace moves can't be href-repaired (root-relative
-				// hrefs are only meaningful within one workspace), so reject the
-				// same way archive/delete does rather than silently orphaning
-				// referencers' links.
-				refs, err := s.findExternalLinkReferences(ctx, []int32{memo.ID}, map[int32]bool{memo.ID: true})
-				if err != nil {
-					return nil, status.Errorf(codes.Internal, "failed to check memo references: %v", err)
-				}
-				if len(refs) > 0 {
-					return nil, referenceDependencyError(refs)
-				}
+				// P6 used to reject this move outright, because a root-relative
+				// href is only meaningful inside one knowledge base and there
+				// was no form that could survive the crossing. The
+				// workspace-qualified form (库限定路径) is that form, so the
+				// move is now allowed and repaired in both directions after it
+				// commits: referencers left behind are rewritten to
+				// "@新库标题/…" (repairInboundLinksBestEffort), and the mover's
+				// own outbound links to "@旧库标题/…"
+				// (rewriteOutboundLinksAfterWorkspaceMoveBestEffort). See
+				// docs/dev/design/20260829-relative-and-cross-workspace-refs.md
+				// R2.5.
 				workspaceChanged = true
 			}
 			update.WorkspaceID = &workspace.ID
@@ -830,7 +830,10 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 	// exactly equals the old title (P2's original rule, unchanged in scope).
 	titleChanged := titleUpdated && previousTitle != memo.Title
 	folderChanged := folderPathUpdated && previousFolderPath != memo.FolderPath
-	if titleChanged || folderChanged {
+	// A cross-workspace move stales referencers' hrefs just as a rename does —
+	// more so, since the path they spell now names nothing at all — so it goes
+	// through the same inbound repair even when neither title nor folder moved.
+	if titleChanged || folderChanged || workspaceChanged {
 		if !titleChanged {
 			// Anchor-text repair keys off "text == previousTitle"; when only the
 			// folder moved, the title didn't change, so the comparison must use
@@ -871,7 +874,7 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 		if folderPathUpdated {
 			oldFolderPath = previousFolderPath
 		}
-		s.rewriteOutboundLinksToUIDBestEffort(ctx, map[int32]string{memo.ID: oldFolderPath}, previousWorkspaceID, nil)
+		s.rewriteOutboundLinksAfterWorkspaceMoveBestEffort(ctx, map[int32]string{memo.ID: oldFolderPath}, previousWorkspaceID, nil)
 	}
 
 	memo, parentMemo, memoMessage, err := s.buildUpdatedMemoState(ctx, memo.ID)

@@ -26,8 +26,8 @@ func newAPIAdapter(echoServer *echo.Echo) *apiAdapter {
 	return &apiAdapter{echoServer: echoServer}
 }
 
-func (a *apiAdapter) execute(ctx context.Context, operation *openAPIOperation, arguments map[string]any, authorization string) (*sdkmcp.CallToolResult, error) {
-	req, err := buildAPIRequest(ctx, operation, arguments, authorization)
+func (a *apiAdapter) execute(ctx context.Context, operation *openAPIOperation, arguments map[string]any, authorization, origin string) (*sdkmcp.CallToolResult, error) {
+	req, err := buildAPIRequest(ctx, operation, arguments, authorization, origin)
 	if err != nil {
 		return newToolErrorResult(err.Error()), nil
 	}
@@ -45,7 +45,7 @@ func (a *apiAdapter) execute(ctx context.Context, operation *openAPIOperation, a
 	return newStructuredToolResult(value)
 }
 
-func buildAPIRequest(ctx context.Context, operation *openAPIOperation, arguments map[string]any, authorization string) (*http.Request, error) {
+func buildAPIRequest(ctx context.Context, operation *openAPIOperation, arguments map[string]any, authorization, origin string) (*http.Request, error) {
 	path, err := substitutePathParameters(operation, arguments)
 	if err != nil {
 		return nil, err
@@ -94,6 +94,11 @@ func buildAPIRequest(ctx context.Context, operation *openAPIOperation, arguments
 	// indistinguishable from one a remote client set on itself. A context value
 	// can only be set in-process.
 	ctx = base.WithActorKind(ctx, base.ActorKindAgent)
+	// The synthetic request below carries httptest's stand-in Host, so a handler
+	// that must build an absolute URL back to this instance cannot recover the
+	// real one from it. Carry the origin the MCP endpoint saw, for the same
+	// in-process-only reason the actor kind travels this way.
+	ctx = base.WithRequestOrigin(ctx, origin)
 
 	req := httptest.NewRequest(operation.Method, path, body).WithContext(ctx)
 	if body != nil {

@@ -1,22 +1,38 @@
 package memogit
 
 import (
-	_ "embed"
+	"embed"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-// GuideFile is the agent-facing manual dropped into the checkout metadata dir,
-// embedded so a checkout carries its own instructions without needing the
-// server repo. The asset below is now the only copy of this text; agent-facing
-// documentation has moved to docs/skill/, which this embed does not ship yet.
-const GuideFile = "toucanshelf-guide.md"
+// GuideDir is the agent-facing manual directory dropped into the checkout
+// metadata dir, embedded so a checkout carries its own instructions without
+// needing the server repo. Its contents mirror docs/skill/ (SKILL.md, the
+// router, plus references/*.md, read on demand) — that is the source of
+// truth; assets/skill/ below is a generated copy kept in sync by
+// scripts/sync-agent-skill-docs.sh. Never hand-edit assets/skill/ directly.
+const GuideDir = "skill"
 
-//go:embed assets/pumpkin_book_for_llms.md
-var guideDoc string
+// GuideEntryFile is the file inside GuideDir an agent reads first.
+const GuideEntryFile = "SKILL.md"
+
+//go:embed assets/skill
+var guideAssets embed.FS
+
+// guideRoot is guideAssets re-rooted at the embedded directory's own
+// contents, stripping the "assets/skill" prefix go:embed otherwise keeps.
+var guideRoot = func() fs.FS {
+	sub, err := fs.Sub(guideAssets, "assets/skill")
+	if err != nil {
+		panic(err) // programmer error: the go:embed path above must match
+	}
+	return sub
+}()
 
 // Markers delimiting the block memogit owns inside AGENTS.md / CLAUDE.md, so a
 // user's own instructions in those files survive regeneration.
@@ -33,7 +49,8 @@ const agentBrief = `## ToucanShelf 知识库检出目录（给 AI 代理看）
 本地投影，由 ` + "`memogit`" + ` 检出。文件里有非标准语法和同步契约，踩到会静默丢数据
 或制造假冲突。
 
-> **动手改任何文件之前，先完整读一遍 [` + "`" + MetaDir + "/" + GuideFile + "`" + `](` + MetaDir + `/` + GuideFile + `)。**
+> **动手改任何文件之前，先完整读一遍 [` + "`" + MetaDir + "/" + GuideDir + "/" + GuideEntryFile + "`" + `](` + MetaDir + `/` + GuideDir + `/` + GuideEntryFile + `)。** 需要某个主题的细节时，
+> 到同目录的 ` + "`references/`" + ` 下按需读对应文件。
 
 最容易犯的几个错（细节见手册对应章节）：
 
@@ -86,12 +103,9 @@ func isAgentDoc(name string) bool { return agentDocNames[name] }
 // gets its own entry points too, pointing back up at the one guide. cfg may be
 // nil, in which case only the root files are written.
 func WriteAgentDocs(root string, cfg *Config, out io.Writer) error {
-	guide := filepath.Join(root, MetaDir, GuideFile)
-	if err := os.MkdirAll(filepath.Dir(guide), 0o755); err != nil {
+	guideDir := filepath.Join(root, MetaDir, GuideDir)
+	if err := writeGuideTree(guideDir); err != nil {
 		return err
-	}
-	if err := os.WriteFile(guide, []byte(guideDoc), 0o644); err != nil {
-		return fmt.Errorf("write %s: %w", guide, err)
 	}
 	// A knowledge base cloned before these files existed may already contain a
 	// document named AGENTS.md or CLAUDE.md. Never write over one: the block
@@ -110,13 +124,34 @@ func WriteAgentDocs(root string, cfg *Config, out io.Writer) error {
 	}
 	if out != nil {
 		fmt.Fprintf(out, "Agent guide written to %s (entry points: AGENTS.md, CLAUDE.md, .cursor/rules/ at the root",
-			filepath.Join(MetaDir, GuideFile))
+			filepath.Join(MetaDir, GuideDir))
 		if len(dirs) > 0 {
 			fmt.Fprintf(out, " and in %s", strings.Join(dirs, ", "))
 		}
 		fmt.Fprintln(out, ").")
 	}
 	return nil
+}
+
+// writeGuideTree copies the embedded skill manual (docs/skill/, mirrored at
+// build time into assets/skill/, see GuideDir) into dir, recreating its
+// directory structure so the references/*.md links inside SKILL.md keep
+// resolving as relative paths on disk.
+func writeGuideTree(dir string) error {
+	return fs.WalkDir(guideRoot, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		target := filepath.Join(dir, filepath.FromSlash(path))
+		if d.IsDir() {
+			return os.MkdirAll(target, 0o755)
+		}
+		data, err := fs.ReadFile(guideRoot, path)
+		if err != nil {
+			return fmt.Errorf("read embedded %s: %w", path, err)
+		}
+		return os.WriteFile(target, data, 0o644)
+	})
 }
 
 // workspaceDirs lists the workspace subfolders that need their own entry
@@ -184,11 +219,11 @@ func writeEntryPoints(dir, subdir string, taken map[string]bool) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	guideLink := MetaDir + "/" + GuideFile
+	guideLink := MetaDir + "/" + GuideDir + "/" + GuideEntryFile
 	brief := agentBrief
 	if subdir != "" {
 		guideLink = "../" + guideLink
-		brief = fmt.Sprintf(workspaceHeader, subdir) + strings.ReplaceAll(agentBrief, MetaDir+"/"+GuideFile, guideLink)
+		brief = fmt.Sprintf(workspaceHeader, subdir) + strings.ReplaceAll(agentBrief, MetaDir+"/"+GuideDir+"/"+GuideEntryFile, guideLink)
 	}
 	if !taken[filepath.ToSlash(filepath.Join(subdir, "AGENTS.md"))] {
 		if err := upsertManagedBlock(filepath.Join(dir, "AGENTS.md"), brief); err != nil {

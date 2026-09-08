@@ -109,7 +109,7 @@ func TestBuildAPIRequestMapsPathQueryAndBody(t *testing.T) {
 		},
 	}
 
-	req, err := buildAPIRequest(context.Background(), operation, arguments, "Bearer pat")
+	req, err := buildAPIRequest(context.Background(), operation, arguments, "Bearer pat", "")
 	require.NoError(t, err)
 	require.Equal(t, "PATCH", req.Method)
 	require.Equal(t, "/api/v1/memos/abc123", req.URL.Path)
@@ -131,7 +131,7 @@ func TestBuildAPIRequestMarksContextAsAgent(t *testing.T) {
 		Path:   "/api/v1/memos",
 	}
 
-	req, err := buildAPIRequest(context.Background(), operation, map[string]any{}, "")
+	req, err := buildAPIRequest(context.Background(), operation, map[string]any{}, "", "")
 	require.NoError(t, err)
 	require.Equal(t, base.ActorKindAgent, base.ActorKindFromContext(req.Context()))
 }
@@ -150,7 +150,7 @@ func TestExecuteOperationCarriesAgentMarkerToHandler(t *testing.T) {
 	_, err := adapter.execute(context.Background(), &openAPIOperation{
 		Method: "GET",
 		Path:   "/api/v1/memos",
-	}, map[string]any{}, "")
+	}, map[string]any{}, "", "")
 	require.NoError(t, err)
 	require.Equal(t, base.ActorKindAgent, observed)
 }
@@ -179,7 +179,7 @@ func TestBuildAPIRequestRequiresPathParameters(t *testing.T) {
 		Parameters: []openAPIParameter{{Name: "memo", In: "path", Required: true}},
 	}
 
-	_, err := buildAPIRequest(context.Background(), operation, map[string]any{}, "")
+	_, err := buildAPIRequest(context.Background(), operation, map[string]any{}, "", "")
 	require.ErrorContains(t, err, `missing required path parameter "memo"`)
 }
 
@@ -190,7 +190,7 @@ func TestBuildAPIRequestRequiresRequestBody(t *testing.T) {
 		RequestBody: &openAPIRequestBody{Required: true},
 	}
 
-	_, err := buildAPIRequest(context.Background(), operation, map[string]any{}, "")
+	_, err := buildAPIRequest(context.Background(), operation, map[string]any{}, "", "")
 	require.ErrorContains(t, err, `missing required request body "body"`)
 }
 
@@ -209,7 +209,7 @@ func TestBuildAPIRequestEscapesPathAndStringifiesPrimitiveQueryParameters(t *tes
 		"memo":  "abc 123",
 		"force": true,
 		"limit": 10,
-	}, "")
+	}, "", "")
 	require.NoError(t, err)
 	require.Equal(t, "/api/v1/memos/abc%20123", req.URL.EscapedPath())
 	require.Equal(t, "true", req.URL.Query().Get("force"))
@@ -231,7 +231,7 @@ func TestExecuteOperationReturnsObjectStructuredContent(t *testing.T) {
 	}
 	adapter := newAPIAdapter(echoServer)
 
-	result, err := adapter.execute(context.Background(), operation, map[string]any{}, "Bearer token")
+	result, err := adapter.execute(context.Background(), operation, map[string]any{}, "Bearer token", "")
 	require.NoError(t, err)
 	require.False(t, result.IsError)
 	require.Equal(t, map[string]any{
@@ -252,7 +252,7 @@ func TestExecuteOperationConvertsAPIErrorsToToolErrors(t *testing.T) {
 	}
 	adapter := newAPIAdapter(echoServer)
 
-	result, err := adapter.execute(context.Background(), operation, map[string]any{"memo": "missing"}, "")
+	result, err := adapter.execute(context.Background(), operation, map[string]any{"memo": "missing"}, "", "")
 	require.NoError(t, err)
 	require.True(t, result.IsError)
 	require.Equal(t, map[string]any{
