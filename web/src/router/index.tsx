@@ -26,6 +26,7 @@ const MemoDetail = lazyWithReload(() => import("@/pages/MemoDetail"));
 const MemoReader = lazyWithReload(() => import("@/pages/MemoReader"));
 const AttachmentPreview = lazyWithReload(() => import("@/pages/AttachmentPreview"));
 const AttachmentTextPreview = lazyWithReload(() => import("@/pages/AttachmentTextPreview"));
+const RootRedirect = lazyWithReload(() => import("@/pages/RootRedirect"));
 const NotFound = lazyWithReload(() => import("@/pages/NotFound"));
 const PublicSiteLayout = lazyWithReload(() => import("@/pages/PublicSiteLayout"));
 const PublicSiteHome = lazyWithReload(() => import("@/pages/PublicSiteHome"));
@@ -113,10 +114,10 @@ export const routeConfig: RouteObject[] = [
               {
                 element: <LandingRoute />,
                 children: [
-                  // The bare domain lands on the Home page. It deliberately does *not* restore the
-                  // last-opened knowledge base any more: entering the site always starts from the
-                  // cross-knowledge-base overview, and a workspace is entered from there.
-                  { index: true, element: <Navigate to={Routes.DASHBOARD} replace /> },
+                  // The bare domain resumes the last-opened knowledge base and document
+                  // (see RootRedirect), falling back to the cross-knowledge-base overview
+                  // at /dashboard when there is nothing to restore.
+                  { index: true, element: <RootRedirect /> },
                   // Path-based workspace/document URLs, e.g. `/IT/memos%2FabcId`. Workspace is
                   // matched case-insensitively against the workspace title in Notebook.tsx.
                   { path: ":workspaceTitle", element: <Notebook /> },
