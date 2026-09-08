@@ -17,7 +17,9 @@ function MemosLogo(props: Props) {
   return (
     <div className={cn("relative w-full h-auto shrink-0", props.className)}>
       <div className="flex w-auto flex-row items-center justify-start text-sidebar-foreground">
-        <UserAvatar className={cn("shrink-0 border-sidebar-foreground/15 shadow-sm", mini ? "size-6" : "size-8")} avatarUrl={avatarUrl} />
+        <span className="shrink-0" data-sidebar-expand-trigger>
+          <UserAvatar className={cn("border-sidebar-foreground/15 shadow-sm", mini ? "size-6" : "size-8")} avatarUrl={avatarUrl} />
+        </span>
         {!collapsed && (
           <span className={cn("shrink truncate whitespace-nowrap font-semibold tracking-tight", mini ? "ml-2.5 text-xs" : "ml-3 text-sm")}>
             {title}

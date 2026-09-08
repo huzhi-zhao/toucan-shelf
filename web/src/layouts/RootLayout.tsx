@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type PointerEvent, useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, useLocation, useSearchParams } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import { useInstance } from "@/contexts/InstanceContext";
@@ -11,6 +11,7 @@ import { buildAuthRoute, shouldGatePrivateInstance } from "@/utils/auth-redirect
 import { useTranslate } from "@/utils/i18n";
 
 const MEMOS_DEPLOY_URL = "https://usememos.com/docs/deploy";
+const SIDEBAR_HOVER_OPEN_DELAY_MS = 500;
 
 const DemoBanner = () => {
   const t = useTranslate();
@@ -35,6 +36,7 @@ const RootLayout = () => {
   const sidebarMode = useSidebarMode();
   const isMini = sidebarMode === "mini";
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  const sidebarHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const { profile } = useInstance();
   const currentUser = useCurrentUser();
   const showSidebar = sm && !!currentUser;
@@ -52,6 +54,30 @@ const RootLayout = () => {
 
     prevPathnameRef.current = pathname;
   }, [pathname, searchParams, removeFilter]);
+
+  useEffect(() => () => clearTimeout(sidebarHoverTimeoutRef.current), []);
+
+  const handleSidebarPointerOver = (event: PointerEvent<HTMLDivElement>) => {
+    if (!(event.target instanceof Element) || !event.target.closest("[data-sidebar-expand-trigger]")) return;
+
+    clearTimeout(sidebarHoverTimeoutRef.current);
+    sidebarHoverTimeoutRef.current = setTimeout(() => setSidebarExpanded(true), SIDEBAR_HOVER_OPEN_DELAY_MS);
+  };
+
+  const handleSidebarPointerOut = (event: PointerEvent<HTMLDivElement>) => {
+    if (!(event.target instanceof Element)) return;
+
+    const trigger = event.target.closest("[data-sidebar-expand-trigger]");
+    const nextTrigger = event.relatedTarget instanceof Element ? event.relatedTarget.closest("[data-sidebar-expand-trigger]") : null;
+    if (!trigger || trigger === nextTrigger) return;
+
+    clearTimeout(sidebarHoverTimeoutRef.current);
+  };
+
+  const handleSidebarMouseLeave = () => {
+    clearTimeout(sidebarHoverTimeoutRef.current);
+    setSidebarExpanded(false);
+  };
 
   // Private instance (no InstanceURL configured): anonymous visitors may only reach
   // share links; everything else redirects to the sign-in page, preserving the intended
@@ -71,12 +97,9 @@ const RootLayout = () => {
             sidebarExpanded ? (isMini ? "w-52" : "w-60") : isMini ? "w-12" : "w-[3.75rem]",
             isMini ? "p-1.5" : "p-2",
           )}
-          onMouseEnter={() => setSidebarExpanded(true)}
-          onMouseLeave={() => setSidebarExpanded(false)}
-          onFocusCapture={() => setSidebarExpanded(true)}
-          onBlurCapture={(event) => {
-            if (!event.currentTarget.contains(event.relatedTarget)) setSidebarExpanded(false);
-          }}
+          onPointerOver={handleSidebarPointerOver}
+          onPointerOut={handleSidebarPointerOut}
+          onMouseLeave={handleSidebarMouseLeave}
         >
           <Navigation className={isMini ? "py-1" : "py-2"} collapsed={!sidebarExpanded} />
         </div>
@@ -85,7 +108,7 @@ const RootLayout = () => {
         className={cn(
           "relative z-10 flex min-h-screen min-w-0 flex-col items-center justify-start bg-background",
           showSidebar && [
-            "rounded-l-[1.75rem] border-l border-border/80 shadow-xl",
+            "overflow-clip rounded-l-[1.75rem] border-l border-border/80 shadow-xl",
             "transition-[margin-left] duration-300 ease-out motion-reduce:transition-none",
             sidebarExpanded ? (isMini ? "ml-52" : "ml-60") : isMini ? "ml-12" : "ml-[3.75rem]",
           ],

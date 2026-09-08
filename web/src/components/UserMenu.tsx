@@ -114,7 +114,7 @@ const UserMenu = (props: Props) => {
             mini ? "h-9 px-2" : "h-11 px-2.5",
           )}
         >
-          <div className="relative shrink-0">
+          <div className="relative shrink-0" data-sidebar-expand-trigger>
             {currentUser?.avatarUrl ? (
               <UserAvatar className={cn("border-sidebar-foreground/15", mini ? "size-5" : "size-7")} avatarUrl={currentUser?.avatarUrl} />
             ) : (
