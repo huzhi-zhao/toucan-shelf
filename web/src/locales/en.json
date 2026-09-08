@@ -1518,7 +1518,7 @@
     "clear-mark": "Clear mark"
   },
   "bookshelf": {
-    "title": "ToucanShelf",
+    "title": "Workspaces",
     "new-workspace": "New workspace",
     "created-at": "Created {{date}}",
     "details": "Workspace details",

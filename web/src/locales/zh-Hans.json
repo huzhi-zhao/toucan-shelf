@@ -1386,7 +1386,7 @@
     "public-block-whole-site": "全部已发布页面"
   },
   "bookshelf": {
-    "title": "ToucanShelf",
+    "title": "知识库",
     "new-workspace": "新建知识库",
     "created-at": "创建于 {{date}}",
     "details": "知识库详情",

@@ -16,10 +16,12 @@ function MemosLogo(props: Props) {
 
   return (
     <div className={cn("relative w-full h-auto shrink-0", props.className)}>
-      <div className={cn("w-auto flex flex-row justify-start items-center text-foreground", collapsed ? "px-1" : "px-3")}>
-        <UserAvatar className={cn("shrink-0", mini && "w-6 h-6")} avatarUrl={avatarUrl} />
+      <div className="flex w-auto flex-row items-center justify-start text-sidebar-foreground">
+        <UserAvatar className={cn("shrink-0 border-sidebar-foreground/15 shadow-sm", mini ? "size-6" : "size-8")} avatarUrl={avatarUrl} />
         {!collapsed && (
-          <span className={cn("font-medium text-foreground shrink truncate", mini ? "ml-1.5 text-xs" : "ml-2 text-lg")}>{title}</span>
+          <span className={cn("shrink truncate whitespace-nowrap font-semibold tracking-tight", mini ? "ml-2.5 text-xs" : "ml-3 text-sm")}>
+            {title}
+          </span>
         )}
       </div>
     </div>

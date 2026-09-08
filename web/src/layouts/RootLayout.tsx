@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, useLocation, useSearchParams } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import { useInstance } from "@/contexts/InstanceContext";
@@ -34,6 +34,7 @@ const RootLayout = () => {
   const sm = useMediaQuery("sm");
   const sidebarMode = useSidebarMode();
   const isMini = sidebarMode === "mini";
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const { profile } = useInstance();
   const currentUser = useCurrentUser();
   const showSidebar = sm && !!currentUser;
@@ -61,19 +62,35 @@ const RootLayout = () => {
   }
 
   return (
-    <div className={cn("w-full min-h-full flex flex-row justify-center items-start", showSidebar && (isMini ? "sm:pl-12" : "sm:pl-16"))}>
+    <div className={cn("min-h-full w-full", showSidebar ? "bg-sidebar" : "bg-background")}>
       {showSidebar && (
         <div
           className={cn(
-            "group flex flex-col justify-start items-start fixed top-0 left-0 select-none h-full bg-sidebar",
-            isMini ? "w-12 px-1" : "w-16 px-2",
-            "border-r border-border",
+            "group fixed inset-y-0 left-0 z-0 flex select-none flex-col overflow-hidden bg-sidebar",
+            "transition-[width] duration-300 ease-out motion-reduce:transition-none",
+            sidebarExpanded ? (isMini ? "w-52" : "w-60") : isMini ? "w-12" : "w-[3.75rem]",
+            isMini ? "p-1.5" : "p-2",
           )}
+          onMouseEnter={() => setSidebarExpanded(true)}
+          onMouseLeave={() => setSidebarExpanded(false)}
+          onFocusCapture={() => setSidebarExpanded(true)}
+          onBlurCapture={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) setSidebarExpanded(false);
+          }}
         >
-          <Navigation className="py-4 md:pt-6" collapsed={true} />
+          <Navigation className={isMini ? "py-1" : "py-2"} collapsed={!sidebarExpanded} />
         </div>
       )}
-      <main className="w-full h-auto grow shrink flex flex-col justify-start items-center">
+      <main
+        className={cn(
+          "relative z-10 flex min-h-screen min-w-0 flex-col items-center justify-start bg-background",
+          showSidebar && [
+            "rounded-l-[1.75rem] border-l border-border/80 shadow-xl",
+            "transition-[margin-left] duration-300 ease-out motion-reduce:transition-none",
+            sidebarExpanded ? (isMini ? "ml-52" : "ml-60") : isMini ? "ml-12" : "ml-[3.75rem]",
+          ],
+        )}
+      >
         {profile.demo && <DemoBanner />}
         <Outlet />
       </main>

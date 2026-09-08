@@ -106,12 +106,19 @@ const UserMenu = (props: Props) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild disabled={!currentUser}>
-        <div className={cn("w-auto flex flex-row justify-start items-center cursor-pointer text-foreground", collapsed ? "px-1" : "px-3")}>
+        <button
+          type="button"
+          className={cn(
+            "flex w-full cursor-pointer flex-row items-center justify-start overflow-hidden rounded-xl text-sidebar-foreground outline-none",
+            "transition-colors hover:bg-sidebar-accent/65 focus-visible:ring-2 focus-visible:ring-ring",
+            mini ? "h-9 px-2" : "h-11 px-2.5",
+          )}
+        >
           <div className="relative shrink-0">
             {currentUser?.avatarUrl ? (
-              <UserAvatar className={cn(mini && "w-6 h-6")} avatarUrl={currentUser?.avatarUrl} />
+              <UserAvatar className={cn("border-sidebar-foreground/15", mini ? "size-5" : "size-7")} avatarUrl={currentUser?.avatarUrl} />
             ) : (
-              <User2Icon className={cn("mx-auto h-auto text-muted-foreground", mini ? "w-4" : "w-6")} />
+              <User2Icon className={cn("mx-auto text-sidebar-foreground/70", mini ? "size-4" : "size-5")} />
             )}
             {sseStatus !== "connected" && (
               <Tooltip>
@@ -128,11 +135,11 @@ const UserMenu = (props: Props) => {
             )}
           </div>
           {!collapsed && (
-            <span className={cn("font-medium text-foreground grow truncate", mini ? "ml-1.5 text-xs" : "ml-2 text-lg")}>
+            <span className={cn("grow truncate whitespace-nowrap text-left font-medium", mini ? "ml-2.5 text-xs" : "ml-3 text-sm")}>
               {currentUser?.displayName || currentUser?.username}
             </span>
           )}
-        </div>
+        </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
         <DropdownMenuItem onClick={() => navigateTo(`/u/${encodeURIComponent(currentUser?.username ?? "")}`)}>

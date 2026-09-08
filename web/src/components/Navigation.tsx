@@ -30,27 +30,38 @@ const Navigation = (props: Props) => {
   const notebookSidebarCollapsed = useNotebookSidebarCollapsed();
   const sidebarMode = useSidebarMode();
   const isMini = sidebarMode === "mini";
-  const iconSizeClass = isMini ? "w-4 h-auto shrink-0" : "w-6 h-auto shrink-0";
+  const iconSizeClass = isMini ? "size-4 shrink-0" : "size-5 shrink-0";
   const { primaryNavLinks, inboxAriaLabel } = usePrimaryNavLinks(iconSizeClass, isMini);
 
   return (
-    <header className={cn("w-full h-full overflow-auto flex flex-col justify-between items-start gap-4", className)}>
-      <div className="w-full px-1 py-1 flex flex-col justify-start items-start space-y-2 overflow-auto overflow-x-hidden shrink">
+    <header className={cn("flex h-full w-full flex-col items-start justify-between gap-4 overflow-hidden", className)}>
+      <div className="flex w-full shrink flex-col items-start justify-start gap-1.5 overflow-y-auto overflow-x-hidden p-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {isNotebook ? (
           <button
             type="button"
-            className="mb-3 cursor-pointer"
+            className={cn(
+              "mb-4 flex w-full cursor-pointer items-center rounded-xl px-1.5 outline-none transition-colors hover:bg-sidebar-accent/60 focus-visible:ring-2 focus-visible:ring-ring",
+              isMini ? "h-9" : "h-11",
+            )}
             onClick={toggleNotebookSidebarCollapsed}
             title={t(notebookSidebarCollapsed ? "notebook.expand-sidebar" : "notebook.collapse-sidebar")}
           >
             <MemosLogo collapsed={collapsed} mini={isMini} />
           </button>
         ) : currentUser ? (
-          <button type="button" className="mb-3 cursor-pointer" onClick={openLastDocument} title={t("notebook.open-last-document")}>
+          <button
+            type="button"
+            className={cn(
+              "mb-4 flex w-full cursor-pointer items-center rounded-xl px-1.5 outline-none transition-colors hover:bg-sidebar-accent/60 focus-visible:ring-2 focus-visible:ring-ring",
+              isMini ? "h-9" : "h-11",
+            )}
+            onClick={openLastDocument}
+            title={t("notebook.open-last-document")}
+          >
             <MemosLogo collapsed={collapsed} mini={isMini} />
           </button>
         ) : (
-          <NavLink className="mb-3 cursor-default" to={Routes.EXPLORE}>
+          <NavLink className="mb-4 flex w-full items-center rounded-xl px-1.5" to={Routes.EXPLORE}>
             <MemosLogo collapsed={collapsed} mini={isMini} />
           </NavLink>
         )}
@@ -59,19 +70,20 @@ const Navigation = (props: Props) => {
             <NavLink
               className={({ isActive }) =>
                 cn(
-                  "rounded-2xl border flex flex-row items-center text-sidebar-foreground transition-colors",
-                  isMini ? "px-1.5 py-1.5 text-xs" : "px-2 py-2 text-lg",
-                  collapsed ? "" : cn("w-full", isMini ? "px-2" : "px-4"),
+                  "relative flex w-full flex-row items-center overflow-hidden rounded-xl border text-sidebar-foreground outline-none",
+                  "transition-[background-color,color,border-color,box-shadow,transform] duration-200",
+                  "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar",
+                  isMini ? "h-9 px-2 text-xs" : "h-11 px-2.5 text-sm",
                   isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground border-sidebar-accent-border drop-shadow"
-                    : "border-transparent hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:border-sidebar-accent-border opacity-80",
+                    ? "border-sidebar-foreground/10 bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
+                    : "border-transparent opacity-75 hover:translate-x-0.5 hover:bg-sidebar-accent/65 hover:text-sidebar-accent-foreground hover:opacity-100",
                 )
               }
               key={navLink.id}
               to={navLink.path}
               end={navLink.path === Routes.HOME}
               id={navLink.id}
-              aria-label={navLink.id === "header-inbox" ? inboxAriaLabel : undefined}
+              aria-label={collapsed ? (navLink.id === "header-inbox" ? inboxAriaLabel : navLink.title) : undefined}
               viewTransition
             >
               {props.collapsed ? (
@@ -86,13 +98,15 @@ const Navigation = (props: Props) => {
               ) : (
                 navLink.icon
               )}
-              {!props.collapsed && <span className={cn("truncate", isMini ? "ml-2" : "ml-3")}>{navLink.title}</span>}
+              {!props.collapsed && (
+                <span className={cn("truncate whitespace-nowrap font-medium", isMini ? "ml-2.5" : "ml-3")}>{navLink.title}</span>
+              )}
             </NavLink>
           ))}
         </TooltipProvider>
       </div>
       {currentUser && (
-        <div className={cn("w-full flex flex-col justify-end", props.collapsed ? "items-center" : "items-start pl-3")}>
+        <div className="flex w-full flex-col justify-end border-t border-sidebar-foreground/10 pt-2">
           <UserMenu collapsed={collapsed} mini={isMini} />
         </div>
       )}
