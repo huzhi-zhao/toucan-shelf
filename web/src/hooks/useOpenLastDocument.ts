@@ -18,7 +18,8 @@ const memoUid = (memoName: string) => memoName.replace(/^memos\//, "");
  * Notebook then opens its first document); no remembered workspace → the first one; no
  * workspaces at all (or the lookup failed) → the Home page.
  */
-export function useOpenLastDocument() {
+export function useOpenLastDocument(options?: { replace?: boolean }) {
+  const replace = options?.replace ?? false;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const currentUser = useCurrentUser();
@@ -38,18 +39,18 @@ export function useOpenLastDocument() {
         getLastOpened(),
       ]);
     } catch {
-      navigate(ROUTES.DASHBOARD);
+      navigate(ROUTES.DASHBOARD, { replace });
       return;
     }
 
     if (workspaces.length === 0) {
-      navigate(ROUTES.DASHBOARD);
+      navigate(ROUTES.DASHBOARD, { replace });
       return;
     }
 
     const workspace = workspaces.find((w) => w.name === lastOpened?.workspace) ?? workspaces[0];
     const memo = lastOpened?.workspaceMemos[workspace.name];
     const workspacePath = `/${encodeURIComponent(workspace.title)}`;
-    navigate(memo ? `${workspacePath}/${encodeURIComponent(memoUid(memo))}` : workspacePath);
-  }, [navigate, queryClient, getLastOpened]);
+    navigate(memo ? `${workspacePath}/${encodeURIComponent(memoUid(memo))}` : workspacePath, { replace });
+  }, [navigate, queryClient, getLastOpened, replace]);
 }
