@@ -67,5 +67,7 @@ view:
 指定的那些 key，其余保持不变），正文侧则需要引入 version/etag 之类的乐观并发校验，让基于陈旧
 快照的写入失败重试而不是静默覆盖。这两项都超出当前范围，留待多人协作编辑时一并处理。
 
-TODO(确认)：本篇成文时未重新核对 `commitFromInstance` 当前实现是否仍是原设计描述的样子，
-只是从旧方案直接誊写；下次改动 SheetsBlock.tsx 时应顺手核实这段是否仍然准确。
+（2026-09-10 已核对 `SheetsBlock.tsx`，上面三点仍然准确：`nextOverlays` 确实是从
+`memoRef.current.nodeOverlays` 展开出来的整表替换，content 确实是拿
+`memoRef.current.content` 过一遍 `writeSheetsBlock` 再整体提交，debounce 常量
+`WRITE_DEBOUNCE_MS` 也仍是 600ms。）
