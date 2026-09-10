@@ -49,13 +49,6 @@
       `creator_id` 判断、且密钥是用户级的，两层问题叠在一起，需要重新设计密钥分发，
       不是放开查询过滤就行。
 
-- [ ] **secret block 遗留兼容代码清理** —— 全仓 grep
-      `LEGACY-COMPAT(secret-block/per-block-passphrase)`。删除判据是
-      `SELECT COUNT(*) FROM secret_block WHERE kdf = 'pbkdf2-sha256'` 归零；
-      归零前删除那些行的密文永久无法解开。**不要**连带删
-      `secret-crypto.ts` 的 `encryptSecret`/`decryptSecret`——`master-v1` 用它们
-      包/解包主密钥。见 [secret-block.md](docs/dev/requirements/editor/secret-block.md)。
-
 ### 定了方向、暂不排期
 
 - [ ] **外部资源根（NAS 资源接入）** —— 索引 NAS 上已存在的文件而不要求重新上传，

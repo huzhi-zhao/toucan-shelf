@@ -1576,8 +1576,6 @@
     "malformed": "This secret block is malformed and cannot be opened.",
     "sign-in-required": "This document contains encrypted content. Sign in to open it.",
     "create": {
-      "passphrase-confirm": "Confirm passphrase",
-      "passphrase-mismatch": "The two passphrases do not match.",
       "no-recovery": "Encrypted in your browser. The server never sees your master passphrase, so it cannot be recovered — forget it and the content is lost."
     },
     "error": {
@@ -1589,18 +1587,11 @@
       "write-back-failed": "The secret was created but its id could not be written into the document. Copy the id and set it manually, or delete the block and start over.",
       "create-failed": "Could not create the secret block.",
       "save-failed": "Could not save. The content is still decrypted here — copy it before leaving this page.",
-      "rotate-failed": "Could not change the passphrase. The old one still works.",
       "locked-session": "This session is locked. Unlock it with your master passphrase first.",
-      "migrate-failed": "Could not switch this block to the master passphrase. Its own passphrase still works.",
       "unlock-failed": "Could not unlock."
     },
-    "change-passphrase": "Change this block’s passphrase",
-    "new-passphrase": "New passphrase",
     "create-block": "Create",
     "master-passphrase-placeholder": "Master passphrase",
-    "legacy-passphrase-placeholder": "This block's own passphrase",
-    "legacy-notice": "This block still uses its own passphrase.",
-    "migrate": "Use master passphrase",
     "set-up-master": "Set up a master passphrase",
     "no-master-key": "Set a master passphrase before creating encrypted blocks.",
     "unlock-first": "Enter your master passphrase to unlock this session, then create the block.",
