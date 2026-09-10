@@ -25,6 +25,11 @@ const secretBlockNamePrefix = "secretBlocks/"
 // checks them so a malformed or downgraded envelope is rejected at write time
 // rather than discovered when a user can no longer open their own secret.
 const (
+	// secretKDFPBKDF2SHA256 is now used by exactly one record: the envelope in
+	// user_setting that wraps a user's master key under their master passphrase.
+	// Secret blocks themselves stopped using it on 2026-08-02 and the last such
+	// row was migrated on 2026-09-10, which is why only the master-key path below
+	// still accepts it.
 	secretKDFPBKDF2SHA256 = "pbkdf2-sha256"
 	// secretKDFMasterV1 marks a block encrypted against the user's master key
 	// rather than a passphrase typed at the block. No passphrase stretching
@@ -80,39 +85,48 @@ func convertSecretBlockFromStore(sb *store.SecretBlock) *v1pb.SecretBlock {
 	}
 }
 
-// validateSecretEnvelope rejects envelopes the client could never decrypt, and
-// envelopes weakened below the supported KDF cost.
-func validateSecretEnvelope(envelope *v1pb.SecretEnvelope) error {
+// validateSecretBlockEnvelope rejects anything a secret block could not be opened
+// with. Blocks are always sealed against the account's master key, so "master-v1"
+// is the only suite accepted here — a "pbkdf2-sha256" block would be a downgrade
+// to the retired per-block-passphrase scheme, and there are no such rows left.
+func validateSecretBlockEnvelope(envelope *v1pb.SecretEnvelope) error {
+	if err := validateSecretEnvelopeShape(envelope); err != nil {
+		return err
+	}
+	if envelope.Kdf != secretKDFMasterV1 {
+		return status.Errorf(codes.InvalidArgument, "unsupported kdf: %s", envelope.Kdf)
+	}
+	if envelope.KdfIterations != 0 {
+		return status.Errorf(codes.InvalidArgument, "master envelope must not carry kdf iterations: %d", envelope.KdfIterations)
+	}
+	return nil
+}
+
+// validateWrappedMasterKeyEnvelope rejects anything that could not serve as the
+// wrapper around a master key. That wrapper is the one place a passphrase is still
+// stretched directly, so it is always "pbkdf2-sha256" and its iteration count is
+// the only thing standing between a leaked database and every block at once.
+func validateWrappedMasterKeyEnvelope(envelope *v1pb.SecretEnvelope) error {
+	if err := validateSecretEnvelopeShape(envelope); err != nil {
+		return err
+	}
+	if envelope.Kdf != secretKDFPBKDF2SHA256 {
+		return status.Errorf(codes.InvalidArgument, "unsupported kdf: %s", envelope.Kdf)
+	}
+	if envelope.KdfIterations < secretMinKDFIterations || envelope.KdfIterations > secretMaxKDFIterations {
+		return status.Errorf(codes.InvalidArgument, "kdf iterations out of range: %d", envelope.KdfIterations)
+	}
+	return nil
+}
+
+// validateSecretEnvelopeShape checks what both suites share: the cipher, and that
+// no field a decrypt would need is missing or absurdly long.
+func validateSecretEnvelopeShape(envelope *v1pb.SecretEnvelope) error {
 	if envelope == nil {
 		return status.Errorf(codes.InvalidArgument, "envelope is required")
 	}
 	if envelope.Cipher != secretCipherAES256GCM {
 		return status.Errorf(codes.InvalidArgument, "unsupported cipher: %s", envelope.Cipher)
-	}
-	// The iteration count is checked against the suite that declared it. Reading it
-	// suite-blind would let a "master-v1" label smuggle a weakened pbkdf2 record
-	// past this check, or reject a legitimate master record for carrying no count.
-	switch envelope.Kdf {
-	// LEGACY-COMPAT(secret-block/per-block-passphrase)
-	// 这个分支同时服务两种记录，删除条件不一样，别一刀切：
-	//   (a) 2026-08-02 之前写的、一块一口令的旧 secret_block 行 —— 属于兼容代码，等
-	//       所有旧行都被前端的"改用主口令"迁移成 master-v1 之后才能连同它们一起清理；
-	//   (b) user_setting 里包主密钥的信封（见 validateSecretKeySetting）—— 永久使用，
-	//       删掉会让所有人都存不了/换不了主口令。
-	// 删 (a) 之前先确认库里没有旧行：
-	//   SELECT COUNT(*) FROM secret_block WHERE kdf = 'pbkdf2-sha256';
-	// 计数不为零就还有用户的密文只能靠它读出来，删了那些数据就永久打不开了。
-	// 详细清单见 web/src/components/MemoContent/SecretBlock.tsx 顶部 KeyMode 的注释。
-	case secretKDFPBKDF2SHA256:
-		if envelope.KdfIterations < secretMinKDFIterations || envelope.KdfIterations > secretMaxKDFIterations {
-			return status.Errorf(codes.InvalidArgument, "kdf iterations out of range: %d", envelope.KdfIterations)
-		}
-	case secretKDFMasterV1:
-		if envelope.KdfIterations != 0 {
-			return status.Errorf(codes.InvalidArgument, "master envelope must not carry kdf iterations: %d", envelope.KdfIterations)
-		}
-	default:
-		return status.Errorf(codes.InvalidArgument, "unsupported kdf: %s", envelope.Kdf)
 	}
 	for field, value := range map[string]string{"salt": envelope.Salt, "nonce": envelope.Nonce, "verifier": envelope.Verifier} {
 		if value == "" {
@@ -131,11 +145,10 @@ func validateSecretEnvelope(envelope *v1pb.SecretEnvelope) error {
 	return nil
 }
 
-// validateSecretKeySetting applies the same rules to the wrapped master key as to
-// any other envelope. It lives here rather than in user_service.go so the vault's
-// two write paths cannot drift: the master key is the single record every secret
-// block depends on, so accepting a weakened wrapper would silently weaken all of
-// them at once.
+// validateSecretKeySetting checks the wrapped master key. It lives here rather than
+// in user_service.go so the vault's two write paths cannot drift: the master key is
+// the single record every secret block depends on, so accepting a weakened wrapper
+// would silently weaken all of them at once.
 //
 // An entirely empty setting is allowed through as the "not configured yet" state.
 func validateSecretKeySetting(setting *v1pb.UserSetting_SecretKeySetting) error {
@@ -149,7 +162,7 @@ func validateSecretKeySetting(setting *v1pb.UserSetting_SecretKeySetting) error 
 	if setting.WrappedKey == "" && setting.Salt == "" && setting.Nonce == "" && setting.Verifier == "" {
 		return nil
 	}
-	return validateSecretEnvelope(&v1pb.SecretEnvelope{
+	return validateWrappedMasterKeyEnvelope(&v1pb.SecretEnvelope{
 		Kdf:           setting.Kdf,
 		KdfIterations: setting.KdfIterations,
 		Cipher:        setting.Cipher,
@@ -236,7 +249,7 @@ func (s *APIV1Service) CreateSecretBlock(ctx context.Context, request *v1pb.Crea
 		return nil, err
 	}
 	envelope := request.SecretBlock.Envelope
-	if err := validateSecretEnvelope(envelope); err != nil {
+	if err := validateSecretBlockEnvelope(envelope); err != nil {
 		return nil, err
 	}
 
@@ -277,7 +290,7 @@ func (s *APIV1Service) UpdateSecretBlock(ctx context.Context, request *v1pb.Upda
 		return nil, err
 	}
 	envelope := request.SecretBlock.Envelope
-	if err := validateSecretEnvelope(envelope); err != nil {
+	if err := validateSecretBlockEnvelope(envelope); err != nil {
 		return nil, err
 	}
 

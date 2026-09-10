@@ -13,9 +13,20 @@
   通过"+ → Media"显式选择插入的，走同一套判定，不因入口不同而改变落点。不被识别为媒体的
   文件无论哪种方式插入都直接挂附件区，不询问。
 
-TODO(确认)：定义文档里写的"限制媒体文件不超过 10M"，未在当前 `uploadService.ts` /
-`mediaInsertService.ts` 中找到对应的大小校验常量，需确认该限制是在别处实现、已被后续调整，
-还是尚未落地。
+## 上传大小：两道限制，媒体那道更紧
+
+最初定义文档写的"媒体文件不超过 10M"已被调整为 **100MB**，接 NAS 之后存储空间不再是约束，
+但超大文件仍不该直接进 S3 附件，所以限制保留、只是放宽。两侧都已落地：
+
+- 服务端 `maxMediaAttachmentSizeBytes = 100 * MebiByte`
+  （[attachment_service.go](../../../../server/router/api/v1/attachment_service.go)），
+  在 `validateAttachmentContentSize` 里校验，上传路径与就地覆盖路径共用同一个函数——
+  覆盖不能夹带一份上传会被拒的字节。
+- 前端 `MAX_MEDIA_ATTACHMENT_SIZE_BYTES`（[attachment.ts](../../../../web/src/utils/attachment.ts)）
+  镜像同一个数值，在 `insertMediaFiles` 里先行拦截，避免白跑一次往返。
+
+这道限制只作用于 image/video/audio。另有一道实例级的 `UploadSizeLimitMb` 管所有类型，
+未配置时回落到 `MaxUploadBufferSizeBytes`；两道同时生效，媒体取更严的那道。
 
 ## 正文内联渲染：图片/视频/音频统一走 `![]()` 语法
 
@@ -40,10 +51,11 @@ TODO(确认)：定义文档里写的"限制媒体文件不超过 10M"，未在�
   两套播放 UI 并存，一套服务"正文内联"场景，一套服务"附件区列表"场景，是同一份底层附件数据
   的两种呈现，不是重复实现。
 
-TODO(确认)：`rehype-sanitize` 的 `SANITIZE_SCHEMA`（[constants.ts](../../../../web/src/components/MemoContent/constants.ts)）
-是否已经放行 `<video>`/`<audio>` 标签本身——`Image.tsx` 渲染的是这两个标签，但它是自定义
-组件替换 `img` 节点产出的，不是原始 HTML 经过 sanitize 管线；未逐一核对 sanitize 层是否需要
-配合放行，下次接触这块代码时应确认。
+sanitize 层不需要为此配合放行：`rehype-sanitize` 作用在 hast 树上，那时节点还是 `img`
+（默认 schema 本就允许），随后 [MemoMarkdownRenderer.tsx](../../../../web/src/components/MemoContent/MemoMarkdownRenderer.tsx)
+把 `img` 映射到 `Image` 组件，`<video>`/`<audio>` 是这个 React 组件直接产出的元素，
+根本不经过 sanitize 管线。`SANITIZE_SCHEMA` 的 `tagNames` 里没有 video/audio 是对的——
+它管的是正文里手写的原始 HTML，那种确实不该放行。
 
 ## S3 附件走服务端代理，不再暴露裸预签名 URL
 

@@ -138,10 +138,16 @@ memogit agents                                               # （重新）写 A
 agent 该怎么用它判断读哪个附件，见
 [agent-attachment-reading](agent-attachment-reading.md)。
 
-TODO(确认)：附件上传（本地新增附件 push 回服务端）目前代码里没有对应实现，
-plan 原文档 §10 提到"附件同步"是"阶段 5"的开放项；现状确认是下载已落地、上传未
-落地，但这是否是后续明确排期的方向，还是已经搁置，没有找到更晚近的规划文档，
-标记待确认。
+**上传确实没有实现，而且"单向"是当前契约的一部分，不只是没来得及做。** 三处代码把
+这条写死了：`downloadMemoAttachments` 的注释（"one-way: bytes are pulled down for
+local/LLM context and never pushed back"）、`push.go` 顶部的"Attachments are one-way
+(download only) and never pushed"、以及 `agentdocs.go` 写给 agent 的须知里那句
+"`_attachments/` 是只读的附件字节"。
+
+也就是说要开上传，改的不止是多一个 API 调用：`_attachments/` 从只读变成可写，agent
+须知、`status` 的脏检测、冲突处理都要跟着重新定义。plan 原文档 §10 把"附件同步"列在
+阶段 5，没有更晚近的规划文档推翻或确认它。**排期与否留给需求侧决定**，代码现状本身
+已经确认清楚。
 
 ## 8. 给 AI agent 的入口：AGENTS.md / CLAUDE.md / .cursor
 

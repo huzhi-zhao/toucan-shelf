@@ -5,16 +5,16 @@
 // deliberately no server-side counterpart to this file.
 //
 // There are two suites, distinguished by the envelope's `kdf` field. Storing the
-// algorithm name per record is what lets both coexist without a data migration:
-// each envelope is opened with the parameters it was written with.
+// algorithm name per record is what lets both coexist: each envelope is opened
+// with the parameters it was written with.
 //
-// "pbkdf2-sha256" — the original per-block passphrase suite. Each block derives
-// its keys straight from a passphrase the user types at that block:
+// "pbkdf2-sha256" — derives keys straight from a typed passphrase. It began as the
+// per-block passphrase suite; that use was retired on 2026-08-02 and the last such
+// block was migrated on 2026-09-10, so no block is sealed this way any more.
 //
-// !! 关于 LEGACY-COMPAT(secret-block/per-block-passphrase)：这个套件**不是**纯兼容代码，
-// !! 不要跟着旧块一起删。清理旧块兼容代码时它必须原样保留 —— "master-v1" 用它来包/解包
-// !! 主密钥（见下面 wrapMasterKey / unwrapMasterKey），删掉等于所有用户的主密钥全部报废。
-// !! 该删的是 SecretBlock.tsx 里"用它直接加密块内容"的那条分支，不是这里的实现。
+// !! 但这个套件本身**没有退休**，不要因为"旧块清理干净了"就删它 —— "master-v1" 用它来
+// !! 包/解包主密钥（见下面 wrapMasterKey / unwrapMasterKey），删掉等于所有用户的主密钥
+// !! 全部报废。它现在的唯一职责就是那一层。
 //
 //   ikm      = PBKDF2-SHA256(passphrase, salt, iterations, 256 bit)
 //   encKey   = HKDF-SHA256(ikm, info="toucan-secret/v1/enc") -> AES-256-GCM

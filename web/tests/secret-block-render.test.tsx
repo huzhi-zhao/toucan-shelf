@@ -3,7 +3,7 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SecretBlock } from "@/components/MemoContent/SecretBlock";
 import { extractLanguage } from "@/components/MemoContent/utils";
-import { encryptSecret, encryptWithMasterKey, generateMasterKey, type MasterKey } from "@/utils/secret-crypto";
+import { encryptSecret, encryptWithMasterKey, generateMasterKey, type MasterKey, SecretPassphraseError } from "@/utils/secret-crypto";
 
 vi.mock("@/utils/i18n", () => ({
   useTranslate: () => (key: string) => key,
@@ -97,7 +97,6 @@ describe("SecretBlock", () => {
     expect(screen.getByText("secret-block.locked")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /secret-block.unlock/ })).toBeInTheDocument();
     expect(screen.queryByLabelText("secret-block.master-passphrase-placeholder")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("secret-block.legacy-passphrase-placeholder")).not.toBeInTheDocument();
   });
 
   // A local id means the block was inserted but never set up. Setting it up is now
@@ -171,8 +170,6 @@ describe("SecretBlock unlock", () => {
 
     await waitFor(() => expect(screen.getByText("s3cr3t-value")).toBeInTheDocument());
     expect(screen.getByLabelText("secret-block.edit")).toBeInTheDocument();
-    // A master block has no passphrase of its own to rotate; that lives in settings.
-    expect(screen.queryByLabelText("secret-block.change-passphrase")).not.toBeInTheDocument();
   });
 
   // The card cannot know which passphrase to ask for until it has seen the
@@ -199,66 +196,41 @@ describe("SecretBlock unlock", () => {
     expect(session.unlock).toHaveBeenCalledWith("correct horse battery");
   });
 
-  // Blocks written before the master key existed keep working untouched, and are
-  // the only ones that still show a per-block rotation control.
-  it("falls back to the block's own passphrase for a legacy envelope", async () => {
-    mockAuth.currentUser = { id: 1 };
-    const envelope = await encryptSecret("s3cr3t-value", "open sesame", { iterations: 100_000 });
-    client.getSecretBlock.mockResolvedValue({ name: "secretBlocks/abc123", hint: "", envelope } as never);
-
-    renderBlock("v: 1\nid: abc123");
-    fireEvent.click(screen.getByRole("button", { name: /secret-block.unlock/ }));
-    await waitFor(() => expect(screen.getByLabelText("secret-block.legacy-passphrase-placeholder")).toBeInTheDocument());
-
-    fireEvent.change(screen.getByLabelText("secret-block.legacy-passphrase-placeholder"), { target: { value: "open sesame" } });
-    fireEvent.click(screen.getByRole("button", { name: /secret-block.unlock/ }));
-
-    await waitFor(() => expect(screen.getByText("s3cr3t-value")).toBeInTheDocument());
-    expect(screen.getByLabelText("secret-block.change-passphrase")).toBeInTheDocument();
-    // With the session unlocked, the migration offer is live rather than advisory.
-    expect(screen.getByRole("button", { name: /secret-block.migrate/ })).toBeEnabled();
-  }, 20_000);
-
+  // A wrong master passphrase must read as a wrong passphrase, not as damage —
+  // the one distinction a user cannot afford to guess at.
   it("reports a wrong passphrase without opening", async () => {
     mockAuth.currentUser = { id: 1 };
-    const envelope = await encryptSecret("s3cr3t-value", "open sesame", { iterations: 100_000 });
+    session.key = null;
+    const envelope = await encryptWithMasterKey("s3cr3t-value", masterKey);
     client.getSecretBlock.mockResolvedValue({ name: "secretBlocks/abc123", hint: "", envelope } as never);
+    session.unlock.mockRejectedValue(new SecretPassphraseError("wrong"));
 
     renderBlock("v: 1\nid: abc123");
     fireEvent.click(screen.getByRole("button", { name: /secret-block.unlock/ }));
-    await waitFor(() => expect(screen.getByLabelText("secret-block.legacy-passphrase-placeholder")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByLabelText("secret-block.master-passphrase-placeholder")).toBeInTheDocument());
 
-    fireEvent.change(screen.getByLabelText("secret-block.legacy-passphrase-placeholder"), { target: { value: "wrong" } });
+    fireEvent.change(screen.getByLabelText("secret-block.master-passphrase-placeholder"), { target: { value: "wrong" } });
     fireEvent.click(screen.getByRole("button", { name: /secret-block.unlock/ }));
 
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("secret-block.error.wrong-passphrase"));
     expect(screen.queryByText("s3cr3t-value")).not.toBeInTheDocument();
-  }, 20_000);
+  });
 
-  // Migration is what makes "keep the old blocks" a transitional state rather than
-  // a permanent second mode. It must overwrite the record, not add one.
-  it("re-encrypts a legacy block against the master key on migration", async () => {
+  // The per-block-passphrase suite was retired on 2026-08-02 and the last row was
+  // migrated on 2026-09-10, so the code that opened those blocks is gone. A record
+  // still carrying that suite is now a corrupt or forward-dated one, and has to say
+  // so rather than silently offering a field nothing will accept.
+  it("refuses a retired per-block-passphrase envelope instead of prompting for one", async () => {
     mockAuth.currentUser = { id: 1 };
+    session.key = masterKey;
     const envelope = await encryptSecret("s3cr3t-value", "open sesame", { iterations: 100_000 });
     client.getSecretBlock.mockResolvedValue({ name: "secretBlocks/abc123", hint: "", envelope } as never);
-    client.updateSecretBlock.mockResolvedValue({} as never);
 
     renderBlock("v: 1\nid: abc123");
     fireEvent.click(screen.getByRole("button", { name: /secret-block.unlock/ }));
-    await waitFor(() => expect(screen.getByLabelText("secret-block.legacy-passphrase-placeholder")).toBeInTheDocument());
-    fireEvent.change(screen.getByLabelText("secret-block.legacy-passphrase-placeholder"), { target: { value: "open sesame" } });
-    fireEvent.click(screen.getByRole("button", { name: /secret-block.unlock/ }));
-    await waitFor(() => expect(screen.getByText("s3cr3t-value")).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole("button", { name: /secret-block.migrate/ }));
-
-    await waitFor(() => expect(client.updateSecretBlock).toHaveBeenCalledTimes(1));
-    const written = client.updateSecretBlock.mock.calls[0][0] as unknown as {
-      secretBlock: { name: string; envelope: { kdf: string } };
-    };
-    expect(written.secretBlock.name).toBe("secretBlocks/abc123");
-    expect(written.secretBlock.envelope.kdf).toBe("master-v1");
-    // The rotation control goes away with the passphrase it rotated.
-    await waitFor(() => expect(screen.queryByLabelText("secret-block.change-passphrase")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("secret-block.error.unsupported"));
+    expect(screen.queryByText("s3cr3t-value")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("secret-block.master-passphrase-placeholder")).not.toBeInTheDocument();
   }, 20_000);
 });

@@ -165,7 +165,9 @@
       "transcribe-error": "Failed to transcribe audio",
       "transcribe-success": "Transcription added",
       "transcribing": "Transcribing..."
-    }
+    },
+    "auto-save": "Auto-save",
+    "auto-save-tip": "Save automatically every 30 seconds while editing"
   },
   "inbox": {
     "failed-to-load": "Failed to load inbox item",

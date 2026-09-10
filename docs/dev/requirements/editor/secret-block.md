@@ -46,30 +46,26 @@ wrapped = AES-256-GCM(KEK, MK)      ← 存 user_setting 的 SECRET_KEY 键
 KDF 成本一次会话只跑一次（包 MK 用 1.2M 次迭代），块密钥不再受口令熵约束
 （每块密钥是 256 位真随机）。
 
-### 旧格式兼容：`LEGACY-COMPAT(secret-block/per-block-passphrase)`
+### 旧格式：一块一口令，已于 2026-09-10 清理完毕
 
 2026-08-02 之前每个加密块各有一个独立口令（信封 `kdf = "pbkdf2-sha256"`）。之后改成上面这套
-账号级主口令方案（`kdf = "master-v1"`）。旧块**没有做数据库迁移**，靠信封里的 `kdf` 字段区分
-两套，旧块继续用自己的口令打开，打开后提供"改用主口令"按钮就地覆盖信封。
+账号级主口令方案（`kdf = "master-v1"`）。旧块没有做数据库迁移，靠信封里的 `kdf` 字段区分两套，
+旧块继续用自己的口令打开、打开后点"改用主口令"就地覆盖信封——迁移是逐块手动的，没有批量入口
+也没有进度提示，因此那条兼容分支在仓库里活了一个多月。
 
-全仓 grep `LEGACY-COMPAT(secret-block/per-block-passphrase)` 可以找齐所有相关位置，主说明在
-[SecretBlock.tsx](../../../../web/src/components/MemoContent/SecretBlock.tsx) 顶部
-`KeyMode` 的注释里。
+2026-09-10 在生产库上确认判据归零（`SELECT kdf, COUNT(*) FROM secret_block GROUP BY kdf` 只剩
+`master-v1`），随后删除了整条兼容路径：前端的 legacy KeyMode 分支、per-block 口令轮换与
+"改用主口令"迁移入口、只服务旧流程的文案键，以及服务端对旧套件的接受。
 
-**清理判据**（一条 SQL）：
+**现在 `pbkdf2-sha256` 仍然存在，但只剩一个职责**：包 `user_setting` 里那条主密钥记录。服务端
+因此把校验按调用点拆成两个函数——`validateSecretBlockEnvelope` 只收 `master-v1`，
+`validateWrappedMasterKeyEnvelope` 只收 `pbkdf2-sha256`，共用的形状检查留在
+`validateSecretEnvelopeShape` 里。这比原来"两套都收"更严：一个块再也不可能被降级写回旧套件。
+[secret-crypto.ts](../../../../web/src/utils/secret-crypto.ts) 的
+`encryptSecret`/`decryptSecret` 同理保留，它们是包/解包主密钥的实现，删掉等于所有人的主密钥报废。
 
-```sql
-SELECT COUNT(*) FROM secret_block WHERE kdf = 'pbkdf2-sha256';
-```
-
-归零之后才能删这段兼容代码；归零之前删掉，那些行的密文将**永久无法解开**。迁移是逐块手动的、
-没有进度提示，这段兼容代码大概率会活得比预期久——**读到这里的人（包括 AI）应当主动提醒一次
-是否可以清理，而不是默认它已经能删**（详见 [记忆：加密块旧口令兼容代码待删]）。
-
-不要跟着删的是 [secret-crypto.ts](../../../../web/src/utils/secret-crypto.ts) 里
-`encryptSecret`/`decryptSecret` 的实现本身，以及服务端 `validateSecretEnvelope` 中
-`pbkdf2-sha256` 分支对 `user_setting` 那条包主密钥记录的校验——`master-v1` 靠它们包/解包
-主密钥，删掉的后果比留着兼容代码严重得多。
+前端读到一条 `pbkdf2-sha256` 的块信封时不再回退去要口令，而是直接报"不支持的加密套件"——现在
+这种记录只可能是损坏或来自更新的版本，不是一种可回退的模式。
 
 ### 会话与锁定
 

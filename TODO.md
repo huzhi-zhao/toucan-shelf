@@ -38,10 +38,9 @@
 
 - [ ] **RAG 库内搜索（F2）** —— Notebook 二级侧栏内的库内检索。
       见 [rag-search.md](docs/dev/rag-search.md)。
-      **前置改造**：`SearchRequest` 的 workspace scope 目前是 `workspace_id int32`，
-      而前端 Workspace 只带 `workspaces/{UID}` 资源名，没有数字 id。应先把 proto
-      改成字符串资源名 + 后端解析 UID→id，再动 F2。另与 `Notebook.tsx` 的预览区
-      耦合较深。
+      原先记的"proto 要先从 `workspace_id int32` 改成资源名"这项前置**已经做完**：
+      `SearchRequest.workspace` 现在就是 `workspaces/{workspace}`，后端在
+      `rag_service.go` 里解析。剩下的阻碍只有与 `Notebook.tsx` 预览区的耦合。
 
 - [ ] **知识库级授权收紧到文档/文件夹粒度** —— 现在"分配到库 = 库内文档最大读写"
       是第一期的粗粒度方案。见
@@ -49,13 +48,6 @@
       同一批要处理的还有 §7 的 **secret block 与库级授权脱节**：可见性按
       `creator_id` 判断、且密钥是用户级的，两层问题叠在一起，需要重新设计密钥分发，
       不是放开查询过滤就行。
-
-- [ ] **secret block 遗留兼容代码清理** —— 全仓 grep
-      `LEGACY-COMPAT(secret-block/per-block-passphrase)`。删除判据是
-      `SELECT COUNT(*) FROM secret_block WHERE kdf = 'pbkdf2-sha256'` 归零；
-      归零前删除那些行的密文永久无法解开。**不要**连带删
-      `secret-crypto.ts` 的 `encryptSecret`/`decryptSecret`——`master-v1` 用它们
-      包/解包主密钥。见 [secret-block.md](docs/dev/requirements/editor/secret-block.md)。
 
 ### 定了方向、暂不排期
 
@@ -86,6 +78,11 @@
 - [ ] **编辑器软提示 agent 未确认编辑** —— 人类打开 `agent_session_open == true`
       的文档时提示"此文档有 AI 编辑且尚未确认"。flag 已建好，补 UI 成本低。
       出处同上。
+
+- [ ] **memogit 附件上传（单向 → 双向）** —— 已确认未实现，且"只下载不上传"是写进
+      `push.go` / `attachments.go` 注释与 agent 须知的当前契约，不是没来得及做。要开
+      就得连带重定义 `_attachments/` 的可写性、`status` 脏检测与冲突处理。**做不做未定。**
+      见 [memogit-sync.md §7](docs/dev/requirements/collaboration/memogit-sync.md)。
 
 - [ ] **孤儿密文手动管理页** —— 加密块永不自动 GC，需要一个手动清理入口。
       见 [secret-block.md](docs/dev/requirements/editor/secret-block.md)。
@@ -120,19 +117,10 @@
 
 ## 三、待确认（先核实，别当需求排期）
 
-- [ ] **memogit 附件上传** —— 本地新增附件 push 回服务端，代码里没找到对应实现。
-      见 [memogit-sync.md](docs/dev/requirements/collaboration/memogit-sync.md)。
-- [ ] **附件 10M 大小限制** —— 定义文档写了，`uploadService.ts` /
-      `mediaInsertService.ts` 里没找到对应校验常量。
-      见 [upload-and-inline-media.md](docs/dev/requirements/attachments/upload-and-inline-media.md)。
-- [ ] **`rehype-sanitize` 的 SANITIZE_SCHEMA 当前实际配置** —— 出处同上。
-- [ ] **附件搬迁脚本是否已执行** —— 出处同上。
+- [ ] **附件搬迁脚本是否已执行** —— 见
+      [upload-and-inline-media.md](docs/dev/requirements/attachments/upload-and-inline-media.md)。
 - [ ] **standalone 部署的三条** —— 自动备份的两个已知 bug 是否仍在、无 S3 时的
       警告条是否实现、S3 凭证的环境变量读取路径是否落地。
       见 [standalone-local-deploy.md](docs/dev/standalone-local-deploy.md)。
 - [ ] **全站备份的若干项** —— 见
       [backup.md §TODO(确认)](docs/dev/requirements/storage/backup.md)。
-- [ ] **calendar 块的写回能力**是哪次迭代加的、有无独立需求记录。
-      见 [calendar-block.md](docs/dev/requirements/editor/calendar-block.md)。
-- [ ] **sheets 的 `commitFromInstance`** 当前实现是否仍是原设计描述的样子。
-      见 [sheets-block.md](docs/dev/requirements/editor/sheets-block.md)。
