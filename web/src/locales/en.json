@@ -338,7 +338,9 @@
     "media-too-large": "Media files must be 100MB or smaller.",
     "media-upload-error": "Failed to upload media file.",
     "media-uploading": "Uploading…",
-    "media-upload-in-progress": "Please wait for the current upload to finish."
+    "media-upload-in-progress": "Please wait for the current upload to finish.",
+    "auto-save": "Auto-save",
+    "auto-save-tip": "Save automatically every 30 seconds while editing"
   },
   "inbox": {
     "failed-to-load": "Failed to load inbox item",

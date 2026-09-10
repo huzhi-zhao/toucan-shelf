@@ -85,7 +85,7 @@ export const memoService = {
       /** Workspace ("workspaces/{uid}") the uploaded attachments belong to. */
       workspace?: string;
     },
-  ): Promise<{ memoName: string; hasChanges: boolean }> {
+  ): Promise<{ memoName: string; hasChanges: boolean; updateTime?: Date }> {
     // 1. Upload local files first
     const newAttachments = await uploadService.uploadFiles(state.localFiles, options.workspace);
     const allAttachments = [...state.metadata.attachments, ...newAttachments];
@@ -96,14 +96,18 @@ export const memoService = {
       const { mask, patch } = buildUpdateMask(prevMemo, state, allAttachments);
 
       if (mask.size === 0) {
-        return { memoName: prevMemo.name, hasChanges: false };
+        return {
+          memoName: prevMemo.name,
+          hasChanges: false,
+          updateTime: prevMemo.updateTime ? timestampDate(prevMemo.updateTime) : undefined,
+        };
       }
 
       const memo = await memoServiceClient.updateMemo({
         memo: create(MemoSchema, patch as Record<string, unknown>),
         updateMask: create(FieldMaskSchema, { paths: Array.from(mask) }),
       });
-      return { memoName: memo.name, hasChanges: true };
+      return { memoName: memo.name, hasChanges: true, updateTime: memo.updateTime ? timestampDate(memo.updateTime) : undefined };
     }
 
     // 3. Create new memo or comment
@@ -127,7 +131,7 @@ export const memoService = {
         })
       : await memoServiceClient.createMemo({ memo: memoData });
 
-    return { memoName: memo.name, hasChanges: true };
+    return { memoName: memo.name, hasChanges: true, updateTime: memo.updateTime ? timestampDate(memo.updateTime) : undefined };
   },
 
   /**

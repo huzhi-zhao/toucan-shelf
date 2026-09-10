@@ -15,8 +15,8 @@ import { hasFrontmatter } from "@/utils/frontmatter";
 import { useTranslate } from "@/utils/i18n";
 import { convertVisibilityFromString } from "@/utils/memo";
 import { AudioRecorderPanel, EditorContent, EditorMetadata, FocusModeOverlay, TimestampPopover } from "./components";
-import { FOCUS_MODE_STYLES, FORMATTING_TOOLBAR_STORAGE_KEY } from "./constants";
-import { useAudioRecorder, useAutoSave, useFocusMode, useKeyboard, useMemoInit } from "./hooks";
+import { FOCUS_MODE_STYLES, FORMATTING_TOOLBAR_STORAGE_KEY, PERIODIC_SAVE_STORAGE_KEY } from "./constants";
+import { useAudioRecorder, useAutoSave, useFocusMode, useKeyboard, useMemoInit, usePeriodicSave } from "./hooks";
 import { errorService, memoService, transcriptionService, validationService } from "./services";
 import { EditorProvider, UploadWorkspaceProvider, useEditorContext, useEditorSelector, useUploadWorkspace } from "./state";
 import { CommentToolbar, EditorToolbar, FormattingToolbar } from "./Toolbar";
@@ -85,6 +85,11 @@ const MemoEditorImpl = forwardRef<EditorController, MemoEditorProps>(
     // Persisted preference: also show the formatting toolbar in normal mode. Focus
     // mode always shows it regardless; this only governs the non-focus layout.
     const [isFormattingToolbarVisible, setFormattingToolbarVisible] = useLocalStorage(FORMATTING_TOOLBAR_STORAGE_KEY, false);
+    // Persisted preference: keep committing the document to the server on a timer
+    // so a long editing session can't be lost by forgetting to press Save.
+    const [isPeriodicSaveEnabled, setPeriodicSaveEnabled] = useLocalStorage(PERIODIC_SAVE_STORAGE_KEY, false);
+    // Content of the last successful periodic save, so idle ticks cost nothing.
+    const lastPeriodicSaveContentRef = useRef<string | undefined>(undefined);
 
     const memoName = memo?.name;
     const canTranscribe = useMemo(() => {
@@ -116,6 +121,26 @@ const MemoEditorImpl = forwardRef<EditorController, MemoEditorProps>(
 
     // Focus mode management with body scroll lock
     useFocusMode(isFocusMode);
+
+    // Periodic saving is offered only for full-page editing of an existing
+    // document — the case where a session runs for hours. It is deliberately not
+    // offered in create mode (it would publish half-written memos) or in the
+    // inline/comment editors.
+    const canPeriodicSave = Boolean(memoName) && Boolean(expand);
+    // Not memoized on purpose: usePeriodicSave keeps the latest callback in a ref,
+    // so each tick runs against current props (workspace, anchors) instead of a
+    // closure captured on first render.
+    async function handlePeriodicSave() {
+      const content = getState().content;
+      if (lastPeriodicSaveContentRef.current === content) {
+        return;
+      }
+      const saved = await saveMemo({ silent: true });
+      if (saved) {
+        lastPeriodicSaveContentRef.current = content;
+      }
+    }
+    usePeriodicSave({ enabled: canPeriodicSave && isPeriodicSaveEnabled, save: handlePeriodicSave });
 
     // Live-sync the draft's createTime/updateTime to the calendar-derived prop.
     // Only applies in create mode; edit mode owns its own timestamps. Runs after
@@ -288,14 +313,26 @@ const MemoEditorImpl = forwardRef<EditorController, MemoEditorProps>(
     useKeyboard(editorRef, handleSave);
 
     async function handleSave() {
+      await saveMemo({ silent: false });
+    }
+
+    // Shared by the Save button and the periodic auto-save. A silent save keeps
+    // the editor open and untouched: no reset, no onConfirm, no draft discard —
+    // the user is still typing.
+    async function saveMemo({ silent }: { silent: boolean }): Promise<boolean> {
       // Read the latest state imperatively — this component no longer subscribes
       // to content, so the closure can't rely on a per-render `state` snapshot.
       const state = getState();
       // Validate before saving
       const { valid, reason } = validationService.canSave(state);
       if (!valid) {
+        // A silent save just waits for the next tick (upload/recording in
+        // progress, or a manual save already running).
+        if (silent) {
+          return false;
+        }
         toast.error(reason || "Cannot save");
-        return;
+        return false;
       }
 
       dispatch(actions.setLoading("saving", true));
@@ -311,14 +348,13 @@ const MemoEditorImpl = forwardRef<EditorController, MemoEditorProps>(
         });
 
         if (!result.hasChanges) {
+          if (silent) {
+            return true;
+          }
           toast.error(t("editor.no-changes-detected"));
           handleCancel();
-          return;
+          return false;
         }
-
-        // Clear localStorage cache on successful save and prevent the unmount
-        // flush from writing the just-saved content back as a stale draft.
-        discardDraft();
 
         // Invalidate React Query cache to refresh memo lists across the app
         const invalidationPromises = [
@@ -337,6 +373,20 @@ const MemoEditorImpl = forwardRef<EditorController, MemoEditorProps>(
         }
 
         await Promise.all(invalidationPromises);
+
+        if (silent) {
+          // The editor's own updateTime is now behind the server's. Re-sync it, or
+          // the next save would diff against a stale timestamp and keep pushing
+          // updateTime backwards on every tick.
+          if (result.updateTime) {
+            dispatch(actions.setTimestamps({ updateTime: result.updateTime }));
+          }
+          return true;
+        }
+
+        // Clear localStorage cache on successful save and prevent the unmount
+        // flush from writing the just-saved content back as a stale draft.
+        discardDraft();
 
         // Reset editor state to initial values
         dispatch(actions.reset());
@@ -359,11 +409,13 @@ const MemoEditorImpl = forwardRef<EditorController, MemoEditorProps>(
 
         // Notify parent component of successful save
         onConfirm?.(result.memoName);
+        return true;
       } catch (error) {
         handleError(error, toast.error, {
-          context: "Failed to save memo",
+          context: silent ? "Auto-save failed" : "Failed to save memo",
           fallbackMessage: errorService.getErrorMessage(error),
         });
+        return false;
       } finally {
         dispatch(actions.setLoading("saving", false));
       }
@@ -439,6 +491,8 @@ const MemoEditorImpl = forwardRef<EditorController, MemoEditorProps>(
                   onToggleFormattingToolbar={handleToggleFormattingToolbar}
                   onInsertProperties={handleInsertProperties}
                   compact={expand && !isFocusMode}
+                  isAutoSaveEnabled={isPeriodicSaveEnabled}
+                  onToggleAutoSave={canPeriodicSave ? setPeriodicSaveEnabled : undefined}
                 />
               );
             })()}

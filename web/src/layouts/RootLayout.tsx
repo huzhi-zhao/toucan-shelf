@@ -11,7 +11,7 @@ import { buildAuthRoute, shouldGatePrivateInstance } from "@/utils/auth-redirect
 import { useTranslate } from "@/utils/i18n";
 
 const MEMOS_DEPLOY_URL = "https://usememos.com/docs/deploy";
-const SIDEBAR_HOVER_OPEN_DELAY_MS = 500;
+const SIDEBAR_HOVER_OPEN_DELAY_MS = 200;
 
 const DemoBanner = () => {
   const t = useTranslate();

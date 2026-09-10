@@ -53,6 +53,12 @@ export interface EditorToolbarProps {
   onInsertProperties: () => void;
   /** Tighter vertical spacing for the sticky bottom bar in expand mode. */
   compact?: boolean;
+  /**
+   * Opt-in periodic auto-save. The checkbox is rendered only when
+   * `onToggleAutoSave` is provided (full-page editing of an existing document).
+   */
+  isAutoSaveEnabled?: boolean;
+  onToggleAutoSave?: (enabled: boolean) => void;
 }
 
 export interface EditorMetadataProps {

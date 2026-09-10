@@ -11,3 +11,6 @@ export const FOCUS_MODE_STYLES = {
 // localStorage key for the user's preference to show the formatting toolbar in
 // normal (non-focus) mode. Defaults to off.
 export const FORMATTING_TOOLBAR_STORAGE_KEY = "memos-editor-formatting-toolbar";
+// localStorage key for the opt-in "auto-save" toggle next to the Save button
+// (periodic real saves while editing an existing document). Defaults to off.
+export const PERIODIC_SAVE_STORAGE_KEY = "memos-editor-periodic-save";

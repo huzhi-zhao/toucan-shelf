@@ -204,7 +204,9 @@
       "trigger": "錄製音訊",
       "unsupported": "不支援錄音",
       "unsupported-description": "此瀏覽器無法錄製備忘錄編輯器中的音訊。"
-    }
+    },
+    "auto-save": "自動儲存",
+    "auto-save-tip": "編輯時每 30 秒自動儲存一次"
   },
   "inbox": {
     "failed-to-load": "載入失敗",

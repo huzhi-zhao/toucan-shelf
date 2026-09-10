@@ -1,5 +1,6 @@
 import type { FC } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import type { Location, Visibility } from "@/types/proto/api/v1/memo_service_pb";
 import { useTranslate } from "@/utils/i18n";
@@ -18,6 +19,8 @@ export const EditorToolbar: FC<EditorToolbarProps> = ({
   onToggleFormattingToolbar,
   onInsertProperties,
   compact,
+  isAutoSaveEnabled,
+  onToggleAutoSave,
 }) => {
   const t = useTranslate();
   const { actions, dispatch } = useEditorContext();
@@ -60,6 +63,16 @@ export const EditorToolbar: FC<EditorToolbarProps> = ({
       </div>
 
       <div className="flex flex-row justify-end items-center gap-2">
+        {onToggleAutoSave && (
+          <label
+            className="flex flex-row items-center gap-1.5 mr-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer select-none"
+            title={t("editor.auto-save-tip")}
+          >
+            <Checkbox checked={Boolean(isAutoSaveEnabled)} onCheckedChange={(checked) => onToggleAutoSave(checked === true)} />
+            <span>{t("editor.auto-save")}</span>
+          </label>
+        )}
+
         {onCancel && (
           <Button variant="ghost" onClick={onCancel} disabled={isSaving}>
             {t("common.cancel")}
