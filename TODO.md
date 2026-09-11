@@ -36,12 +36,6 @@
 
 ### 下一步做
 
-- [ ] **RAG 库内搜索（F2）** —— Notebook 二级侧栏内的库内检索。
-      见 [rag-search.md](docs/dev/rag-search.md)。
-      原先记的"proto 要先从 `workspace_id int32` 改成资源名"这项前置**已经做完**：
-      `SearchRequest.workspace` 现在就是 `workspaces/{workspace}`，后端在
-      `rag_service.go` 里解析。剩下的阻碍只有与 `Notebook.tsx` 预览区的耦合。
-
 - [ ] **知识库级授权收紧到文档/文件夹粒度** —— 现在"分配到库 = 库内文档最大读写"
       是第一期的粗粒度方案。见
       [workspace-member-access.md §5](docs/dev/requirements/collaboration/workspace-member-access.md)。
@@ -93,8 +87,25 @@
 - [ ] **sheets 快照写入失败重试** —— 当前是静默覆盖。留待多人协作编辑时一并处理。
       见 [sheets-block.md](docs/dev/requirements/editor/sheets-block.md)。
 
-- [ ] **SQLite 驱动泄漏点清理** —— 已排查出五处显式判断，可直接作为清理清单。
-      见 [sqlite-as-sole-datasource.md](docs/dev/requirements/storage/sqlite-as-sole-datasource.md)。
+- [ ] **无远程备份时的警告条** —— 允许无 S3 启动是既定决策，配套的"未配置远程备份"警告条
+      与降级提示仍未实现，已核实前端无任何相关逻辑。
+      见 [standalone-local-deploy.md](docs/dev/standalone-local-deploy.md)。
+
+- [ ] **S3 凭证的环境变量读取路径** —— standalone 恢复场景下本地 DB 还不存在，凭证只能来自
+      `TOUCAN_S3_*` 环境变量。已核实这批变量在代码里零命中，凭证仍只从 DB 读；这条是
+      "从 S3 恢复"的前置。出处同上。
+
+- [ ] **备份专用桶** —— 备份现在只能复用 Attachment storage 的同一个桶换 prefix。
+      是否允许 admin 单独指定一个备份桶是未决的产品问题，不是实现遗漏。
+      见 [backup.md §未决](docs/dev/requirements/storage/backup.md)。
+
+- [ ] **存量附件按 workspace 前缀搬迁** —— 搬迁脚本不存在、从未执行。新旧混存不影响访问，
+      要不要搬是产品判断。
+      见 [upload-and-inline-media.md](docs/dev/requirements/attachments/upload-and-inline-media.md)。
+
+- [ ] **自动备份间隔做成配置项** —— 周期判定已改为读 `last_backup_time` 并在启动时补跑，
+      但间隔本身仍是常量 `backupInterval`，接到 `InstanceSetting` 或环境变量未做。
+      出处同上。
 
 - [ ] **知识库物理删除** —— `DeleteWorkspace` RPC 保留（要求库为空）但前端不给入口。
       见 [workspace-detail-and-shelf.md](docs/dev/requirements/knowledge-base/workspace-detail-and-shelf.md)。
@@ -117,10 +128,4 @@
 
 ## 三、待确认（先核实，别当需求排期）
 
-- [ ] **附件搬迁脚本是否已执行** —— 见
-      [upload-and-inline-media.md](docs/dev/requirements/attachments/upload-and-inline-media.md)。
-- [ ] **standalone 部署的三条** —— 自动备份的两个已知 bug 是否仍在、无 S3 时的
-      警告条是否实现、S3 凭证的环境变量读取路径是否落地。
-      见 [standalone-local-deploy.md](docs/dev/standalone-local-deploy.md)。
-- [ ] **全站备份的若干项** —— 见
-      [backup.md §TODO(确认)](docs/dev/requirements/storage/backup.md)。
+暂无。上一批三条已核实完毕，结论已回写各自文档，未实现的部分见上面的「已定未做」。

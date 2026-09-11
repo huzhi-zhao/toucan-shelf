@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/usememos/memos/internal/profile"
@@ -35,10 +36,18 @@ import (
 func Run(ctx context.Context, profile *profile.Profile, stores *store.Store) error {
 	runErr := run(ctx, profile, stores)
 
-	backupSetting := &storepb.InstanceBackupSetting{
-		LastBackupTime:    timestamppb.Now(),
-		LastBackupSuccess: runErr == nil,
+	// Read the stored setting back and only overwrite the status fields. UpsertInstanceSetting
+	// replaces the whole value instead of patching fields, so building a fresh
+	// InstanceBackupSetting here would drop the admin-configured path_template on every backup
+	// and silently fall back to the default template on the next read.
+	backupSetting := &storepb.InstanceBackupSetting{PathTemplate: store.DefaultInstanceBackupPathTemplate}
+	if stored, err := stores.GetInstanceBackupSetting(ctx); err == nil && stored != nil {
+		// Clone it: the getter hands out a pointer into the instance-setting cache.
+		backupSetting = proto.Clone(stored).(*storepb.InstanceBackupSetting)
 	}
+	backupSetting.LastBackupTime = timestamppb.Now()
+	backupSetting.LastBackupSuccess = runErr == nil
+	backupSetting.LastBackupError = ""
 	if runErr != nil {
 		backupSetting.LastBackupError = runErr.Error()
 	}

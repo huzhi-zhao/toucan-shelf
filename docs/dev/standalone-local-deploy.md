@@ -35,14 +35,14 @@ CGO_ENABLED=0 go build -o memos ./cmd/memos
 | 备份状态 | 记在 `InstanceSetting_BACKUP`，UI 可见 |
 | 从 S3 恢复 | **没有**——已核实仓库内不存在任何"启动时从 S3 拉取快照恢复"的代码路径 |
 | 首启引导 UI | 没有——没有配置 S3 的引导流程，也没有"未配置远程备份"的警告条 |
-| 打包 CI | 未核实是否已配置多平台构建 pipeline，`TODO(确认)` |
+| 打包 CI | 有但未生效——`.github/workflows-disabled/release.yml` 里存在 goos/goarch 构建矩阵与多平台镜像矩阵，但整个 workflows 目录处于停用状态，且相关段落本身也被注释掉 |
 
-## 已知问题
+## 已修复的备份问题
 
-自动备份存在两个尚未修复的 bug，影响**现有线上实例**，与 standalone 部署与否无关，
-应先修再谈 standalone 化：
+自动备份曾有两个 bug，影响**现有线上实例**，与 standalone 部署与否无关，已修复。
+两段原始诊断保留在下面，便于回溯当时的判断。
 
-### 间隔硬编码 + 无启动补跑
+### 间隔硬编码 + 无启动补跑（已修复）
 
 [server/runner/backup/runner.go](../../server/runner/backup/runner.go) 里
 `runnerInterval` 硬编码为 `7 * 24 * time.Hour`，调度靠一个纯内存 `time.Ticker`：
@@ -56,7 +56,12 @@ CGO_ENABLED=0 go build -o memos ./cmd/memos
 线上是积极开发的项目，部署频率远高于 7 天，两个缺陷相乘的结果是自动备份实际上
 从未真正按周期触发过，只能靠手动 `BackupNow`。
 
-### 自定义备份路径被静默重置
+**修法**：周期判定改为读存储里的 `last_backup_time`，ticker 只当轮询心跳
+（每小时一次），并在 runner 启动时先判定一次，停机期间到期的备份会补跑。未配置 S3 时
+直接跳过，不再每次轮询都记一笔失败尝试；上次尝试失败则下一次轮询就重试。间隔本身仍是
+常量 `backupInterval`，把它做成配置项是另一件事，没有一并做。
+
+### 自定义备份路径被静默重置（已修复）
 
 [server/backup/backup.go](../../server/backup/backup.go) 的 `Run()` 记录备份状态时，
 新建一个 `InstanceBackupSetting{LastBackupTime, LastBackupSuccess}` 并整体覆盖写回，
@@ -64,9 +69,11 @@ CGO_ENABLED=0 go build -o memos ./cmd/memos
 patch，所以用户在设置里配置的自定义路径模板每备份一次就被清空一次，下次读取时又被
 自动填回默认模板——配置悄悄消失，UI 上不会有任何提示。
 
+**修法**：`Run()` 写回状态前先读出现有设置，只覆盖 `last_backup_*` 三个字段，
+`path_template` 原样带上。
+
 这两个 bug 原记录在 `docs/plans/2026-08-04-standalone-local-deploy/02-backup-bugs.md`
-（该文件随 docs/plans 迁移清理已删除，内容并入本节）。`TODO(确认)`：两个 bug 截至本文
-整理时是否已排期修复，未在代码或 issue 跟踪中找到结论。
+（该文件随 docs/plans 迁移清理已删除，内容并入本节）。
 
 ## 关键决策
 
@@ -86,8 +93,8 @@ SQLite + 对象存储备份只能有一个写者，多台机器先后启动会�
 ### 不强制配置 S3
 
 首次启动不强制要求填 S3 配置。计划中的做法是允许无 S3 启动、功能完整，未配置远程
-备份时界面持续显示警告条。`TODO(确认)`：截至本文整理时，代码里未找到这条警告条或
-无 S3 时的降级提示逻辑，是否已实现存疑。
+备份时界面持续显示警告条。**已核实未实现**：前端没有这条警告条，也没有无 S3 时的
+降级提示。索引见 [TODO.md](../../TODO.md)。
 
 ## 凭证与快照安全
 
@@ -99,7 +106,8 @@ SQLite + 对象存储备份只能有一个写者，多台机器先后启动会�
 standalone 模式下计划让 S3 凭证只能来自环境变量（`TOUCAN_S3_ENDPOINT` /
 `_REGION` / `_BUCKET` / `_ACCESS_KEY_ID` / `_ACCESS_KEY_SECRET`），因为恢复发生时
 本地 DB 还不存在，不可能从一个尚未存在的数据库里读出连接 S3 所需的凭证。副产品是
-快照天然不含 S3 密钥。`TODO(确认)`：这条环境变量读取路径是否已在代码中实现未核实。
+快照天然不含 S3 密钥。**已核实未实现**：`TOUCAN_S3_*` 在 Go 代码里零命中，凭证仍然只从
+DB 读。索引见 [TODO.md](../../TODO.md)。
 
 线上（docker）部署仍从 DB 读凭证，靠 IAM 权限收敛（Access Key 锁死单 bucket + bucket
 私有）而非代码兜底。
