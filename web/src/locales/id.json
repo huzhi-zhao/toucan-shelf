@@ -23,7 +23,6 @@
     "archive": "Arsip",
     "archived": "Diarsipkan",
     "attachments": "Lampiran",
-    "auto-expand": "Perluas otomatis",
     "avatar": "Avatar",
     "basic": "Dasar",
     "beta": "Beta",
@@ -102,10 +101,8 @@
     "sign-out": "Keluar",
     "sign-up": "Daftar",
     "statistics": "Statistik",
-    "tags": "Tag",
     "title": "Judul",
     "today": "Hari ini",
-    "tree-mode": "Mode pohon",
     "type": "Tipe",
     "unpin": "Lepaskan",
     "update": "Perbarui",
@@ -172,8 +169,6 @@
   },
   "memo": {
     "archived-at": "Diarsipkan pada",
-    "click-to-hide-sensitive-content": "Klik untuk menyembunyikan konten NSFW",
-    "click-to-show-sensitive-content": "Klik untuk menampilkan konten NSFW",
     "code": "Kode",
     "comment": {
       "self": "Komentar",
@@ -500,37 +495,7 @@
       "title": "Webhook",
       "url": "URL",
       "label": "Webhook"
-    },
-    "tags": {
-      "label": "Tag",
-      "title": "Metadata tanda",
-      "description": "Tetapkan warna tampilan opsional ke seluruh tag, atau buramkan konten memo yang cocok. Nama tag diperlakukan sebagai pola regex berlabuh.",
-      "background-color": "Warna latar belakang",
-      "blur-content": "Mengaburkan konten",
-      "no-tags-configured": "Tidak ada metadata tag yang dikonfigurasi.",
-      "tag-name": "Nama tanda",
-      "tag-name-placeholder": "misalnya work atau project/.*",
-      "tag-already-exists": "Label sudah ada.",
-      "tag-pattern-hint": "Nama tag atau pola ekspresi reguler (misalnya project/.* cocok dengan semua tag project/)",
-      "invalid-regex": "Pola regex tidak valid atau tidak aman.",
-      "using-default-color": "Menggunakan warna default."
     }
-  },
-  "tag": {
-    "all-tags": "Semua Tag",
-    "create-tag": "Buat Tag",
-    "create-tags-guide": "Anda dapat membuat tag dengan memasukkan `#tag`.",
-    "delete-confirm": "Apakah Anda yakin ingin menghapus tag ini? Semua memo terkait akan diarsipkan.",
-    "delete-success": "Tag berhasil dihapus",
-    "delete-tag": "Hapus Tag",
-    "new-name": "Nama Baru",
-    "no-tag-found": "Tidak ada tag yang ditemukan",
-    "old-name": "Nama Lama",
-    "rename-error-empty": "Nama tag tidak boleh kosong atau mengandung spasi",
-    "rename-error-repeat": "Nama baru tidak boleh sama dengan nama lama",
-    "rename-success": "Berhasil mengganti nama tag",
-    "rename-tag": "Ganti nama tag",
-    "rename-tip": "Semua memo Anda dengan tag ini akan diperbarui."
   },
   "tooltip": {
     "link-memo": "Tautkan Memo",

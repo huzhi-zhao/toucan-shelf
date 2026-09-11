@@ -24,7 +24,6 @@
     "archive": "Arxivar",
     "archived": "Arxivat",
     "attachments": "Adjunts",
-    "auto-expand": "Expansió automàtica",
     "avatar": "Avatar",
     "basic": "Bàsic",
     "beta": "Beta",
@@ -103,10 +102,8 @@
     "sign-out": "Surt",
     "sign-up": "Registra't",
     "statistics": "Estadístiques",
-    "tags": "Etiquetes",
     "title": "Títol",
     "today": "Avui",
-    "tree-mode": "Mode arbre",
     "type": "Tipus",
     "unpin": "Desenganxa",
     "update": "Actualitza",
@@ -186,8 +183,6 @@
   },
   "memo": {
     "archived-at": "Arxivat el",
-    "click-to-hide-sensitive-content": "Fes clic per ocultar contingut sensible",
-    "click-to-show-sensitive-content": "Fes clic per mostrar contingut sensible",
     "code": "Codi",
     "comment": {
       "self": "Comentaris",
@@ -637,25 +632,6 @@
       "url": "URL",
       "label": "Webhooks"
     },
-    "tags": {
-      "label": "Etiquetes",
-      "title": "Metadades de l'etiqueta",
-      "description": "Assigna colors de visualització opcionals a les etiquetes a tota la instància o desenfoca el contingut de la nota coincident. Els noms d'etiquetes es tracten com a patrons d'expressió regular ancorats.",
-      "background-color": "Color de fons",
-      "blur-content": "Contingut desenfocat",
-      "no-tags-configured": "No s'han configurat metadades d'etiquetes.",
-      "tag-name": "Nom de l'etiqueta",
-      "tag-name-placeholder": "p. ex. work o project/.*",
-      "tag-already-exists": "L'etiqueta ja existeix.",
-      "tag-pattern-hint": "Nom de l'etiqueta o patró d'expressió regular (p. ex., project/.* coincideix amb totes les etiquetes project/)",
-      "invalid-regex": "Patró d'expressió regular no vàlid o no segur.",
-      "using-default-color": "Utilitzant el color predeterminat.",
-      "add-rule": "Afegeix una regla",
-      "configured-rules": "Regles configurades",
-      "default-color": "Per defecte",
-      "matching-rule": "Expressió regular ancorada",
-      "used-count": "Memòries {{count}}"
-    },
     "ai": {
       "add-provider": "Afegeix un proveïdor",
       "api-key": "Tecla API",
@@ -755,22 +731,6 @@
       "refresh": "Actualitza",
       "load-error": "No s'han pogut carregar les estadístiques"
     }
-  },
-  "tag": {
-    "all-tags": "Totes les etiquetes",
-    "create-tag": "Crea etiqueta",
-    "create-tags-guide": "Pots crear etiquetes escrivint `#etiqueta`.",
-    "delete-confirm": "Estàs segur que vols eliminar aquesta etiqueta? Totes les notes relacionades s'arxivaran.",
-    "delete-success": "Etiqueta eliminada correctament",
-    "delete-tag": "Elimina etiqueta",
-    "new-name": "Nom nou",
-    "no-tag-found": "No s'ha trobat cap etiqueta",
-    "old-name": "Nom antic",
-    "rename-error-empty": "El nom de l'etiqueta no pot estar buit ni contenir espais",
-    "rename-error-repeat": "El nom nou no pot ser igual que l'antic",
-    "rename-success": "Etiqueta reanomenada correctament",
-    "rename-tag": "Reanomena etiqueta",
-    "rename-tip": "Totes les teves notes amb aquesta etiqueta s'actualitzaran."
   },
   "tooltip": {
     "link-memo": "Enllaça nota",

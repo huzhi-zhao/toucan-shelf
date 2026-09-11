@@ -185,10 +185,6 @@ func (r *MarkdownRenderer) renderNode(node gast.Node, source []byte, depth int) 
 		}
 
 	// Custom Memos nodes
-	case *mast.TagNode:
-		r.buf.WriteByte('#')
-		r.buf.Write(n.Tag)
-
 	case *mast.MentionNode:
 		r.buf.WriteByte('@')
 		r.buf.Write(n.Username)

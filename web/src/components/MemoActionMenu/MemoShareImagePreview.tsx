@@ -9,7 +9,7 @@ import { buildMemoShareImagePreviewModel } from "./memoShareImagePreviewModel";
 
 const MemoShareImagePreview = forwardRef<HTMLDivElement, { width: number }>(({ width }, ref) => {
   const t = useTranslate();
-  const { memo, creator, blurred, showBlurredContent } = useMemoViewContext();
+  const { memo, creator } = useMemoViewContext();
   const fallbackDisplayName = t("common.memo");
   const locale = i18n.language;
 
@@ -38,7 +38,7 @@ const MemoShareImagePreview = forwardRef<HTMLDivElement, { width: number }>(({ w
         </div>
 
         <div className="mt-4">
-          <div className={cn("pointer-events-none", blurred && !showBlurredContent && "blur-lg")}>
+          <div className="pointer-events-none">
             <MemoContent
               content={memo.content}
               compact={false}

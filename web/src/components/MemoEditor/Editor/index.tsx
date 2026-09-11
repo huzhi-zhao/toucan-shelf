@@ -1,8 +1,7 @@
 import { Compartment, EditorState, Transaction } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef } from "react";
 import { useDocumentLinkContext } from "@/components/MemoContent/DocumentLinkContext";
-import { useTagCounts } from "@/hooks/useUserQueries";
 import { cn } from "@/lib/utils";
 import type { EditorController } from "../types/editorController";
 import { createController } from "./controller";
@@ -31,10 +30,6 @@ const Editor = forwardRef(function Editor(props: EditorProps, ref: React.Forward
   onChangeRef.current = onContentChange;
   const listenersRef = useRef(new Set<() => void>());
   const editableCompartmentRef = useRef(new Compartment());
-  const { data: tagData } = useTagCounts();
-  const tags = useMemo(() => Object.keys(tagData ?? {}), [tagData]);
-  const tagsRef = useRef(tags);
-  tagsRef.current = tags;
   // Absent outside a DocumentLinkProvider (e.g. share mode), in which case `![[` autocomplete
   // simply has nothing to offer.
   const documentLinkContext = useDocumentLinkContext();
@@ -54,7 +49,6 @@ const Editor = forwardRef(function Editor(props: EditorProps, ref: React.Forward
             placeholder,
             onChange: (md) => onChangeRef.current(md),
             onUpdate: () => listenersRef.current.forEach((l) => l()),
-            getTags: () => tagsRef.current,
             getEmbedTargets: () => listDocumentsRef.current?.() ?? [],
           }),
           editableCompartmentRef.current.of(EditorView.editable.of(!readOnly)),

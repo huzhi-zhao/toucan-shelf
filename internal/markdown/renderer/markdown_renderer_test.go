@@ -9,17 +9,12 @@ import (
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/text"
-
-	"github.com/usememos/memos/internal/markdown/extensions"
 )
 
 func TestMarkdownRenderer(t *testing.T) {
-	// Create goldmark instance with all extensions
+	// A `#hash` is plain text: the renderer must round-trip it verbatim.
 	md := goldmark.New(
-		goldmark.WithExtensions(
-			extension.GFM,
-			extensions.TagExtension,
-		),
+		goldmark.WithExtensions(extension.GFM),
 		goldmark.WithParserOptions(
 			parser.WithAutoHeadingID(),
 		),
@@ -101,12 +96,12 @@ func TestMarkdownRenderer(t *testing.T) {
 			expected: "- [x] Completed task\n- [ ] Incomplete task",
 		},
 		{
-			name:     "tag",
+			name:     "hash in text",
 			input:    "This has #tag in it",
 			expected: "This has #tag in it",
 		},
 		{
-			name:     "multiple tags",
+			name:     "leading hashes",
 			input:    "#work #important meeting notes",
 			expected: "#work #important meeting notes",
 		},
@@ -144,10 +139,7 @@ func TestMarkdownRenderer(t *testing.T) {
 func TestMarkdownRendererPreservesStructure(t *testing.T) {
 	// Test that parsing and rendering preserves structure
 	md := goldmark.New(
-		goldmark.WithExtensions(
-			extension.GFM,
-			extensions.TagExtension,
-		),
+		goldmark.WithExtensions(extension.GFM),
 	)
 
 	inputs := []string{
@@ -182,7 +174,7 @@ func TestMarkdownRendererPreservesStructure(t *testing.T) {
 // is the only place that can put the destination back in a safe form.
 func TestMarkdownRendererEscapesLinkDestinations(t *testing.T) {
 	md := goldmark.New(
-		goldmark.WithExtensions(extension.GFM, extensions.TagExtension),
+		goldmark.WithExtensions(extension.GFM),
 		goldmark.WithParserOptions(parser.WithAutoHeadingID()),
 	)
 

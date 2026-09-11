@@ -42,7 +42,6 @@ func NewTestService(t *testing.T) *TestService {
 	// Create APIV1Service with nil grpcServer since we're testing direct calls
 	secret := "test-secret"
 	markdownService := markdown.NewService(
-		markdown.WithTagExtension(),
 		markdown.WithMentionExtension(),
 	)
 	service := &apiv1.APIV1Service{

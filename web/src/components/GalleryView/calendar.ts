@@ -76,8 +76,8 @@ export function docCalendarDate(doc: Memo, props: Map<string, MemoProperty>, blo
 /**
  * Builds the folder and content for a document created from the calendar's add
  * button, so the block's own scope will pick it up on `date`: the date property
- * is written and every property/tag rule is reproduced as frontmatter / a
- * hashtag. The folder is taken from the block's explicit `newDocFolder` when
+ * is written and every property/tag rule is reproduced as frontmatter. The
+ * folder is taken from the block's explicit `newDocFolder` when
  * set; otherwise it falls back to the scope's first folder rule, then the
  * view's own folder.
  */
@@ -111,8 +111,11 @@ export function newCalendarDoc(
     }
   }
 
-  const frontmatter = props.map(([k, v]) => `${k}: ${v}`).join("\n");
-  // Tags are sourced from #hashtags in the body, so reproduce tag rules there.
-  const body = [`# ${title}`, ...(tags.length ? [tags.map((tag) => `#${tag}`).join(" ")] : [])].join("\n\n");
+  // A tag rule is satisfied by the frontmatter `tags:` property, so seed it there
+  // rather than in the body (the body `#tag` syntax no longer means anything).
+  const entries =
+    tags.length && !props.some(([k]) => k === "tags") ? [...props, ["tags", `[${tags.join(", ")}]`] as [string, string]] : props;
+  const frontmatter = entries.map(([k, v]) => `${k}: ${v}`).join("\n");
+  const body = `# ${title}`;
   return { folderPath, content: `---\n${frontmatter}\n---\n${body}\n` };
 }

@@ -24,7 +24,6 @@
     "archive": "Arquivo",
     "archived": "Arquivada",
     "attachments": "Anexos",
-    "auto-expand": "Depregar Auto",
     "avatar": "Avatar",
     "basic": "Básico",
     "beta": "Beta",
@@ -103,10 +102,8 @@
     "sign-out": "Fechar sesión",
     "sign-up": "Crear conta",
     "statistics": "Estatísticas",
-    "tags": "Etiquetas",
     "title": "Título",
     "today": "Hoxe",
-    "tree-mode": "Modo árbore",
     "type": "Tipo",
     "unpin": "Soltar",
     "update": "Actualizar",
@@ -186,8 +183,6 @@
   },
   "memo": {
     "archived-at": "Arquivada o",
-    "click-to-hide-sensitive-content": "Preme para ocultar contido NSFW",
-    "click-to-show-sensitive-content": "Preme para mostrar contido NSFW",
     "code": "Código",
     "comment": {
       "self": "Comentarios",
@@ -637,25 +632,6 @@
       "url": "URL",
       "label": "Webhooks"
     },
-    "tags": {
-      "label": "Etiquetas",
-      "title": "Metadatos da etiqueta",
-      "description": "Asigne cores de visualización opcionais ás etiquetas en toda a instancia ou desenfoca o contido da nota coincidente. Os nomes das etiquetas trátanse como patróns regex ancorados.",
-      "background-color": "Cor de fondo",
-      "blur-content": "Desenfoque o contido",
-      "no-tags-configured": "Non se configuraron metadatos de etiquetas.",
-      "tag-name": "Nome da etiqueta",
-      "tag-name-placeholder": "p.ex. work ou project/.*",
-      "tag-already-exists": "A etiqueta xa existe.",
-      "tag-pattern-hint": "Nome da etiqueta ou patrón de expresión regular (por exemplo, project/.* coincide con todas as etiquetas project/)",
-      "invalid-regex": "Patrón de expresión regular non válido ou non seguro.",
-      "using-default-color": "Usando a cor predeterminada.",
-      "add-rule": "Engadir regra",
-      "configured-rules": "Regras configuradas",
-      "default-color": "Por defecto",
-      "matching-rule": "expresión regular ancorada",
-      "used-count": "Notas {{count}}"
-    },
     "ai": {
       "add-provider": "Engadir provedor",
       "api-key": "chave API",
@@ -755,22 +731,6 @@
       "refresh": "Actualizar",
       "load-error": "Produciuse un erro ao cargar as estatísticas"
     }
-  },
-  "tag": {
-    "all-tags": "Todas as etiquetas",
-    "create-tag": "Crear etiqueta",
-    "create-tags-guide": "Podes crear etiquetas escribindo `#etiqueta`.",
-    "delete-confirm": "Tes certeza de querer eliminar esta etiqueta? Todas as notas afectadas vanse arquivar.",
-    "delete-success": "Etiqueta eliminada corretamente",
-    "delete-tag": "Eliminar etiqueta",
-    "new-name": "Novo nome",
-    "no-tag-found": "Sen etiquetas",
-    "old-name": "Nome antigo",
-    "rename-error-empty": "O nome da etiqueta non pode quedar baleiro ou conter espazos",
-    "rename-error-repeat": "O novo nome non pode ser igual ao antigo",
-    "rename-success": "Cambiouse correctamente o nome da etiqueta",
-    "rename-tag": "Cambiar nome á etiqueta",
-    "rename-tip": "Vanse actualizar todas as notas que teñen esta etiqueta."
   },
   "tooltip": {
     "link-memo": "Ligazón á nota",

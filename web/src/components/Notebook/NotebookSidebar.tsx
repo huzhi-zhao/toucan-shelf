@@ -1,15 +1,5 @@
 import dayjs from "dayjs";
-import {
-  CalendarIcon,
-  FilePlusIcon,
-  FolderPlusIcon,
-  GlobeIcon,
-  LayoutGridIcon,
-  SearchIcon,
-  TagsIcon,
-  UploadIcon,
-  XIcon,
-} from "lucide-react";
+import { CalendarIcon, FilePlusIcon, FolderPlusIcon, GlobeIcon, LayoutGridIcon, SearchIcon, UploadIcon, XIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { calculateMaxCount, MonthCalendar } from "@/components/ActivityCalendar";
 import { MonthNavigator } from "@/components/StatisticsView/MonthNavigator";
@@ -149,7 +139,7 @@ const NotebookSidebar = ({
   const t = useTranslate();
   const [query, setQuery] = useState("");
   const [dateFilter, setDateFilter] = useState<string | undefined>(undefined);
-  const [bottomPanel, setBottomPanel] = useState<"none" | "calendar" | "tags">("none");
+  const [bottomPanel, setBottomPanel] = useState<"none" | "calendar">("none");
   const [visibleMonth, setVisibleMonth] = useState(dayjs().format("YYYY-MM"));
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
@@ -356,7 +346,6 @@ const NotebookSidebar = ({
             />
           </div>
         )}
-        {bottomPanel === "tags" && <div className="text-xs text-muted-foreground px-2 py-2 mb-2">{t("notebook.tags-unavailable")}</div>}
         <div className="flex items-center gap-1">
           <Button
             variant={bottomPanel === "calendar" ? "secondary" : "ghost"}
@@ -366,15 +355,6 @@ const NotebookSidebar = ({
           >
             <CalendarIcon className="w-3.5 h-3.5" />
             {t("common.calendar")}
-          </Button>
-          <Button
-            variant={bottomPanel === "tags" ? "secondary" : "ghost"}
-            size="sm"
-            className="flex-1 justify-start gap-1.5 h-7"
-            onClick={() => setBottomPanel((p) => (p === "tags" ? "none" : "tags"))}
-          >
-            <TagsIcon className="w-3.5 h-3.5" />
-            {t("notebook.tags")}
           </Button>
         </div>
       </div>

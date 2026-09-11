@@ -7,7 +7,6 @@ import {
   Code2Icon,
   DownloadIcon,
   GlobeIcon,
-  HashIcon,
   ImageIcon,
   LinkIcon,
   type LucideIcon,
@@ -59,9 +58,6 @@ const SidebarSection = ({ label, count, children }: { label: string; count?: num
 
 const PROPERTY_BADGE_CLASSES =
   "inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-border/60 bg-muted/60 text-xs text-muted-foreground";
-
-const TAG_BADGE_CLASSES =
-  "inline-flex items-center gap-1 px-1 rounded-md border border-border/60 bg-muted/60 text-sm text-muted-foreground hover:bg-muted hover:text-foreground/80 transition-colors cursor-pointer";
 
 const SHARE_ACTION_ROW_CLASSES =
   "h-auto min-h-0 w-full justify-between rounded-none px-2 py-1.5 text-xs font-normal leading-tight text-muted-foreground transition-colors hover:bg-muted/40 hover:text-muted-foreground focus-visible:ring-offset-0 gap-1.5";
@@ -211,19 +207,6 @@ const MemoDetailSidebar = ({ memo, className, onShareImageOpen, liveContent, isE
               <span key={labelKey} className={PROPERTY_BADGE_CLASSES}>
                 <Icon className="w-3.5 h-3.5" />
                 {t(labelKey)}
-              </span>
-            ))}
-          </div>
-        </SidebarSection>
-      )}
-
-      {memo.tags.length > 0 && (
-        <SidebarSection label={t("common.tags")} count={memo.tags.length}>
-          <div className="flex flex-wrap gap-1.5">
-            {memo.tags.map((tag) => (
-              <span key={tag} className={TAG_BADGE_CLASSES}>
-                <HashIcon className="w-3 h-3 opacity-50" />
-                {tag}
               </span>
             ))}
           </div>

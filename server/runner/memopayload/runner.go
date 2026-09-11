@@ -96,7 +96,10 @@ func RebuildMemoPayload(_ context.Context, memo *store.Memo, markdownService mar
 		return errors.Wrap(err, "failed to extract markdown metadata")
 	}
 
-	memo.Payload.Tags = data.Tags
+	// The `#tag` syntax is gone (see docs/dev/roadmap.md): document classification is
+	// frontmatter's `tags:` property. Clearing the field here retires whatever an older
+	// version extracted, so nothing keeps reading stale derived tags.
+	memo.Payload.Tags = nil
 	memo.Payload.Property = data.Property
 	return nil
 }

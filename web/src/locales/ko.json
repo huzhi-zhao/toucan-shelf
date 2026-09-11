@@ -23,7 +23,6 @@
     "archive": "보관 처리",
     "archived": "보관 목록",
     "attachments": "첨부파일",
-    "auto-expand": "자동 펼치기",
     "avatar": "아바타",
     "basic": "기본",
     "beta": "베타",
@@ -102,10 +101,8 @@
     "sign-out": "로그아웃",
     "sign-up": "회원등록",
     "statistics": "통계",
-    "tags": "태그",
     "title": "제목",
     "today": "오늘",
-    "tree-mode": "트리 모드",
     "type": "타입",
     "unpin": "고정 해제",
     "update": "수정",
@@ -172,8 +169,6 @@
   },
   "memo": {
     "archived-at": "보관된 날짜",
-    "click-to-hide-sensitive-content": "민감한(성인) 콘텐츠 숨기기",
-    "click-to-show-sensitive-content": "민감한(성인) 콘텐츠 보기",
     "code": "코드",
     "comment": {
       "self": "댓글",
@@ -500,37 +495,7 @@
       "title": "Webhook",
       "url": "URL",
       "label": "Webhook"
-    },
-    "tags": {
-      "label": "태그",
-      "title": "태그 메타데이터",
-      "description": "인스턴스 전체의 태그에 선택적 표시 색상을 할당하거나 일치하는 메모 내용을 흐리게 만듭니다. 태그 이름은 고정된 정규식 패턴으로 처리됩니다.",
-      "background-color": "배경색",
-      "blur-content": "콘텐츠를 흐리게 처리",
-      "no-tags-configured": "구성된 태그 메타데이터가 없습니다.",
-      "tag-name": "태그 이름",
-      "tag-name-placeholder": "예를 들어 work 또는 project/.*",
-      "tag-already-exists": "태그가 이미 존재합니다.",
-      "tag-pattern-hint": "태그 이름 또는 정규식 패턴(예: project/.*는 모든 project/ 태그와 일치함)",
-      "invalid-regex": "유효하지 않거나 안전하지 않은 정규식 패턴입니다.",
-      "using-default-color": "기본 색상을 사용합니다."
     }
-  },
-  "tag": {
-    "all-tags": "모든 태그",
-    "create-tag": "태그 생성",
-    "create-tags-guide": "`#태그`를 입력하여 태그를 만들 수 있습니다.",
-    "delete-confirm": "이 태그를 삭제하시겠습니까? 관련된 모든 메모가 보관됩니다.",
-    "delete-success": "태그가 성공적으로 삭제되었습니다",
-    "delete-tag": "태그 삭제",
-    "new-name": "새 이름",
-    "no-tag-found": "태그를 찾을 수 없습니다",
-    "old-name": "이전 이름",
-    "rename-error-empty": "태그 이름은 비어 있거나 공백을 포함할 수 없습니다",
-    "rename-error-repeat": "새 이름은 이전 이름과 같을 수 없습니다",
-    "rename-success": "태그 이름이 성공적으로 변경되었습니다",
-    "rename-tag": "태그 이름 변경",
-    "rename-tip": "이 태그가 포함된 모든 메모가 업데이트됩니다."
   },
   "tooltip": {
     "link-memo": "메모 링크",

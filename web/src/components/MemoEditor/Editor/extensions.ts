@@ -11,8 +11,7 @@ import { createFormattingKeymap } from "./formatting";
 import { headingDecorations } from "./headingDecorations";
 import { htmlPaste } from "./htmlPaste";
 import { liftListItem, sinkListItem } from "./listIndent";
-import { makeTagCompletionSource } from "./tagAutocomplete";
-import { tagMentionDecorations } from "./tagMentionDecorations";
+import { mentionDecorations } from "./mentionDecorations";
 import { memoEditorTheme } from "./theme";
 
 // Key bindings layered below the autocomplete keymap so the completion popup's
@@ -36,11 +35,10 @@ export interface EditorExtensionsOptions {
   placeholder: string;
   onChange: (markdown: string) => void;
   onUpdate: () => void;
-  getTags: () => string[];
   getEmbedTargets: () => EmbedTarget[];
 }
 
-export function buildEditorExtensions({ placeholder, onChange, onUpdate, getTags, getEmbedTargets }: EditorExtensionsOptions): Extension[] {
+export function buildEditorExtensions({ placeholder, onChange, onUpdate, getEmbedTargets }: EditorExtensionsOptions): Extension[] {
   return [
     // Core editing behavior. These are the pieces from CM6 setup that this memo
     // editor uses, without enabling multi-cursor selection.
@@ -53,15 +51,13 @@ export function buildEditorExtensions({ placeholder, onChange, onUpdate, getTags
     ...memoEditorTheme,
     EditorView.lineWrapping,
     cmPlaceholder(placeholder),
-    tagMentionDecorations,
+    mentionDecorations,
     headingDecorations,
     // Before the keymap below: its Mod-Shift-V binding must not be shadowed.
     htmlPaste(),
     // Must precede the editing keymap so the completion popup's Enter/Tab/arrow bindings win
-    // while it is open. A single `autocompletion` instance with both sources: CodeMirror tries
-    // each in turn and uses whichever matches the text before the cursor (`#tag` vs `![[doc`),
-    // so only one popup can ever be open at a time.
-    autocompletion({ override: [makeTagCompletionSource(getTags), makeEmbedCompletionSource(getEmbedTargets)] }),
+    // while it is open.
+    autocompletion({ override: [makeEmbedCompletionSource(getEmbedTargets)] }),
     keymap.of([...editorKeys, ...createFormattingKeymap(), indentWithTab, ...defaultKeymap, ...historyKeymap]),
     EditorView.updateListener.of((u) => {
       if (u.docChanged) onChange(u.state.doc.toString());

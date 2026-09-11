@@ -63,7 +63,6 @@
     "archive": "封存",
     "archived": "已封存",
     "attachments": "附件",
-    "auto-expand": "自動展開",
     "avatar": "頭像",
     "basic": "基礎",
     "beta": "測試版",
@@ -143,10 +142,8 @@
     "sign-out": "登出",
     "sign-up": "註冊",
     "statistics": "統計",
-    "tags": "標籤",
     "title": "標題",
     "today": "今天",
-    "tree-mode": "樹狀顯示",
     "type": "類型",
     "unlink": "取消連結",
     "unpin": "取消置頂",
@@ -227,8 +224,6 @@
   },
   "memo": {
     "archived-at": "封存於",
-    "click-to-hide-sensitive-content": "點擊隱藏 NSFW 內容",
-    "click-to-show-sensitive-content": "點擊顯示 NSFW 內容",
     "code": "程式碼",
     "comment": {
       "self": "評論",
@@ -755,25 +750,6 @@
       "url": "網址",
       "label": "Webhook"
     },
-    "tags": {
-      "label": "標籤",
-      "title": "標籤元數據",
-      "description": "將可選的顯示顏色指派給實例範圍內的標籤，或模糊符合的備忘錄內容。標籤名稱被視為錨定的正規表示式模式。",
-      "add-rule": "新增規則",
-      "background-color": "背景顏色",
-      "blur-content": "模糊內容",
-      "configured-rules": "已設定的規則",
-      "default-color": "預設",
-      "matching-rule": "錨定正規表示式",
-      "no-tags-configured": "未配置標籤元資料。",
-      "tag-name": "標籤名稱",
-      "tag-name-placeholder": "例如工作或project/.*",
-      "tag-already-exists": "標籤已經存在。",
-      "tag-pattern-hint": "標籤名稱或正規表示式模式（例如 project/.* 符合所有 project/ 標籤）",
-      "invalid-regex": "無效或不安全的正規表示式模式。",
-      "used-count": "{{count}} 篇備忘錄",
-      "using-default-color": "使用預設顏色。"
-    },
     "resource-stats": {
       "label": "資源",
       "title": "資源統計",
@@ -792,22 +768,6 @@
       "refresh": "重新整理",
       "load-error": "載入統計資料失敗"
     }
-  },
-  "tag": {
-    "all-tags": "所有標籤",
-    "create-tag": "建立標籤",
-    "create-tags-guide": "您可以通過輸入`#標籤`來建立標籤。",
-    "delete-confirm": "您確定要刪除此標籤嗎？所有關聯的備忘錄將會被封存",
-    "delete-success": "標籤刪除成功",
-    "delete-tag": "刪除標籤",
-    "new-name": "新標籤名稱",
-    "no-tag-found": "未找到標籤",
-    "old-name": "舊標籤名稱",
-    "rename-error-empty": "標籤名稱不能為空",
-    "rename-error-repeat": "標籤名稱已存在",
-    "rename-success": "重新命名標籤成功",
-    "rename-tag": "重新命名標籤",
-    "rename-tip": "您的標籤名稱將會被更新"
   },
   "tooltip": {
     "link-memo": "連結備忘錄",

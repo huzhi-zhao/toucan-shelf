@@ -24,7 +24,6 @@
     "archive": "Arhiviraj",
     "archived": "Arhivirano",
     "attachments": "Privici",
-    "auto-expand": "Automatski proširi",
     "avatar": "Avatar",
     "basic": "Osnovno",
     "beta": "Beta",
@@ -103,10 +102,8 @@
     "sign-out": "Odjavi se",
     "sign-up": "Registriraj se",
     "statistics": "Statistika",
-    "tags": "Tagovi",
     "title": "Naslov",
     "today": "Danas",
-    "tree-mode": "Način stabla",
     "type": "Tip",
     "unpin": "Makni pin",
     "update": "Ažuriraj",
@@ -186,8 +183,6 @@
   },
   "memo": {
     "archived-at": "Arhivirano u",
-    "click-to-hide-sensitive-content": "Klikni za skrivanje osjetljivog sadržaja",
-    "click-to-show-sensitive-content": "Klikni za prikaz osjetljivog sadržaja",
     "code": "Kod",
     "comment": {
       "self": "Komentari",
@@ -637,25 +632,6 @@
       "url": "URL",
       "label": "Webhooks"
     },
-    "tags": {
-      "label": "oznake",
-      "title": "Metapodaci oznake",
-      "description": "Dodijelite izborne boje prikaza oznakama za cijelu instancu ili zamutite odgovarajući sadržaj bilješke. Nazivi oznaka tretiraju se kao usidreni uzorci regularnih izraza.",
-      "background-color": "Boja pozadine",
-      "blur-content": "Zamućivanje sadržaja",
-      "no-tags-configured": "Metapodaci oznake nisu konfigurirani.",
-      "tag-name": "Naziv oznake",
-      "tag-name-placeholder": "npr. work ili project/.*",
-      "tag-already-exists": "Oznaka već postoji.",
-      "tag-pattern-hint": "Naziv oznake ili uzorak regularnog izraza (npr. project/.* odgovara svim oznakama project/)",
-      "invalid-regex": "Nevažeći ili nesiguran uzorak regularnog izraza.",
-      "using-default-color": "Korištenje zadane boje.",
-      "add-rule": "Dodaj pravilo",
-      "configured-rules": "Konfigurirana pravila",
-      "default-color": "Zadano",
-      "matching-rule": "Usidren regularni izraz",
-      "used-count": "{{count}} bilješke"
-    },
     "ai": {
       "add-provider": "Dodajte davatelja usluga",
       "api-key": "Ključ API",
@@ -755,22 +731,6 @@
       "refresh": "Osvježiti",
       "load-error": "Neuspješno učitavanje statistike"
     }
-  },
-  "tag": {
-    "all-tags": "Svi tagovi",
-    "create-tag": "Stvori tag",
-    "create-tags-guide": "Možete stvoriti tagove unosom `#tag`.",
-    "delete-confirm": "Jesi li siguran da želiš obrisati ovaj tag? Svi povezani memoi će biti arhivirani.",
-    "delete-success": "Tag uspješno obrisan",
-    "delete-tag": "Obriši tag",
-    "new-name": "Novo ime",
-    "no-tag-found": "Nema pronađenih tagova",
-    "old-name": "Staro ime",
-    "rename-error-empty": "Ime taga ne može biti prazno ili sadržavati razmake",
-    "rename-error-repeat": "Novo ime ne može biti isto kao staro ime",
-    "rename-success": "Tag uspješno preimenovan",
-    "rename-tag": "Preimenuj tag",
-    "rename-tip": "Svi vaši memoi s ovim tagom će biti ažurirani."
   },
   "tooltip": {
     "link-memo": "Linkaj memo",

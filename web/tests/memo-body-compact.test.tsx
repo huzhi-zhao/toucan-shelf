@@ -45,12 +45,9 @@ vi.mock("@/components/MemoView/MemoViewContext", () => ({
   useMemoViewContext: () => ({
     memo: mockState.memo,
     parentPage: "",
-    showBlurredContent: false,
-    blurred: false,
     readonly: false,
     openEditor: vi.fn(),
     openPreview: vi.fn(),
-    toggleBlurVisibility: vi.fn(),
   }),
 }));
 

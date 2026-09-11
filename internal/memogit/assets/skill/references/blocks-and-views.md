@@ -191,7 +191,7 @@ allowMaxUpdateDays: 30
 
 - **scope**（这块显示哪些文档）：
   - `{ "type": "folder" }` —— view 所在文件夹的**直接子文档**
-  - `{ "type": "tag", "tag": "..." }` —— 带某标签的所有文档
+  - `{ "type": "tag", "tag": "..." }` —— frontmatter `tags:` 里带某标签的所有文档
   - `{ "type": "property", "filters": {...} }` —— frontmatter 属性匹配，多条 **AND**，
     **仅支持等值**（列表属性中任一元素相等即命中）
 - **sort**：`updated_desc` / `updated_asc` / `created_desc` / `created_asc` / `title_asc`，

@@ -85,10 +85,9 @@ site_chunk_fts                FTS5(content, tokenize='trigram')，rowid = site_c
    链接到站点域名、按白名单挑出对外 frontmatter 与 tags。
 
    **tags 只认 frontmatter 的 `tags:` 列表**（`tags: [guide, release]` 或
-   `- guide` 的块写法都读），不认正文里的 `#tag`。对外的 tag 是作者在属性面板里
-   看得见、改得动的一次声明，站点的 gallery / feed 直接按它筛；正文 `#tag` 是知识库
-   自己的一套东西，本项目里已暂停（见 `docs/dev/roadmap.md`），不作为发布输入。
-   没写 `tags:` 的文档就发成无标签，不做任何猜测。
+   `- guide` 的块写法都读）。对外的 tag 是作者在属性面板里看得见、改得动的一次声明，
+   站点的 gallery / feed 直接按它筛。正文 `#tag` 已彻底移除（见 `docs/dev/roadmap.md`），
+   正文里的 `#` 只是普通文字。没写 `tags:` 的文档就发成无标签，不做任何猜测。
 6. 首次发布生成 slug（撞则加后缀，过保留字表）；更新发布不重新生成。
 7. 写 `site_publication` + 两张附属表。附件权限一个字节都不动。
 8. 重建这条快照的 `site_chunk` / `site_chunk_fts`。

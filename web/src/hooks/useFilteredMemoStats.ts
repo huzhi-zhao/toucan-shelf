@@ -12,7 +12,6 @@ import type { StatisticsData } from "@/types/statistics";
 
 export interface FilteredMemoStats {
   statistics: StatisticsData;
-  tags: Record<string, number>;
   loading: boolean;
 }
 
@@ -39,7 +38,7 @@ export const useFilteredMemoStats = (options: UseFilteredMemoStatsOptions = {}):
   const currentUser = useCurrentUser();
   const { timeBasis } = useView();
 
-  // home/profile: use backend per-user stats (full tag set, not page-limited)
+  // home/profile: use backend per-user stats.
   const { data: userStats, isLoading: isLoadingUserStats } = useUserStats(userName);
   // explore/archived: fetch backend grouped stats and aggregate them locally.
   // No client-side visibility filter: ListAllUserStats already scopes results to
@@ -56,14 +55,10 @@ export const useFilteredMemoStats = (options: UseFilteredMemoStatsOptions = {}):
   const data = useMemo(() => {
     const loading = isLoadingUserStats || isLoadingAllUserStats;
     let activityStats: Record<string, number> = {};
-    let tagCount: Record<string, number> = {};
 
     if (context === "explore" || context === "archived") {
       const displayDates: string[] = [];
       for (const stats of allUserStats) {
-        for (const [tag, count] of Object.entries(stats.tagCount ?? {})) {
-          tagCount[tag] = (tagCount[tag] ?? 0) + count;
-        }
         displayDates.push(
           ...timestampsForBasis(stats, timeBasis)
             .map((ts) => (ts ? timestampDate(ts) : undefined))
@@ -83,12 +78,9 @@ export const useFilteredMemoStats = (options: UseFilteredMemoStatsOptions = {}):
             .map(toDateString),
         );
       }
-      if (userStats.tagCount) {
-        tagCount = userStats.tagCount;
-      }
     }
 
-    return { statistics: { activityStats, timeBasis }, tags: tagCount, loading };
+    return { statistics: { activityStats, timeBasis }, loading };
   }, [context, userName, userStats, allUserStats, isLoadingUserStats, isLoadingAllUserStats, timeBasis]);
 
   return data;

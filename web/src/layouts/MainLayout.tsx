@@ -29,7 +29,7 @@ const MainLayout = () => {
   // width the same way.
   const isDashboard = location.pathname === Routes.DASHBOARD || location.pathname.startsWith(`${Routes.DASHBOARD}/`);
 
-  // Which routes get the MemoExplorer (search + calendar + tag filters) sidebar.
+  // Which routes get the MemoExplorer (search + calendar + shortcuts) sidebar.
   //
   // This is deliberately an allow-list, not a deny-list: the MemoExplorer only makes
   // sense on the pages that render the filterable *memo feed*, so a page that isn't
@@ -78,14 +78,13 @@ const MainLayout = () => {
     return undefined;
   }, [context, currentUser, profileUserName]);
 
-  const { statistics, tags } = useFilteredMemoStats({
+  const { statistics } = useFilteredMemoStats({
     userName: statsUserName,
     context: context ?? undefined,
   });
   const memoExplorerProps = {
     context: context ?? "home",
     statisticsData: statistics,
-    tagCount: tags,
   };
 
   return (

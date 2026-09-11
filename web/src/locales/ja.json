@@ -24,7 +24,6 @@
     "archive": "アーカイブにする",
     "archived": "アーカイブ済み",
     "attachments": "添付ファイル",
-    "auto-expand": "自動展開",
     "avatar": "アイコン",
     "basic": "基本設定",
     "beta": "ベータ",
@@ -103,10 +102,8 @@
     "sign-out": "サインアウト",
     "sign-up": "登録",
     "statistics": "統計",
-    "tags": "タグ",
     "title": "タイトル",
     "today": "今日",
-    "tree-mode": "ツリーモード",
     "type": "タイプ",
     "unpin": "ピンを外す",
     "update": "上書き",
@@ -204,8 +201,6 @@
   },
   "memo": {
     "archived-at": "アーカイブ:",
-    "click-to-hide-sensitive-content": "クリックしてセンシティブな内容を隠す",
-    "click-to-show-sensitive-content": "クリックしてセンシティブな内容を表示",
     "code": "コード",
     "comment": {
       "self": "コメント",
@@ -663,25 +658,6 @@
       "url": "URL",
       "label": "Webhooks"
     },
-    "tags": {
-      "label": "タグ",
-      "title": "タグメタデータ",
-      "description": "インスタンス全体でタグに表示色を設定したり、一致するメモの内容をぼかしたりできます。タグ名はアンカー付きの正規表現パターンとして扱われます。",
-      "background-color": "背景色",
-      "blur-content": "内容をぼかす",
-      "no-tags-configured": "タグメタデータが設定されていません。",
-      "tag-name": "タグ名",
-      "tag-name-placeholder": "例: work または project/.*",
-      "tag-already-exists": "タグはすでに存在します。",
-      "tag-pattern-hint": "タグ名または正規表現パターン（例: project/.* はすべての project/ タグに一致）",
-      "invalid-regex": "無効または安全でない正規表現パターンです。",
-      "using-default-color": "デフォルトの色を使用しています。",
-      "add-rule": "ルールの追加",
-      "configured-rules": "設定されたルール",
-      "default-color": "デフォルト",
-      "matching-rule": "アンカー付き正規表現",
-      "used-count": "{{count}}メモ"
-    },
     "ai": {
       "add-provider": "プロバイダーの追加",
       "api-key": "APIキー",
@@ -781,22 +757,6 @@
       "refresh": "リフレッシュ",
       "load-error": "統計のロードに失敗しました"
     }
-  },
-  "tag": {
-    "all-tags": "すべてのタグ",
-    "create-tag": "タグを作成する",
-    "create-tags-guide": "`#タグ名`と入力することでタグを作成できます。",
-    "delete-confirm": "このタグを削除しますか? 関連するすべてのメモがアーカイブされます。",
-    "delete-success": "タグを削除しました",
-    "delete-tag": "タグを削除",
-    "new-name": "新しい名前",
-    "no-tag-found": "タグが見つかりませんでした",
-    "old-name": "以前の名前",
-    "rename-error-empty": "タグ名は空やスペースを含めることはできません",
-    "rename-error-repeat": "新しい名前は以前の名前と同じにはできません",
-    "rename-success": "タグ名を変更しました",
-    "rename-tag": "タグ名を変更",
-    "rename-tip": "このタグが付いたすべてのメモが更新されます。"
   },
   "tooltip": {
     "link-memo": "メモをリンク",

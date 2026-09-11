@@ -12,7 +12,6 @@ import {
   UserSetting_GeneralSetting,
   UserSetting_Key,
   UserSettingSchema,
-  UserStats,
 } from "@/types/proto/api/v1/user_service_pb";
 
 const BATCH_GET_USERS_LIMIT = 100;
@@ -94,47 +93,6 @@ export function useNotifications() {
     },
     enabled: !!currentUser?.name,
     staleTime: 1000 * 30, // 30 seconds - notifications should update frequently
-  });
-}
-
-export function useTagCounts(forCurrentUser = false) {
-  const currentUser = useCurrentUser();
-
-  return useQuery<UserStats | Record<string, number>, Error, Record<string, number>>({
-    queryKey:
-      forCurrentUser && currentUser?.name
-        ? userKeys.userStats(currentUser.name)
-        : [...userKeys.stats(), "tagCounts", forCurrentUser ? "current" : "all"],
-    queryFn: async (): Promise<UserStats | Record<string, number>> => {
-      if (forCurrentUser) {
-        if (!currentUser?.name) {
-          return {};
-        }
-        return userServiceClient.getUserStats({ name: currentUser.name });
-      } else {
-        // Fetch all user stats
-        const { stats } = await userServiceClient.listAllUserStats({});
-
-        // Aggregate tag counts from all users
-        const tagCount: Record<string, number> = {};
-        for (const userStats of stats) {
-          if (userStats.tagCount) {
-            for (const [tag, count] of Object.entries(userStats.tagCount)) {
-              tagCount[tag] = (tagCount[tag] || 0) + count;
-            }
-          }
-        }
-        return tagCount;
-      }
-    },
-    select: (data) => {
-      if (forCurrentUser) {
-        return (data as UserStats).tagCount || {};
-      }
-      return data as Record<string, number>;
-    },
-    enabled: !forCurrentUser || !!currentUser?.name,
-    staleTime: 1000 * 60 * 2, // 2 minutes - tags don't change frequently
   });
 }
 

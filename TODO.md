@@ -114,11 +114,11 @@
       已预留扩展点，是否做成知识库详情页的可配置项未定。
       见 [rag-search.md](docs/dev/rag-search.md)。
 
-- [ ] **正文 `#tag` 的解析与统计清除** —— `#tag` 已暂停使用（决策与理由见
-      [roadmap.md](docs/dev/roadmap.md)）。清除范围是 `memopayload` 的抽取、
-      `user_service_stats` 的标签统计、以及编辑器里的 `#` 高亮与补全。
-      **没排期，因为老文档正文里还留着 `#tag` 文本**——删解析之前要先决定这些文本
-      怎么办（原样留着当普通文字，还是迁移进 frontmatter）。
+- [ ] **`#tag` 在 proto 与 CEL filter 里的残留** —— 正文 `#tag` 已移除（见
+      [roadmap.md](docs/dev/roadmap.md)），但 `MemoPayload.tags`、`Memo.tags`、
+      `UserStats.tag_count` 三个字段仍在 proto 里，永远为空；删字段是破坏性改动，且要
+      重新跑 buf 生成。CEL filter 的 `tags` / `tag` 也仍在，是一套通用 JSON 列表机制，
+      现在查不到任何数据。两者一起做一次收尾。
 
 - [ ] **RAG 的生成环节（真正的 RAG）** —— 检索已完备，缺"检索 top-K → 交给 LLM →
       带来源生成回答"。**有明确触发条件，条件未满足前不排期**，

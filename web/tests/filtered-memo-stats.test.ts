@@ -43,7 +43,6 @@ describe("useFilteredMemoStats", () => {
       data: {
         memoCreatedTimestamps: [ts(2026, 5, 1), ts(2026, 5, 1), ts(2026, 5, 2)],
         memoUpdatedTimestamps: [ts(2026, 5, 3), ts(2026, 5, 3), ts(2026, 5, 3)],
-        tagCount: {},
       },
       isLoading: false,
     } as ReturnType<typeof useUserStats>);
@@ -88,7 +87,6 @@ describe("useFilteredMemoStats", () => {
       data: {
         memoCreatedTimestamps: [ts(2026, 5, 1)],
         memoUpdatedTimestamps: [],
-        tagCount: {},
       },
       isLoading: false,
     } as ReturnType<typeof useUserStats>);

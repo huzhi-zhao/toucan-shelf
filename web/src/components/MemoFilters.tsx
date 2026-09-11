@@ -6,7 +6,6 @@ import {
   CheckCircleIcon,
   CodeIcon,
   EyeIcon,
-  HashIcon,
   LibraryBigIcon,
   LinkIcon,
   LucideIcon,
@@ -24,10 +23,6 @@ interface FilterConfig {
 }
 
 const FILTER_CONFIGS: Record<FilterFactor, FilterConfig> = {
-  tagSearch: {
-    icon: HashIcon,
-    getLabel: (value) => value,
-  },
   visibility: {
     icon: EyeIcon,
     getLabel: (value) => value,

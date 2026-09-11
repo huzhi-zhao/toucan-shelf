@@ -3,7 +3,6 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useR
 import { useSearchParams } from "react-router-dom";
 
 export type FilterFactor =
-  | "tagSearch"
   | "visibility"
   | "contentSearch"
   | "displayTime"

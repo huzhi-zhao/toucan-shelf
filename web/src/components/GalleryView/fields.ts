@@ -42,9 +42,20 @@ function matchesPropertyRule(props: Map<string, MemoProperty>, rule: Extract<Gal
   return propertyValueToString(prop) === rule.value;
 }
 
+// A tag rule reads the document's frontmatter `tags:` property — the one place
+// document classification lives now that the body `#tag` syntax is gone. A scalar
+// `tags: work` counts as a one-item list.
+function matchesTagRule(props: Map<string, MemoProperty>, rule: Extract<GalleryRule, { kind: "tag" }>): boolean {
+  if (!rule.tag) return false;
+  const prop = props.get("tags");
+  if (!prop) return false;
+  if (Array.isArray(prop.value)) return prop.value.includes(rule.tag);
+  return propertyValueToString(prop) === rule.tag;
+}
+
 function matchesRule(doc: Memo, props: Map<string, MemoProperty>, rule: GalleryRule, ctx: RuleContext): boolean {
   if (rule.kind === "folder") return matchesFolderRule(doc, rule, ctx);
-  if (rule.kind === "tag") return doc.tags.includes(rule.tag);
+  if (rule.kind === "tag") return matchesTagRule(props, rule);
   return matchesPropertyRule(props, rule);
 }
 

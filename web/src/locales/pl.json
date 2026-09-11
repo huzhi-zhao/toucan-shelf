@@ -24,7 +24,6 @@
     "archive": "Archiwum",
     "archived": "Zarchiwizowane",
     "attachments": "Załączniki",
-    "auto-expand": "Rozwiń automatycznie",
     "avatar": "Awatar",
     "basic": "Podstawowy",
     "beta": "Beta",
@@ -103,10 +102,8 @@
     "sign-out": "Wyloguj się",
     "sign-up": "Zarejestruj się",
     "statistics": "Statystyki",
-    "tags": "Tagi",
     "title": "Tytuł",
     "today": "Dziś",
-    "tree-mode": "Tryb drzewa",
     "type": "Typ",
     "unpin": "Odepnij",
     "update": "Aktualizuj",
@@ -204,8 +201,6 @@
   },
   "memo": {
     "archived-at": "Zarchiwizowano w dniu",
-    "click-to-hide-sensitive-content": "Kliknij, aby ukryć treści NSFW",
-    "click-to-show-sensitive-content": "Kliknij, aby pokazać treści NSFW",
     "code": "Kod",
     "comment": {
       "self": "Komentarze",
@@ -669,25 +664,6 @@
       "url": "URL",
       "label": "Webhooki"
     },
-    "tags": {
-      "label": "Tagi",
-      "title": "Metadane tagu",
-      "description": "Przypisz opcjonalne kolory wyświetlania do tagów w całej instancji lub zamazaj dopasowaną treść notatki. Nazwy znaczników są traktowane jako zakotwiczone wzorce wyrażeń regularnych.",
-      "background-color": "Kolor tła",
-      "blur-content": "Zamazanie treści",
-      "no-tags-configured": "Nie skonfigurowano metadanych tagu.",
-      "tag-name": "Nazwa znacznika",
-      "tag-name-placeholder": "np. work lub project/.*",
-      "tag-already-exists": "Znacznik już istnieje.",
-      "tag-pattern-hint": "Nazwa tagu lub wzór wyrażenia regularnego (np. project/.* pasuje do wszystkich tagów project/)",
-      "invalid-regex": "Nieprawidłowy lub niebezpieczny wzorzec wyrażenia regularnego.",
-      "using-default-color": "Używanie domyślnego koloru.",
-      "add-rule": "Dodaj regułę",
-      "configured-rules": "Skonfigurowane reguły",
-      "default-color": "Domyślny",
-      "matching-rule": "Zakotwiczone wyrażenie regularne",
-      "used-count": "Notatki {{count}}"
-    },
     "ai": {
       "add-provider": "Dodaj dostawcę",
       "api-key": "Klucz API",
@@ -787,22 +763,6 @@
       "refresh": "Odśwież",
       "load-error": "Nie udało się załadować statystyk"
     }
-  },
-  "tag": {
-    "all-tags": "Wszystkie tagi",
-    "create-tag": "Utwórz tag",
-    "create-tags-guide": "Możesz tworzyć tagi, wpisując `#tag`.",
-    "delete-confirm": "Czy na pewno chcesz usunąć ten tag? Wszystkie powiązane notatki zostaną zarchiwizowane.",
-    "delete-success": "Tag został pomyślnie usunięty",
-    "delete-tag": "Usuń tag",
-    "new-name": "Nowa nazwa",
-    "no-tag-found": "Nie znaleziono tagu",
-    "old-name": "Stara nazwa",
-    "rename-error-empty": "Nazwa tagu nie może być pusta ani zawierać spacji",
-    "rename-error-repeat": "Nowa nazwa nie może być taka sama jak stara nazwa",
-    "rename-success": "Tag został pomyślnie zmieniony",
-    "rename-tag": "Zmień nazwę tagu",
-    "rename-tip": "Wszystkie Twoje notatki z tym tagiem zostaną zaktualizowane."
   },
   "tooltip": {
     "link-memo": "Podlinkuj Notatkę",

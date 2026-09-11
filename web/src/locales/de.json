@@ -24,7 +24,6 @@
     "archive": "Archivieren",
     "archived": "Archiviert",
     "attachments": "Anhänge",
-    "auto-expand": "Automatisch erweitern",
     "avatar": "Avatar",
     "basic": "Allgemeines",
     "beta": "Beta",
@@ -103,10 +102,8 @@
     "sign-out": "Abmelden",
     "sign-up": "Registrieren",
     "statistics": "Statistiken",
-    "tags": "Tags",
     "title": "Titel",
     "today": "Heute",
-    "tree-mode": "Baumansicht",
     "type": "Typ",
     "unpin": "Pin lösen",
     "update": "Update",
@@ -186,8 +183,6 @@
   },
   "memo": {
     "archived-at": "Archiviert am",
-    "click-to-hide-sensitive-content": "Klicken, um sensible Inhalte auszublenden",
-    "click-to-show-sensitive-content": "Klicken, um sensible Inhalte anzuzeigen",
     "code": "Code",
     "comment": {
       "self": "Kommentare",
@@ -637,25 +632,6 @@
       "url": "URL",
       "label": "Webhooks"
     },
-    "tags": {
-      "label": "Schlagworte",
-      "title": "Tag-Metadaten",
-      "description": "Weisen Sie Tags instanzenweit optionale Anzeigefarben zu oder verwischen Sie passende Memoinhalte. Tag-Namen werden als verankerte Regex-Muster behandelt.",
-      "background-color": "Hintergrundfarbe",
-      "blur-content": "Inhalte verwischen",
-      "no-tags-configured": "Keine Tag-Metadaten konfiguriert.",
-      "tag-name": "Tag-Name",
-      "tag-name-placeholder": "z.B. work oder project/.*",
-      "tag-already-exists": "Tag existiert bereits.",
-      "tag-pattern-hint": "Tag-Name oder Regex-Muster (z. B. project/.* stimmt mit allen project/-Tags überein)",
-      "invalid-regex": "Ungültiges oder unsicheres Regex-Muster.",
-      "using-default-color": "Standardfarbe verwenden.",
-      "add-rule": "Regel hinzufügen",
-      "configured-rules": "Konfigurierte Regeln",
-      "default-color": "Standard",
-      "matching-rule": "Verankerter regulärer Ausdruck",
-      "used-count": "{{count}}-Memos"
-    },
     "ai": {
       "add-provider": "Anbieter hinzufügen",
       "api-key": "API-Taste",
@@ -755,22 +731,6 @@
       "refresh": "Aktualisieren",
       "load-error": "Statistiken konnten nicht geladen werden"
     }
-  },
-  "tag": {
-    "all-tags": "Alle Tags",
-    "create-tag": "Tag erstellen",
-    "create-tags-guide": "Du kannst Tags erstellen, indem du `#tag` eingibst.",
-    "delete-confirm": "Bist du sicher, dass du diesen Tag löschen möchtest? Alle zugehörigen Notizen werden archiviert.",
-    "delete-success": "Tag erfolgreich gelöscht",
-    "delete-tag": "Tag löschen",
-    "new-name": "Neuer Name",
-    "no-tag-found": "Kein Tag gefunden",
-    "old-name": "Alter Name",
-    "rename-error-empty": "Tag-Name darf nicht leer sein oder Leerzeichen enthalten",
-    "rename-error-repeat": "Neuer Name darf nicht mit dem alten Namen übereinstimmen",
-    "rename-success": "Tag erfolgreich umbenannt",
-    "rename-tag": "Tag umbenennen",
-    "rename-tip": "Alle deine Notizen mit diesem Tag werden aktualisiert."
   },
   "tooltip": {
     "link-memo": "Link Memo",

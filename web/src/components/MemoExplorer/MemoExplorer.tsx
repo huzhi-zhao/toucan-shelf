@@ -5,7 +5,6 @@ import type { StatisticsData } from "@/types/statistics";
 import StatisticsView from "../StatisticsView";
 import { ExploreVisibilityAndArchivedFilters, ExploreWorkspaceSelect } from "./ExploreFilters";
 import ShortcutsSection from "./ShortcutsSection";
-import TagsSection from "./TagsSection";
 
 export type MemoExplorerContext = "home" | "explore" | "archived" | "profile";
 
@@ -13,7 +12,6 @@ export interface MemoExplorerFeatures {
   search?: boolean;
   statistics?: boolean;
   shortcuts?: boolean;
-  tags?: boolean;
 }
 
 interface Props {
@@ -21,7 +19,6 @@ interface Props {
   context?: MemoExplorerContext;
   features?: MemoExplorerFeatures;
   statisticsData: StatisticsData;
-  tagCount: Record<string, number>;
 }
 
 const getDefaultFeatures = (context: MemoExplorerContext): MemoExplorerFeatures => {
@@ -31,21 +28,18 @@ const getDefaultFeatures = (context: MemoExplorerContext): MemoExplorerFeatures 
         search: true,
         statistics: true,
         shortcuts: false, // Global explore doesn't use shortcuts
-        tags: true,
       };
     case "archived":
       return {
         search: true,
         statistics: true,
         shortcuts: false, // Archived doesn't typically use shortcuts
-        tags: true,
       };
     case "profile":
       return {
         search: true,
         statistics: true,
         shortcuts: false, // Profile view doesn't use shortcuts
-        tags: true,
       };
     case "home":
     default:
@@ -53,13 +47,12 @@ const getDefaultFeatures = (context: MemoExplorerContext): MemoExplorerFeatures 
         search: true,
         statistics: true,
         shortcuts: true,
-        tags: true,
       };
   }
 };
 
 const MemoExplorer = (props: Props) => {
-  const { className, context = "home", features: featureOverrides = {}, statisticsData, tagCount } = props;
+  const { className, context = "home", features: featureOverrides = {}, statisticsData } = props;
   const currentUser = useCurrentUser();
 
   // Merge default features with overrides
@@ -82,7 +75,6 @@ const MemoExplorer = (props: Props) => {
         <div className="mt-1 px-1 w-full">
           {features.statistics && <StatisticsView statisticsData={statisticsData} />}
           {features.shortcuts && currentUser && <ShortcutsSection />}
-          {features.tags && <TagsSection readonly={context === "explore"} tagCount={tagCount} />}
         </div>
       </div>
       {context === "explore" && (

@@ -30,15 +30,16 @@ func TestRebuildMemoPayloadPreservesUnrelatedPayloadFields(t *testing.T) {
 		},
 	}
 
-	require.NoError(t, RebuildMemoPayload(context.Background(), memo, markdown.NewService(markdown.WithTagExtension())))
+	require.NoError(t, RebuildMemoPayload(context.Background(), memo, markdown.NewService()))
 
 	assert.True(t, memo.Payload.GetAgentSessionOpen(), "agent session flag must survive a payload rebuild")
 	assert.Equal(t, map[string]string{"cell-1": `{"bold":true}`}, memo.Payload.GetNodeOverlays())
 	assert.False(t, memo.Payload.GetDocConfig().GetFullWidth())
 	assert.Equal(t, "somewhere", memo.Payload.GetLocation().GetPlaceholder())
 
-	// The derived fields are still recomputed from the content.
-	assert.Equal(t, []string{"plans"}, memo.Payload.GetTags())
+	// The derived fields are still recomputed from the content, and the retired tag list is
+	// cleared rather than carried forward.
+	assert.Empty(t, memo.Payload.GetTags())
 	assert.True(t, memo.Payload.GetProperty().GetHasLink())
 	assert.Equal(t, "Title", memo.Payload.GetProperty().GetTitle())
 }
@@ -46,7 +47,7 @@ func TestRebuildMemoPayloadPreservesUnrelatedPayloadFields(t *testing.T) {
 func TestRebuildMemoPayloadInitializesMissingPayload(t *testing.T) {
 	memo := &store.Memo{Content: "plain"}
 
-	require.NoError(t, RebuildMemoPayload(context.Background(), memo, markdown.NewService(markdown.WithTagExtension())))
+	require.NoError(t, RebuildMemoPayload(context.Background(), memo, markdown.NewService()))
 
 	require.NotNil(t, memo.Payload)
 	// The zero value is the safe direction: an unmarked memo counts as
