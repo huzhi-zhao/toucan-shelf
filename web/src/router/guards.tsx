@@ -5,7 +5,7 @@ import { ROUTES } from "./routes";
 
 /**
  * Index-route gate mounted at `/`. Authenticated visitors fall through to the
- * nested Home page; unauthenticated visitors are redirected to `/auth`, with
+ * last-opened document redirect; unauthenticated visitors are redirected to `/auth`, with
  * the original location preserved so they return to `/` after signing in.
  */
 export const LandingRoute = () => {

@@ -25,6 +25,7 @@ const MainLayout = () => {
   // secondary sidebar (workspace tree) and full-bleed two-pane layout, so it also opts
   // out of the horizontal padding the other pages get.
   const isNotebook = isNotebookRoute(location.pathname);
+  const isLanding = location.pathname === Routes.HOME;
   // The Home page ("/dashboard", plus its "/dashboard/:sectionId" tabs) spans the full
   // width the same way.
   const isDashboard = location.pathname === Routes.DASHBOARD || location.pathname.startsWith(`${Routes.DASHBOARD}/`);
@@ -37,7 +38,7 @@ const MainLayout = () => {
   // change to this file — the previous deny-list meant every new page silently
   // inherited a calendar it had no use for until someone remembered to opt out.
   const context: MemoExplorerContext | null = useMemo(() => {
-    if (location.pathname === Routes.HOME || location.pathname === Routes.SHORTCUTS) return "home";
+    if (location.pathname === Routes.SHORTCUTS) return "shortcuts";
     if (location.pathname === Routes.EXPLORE) return "explore";
     if (location.pathname === Routes.ARCHIVED) return "archived";
     if (matchPath(PROFILE_ROUTE, location.pathname)) return "profile";
@@ -69,11 +70,11 @@ const MainLayout = () => {
   }, [location.pathname, context]);
 
   // Determine which user name to use for per-user stats.
-  // - home: current user's stats
+  // - shortcuts: current user's stats
   // - profile: viewed user's stats
   // - archived/explore: no user scope (each handled differently inside the hook)
   const statsUserName = useMemo(() => {
-    if (context === "home") return currentUser?.name;
+    if (context === "shortcuts") return currentUser?.name;
     if (context === "profile") return profileUserName;
     return undefined;
   }, [context, currentUser, profileUserName]);
@@ -83,7 +84,7 @@ const MainLayout = () => {
     context: context ?? undefined,
   });
   const memoExplorerProps = {
-    context: context ?? "home",
+    context: context ?? "shortcuts",
     statisticsData: statistics,
     tagCount: tags,
   };
@@ -97,7 +98,7 @@ const MainLayout = () => {
         </div>
       )}
       <div className={MAIN_CONTENT_CLASS_NAME}>
-        {isNotebook || isDashboard ? (
+        {isNotebook || isDashboard || isLanding ? (
           <Outlet />
         ) : (
           <div className={cn("w-full mx-auto px-4 sm:px-6 md:pt-6 pb-8")}>
