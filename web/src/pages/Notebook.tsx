@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { useQueryClient } from "@tanstack/react-query";
 import copy from "copy-to-clipboard";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { extractWorkspaceQualifiedTitles } from "@/components/MemoContent/crossWorkspace";
@@ -18,6 +18,7 @@ import MoveDocumentDialog from "@/components/Notebook/MoveDocumentDialog";
 import MoveFolderDialog from "@/components/Notebook/MoveFolderDialog";
 import NotebookSidebar from "@/components/Notebook/NotebookSidebar";
 import PromptDialog from "@/components/Notebook/PromptDialog";
+import PageLoadingSkeleton from "@/components/PageLoadingSkeleton";
 import { memoServiceClient, ragServiceClient } from "@/connect";
 import { useInstance } from "@/contexts/InstanceContext";
 import { useCreateAttachment } from "@/hooks/useAttachmentQueries";
@@ -95,7 +96,7 @@ const Notebook = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { workspaceTitle, docId } = useParams<{ workspaceTitle?: string; docId?: string }>();
-  const { data: workspaces = [] } = useWorkspaces();
+  const { data: workspaces = [], isPending: workspacesPending } = useWorkspaces();
   const sidebarCollapsed = useNotebookSidebarCollapsed();
   // Phone-sized viewports (and tablets rotated to portrait) can't afford the 288px tree next to
   // the document, so the secondary sidebar starts closed there — see the override effect below.
@@ -119,6 +120,8 @@ const Notebook = () => {
   const [searchLoading, setSearchLoading] = useState(false);
   const restoredWorkspace = useRef(false);
   const restoredMemo = useRef(false);
+  const [restoringMemo, setRestoringMemo] = useState(true);
+  const [initialDisplayPending, setInitialDisplayPending] = useState(true);
 
   const [newDocDialog, setNewDocDialog] = useState<{
     folderPath: string;
@@ -143,8 +146,8 @@ const Notebook = () => {
     memoName: string;
   } | null>(null);
 
-  const { data: tree = [] } = useWorkspaceTree(workspaceName, archived);
-  const { data: memo } = useMemoDetail(selectedMemo ?? "", {
+  const { data: tree = [], isPending: treePending } = useWorkspaceTree(workspaceName, archived);
+  const { data: memo, isPending: memoPending } = useMemoDetail(selectedMemo ?? "", {
     enabled: !!selectedMemo,
   });
   usePageTitle(memo?.title);
@@ -188,14 +191,24 @@ const Notebook = () => {
   // The same override channel carries the narrow-viewport default: on a phone (or after rotating
   // to portrait) the tree starts collapsed regardless of the saved desktop preference, and one tap
   // on the toggle still opens it — a manual toggle clears the override.
-  useEffect(() => {
+  useLayoutEffect(() => {
     setNotebookSidebarOverride(docHidesFilter || isNarrow ? true : null);
   }, [selectedMemo, docHidesFilter, isNarrow]);
-  useEffect(() => () => setNotebookSidebarOverride(null), []);
+  useLayoutEffect(() => () => setNotebookSidebarOverride(null), []);
 
   // Keep the secondary sidebar visible when the knowledge base has no documents,
   // otherwise a freshly created (empty) workspace would render a blank page.
   const effectiveSidebarCollapsed = sidebarCollapsed && tree.length > 0;
+  const firstDocument = useMemo(() => findFirstDocument(tree), [tree]);
+  const initialDataReady =
+    !workspacesPending &&
+    (workspaces.length === 0 || !!workspaceName) &&
+    (!workspaceName || !treePending) &&
+    (!firstDocument || !restoringMemo) &&
+    (!selectedMemo || !memoPending);
+  useEffect(() => {
+    if (initialDisplayPending && initialDataReady) setInitialDisplayPending(false);
+  }, [initialDisplayPending, initialDataReady]);
 
   const createMemo = useCreateMemo();
   const updateMemo = useUpdateMemo();
@@ -229,6 +242,7 @@ const Notebook = () => {
     restoredMemo.current = true;
     if (requestedMemo && containsMemo(tree, requestedMemo)) {
       setSelectedMemo(requestedMemo);
+      setRestoringMemo(false);
       return;
     }
     (async () => {
@@ -237,10 +251,11 @@ const Notebook = () => {
       if (lastMemo && containsMemo(tree, lastMemo)) {
         setSelectedMemo(lastMemo);
       } else {
-        setSelectedMemo(findFirstDocument(tree));
+        setSelectedMemo(firstDocument);
       }
+      setRestoringMemo(false);
     })();
-  }, [workspaceName, tree, getLastOpened, requestedMemo]);
+  }, [workspaceName, tree, firstDocument, getLastOpened, requestedMemo]);
 
   useEffect(() => {
     if (workspaceName && selectedMemo) {
@@ -282,6 +297,8 @@ const Notebook = () => {
       setSelectedMemo(undefined);
       setSearch(null); // a library search is scoped to one workspace; drop it on switch
       restoredMemo.current = false; // auto-select the workspace's last-opened doc once its tree loads
+      setRestoringMemo(true);
+      setInitialDisplayPending(true);
       const title = workspaces.find((w) => w.name === name)?.title ?? name;
       navigate(`/${encodeURIComponent(title)}`, { replace: true });
     },
@@ -608,6 +625,8 @@ const Notebook = () => {
     [t],
   );
 
+  if (initialDisplayPending) return <PageLoadingSkeleton variant="notebook" />;
+
   return (
     <div className="w-full h-svh flex flex-row">
       {!effectiveSidebarCollapsed && (
@@ -680,6 +699,8 @@ const Notebook = () => {
             loading={searchLoading}
             onSelect={handleSelectDocument}
           />
+        ) : selectedMemo && memoPending ? (
+          <PageLoadingSkeleton variant="notebook" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
             {tree.length === 0 ? t("notebook.no-documents") : t("notebook.select-a-document")}

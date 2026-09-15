@@ -39,7 +39,7 @@ export const useFilteredMemoStats = (options: UseFilteredMemoStatsOptions = {}):
   const currentUser = useCurrentUser();
   const { timeBasis } = useView();
 
-  // home/profile: use backend per-user stats (full tag set, not page-limited)
+  // shortcuts/profile: use backend per-user stats (full tag set, not page-limited)
   const { data: userStats, isLoading: isLoadingUserStats } = useUserStats(userName);
   // explore/archived: fetch backend grouped stats and aggregate them locally.
   // No client-side visibility filter: ListAllUserStats already scopes results to
@@ -73,7 +73,7 @@ export const useFilteredMemoStats = (options: UseFilteredMemoStatsOptions = {}):
       }
       activityStats = countBy(displayDates);
     } else if (userName && userStats) {
-      // home/profile: use backend per-user stats.
+      // shortcuts/profile: use backend per-user stats.
       const sourceArray = timestampsForBasis(userStats, timeBasis);
       if (sourceArray.length > 0) {
         activityStats = countBy(

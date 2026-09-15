@@ -16,7 +16,7 @@ const memoUid = (memoName: string) => memoName.replace(/^memos\//, "");
  *
  * Degrades in steps rather than failing: no remembered document → the workspace's own URL (the
  * Notebook then opens its first document); no remembered workspace → the first one; no
- * workspaces at all (or the lookup failed) → the Home page.
+ * workspaces at all (or the lookup failed) → the Dashboard.
  */
 export function useOpenLastDocument(options?: { replace?: boolean }) {
   const replace = options?.replace ?? false;

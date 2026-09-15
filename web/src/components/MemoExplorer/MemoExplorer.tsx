@@ -7,7 +7,7 @@ import { ExploreVisibilityAndArchivedFilters, ExploreWorkspaceSelect } from "./E
 import ShortcutsSection from "./ShortcutsSection";
 import TagsSection from "./TagsSection";
 
-export type MemoExplorerContext = "home" | "explore" | "archived" | "profile";
+export type MemoExplorerContext = "shortcuts" | "explore" | "archived" | "profile";
 
 export interface MemoExplorerFeatures {
   search?: boolean;
@@ -47,7 +47,7 @@ const getDefaultFeatures = (context: MemoExplorerContext): MemoExplorerFeatures 
         shortcuts: false, // Profile view doesn't use shortcuts
         tags: true,
       };
-    case "home":
+    case "shortcuts":
     default:
       return {
         search: true,
@@ -59,7 +59,7 @@ const getDefaultFeatures = (context: MemoExplorerContext): MemoExplorerFeatures 
 };
 
 const MemoExplorer = (props: Props) => {
-  const { className, context = "home", features: featureOverrides = {}, statisticsData, tagCount } = props;
+  const { className, context = "shortcuts", features: featureOverrides = {}, statisticsData, tagCount } = props;
   const currentUser = useCurrentUser();
 
   // Merge default features with overrides
