@@ -786,12 +786,12 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 		update.Payload = memo.Payload
 	}
 
-	// Structural changes (move / rename / doc type) must bump updated_ts even
-	// when the caller didn't ask for "update_time": incremental sync clients
-	// (memogit pull) discover changes by updated_ts, and would otherwise never
-	// see a document that was moved between folders or renamed.
+	// Content and structural changes must bump updated_ts even when the caller
+	// didn't ask for "update_time". memogit push sends content-only updates, and
+	// both incremental sync and the workspace tree's freshness tint depend on
+	// this timestamp. An explicit update_time still takes precedence.
 	if update.UpdatedTs == nil &&
-		(update.FolderPath != nil || update.Title != nil || update.WorkspaceID != nil || update.DocType != nil) {
+		(update.Content != nil || update.FolderPath != nil || update.Title != nil || update.WorkspaceID != nil || update.DocType != nil) {
 		now := time.Now().Unix()
 		update.UpdatedTs = &now
 	}
