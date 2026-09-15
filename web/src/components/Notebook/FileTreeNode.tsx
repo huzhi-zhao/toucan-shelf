@@ -148,9 +148,9 @@ const FileTreeNode = ({
     copy(lines.join("\n"));
     toast.success(t("message.succeed-copy-info"));
   }, [workspaceName, workspaceTitle, isFolder, node.path, node.name, node.memo, t]);
-  // The selected row already stands out through its background, so let it keep the accent
-  // foreground rather than fighting the tint.
-  const freshClass = isSelected ? undefined : freshnessClass(freshness?.get(freshnessKey(node)));
+  // Selection changes the row background, but the document's freshness tint still
+  // needs to show: the edited document is often the one currently open.
+  const freshClass = freshnessClass(freshness?.get(freshnessKey(node)));
   const updatedTitle =
     !isFolder && freshness?.has(freshnessKey(node)) && node.updateTime
       ? dayjs(Number(node.updateTime.seconds) * 1000).format("YYYY-MM-DD HH:mm")

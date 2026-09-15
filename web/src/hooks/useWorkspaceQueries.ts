@@ -8,9 +8,10 @@ import { WorkspaceGrantSchema, WorkspaceSchema } from "@/types/proto/api/v1/work
 export const workspaceKeys = {
   all: ["workspaces"] as const,
   lists: () => [...workspaceKeys.all, "list"] as const,
+  trees: () => [...workspaceKeys.all, "tree"] as const,
   list: (showHidden: boolean) => [...workspaceKeys.lists(), { showHidden }] as const,
   detail: (name?: string) => [...workspaceKeys.all, "detail", name] as const,
-  tree: (name?: string, archived?: boolean) => [...workspaceKeys.all, "tree", name, archived] as const,
+  tree: (name?: string, archived?: boolean) => [...workspaceKeys.trees(), name, archived] as const,
   grants: () => [...workspaceKeys.all, "grants"] as const,
   grantsForUser: (user?: string) => [...workspaceKeys.grants(), { user }] as const,
 };
