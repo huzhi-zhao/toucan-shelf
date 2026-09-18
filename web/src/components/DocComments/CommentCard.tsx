@@ -1,5 +1,6 @@
-import { HashIcon, LinkIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { ExternalLinkIcon, HashIcon, LinkIcon, PencilIcon, Trash2Icon } from "lucide-react";
 import { forwardRef, useState } from "react";
+import { Link } from "react-router-dom";
 import MemoContent from "@/components/MemoContent";
 import MemoEditor from "@/components/MemoEditor";
 import { cn } from "@/lib/utils";
@@ -78,6 +79,24 @@ export const CommentCard = forwardRef<HTMLDivElement, Props>(
       </button>
     );
 
+    const cardActions = (
+      <div className="flex items-center gap-3">
+        <Link
+          className="inline-flex items-center gap-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+          to={`/${memo.name}`}
+          state={memo.parent ? { from: `/${memo.parent}` } : undefined}
+          onClick={(e) => e.stopPropagation()}
+          aria-label={t("memo.view-detail")}
+          title={t("memo.view-detail")}
+          viewTransition
+        >
+          <ExternalLinkIcon className="w-3 h-3" />
+          {t("memo.view-detail")}
+        </Link>
+        {editButton}
+      </div>
+    );
+
     return (
       <div
         ref={ref}
@@ -119,7 +138,7 @@ export const CommentCard = forwardRef<HTMLDivElement, Props>(
               memoName={memo.name}
               compact
               contentClassName="!p-0"
-              actions={editButton}
+              actions={cardActions}
               softBreak={memo.docConfig?.softBreak}
             />
           </div>
@@ -129,7 +148,7 @@ export const CommentCard = forwardRef<HTMLDivElement, Props>(
           // only handle on it. Say what it is rather than rendering an empty body.
           <div className="flex items-center justify-between gap-2">
             <span className="italic text-muted-foreground/70">{emptyLabel}</span>
-            {editButton}
+            {cardActions}
           </div>
         )}
         {anchorStale && (onRelink || onDelete) && (
