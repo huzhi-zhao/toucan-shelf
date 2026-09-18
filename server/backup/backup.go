@@ -35,10 +35,18 @@ import (
 func Run(ctx context.Context, profile *profile.Profile, stores *store.Store) error {
 	runErr := run(ctx, profile, stores)
 
-	backupSetting := &storepb.InstanceBackupSetting{
-		LastBackupTime:    timestamppb.Now(),
-		LastBackupSuccess: runErr == nil,
+	// The admin updates path_template while the runner updates status. Preserve the
+	// existing template when recording either a successful or failed attempt.
+	backupSetting, err := stores.GetInstanceBackupSetting(ctx)
+	if err != nil {
+		if runErr != nil {
+			return runErr
+		}
+		return errors.Wrap(err, "failed to get backup setting for status")
 	}
+	backupSetting.LastBackupTime = timestamppb.Now()
+	backupSetting.LastBackupSuccess = runErr == nil
+	backupSetting.LastBackupError = ""
 	if runErr != nil {
 		backupSetting.LastBackupError = runErr.Error()
 	}

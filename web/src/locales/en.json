@@ -1315,6 +1315,7 @@
     "delete-folder-confirm": "Delete this folder? It must be empty.",
     "preview": "Preview",
     "edit": "Edit",
+    "mcp-edited-tooltip": "MCP recently edited this document",
     "outline": "Outline",
     "toggle-outline": "Toggle outline",
     "unarchive": "Unarchive",

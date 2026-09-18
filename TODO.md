@@ -20,11 +20,13 @@
 
 ### 对外发布（Publish）
 
-主体已交付，剩两笔欠账。见
+主体已交付，剩三笔欠账。见
 [design/20260823-public-publishing/tech-design.md](docs/dev/design/20260823-public-publishing/tech-design.md)。
 
 - [ ] **自定义域名** —— 归属校验、证书、301。主要是部署侧工作，未开工。
-- [ ] **CSR 导致爬虫拿不到正文** —— 见方案 §8。SEO 的另一半（sitemap/robots/
+- [ ] **CSR 导致爬虫拿不到正文** —— 见
+      [front-end.md §8](docs/dev/design/20260823-public-publishing/front-end.md)。
+      SEO 的另一半（sitemap/robots/
       canonical/410/404）已完成，这条仍在。
 - [ ] **`site_chunk` 索引复评** —— 站内搜索目前是 `site_publication` 上的 `LIKE`
       子串匹配，没有索引表、分词与向量，文章多了会线性扫。原方案的 `site_chunk`
@@ -35,12 +37,6 @@
 ## 二、已定未做
 
 ### 下一步做
-
-- [ ] **RAG 库内搜索（F2）** —— Notebook 二级侧栏内的库内检索。
-      见 [rag-search.md](docs/dev/rag-search.md)。
-      原先记的"proto 要先从 `workspace_id int32` 改成资源名"这项前置**已经做完**：
-      `SearchRequest.workspace` 现在就是 `workspaces/{workspace}`，后端在
-      `rag_service.go` 里解析。剩下的阻碍只有与 `Notebook.tsx` 预览区的耦合。
 
 - [ ] **知识库级授权收紧到文档/文件夹粒度** —— 现在"分配到库 = 库内文档最大读写"
       是第一期的粗粒度方案。见
@@ -74,10 +70,6 @@
 - [ ] **`folder_path` 进 CEL filter schema** —— 让 `memo_list_memos` 能按文件夹路径
       批量捞文档。`workspace_get_workspace_tree` 已覆盖主要场景，故推迟。
       见 [mcp-authoring.md §7](docs/dev/requirements/collaboration/mcp-authoring.md)。
-
-- [ ] **编辑器软提示 agent 未确认编辑** —— 人类打开 `agent_session_open == true`
-      的文档时提示"此文档有 AI 编辑且尚未确认"。flag 已建好，补 UI 成本低。
-      出处同上。
 
 - [ ] **memogit 附件上传（单向 → 双向）** —— 已确认未实现，且"只下载不上传"是写进
       `push.go` / `attachments.go` 注释与 agent 须知的当前契约，不是没来得及做。要开
@@ -113,14 +105,16 @@
       带来源生成回答"。**有明确触发条件，条件未满足前不排期**，
       见 [rag-search.md](docs/dev/rag-search.md) 的触发条件一节。
 
+- [ ] **standalone 无 S3 时的持续警告** —— 本地单机部署允许不配置 S3，但界面尚无
+      "未配置远程备份"提示。见 [standalone-local-deploy.md](docs/dev/standalone-local-deploy.md)。
+- [ ] **standalone S3 凭证环境变量读取** —— 恢复发生在数据库创建前，凭证必须来自
+      环境变量；读取路径尚未实现。出处同上。
+
 ---
 
 ## 三、待确认（先核实，别当需求排期）
 
 - [ ] **附件搬迁脚本是否已执行** —— 见
       [upload-and-inline-media.md](docs/dev/requirements/attachments/upload-and-inline-media.md)。
-- [ ] **standalone 部署的三条** —— 自动备份的两个已知 bug 是否仍在、无 S3 时的
-      警告条是否实现、S3 凭证的环境变量读取路径是否落地。
-      见 [standalone-local-deploy.md](docs/dev/standalone-local-deploy.md)。
 - [ ] **全站备份的若干项** —— 见
       [backup.md §TODO(确认)](docs/dev/requirements/storage/backup.md)。

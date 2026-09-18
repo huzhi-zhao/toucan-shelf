@@ -42,6 +42,9 @@ const (
 	MemoServiceGetMemoProcedure = "/memos.api.v1.MemoService/GetMemo"
 	// MemoServiceUpdateMemoProcedure is the fully-qualified name of the MemoService's UpdateMemo RPC.
 	MemoServiceUpdateMemoProcedure = "/memos.api.v1.MemoService/UpdateMemo"
+	// MemoServiceAcknowledgeAgentEditProcedure is the fully-qualified name of the MemoService's
+	// AcknowledgeAgentEdit RPC.
+	MemoServiceAcknowledgeAgentEditProcedure = "/memos.api.v1.MemoService/AcknowledgeAgentEdit"
 	// MemoServiceDeleteMemoProcedure is the fully-qualified name of the MemoService's DeleteMemo RPC.
 	MemoServiceDeleteMemoProcedure = "/memos.api.v1.MemoService/DeleteMemo"
 	// MemoServiceSetMemoAttachmentsProcedure is the fully-qualified name of the MemoService's
@@ -112,6 +115,9 @@ type MemoServiceClient interface {
 	GetMemo(context.Context, *connect.Request[v1.GetMemoRequest]) (*connect.Response[v1.Memo], error)
 	// UpdateMemo updates a memo.
 	UpdateMemo(context.Context, *connect.Request[v1.UpdateMemoRequest]) (*connect.Response[v1.Memo], error)
+	// AcknowledgeAgentEdit records that a human opened the editor after an MCP
+	// edit. It does not change content or the agent baseline-snapshot state.
+	AcknowledgeAgentEdit(context.Context, *connect.Request[v1.AcknowledgeAgentEditRequest]) (*connect.Response[v1.Memo], error)
 	// DeleteMemo deletes a memo.
 	DeleteMemo(context.Context, *connect.Request[v1.DeleteMemoRequest]) (*connect.Response[emptypb.Empty], error)
 	// SetMemoAttachments replaces the full set of attachments on a memo with the
@@ -197,6 +203,12 @@ func NewMemoServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+MemoServiceUpdateMemoProcedure,
 			connect.WithSchema(memoServiceMethods.ByName("UpdateMemo")),
+			connect.WithClientOptions(opts...),
+		),
+		acknowledgeAgentEdit: connect.NewClient[v1.AcknowledgeAgentEditRequest, v1.Memo](
+			httpClient,
+			baseURL+MemoServiceAcknowledgeAgentEditProcedure,
+			connect.WithSchema(memoServiceMethods.ByName("AcknowledgeAgentEdit")),
 			connect.WithClientOptions(opts...),
 		),
 		deleteMemo: connect.NewClient[v1.DeleteMemoRequest, emptypb.Empty](
@@ -322,6 +334,7 @@ type memoServiceClient struct {
 	listMemos            *connect.Client[v1.ListMemosRequest, v1.ListMemosResponse]
 	getMemo              *connect.Client[v1.GetMemoRequest, v1.Memo]
 	updateMemo           *connect.Client[v1.UpdateMemoRequest, v1.Memo]
+	acknowledgeAgentEdit *connect.Client[v1.AcknowledgeAgentEditRequest, v1.Memo]
 	deleteMemo           *connect.Client[v1.DeleteMemoRequest, emptypb.Empty]
 	setMemoAttachments   *connect.Client[v1.SetMemoAttachmentsRequest, emptypb.Empty]
 	listMemoAttachments  *connect.Client[v1.ListMemoAttachmentsRequest, v1.ListMemoAttachmentsResponse]
@@ -361,6 +374,11 @@ func (c *memoServiceClient) GetMemo(ctx context.Context, req *connect.Request[v1
 // UpdateMemo calls memos.api.v1.MemoService.UpdateMemo.
 func (c *memoServiceClient) UpdateMemo(ctx context.Context, req *connect.Request[v1.UpdateMemoRequest]) (*connect.Response[v1.Memo], error) {
 	return c.updateMemo.CallUnary(ctx, req)
+}
+
+// AcknowledgeAgentEdit calls memos.api.v1.MemoService.AcknowledgeAgentEdit.
+func (c *memoServiceClient) AcknowledgeAgentEdit(ctx context.Context, req *connect.Request[v1.AcknowledgeAgentEditRequest]) (*connect.Response[v1.Memo], error) {
+	return c.acknowledgeAgentEdit.CallUnary(ctx, req)
 }
 
 // DeleteMemo calls memos.api.v1.MemoService.DeleteMemo.
@@ -470,6 +488,9 @@ type MemoServiceHandler interface {
 	GetMemo(context.Context, *connect.Request[v1.GetMemoRequest]) (*connect.Response[v1.Memo], error)
 	// UpdateMemo updates a memo.
 	UpdateMemo(context.Context, *connect.Request[v1.UpdateMemoRequest]) (*connect.Response[v1.Memo], error)
+	// AcknowledgeAgentEdit records that a human opened the editor after an MCP
+	// edit. It does not change content or the agent baseline-snapshot state.
+	AcknowledgeAgentEdit(context.Context, *connect.Request[v1.AcknowledgeAgentEditRequest]) (*connect.Response[v1.Memo], error)
 	// DeleteMemo deletes a memo.
 	DeleteMemo(context.Context, *connect.Request[v1.DeleteMemoRequest]) (*connect.Response[emptypb.Empty], error)
 	// SetMemoAttachments replaces the full set of attachments on a memo with the
@@ -551,6 +572,12 @@ func NewMemoServiceHandler(svc MemoServiceHandler, opts ...connect.HandlerOption
 		MemoServiceUpdateMemoProcedure,
 		svc.UpdateMemo,
 		connect.WithSchema(memoServiceMethods.ByName("UpdateMemo")),
+		connect.WithHandlerOptions(opts...),
+	)
+	memoServiceAcknowledgeAgentEditHandler := connect.NewUnaryHandler(
+		MemoServiceAcknowledgeAgentEditProcedure,
+		svc.AcknowledgeAgentEdit,
+		connect.WithSchema(memoServiceMethods.ByName("AcknowledgeAgentEdit")),
 		connect.WithHandlerOptions(opts...),
 	)
 	memoServiceDeleteMemoHandler := connect.NewUnaryHandler(
@@ -677,6 +704,8 @@ func NewMemoServiceHandler(svc MemoServiceHandler, opts ...connect.HandlerOption
 			memoServiceGetMemoHandler.ServeHTTP(w, r)
 		case MemoServiceUpdateMemoProcedure:
 			memoServiceUpdateMemoHandler.ServeHTTP(w, r)
+		case MemoServiceAcknowledgeAgentEditProcedure:
+			memoServiceAcknowledgeAgentEditHandler.ServeHTTP(w, r)
 		case MemoServiceDeleteMemoProcedure:
 			memoServiceDeleteMemoHandler.ServeHTTP(w, r)
 		case MemoServiceSetMemoAttachmentsProcedure:
@@ -738,6 +767,10 @@ func (UnimplementedMemoServiceHandler) GetMemo(context.Context, *connect.Request
 
 func (UnimplementedMemoServiceHandler) UpdateMemo(context.Context, *connect.Request[v1.UpdateMemoRequest]) (*connect.Response[v1.Memo], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.MemoService.UpdateMemo is not implemented"))
+}
+
+func (UnimplementedMemoServiceHandler) AcknowledgeAgentEdit(context.Context, *connect.Request[v1.AcknowledgeAgentEditRequest]) (*connect.Response[v1.Memo], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.MemoService.AcknowledgeAgentEdit is not implemented"))
 }
 
 func (UnimplementedMemoServiceHandler) DeleteMemo(context.Context, *connect.Request[v1.DeleteMemoRequest]) (*connect.Response[emptypb.Empty], error) {

@@ -9,7 +9,7 @@ const renderMarkdown = (content: string): string =>
 
 describe("remarkTag", () => {
   it("does not turn URL fragments inside autolinks into tags", () => {
-    const html = renderMarkdown("https://github.com/dmtrKovalenko/fff#pi-agent-extension\n\nProject #memo-tag");
+    const html = renderMarkdown("https://github.com/dmtrKovalenko/fff#pi-agent-extension\n\n#memo-tag");
 
     expect(html).toContain('href="https://github.com/dmtrKovalenko/fff#pi-agent-extension"');
     expect(html).not.toContain('data-tag="pi-agent-extension"');
@@ -26,7 +26,7 @@ describe("remarkTag", () => {
         "",
         "[docs]: https://example.com/docs#reference-anchor",
         "",
-        "Outside #memo-tag",
+        "#memo-tag",
       ].join("\n"),
     );
 
@@ -41,29 +41,31 @@ describe("remarkTag", () => {
     expect(html).toContain('data-tag="memo-tag"');
   });
 
-  it("continues to turn formatted text outside links into tags", () => {
-    const html = renderMarkdown("**#urgent** and _#later_");
+  it("treats formatted inline hashes as prose and tags only the trailing tag line", () => {
+    const html = renderMarkdown("**#urgent** and _#later_\n\n#real");
 
-    expect(html).toContain('data-tag="urgent"');
-    expect(html).toContain('data-tag="later"');
+    expect(html).not.toContain('data-tag="urgent"');
+    expect(html).not.toContain('data-tag="later"');
+    expect(html).toContain('data-tag="real"');
   });
 
-  it("does not turn a backslash-escaped \\#tag into a tag, but still tags an unescaped one", () => {
-    const html = renderMarkdown("\\#NAS is my server and a #real tag");
+  it("keeps a backslash-escaped hash literal while recognizing a trailing tag line", () => {
+    const html = renderMarkdown("\\#NAS is my server\n\n#real");
 
     // Escaped: rendered as the literal text "#NAS", never a tag pill.
     expect(html).not.toContain('data-tag="NAS"');
     expect(html).toContain("#NAS");
-    // Unescaped neighbour is unaffected.
+    // An unescaped trailing tag is unaffected.
     expect(html).toContain('data-tag="real"');
   });
 
-  it("escapes only the marked hash when escaped and unescaped tags share a node", () => {
-    const html = renderMarkdown("\\#first then #second");
+  it("leaves a mixed prose line alone even when it contains escaped and unescaped hashes", () => {
+    const html = renderMarkdown("\\#first then #second\n\n#third");
 
     expect(html).not.toContain('data-tag="first"');
+    expect(html).not.toContain('data-tag="second"');
     expect(html).toContain("#first");
-    expect(html).toContain('data-tag="second"');
+    expect(html).toContain('data-tag="third"');
   });
 
   it("tags a whole word containing combining marks", () => {
@@ -75,10 +77,8 @@ describe("remarkTag", () => {
     expect(html).not.toContain('data-tag="കവ"');
   });
 
-  it("still tags a hash that shares a text node with an entity reference", () => {
-    // The source slice ("...&amp;...") differs from the decoded value, so the
-    // escape-aware path bows out and the tag is detected the original way.
-    const html = renderMarkdown("Tom &amp; Jerry #cartoon");
+  it("keeps entity references in prose while recognizing a trailing tag", () => {
+    const html = renderMarkdown("Tom &amp; Jerry\n\n#cartoon");
 
     expect(html).toContain('data-tag="cartoon"');
     expect(html).toContain("Tom &amp; Jerry");

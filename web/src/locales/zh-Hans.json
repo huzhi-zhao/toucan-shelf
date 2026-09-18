@@ -1231,6 +1231,7 @@
     "delete-folder-confirm": "确定删除该文件夹吗？文件夹必须为空。",
     "preview": "预览",
     "edit": "编辑",
+    "mcp-edited-tooltip": "MCP 刚改过",
     "outline": "大纲",
     "toggle-outline": "切换大纲",
     "unarchive": "取消归档",

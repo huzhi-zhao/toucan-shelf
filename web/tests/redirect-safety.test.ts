@@ -93,14 +93,15 @@ describe("shouldGatePrivateInstance", () => {
     expect(shouldGatePrivateInstance({ isPrivateInstance: true, isAuthenticated: true, pathname: "/explore" })).toBe(false);
   });
 
-  it("gates anonymous visitors to non-share pages on a private instance", () => {
-    for (const pathname of ["/", "/explore", "/about", "/memos/abc", "/u/steven", "/setting"]) {
+  it("gates anonymous visitors to pages other than individual memos on a private instance", () => {
+    for (const pathname of ["/", "/explore", "/about", "/u/steven", "/setting"]) {
       expect(shouldGatePrivateInstance({ isPrivateInstance: true, isAuthenticated: false, pathname })).toBe(true);
     }
   });
 
-  it("keeps share links reachable for anonymous visitors on a private instance", () => {
+  it("keeps share links and individual memo pages reachable for anonymous visitors on a private instance", () => {
     expect(shouldGatePrivateInstance({ isPrivateInstance: true, isAuthenticated: false, pathname: "/memos/shares/token123" })).toBe(false);
+    expect(shouldGatePrivateInstance({ isPrivateInstance: true, isAuthenticated: false, pathname: "/memos/abc" })).toBe(false);
   });
 });
 

@@ -55,6 +55,11 @@ message MemoPayload {
   // docs/dev/adr/0014-agent-session-open-not-a-lock.md.
   bool agent_session_open = 9;
 
+  // Human acknowledgement of the current agent edit, recorded when the editor
+  // is opened. Separate from agent_session_open so acknowledging does not
+  // change the baseline-snapshot rule. Cleared by the next authorship write.
+  bool agent_edit_acknowledged = 10;
+
   // The calculated properties from the memo content.
   message Property {
     bool has_link = 1;
