@@ -58,6 +58,7 @@ func (s *APIV1Service) convertMemoFromStoreWithCreators(ctx context.Context, mem
 		}
 	}
 	if memo.Payload != nil {
+		memoMessage.AgentEditPending = memo.Payload.GetAgentSessionOpen() && !memo.Payload.GetAgentEditAcknowledged()
 		memoMessage.Tags = memo.Payload.Tags
 		memoMessage.Property = convertMemoPropertyFromStore(memo.Payload.Property)
 		memoMessage.Location = convertLocationFromStore(memo.Payload.Location)

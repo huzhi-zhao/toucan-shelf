@@ -30,43 +30,21 @@ CGO_ENABLED=0 go build -o memos ./cmd/memos
 | S3 客户端 | [internal/storage/s3/s3.go](../../internal/storage/s3/s3.go) |
 | 附件走 S3 | 已有 |
 | DB 备份到 S3 | [server/backup/backup.go](../../server/backup/backup.go)：`VACUUM INTO` 快照 + gzip + 上传 |
-| 定时备份 | [server/runner/backup/runner.go](../../server/runner/backup/runner.go)，见下方"已知问题" |
+| 定时备份 | [server/runner/backup/runner.go](../../server/runner/backup/runner.go)：启动时检查到期状态，之后每小时复查 |
 | 手动备份 | `BackupNow` API |
 | 备份状态 | 记在 `InstanceSetting_BACKUP`，UI 可见 |
 | 从 S3 恢复 | **没有**——已核实仓库内不存在任何"启动时从 S3 拉取快照恢复"的代码路径 |
 | 首启引导 UI | 没有——没有配置 S3 的引导流程，也没有"未配置远程备份"的警告条 |
 | 打包 CI | 未核实是否已配置多平台构建 pipeline，`TODO(确认)` |
 
-## 已知问题
+## 自动备份现状
 
-自动备份存在两个尚未修复的 bug，影响**现有线上实例**，与 standalone 部署与否无关，
-应先修再谈 standalone 化：
+[server/runner/backup/runner.go](../../server/runner/backup/runner.go) 在启动时读取持久化的
+`LastBackupTime`，到期便补跑；之后每小时复查。成功备份的间隔仍固定为 7 天，失败
+后最早 1 小时重试，尚无可配置间隔。未配置 S3 时不运行自动备份。
 
-### 间隔硬编码 + 无启动补跑
-
-[server/runner/backup/runner.go](../../server/runner/backup/runner.go) 里
-`runnerInterval` 硬编码为 `7 * 24 * time.Hour`，调度靠一个纯内存 `time.Ticker`：
-
-- **启动时不跑**，第一次触发必须等进程连续运行满 7 天。
-- **进度不持久化**，计时器活在内存里，每次重启归零；`LastBackupTime` 只被写入和展示，
-  没有任何一处读它来决定该不该跑。
-- 也没有配置项能把这个间隔改短——间隔既是硬编码常量，也不存在把它接到
-  `InstanceSetting` 或环境变量的路径。
-
-线上是积极开发的项目，部署频率远高于 7 天，两个缺陷相乘的结果是自动备份实际上
-从未真正按周期触发过，只能靠手动 `BackupNow`。
-
-### 自定义备份路径被静默重置
-
-[server/backup/backup.go](../../server/backup/backup.go) 的 `Run()` 记录备份状态时，
-新建一个 `InstanceBackupSetting{LastBackupTime, LastBackupSuccess}` 并整体覆盖写回，
-没有带上已有的 `PathTemplate` 字段。`UpsertInstanceSetting` 是整体替换而非字段级
-patch，所以用户在设置里配置的自定义路径模板每备份一次就被清空一次，下次读取时又被
-自动填回默认模板——配置悄悄消失，UI 上不会有任何提示。
-
-这两个 bug 原记录在 `docs/plans/2026-08-04-standalone-local-deploy/02-backup-bugs.md`
-（该文件随 docs/plans 迁移清理已删除，内容并入本节）。`TODO(确认)`：两个 bug 截至本文
-整理时是否已排期修复，未在代码或 issue 跟踪中找到结论。
+[server/backup/backup.go](../../server/backup/backup.go) 记录成功或失败状态时保留已有的
+`PathTemplate`，不会清除管理员设置的自定义路径。
 
 ## 关键决策
 
@@ -86,8 +64,8 @@ SQLite + 对象存储备份只能有一个写者，多台机器先后启动会�
 ### 不强制配置 S3
 
 首次启动不强制要求填 S3 配置。计划中的做法是允许无 S3 启动、功能完整，未配置远程
-备份时界面持续显示警告条。`TODO(确认)`：截至本文整理时，代码里未找到这条警告条或
-无 S3 时的降级提示逻辑，是否已实现存疑。
+备份时界面持续显示警告条。已核对：界面仍没有这条警告或无 S3 时的降级提示逻辑，
+见根目录 [TODO.md](../../TODO.md)。
 
 ## 凭证与快照安全
 
@@ -99,7 +77,8 @@ SQLite + 对象存储备份只能有一个写者，多台机器先后启动会�
 standalone 模式下计划让 S3 凭证只能来自环境变量（`TOUCAN_S3_ENDPOINT` /
 `_REGION` / `_BUCKET` / `_ACCESS_KEY_ID` / `_ACCESS_KEY_SECRET`），因为恢复发生时
 本地 DB 还不存在，不可能从一个尚未存在的数据库里读出连接 S3 所需的凭证。副产品是
-快照天然不含 S3 密钥。`TODO(确认)`：这条环境变量读取路径是否已在代码中实现未核实。
+快照天然不含 S3 密钥。已核对：这条环境变量读取路径尚未实现，见根目录
+[TODO.md](../../TODO.md)。
 
 线上（docker）部署仍从 DB 读凭证，靠 IAM 权限收敛（Access Key 锁死单 bucket + bucket
 私有）而非代码兜底。

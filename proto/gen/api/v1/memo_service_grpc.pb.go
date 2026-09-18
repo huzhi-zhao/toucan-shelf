@@ -24,6 +24,7 @@ const (
 	MemoService_ListMemos_FullMethodName            = "/memos.api.v1.MemoService/ListMemos"
 	MemoService_GetMemo_FullMethodName              = "/memos.api.v1.MemoService/GetMemo"
 	MemoService_UpdateMemo_FullMethodName           = "/memos.api.v1.MemoService/UpdateMemo"
+	MemoService_AcknowledgeAgentEdit_FullMethodName = "/memos.api.v1.MemoService/AcknowledgeAgentEdit"
 	MemoService_DeleteMemo_FullMethodName           = "/memos.api.v1.MemoService/DeleteMemo"
 	MemoService_SetMemoAttachments_FullMethodName   = "/memos.api.v1.MemoService/SetMemoAttachments"
 	MemoService_ListMemoAttachments_FullMethodName  = "/memos.api.v1.MemoService/ListMemoAttachments"
@@ -59,6 +60,9 @@ type MemoServiceClient interface {
 	GetMemo(ctx context.Context, in *GetMemoRequest, opts ...grpc.CallOption) (*Memo, error)
 	// UpdateMemo updates a memo.
 	UpdateMemo(ctx context.Context, in *UpdateMemoRequest, opts ...grpc.CallOption) (*Memo, error)
+	// AcknowledgeAgentEdit records that a human opened the editor after an MCP
+	// edit. It does not change content or the agent baseline-snapshot state.
+	AcknowledgeAgentEdit(ctx context.Context, in *AcknowledgeAgentEditRequest, opts ...grpc.CallOption) (*Memo, error)
 	// DeleteMemo deletes a memo.
 	DeleteMemo(ctx context.Context, in *DeleteMemoRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// SetMemoAttachments replaces the full set of attachments on a memo with the
@@ -153,6 +157,16 @@ func (c *memoServiceClient) UpdateMemo(ctx context.Context, in *UpdateMemoReques
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Memo)
 	err := c.cc.Invoke(ctx, MemoService_UpdateMemo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *memoServiceClient) AcknowledgeAgentEdit(ctx context.Context, in *AcknowledgeAgentEditRequest, opts ...grpc.CallOption) (*Memo, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Memo)
+	err := c.cc.Invoke(ctx, MemoService_AcknowledgeAgentEdit_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -363,6 +377,9 @@ type MemoServiceServer interface {
 	GetMemo(context.Context, *GetMemoRequest) (*Memo, error)
 	// UpdateMemo updates a memo.
 	UpdateMemo(context.Context, *UpdateMemoRequest) (*Memo, error)
+	// AcknowledgeAgentEdit records that a human opened the editor after an MCP
+	// edit. It does not change content or the agent baseline-snapshot state.
+	AcknowledgeAgentEdit(context.Context, *AcknowledgeAgentEditRequest) (*Memo, error)
 	// DeleteMemo deletes a memo.
 	DeleteMemo(context.Context, *DeleteMemoRequest) (*emptypb.Empty, error)
 	// SetMemoAttachments replaces the full set of attachments on a memo with the
@@ -434,6 +451,9 @@ func (UnimplementedMemoServiceServer) GetMemo(context.Context, *GetMemoRequest) 
 }
 func (UnimplementedMemoServiceServer) UpdateMemo(context.Context, *UpdateMemoRequest) (*Memo, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateMemo not implemented")
+}
+func (UnimplementedMemoServiceServer) AcknowledgeAgentEdit(context.Context, *AcknowledgeAgentEditRequest) (*Memo, error) {
+	return nil, status.Error(codes.Unimplemented, "method AcknowledgeAgentEdit not implemented")
 }
 func (UnimplementedMemoServiceServer) DeleteMemo(context.Context, *DeleteMemoRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteMemo not implemented")
@@ -581,6 +601,24 @@ func _MemoService_UpdateMemo_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MemoServiceServer).UpdateMemo(ctx, req.(*UpdateMemoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MemoService_AcknowledgeAgentEdit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AcknowledgeAgentEditRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MemoServiceServer).AcknowledgeAgentEdit(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MemoService_AcknowledgeAgentEdit_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MemoServiceServer).AcknowledgeAgentEdit(ctx, req.(*AcknowledgeAgentEditRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -949,6 +987,10 @@ var MemoService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateMemo",
 			Handler:    _MemoService_UpdateMemo_Handler,
+		},
+		{
+			MethodName: "AcknowledgeAgentEdit",
+			Handler:    _MemoService_AcknowledgeAgentEdit_Handler,
 		},
 		{
 			MethodName: "DeleteMemo",

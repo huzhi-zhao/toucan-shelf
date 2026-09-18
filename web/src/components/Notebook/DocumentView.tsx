@@ -1,5 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { FieldMaskSchema, timestampDate } from "@bufbuild/protobuf/wkt";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ArchiveIcon,
   ArchiveRestoreIcon,
@@ -47,11 +48,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { memoServiceClient } from "@/connect";
 import { useSoftBreakDefault } from "@/contexts/AuthContext";
 import useMediaQuery from "@/hooks/useMediaQuery";
 import { useCreateMemoHistory, useMemoHistories, useRestoreMemoHistory } from "@/hooks/useMemoHistoryQueries";
-import { useInfiniteMemoComments, useUpdateMemo } from "@/hooks/useMemoQueries";
+import { memoKeys, useInfiniteMemoComments, useUpdateMemo } from "@/hooks/useMemoQueries";
 import { cn } from "@/lib/utils";
 import { State } from "@/types/proto/api/v1/common_pb";
 import {
@@ -121,6 +123,7 @@ const DocumentView = ({
   onOpenDocument,
 }: Props) => {
   const t = useTranslate();
+  const queryClient = useQueryClient();
   const isDesktop = useMediaQuery("lg");
   const isHtml = memo.docType === Memo_DocType.HTML;
   const isPdf = memo.docType === Memo_DocType.PDF;
@@ -357,6 +360,34 @@ const DocumentView = ({
   const handleOpenDetail = () => {
     window.open(`/${memo.name}`, "_blank", "noopener");
   };
+
+  const handleOpenEdit = () => {
+    setMode("edit");
+    if (!memo.agentEditPending) return;
+
+    // The click itself acknowledges the edit; saving content is unrelated.
+    // Hide the badge at once and restore server state if the request fails.
+    queryClient.setQueryData<Memo>(memoKeys.detail(memo.name), { ...memo, agentEditPending: false });
+    void memoServiceClient.acknowledgeAgentEdit({ name: memo.name }).then(
+      (updated) => queryClient.setQueryData(memoKeys.detail(updated.name), updated),
+      () => {
+        void queryClient.invalidateQueries({ queryKey: memoKeys.detail(memo.name) });
+        toast.error(t("message.update-failed"));
+      },
+    );
+  };
+
+  const editButton = (
+    <Button variant={mode === "edit" ? "secondary" : "ghost"} size="sm" className="rounded-none h-6 px-2 text-xs" onClick={handleOpenEdit}>
+      <PencilIcon className="w-3 h-3 mr-1" />
+      {t("notebook.edit")}
+      {memo.agentEditPending && (
+        <span className="ml-1" role="img" aria-label={t("notebook.mcp-edited-tooltip")}>
+          🌟
+        </span>
+      )}
+    </Button>
+  );
 
   useEffect(() => {
     if (mode !== "edit") setEditDraftContent(null);
@@ -749,15 +780,14 @@ const DocumentView = ({
               >
                 {t("notebook.preview")}
               </Button>
-              <Button
-                variant={mode === "edit" ? "secondary" : "ghost"}
-                size="sm"
-                className="rounded-none h-6 px-2 text-xs"
-                onClick={() => setMode("edit")}
-              >
-                <PencilIcon className="w-3 h-3 mr-1" />
-                {t("notebook.edit")}
-              </Button>
+              {memo.agentEditPending ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>{editButton}</TooltipTrigger>
+                  <TooltipContent>{t("notebook.mcp-edited-tooltip")}</TooltipContent>
+                </Tooltip>
+              ) : (
+                editButton
+              )}
             </div>
           )}
           {isHtml && mode === "edit" && (

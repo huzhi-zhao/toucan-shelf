@@ -1,4 +1,4 @@
-import { BookmarkIcon, FileTextIcon, PanelRightCloseIcon, PanelRightOpenIcon } from "lucide-react";
+import { BookmarkIcon, ExternalLinkIcon, FileTextIcon, PanelRightCloseIcon, PanelRightOpenIcon } from "lucide-react";
 import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,14 @@ const MemoHeader: React.FC<MemoHeaderProps> = ({ showCreator, showVisibility, sh
   const [reactionSelectorOpen, setReactionSelectorOpen] = useState(false);
 
   const { memo, creator, currentUser, parentPage, isArchived, readonly, openEditor } = useMemoViewContext();
-  const { createTime, updateTime, displayTime: memoDisplayTime, isDisplayingUpdatedTime, relativeTimeFormat } = useMemoViewDerived();
+  const {
+    createTime,
+    updateTime,
+    displayTime: memoDisplayTime,
+    isDisplayingUpdatedTime,
+    relativeTimeFormat,
+    isInMemoDetailPage,
+  } = useMemoViewDerived();
   const { newMemoName } = useNewMemo();
 
   const navigateTo = useNavigateTo();
@@ -78,6 +85,21 @@ const MemoHeader: React.FC<MemoHeaderProps> = ({ showCreator, showVisibility, sh
       </div>
 
       <div className="flex flex-row justify-end items-center select-none shrink-0 gap-2">
+        {memo.parent && !isInMemoDetailPage && (
+          <Button asChild variant="ghost" size="sm" className="h-7 px-1.5 text-xs text-muted-foreground">
+            <Link
+              to={`/${memo.name}`}
+              state={{ from: `/${memo.parent}` }}
+              aria-label={t("memo.view-detail")}
+              title={t("memo.view-detail")}
+              viewTransition
+            >
+              <ExternalLinkIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">{t("memo.view-detail")}</span>
+            </Link>
+          </Button>
+        )}
+
         {currentUser && !isArchived && (
           <ReactionSelector
             className={cn("border-none w-auto h-auto", reactionSelectorOpen && "block!", "block sm:hidden sm:group-hover:block")}

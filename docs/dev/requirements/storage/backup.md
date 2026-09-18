@@ -27,11 +27,13 @@ admin-only 的全站运维操作，不是"用户数据导出"。本项目单实�
 - 临时文件用完即删（`defer` 清理）。
 - 触发方式两种，共用同一份实现（[server/backup/backup.go](../../../../server/backup/backup.go) 的 `Run`）：
   - **手动**：管理员在 Storage 设置页点击"立即备份"，对应 `InstanceService.BackupNow` RPC。
-  - **自动**：[server/runner/backup/runner.go](../../../../server/runner/backup/runner.go) 每 7 天触发一次；
-    服务启动时不会立即跑一次（避免每次重启都触发一次全量备份）。
+  - **自动**：[server/runner/backup/runner.go](../../../../server/runner/backup/runner.go) 启动时根据
+    上次备份时间判断是否到期，此后每小时复查；成功后隔 7 天再运行，失败后至少隔 1 小时重试。
+    未配置 S3 时跳过，不记录失败。
 - 每次备份（无论成功失败）都会把结果写回 `InstanceSetting_BACKUP`
   （`last_backup_time` / `last_backup_success` / `last_backup_error`），供 UI 展示；
-  管理员编辑路径模板时这几个字段会被服务端强制保留，不会被覆盖清空。
+  管理员编辑路径模板时这几个字段会被服务端强制保留，不会被覆盖清空；
+  备份运行时更新状态字段，也会保留管理员设置的路径模板。
 
 ## 保留与清理
 

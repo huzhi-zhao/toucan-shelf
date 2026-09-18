@@ -783,6 +783,7 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 	// otherwise leave the bit unpersisted.
 	if authorshipWrite {
 		memo.Payload.AgentSessionOpen = actorIsAgent
+		memo.Payload.AgentEditAcknowledged = false
 		update.Payload = memo.Payload
 	}
 
