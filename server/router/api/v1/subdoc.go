@@ -40,6 +40,9 @@ import (
 // uid, not the title or the location).
 //
 // Requirements: docs/dev/requirements/knowledge-base/sub-documents.md.
+
+// SubDocFolderPrefix is the reserved first path segment of every
+// sub-document's folder path. No ordinary document or folder may use it.
 const SubDocFolderPrefix = "_sub"
 
 // SubDocFolderPath is the folder path every sub-document of parentUID lives at.
@@ -244,10 +247,10 @@ func (s *APIV1Service) touchSubDocParentBestEffort(ctx context.Context, memo *st
 	if err != nil || parent == nil {
 		return
 	}
-	now := time.Now().Unix()
+	nowSec := time.Now().Unix()
 	if err := s.Store.UpdateMemo(ctx, &store.UpdateMemo{
 		ID:        parent.ID,
-		UpdatedTs: &now,
+		UpdatedTs: &nowSec,
 		// Neither the parent's title nor its content changed, so this must not
 		// re-queue it for embedding.
 		SkipReindex: true,
