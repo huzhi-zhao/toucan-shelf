@@ -177,6 +177,10 @@ const MemoDetail = () => {
                   onShareImageDialogOpenChange={setShareImageDialogOpen}
                   sidebarCollapsed={sidebarCollapsed}
                   onToggleSidebar={() => setSidebarCollapsed((v) => !v)}
+                  // On this page the memo IS the page, so editing it should get
+                  // the rest of the screen rather than a 50vh box with empty
+                  // space under it.
+                  fillViewportEditor
                   onEditingChange={setIsEditingMemo}
                   onDraftContentChange={setDraftContent}
                 />
