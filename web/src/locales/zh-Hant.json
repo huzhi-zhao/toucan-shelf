@@ -825,6 +825,7 @@
     "title-placeholder": "子文件標題",
     "duplicate-title": "這篇文件底下已經有同名子文件",
     "open": "開啟子文件",
-    "back-to-parent": "返回主文件"
+    "back-to-parent": "返回主文件",
+    "copy-reference": "複製引用"
   }
 }

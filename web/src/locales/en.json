@@ -1618,6 +1618,7 @@
     "title-placeholder": "Sub-document title",
     "duplicate-title": "This document already has a sub-document with that title",
     "open": "Open sub-document",
-    "back-to-parent": "Back to the document"
+    "back-to-parent": "Back to the document",
+    "copy-reference": "Copy reference"
   }
 }

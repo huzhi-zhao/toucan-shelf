@@ -1517,6 +1517,7 @@
     "title-placeholder": "子文档标题",
     "duplicate-title": "这篇文档下已经有同名子文档",
     "open": "打开子文档",
-    "back-to-parent": "返回主文档"
+    "back-to-parent": "返回主文档",
+    "copy-reference": "复制引用"
   }
 }

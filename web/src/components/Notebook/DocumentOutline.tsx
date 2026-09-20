@@ -1,4 +1,4 @@
-import { PaperclipIcon } from "lucide-react";
+import { FileTextIcon, PaperclipIcon } from "lucide-react";
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { parseFrontmatter } from "@/utils/frontmatter";
@@ -10,17 +10,21 @@ import { extractHeadings } from "@/utils/markdown-manipulation";
 // the outline's "jump to attachments" link always matches the real anchor.
 export const ATTACHMENTS_ANCHOR_ID = "document-attachments";
 
+// Same idea for the References section, which sits just above the attachments.
+export const REFERENCES_ANCHOR_ID = "document-references";
+
 interface Props {
   content: string;
   containerRef: React.RefObject<HTMLElement | null>;
   hasAttachments?: boolean;
+  hasReferences?: boolean;
   /** Whether the document is currently open in its inline editor (no rendered DOM anchors to scroll to). */
   isEditing?: boolean;
   /** Scrolls the editor to a given 1-indexed line of its full (frontmatter-included) content. Required when `isEditing`. */
   onScrollToLine?: (line: number) => void;
 }
 
-const DocumentOutline = ({ content, containerRef, hasAttachments, isEditing, onScrollToLine }: Props) => {
+const DocumentOutline = ({ content, containerRef, hasAttachments, hasReferences, isEditing, onScrollToLine }: Props) => {
   const t = useTranslate();
   // Uses the same mdast-based extraction as rehype-heading-id so the slug
   // computed here always matches the id assigned to the rendered heading,
@@ -75,6 +79,15 @@ const DocumentOutline = ({ content, containerRef, hasAttachments, isEditing, onS
           ))
         )}
       </nav>
+      {hasReferences && (
+        <button
+          className="shrink-0 mt-2 flex items-center gap-1.5 rounded border border-border px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+          onClick={() => scrollToId(REFERENCES_ANCHOR_ID)}
+        >
+          <FileTextIcon className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">{t("subdoc.references")}</span>
+        </button>
+      )}
       {hasAttachments && (
         <button
           className="shrink-0 mt-2 flex items-center gap-1.5 rounded border border-border px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground"

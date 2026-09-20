@@ -5,14 +5,10 @@ import type { Memo } from "@/types/proto/api/v1/memo_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import SubDocCard from "./SubDocCard";
 
-/**
- * DOM id of the References section, so the outline can jump to it the same way
- * it jumps to the attachment list.
- */
-export const REFERENCES_ANCHOR_ID = "document-references";
-
 interface Props {
   subDocs: Memo[];
+  /** The document these hang off; enables "copy reference" on each entry. */
+  parentMemoName?: string;
   parentPage?: string;
   /** The sub-document a body reference just pointed at, emphasized on arrival. */
   highlightedMemoName?: string;
@@ -30,7 +26,7 @@ interface Props {
  * to put "content that belongs to this document but not in its body" is right
  * next to them, in the same shape — not behind a panel that has to be opened.
  */
-export const ReferenceListView = ({ subDocs, parentPage, highlightedMemoName, actions, className }: Props) => {
+export const ReferenceListView = ({ subDocs, parentMemoName, parentPage, highlightedMemoName, actions, className }: Props) => {
   const t = useTranslate();
 
   // With nothing to list and no way to add anything, the section is pure chrome.
@@ -48,7 +44,13 @@ export const ReferenceListView = ({ subDocs, parentPage, highlightedMemoName, ac
       contentClassName="flex flex-col gap-1.5 p-1.5"
     >
       {subDocs.map((subDoc) => (
-        <SubDocCard key={subDoc.name} memo={subDoc} parentPage={parentPage} highlighted={subDoc.name === highlightedMemoName} />
+        <SubDocCard
+          key={subDoc.name}
+          memo={subDoc}
+          parentMemoName={parentMemoName}
+          parentPage={parentPage}
+          highlighted={subDoc.name === highlightedMemoName}
+        />
       ))}
     </MetadataSection>
   );

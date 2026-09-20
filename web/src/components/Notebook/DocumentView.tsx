@@ -29,9 +29,10 @@ import { MARK_TOOLBAR_ATTR, MarkToolbar } from "@/components/MarkToolbar";
 import CreateVersionDialog from "@/components/MemoActionMenu/CreateVersionDialog";
 import MemoContent from "@/components/MemoContent";
 import { InlineAttachmentProvider } from "@/components/MemoContent/InlineAttachmentContext";
+import { SubDocReferenceProvider } from "@/components/MemoContent/SubDocReferenceContext";
 import MemoEditor from "@/components/MemoEditor";
 import type { EditorController } from "@/components/MemoEditor/types/editorController";
-import { AttachmentListView, REFERENCES_ANCHOR_ID, ReferenceActions, ReferenceListView } from "@/components/MemoMetadata";
+import { AttachmentListView, ReferenceActions, ReferenceListView } from "@/components/MemoMetadata";
 import { MemoViewContext, type MemoViewContextValue } from "@/components/MemoView/MemoViewContext";
 import { PdfDocumentView } from "@/components/PdfViewer/PdfDocumentView";
 import { Button } from "@/components/ui/button";
@@ -74,7 +75,7 @@ import { attachmentUIDsOf, hashMemoState } from "@/utils/memoState";
 import { useReadingDensity } from "@/utils/readingDensity";
 import { getDocScrollPosition, restoreScrollTopWhenReady, saveDocScrollPosition } from "@/utils/scrollPositionCache";
 import { splitChildMemos } from "@/utils/subDoc";
-import DocumentOutline, { ATTACHMENTS_ANCHOR_ID } from "./DocumentOutline";
+import DocumentOutline, { ATTACHMENTS_ANCHOR_ID, REFERENCES_ANCHOR_ID } from "./DocumentOutline";
 
 // How long after a save a drift report is still treated as "caused by that save", and so
 // eligible to be written back. Long enough to cover the refetch and re-render, short enough
@@ -138,6 +139,7 @@ const DocumentView = ({
   // out of anchoring so a mark can never latch onto a card that a later query drops.
   const supportsMarks = supportsComments;
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [highlightedSubDoc, setHighlightedSubDoc] = useState<string | undefined>();
   // The floating mark toolbar, shown over the current text selection in the preview. Its anchor
   // is captured up front (heading + text quote) because the selection itself is gone the moment
   // focus moves to the toolbar.
@@ -686,6 +688,23 @@ const DocumentView = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, scrollCacheKey]);
 
+  // Following a sub-document reference in the body scrolls to its entry rather
+  // than navigating: the target is part of this document, so reading it must not
+  // cost the reader their place. The entry is emphasized on arrival, since a
+  // scroll on its own leaves you guessing which row you were sent to.
+  const jumpToSubDoc = useCallback((memoName: string) => {
+    setHighlightedSubDoc(memoName);
+    document.getElementById(REFERENCES_ANCHOR_ID)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
+  const subDocReferenceValue = useMemo(
+    () => ({
+      parentMemoName: memo.name,
+      subDocs: subDocs.map((subDoc) => ({ name: subDoc.name, title: subDoc.title })),
+      onJump: jumpToSubDoc,
+    }),
+    [memo.name, subDocs, jumpToSubDoc],
+  );
+
   // Sub-documents sit above the attachment list, in the same shape: attachments are
   // the part of a document's metadata that actually gets used, so that is where
   // content-belonging-to-this-document goes too.
@@ -693,7 +712,9 @@ const DocumentView = ({
     <div id={REFERENCES_ANCHOR_ID} className="relative z-10 mt-6 border-t border-border pt-4">
       <ReferenceListView
         subDocs={subDocs}
+        parentMemoName={memo.name}
         parentPage="/"
+        highlightedMemoName={highlightedSubDoc}
         actions={<ReferenceActions parentMemoName={memo.name} onCreated={() => refetchComments()} />}
       />
     </div>
@@ -1079,14 +1100,16 @@ const DocumentView = ({
               <div className="relative z-10">
                 <MemoViewContext.Provider value={buildPreviewContext(memo)}>
                   <InlineAttachmentProvider attachments={memo.attachments}>
-                    <MemoContent
-                      content={memo.content}
-                      memoName={memo.name}
-                      density={density}
-                      showProperties={docConfig.showProperties}
-                      softBreak={docConfig.softBreak}
-                      onPropertyChange={propertyChangeHandler}
-                    />
+                    <SubDocReferenceProvider value={subDocReferenceValue}>
+                      <MemoContent
+                        content={memo.content}
+                        memoName={memo.name}
+                        density={density}
+                        showProperties={docConfig.showProperties}
+                        softBreak={docConfig.softBreak}
+                        onPropertyChange={propertyChangeHandler}
+                      />
+                    </SubDocReferenceProvider>
                   </InlineAttachmentProvider>
                 </MemoViewContext.Provider>
               </div>
@@ -1127,6 +1150,7 @@ const DocumentView = ({
               content={outlineContent}
               containerRef={previewRef}
               hasAttachments={remainingAttachments.length > 0}
+              hasReferences={subDocs.length > 0}
               isEditing={mode === "edit"}
               onScrollToLine={(line) => editorRef.current?.scrollToLine(line)}
             />
@@ -1189,6 +1213,7 @@ const DocumentView = ({
               content={outlineContent}
               containerRef={previewRef}
               hasAttachments={remainingAttachments.length > 0}
+              hasReferences={subDocs.length > 0}
               isEditing={mode === "edit"}
               onScrollToLine={(line) => editorRef.current?.scrollToLine(line)}
             />

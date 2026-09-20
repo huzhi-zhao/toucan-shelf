@@ -45,3 +45,51 @@ export const splitChildMemos = <T extends Pick<Memo, "folderPath">>(children: T[
   comments: children.filter((child) => !isSubDocument(child)),
   subDocs: children.filter((child) => isSubDocument(child)),
 });
+
+/** Extensions a document link may carry, mirroring DOC_EXTENSION in DocumentLinkContext. */
+const DOC_EXTENSION = /\.(md|markdown|html?|pdf)$/i;
+
+/**
+ * The markdown link destination that addresses `title` under `parentName`.
+ *
+ * A sub-document reference is written as an ordinary workspace path rather than
+ * a `#fragment`, and that is deliberate: paths are covered by the reverse-link
+ * index and by the rename/move repair, so renaming a sub-document rewrites the
+ * references to it. A fragment is classified as external, never parsed as a
+ * link, and would silently go dead on the first rename.
+ */
+export const subDocHref = (parentName: string, title: string): string => `/${subDocFolderPath(parentName)}/${encodeURIComponent(title)}.md`;
+
+/**
+ * Resolves a link destination against one document's own sub-documents,
+ * returning the sub-document's resource name.
+ *
+ * This resolution cannot go through the workspace tree the way every other
+ * document link does: sub-documents are excluded from that tree by design, so
+ * the normal resolver would report a perfectly good reference as broken. It is
+ * scoped to the referencing document on purpose — a path naming somebody else's
+ * sub-document resolves to nothing here, which matches the rule that a
+ * sub-document belongs to exactly one document.
+ */
+export const resolveSubDocHref = <T extends { name: string; title: string }>(
+  href: string | undefined,
+  parentName: string,
+  subDocs: T[],
+): T | undefined => {
+  if (!href?.startsWith("/")) return undefined;
+
+  let path = href;
+  try {
+    path = decodeURIComponent(href);
+  } catch {
+    // An href that isn't valid percent-encoding is used as written.
+  }
+  path = path.split(/[?#]/)[0];
+
+  const segments = path.split("/").filter((segment) => segment !== "");
+  if (segments.length !== 3 || segments[0] !== SUB_DOC_FOLDER_PREFIX) return undefined;
+  if (segments[1] !== extractMemoIdFromName(parentName)) return undefined;
+
+  const title = segments[2].replace(DOC_EXTENSION, "").toLowerCase();
+  return subDocs.find((subDoc) => subDoc.title.toLowerCase() === title);
+};

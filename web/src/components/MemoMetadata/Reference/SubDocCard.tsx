@@ -1,9 +1,14 @@
-import { FileTextIcon } from "lucide-react";
+import copy from "copy-to-clipboard";
+import { FileTextIcon, LinkIcon } from "lucide-react";
+import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { extractMemoIdFromName } from "@/helpers/resource-names";
 import { cn } from "@/lib/utils";
 import type { Memo } from "@/types/proto/api/v1/memo_service_pb";
 import { parseFrontmatter } from "@/utils/frontmatter";
+import { useTranslate } from "@/utils/i18n";
+import { subDocHref } from "@/utils/subDoc";
 
 interface Props {
   memo: Memo;
@@ -11,6 +16,8 @@ interface Props {
   parentPage?: string;
   /** Emphasized when the body's footnote-style reference points at this entry. */
   highlighted?: boolean;
+  /** The document this sub-document hangs off, needed to write a reference to it. */
+  parentMemoName?: string;
 }
 
 /**
@@ -19,7 +26,8 @@ interface Props {
  * reader's browser print) come for free rather than needing their own surface
  * here.
  */
-export const SubDocCard = ({ memo, parentPage, highlighted }: Props) => {
+export const SubDocCard = ({ memo, parentPage, highlighted, parentMemoName }: Props) => {
+  const t = useTranslate();
   // A sub-document's body is markdown like any other document's, and its
   // frontmatter is chrome rather than content — showing "---\ntags: …" as the
   // preview line would say nothing about what the document holds.
@@ -43,6 +51,29 @@ export const SubDocCard = ({ memo, parentPage, highlighted }: Props) => {
         </div>
         {preview && <div className="mt-1 truncate text-xs text-muted-foreground">{preview}</div>}
       </div>
+      {/* Writing the reference by hand would mean typing the reserved path,
+          which is addressed by uid and not meant to be typed. Copying it is how
+          a sub-document gets mentioned in the body. */}
+      {parentMemoName && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="ml-auto shrink-0 rounded p-1.5 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
+              onClick={(event) => {
+                // The card itself is a link; copying must not also open it.
+                event.preventDefault();
+                event.stopPropagation();
+                copy(`[${memo.title}](${subDocHref(parentMemoName, memo.title)})`);
+                toast.success(t("message.copied"));
+              }}
+            >
+              <LinkIcon className="h-3.5 w-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{t("subdoc.copy-reference")}</TooltipContent>
+        </Tooltip>
+      )}
     </Link>
   );
 };
