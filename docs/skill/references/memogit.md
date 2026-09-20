@@ -20,6 +20,7 @@ my-kb/                        ← 检出根（只放元数据）
 └── Default/                  ← 内容树，子目录名 = workspace 标题
     ├── AGENTS.md / CLAUDE.md ← 同一份简报（在库内启动的代理会读到）
     ├── garden/notes/todo.md
+    ├── garden/notes/todo.subdocs/补充说明.md   ← 子文档（属于 todo.md）
     ├── page.html
     ├── papers/attention.pdf.md
     ├── dashboards/all.view.json
@@ -36,6 +37,23 @@ my-kb/                        ← 检出根（只放元数据）
 - **稀疏检出**：`clone <库> --sparse-checkout <文件夹> --dir <目录>` 只映射一个文件夹，
   且**本地把该前缀剥掉**（服务器 `Home/Journal/2024.md` → 本地 `Journal/2024.md`），
   push 时自动补回前缀。这种检出是独立根，`.memogit/` 在它自己里面。
+
+### 子文档：`<父文档标题>.subdocs/`
+
+挨着父文档文件的一个文件夹，里面是**属于那篇文档**的长内容（概念见
+`hierarchy-and-doc-types.md` §3.5）。
+
+```
+garden/notes/todo.md                    ← 父文档
+garden/notes/todo.subdocs/补充说明.md    ← 它的子文档
+```
+
+- 服务器上它的 `folder_path` 是 `_sub/<父文档uid>`，本地不照搬——
+  一片 uid 命名的文件夹对你和人都没法读。映射是一一对应的，push 会自己换回去。
+- **在 `.subdocs/` 里新建 `.md` 文件 = 新建一篇子文档**，push 时自动挂到旁边那篇文档上。
+  父文档如果还没同步过，push 会跳过并提示（否则会凭空造出一篇以文件夹命名的真文档）。
+- 父文档改名/移动时，这个文件夹跟着走。
+- 子文档**不能**移动到别处，也不能自己再带子文档。
 
 ## 2. 文档身份标记（最容易踩的坑）
 
