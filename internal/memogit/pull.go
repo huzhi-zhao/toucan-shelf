@@ -65,18 +65,33 @@ func Pull(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, ou
 	}
 	memos = inScopeMemos(ws, memos)
 
+	// Sub-documents are child memos, so the listing above leaves them out — they
+	// have to be walked per parent. Writing one bumps its parent's update_time,
+	// which is what puts that parent in this incremental listing in the first
+	// place, so a sub-document edited on its own is never missed.
+	//
+	// Scope follows the parent rather than being re-derived: a sub-document's
+	// server folder path is the reserved "_sub/<uid>", which matches no sparse
+	// prefix, so running it through inScopeMemos would drop every one of them.
+	subDocs, err := fetchSubDocs(ctx, client, memos)
+	if err != nil {
+		return nil, err
+	}
+	parents := newParentIndex(ws, state, memos)
+	memos = append(memos, subDocs...)
+
 	contentRoot := ContentRoot(root, ws)
 	res := &PullResult{}
 	warn := &attachmentWarner{out: out}
 	for _, m := range memos {
 		uid := uidFromName(m.GetName())
-		newState := memoState(ws, m) // path + metadata + canonical server hash
+		newState := memoState(ws, parents, m) // path + metadata + canonical server hash
 		serverHash := newState.ContentHash
 
 		prev, tracked := state.Memos[uid]
 		if !tracked {
 			// New memo on the server.
-			ms, nDown, err := exportMemo(ctx, client, ws, contentRoot, m, nil, warn)
+			ms, nDown, err := exportMemo(ctx, client, ws, parents, contentRoot, m, nil, warn)
 			if err != nil {
 				return nil, err
 			}
@@ -98,7 +113,7 @@ func Pull(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, ou
 		// stub, so there is no "local edit" to conflict with. Just re-export and
 		// adopt the server state.
 		if prev.DocType == "PDF" || newState.DocType == "PDF" {
-			ms, nDown, err := relocateMemo(ctx, client, ws, contentRoot, prev.Path, m, &prev, warn)
+			ms, nDown, err := relocateMemo(ctx, client, ws, parents, contentRoot, prev.Path, m, &prev, warn)
 			if err != nil {
 				return nil, err
 			}
@@ -136,7 +151,7 @@ func Pull(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, ou
 
 		// Only the server changed → adopt server content, relocating the file if
 		// its folder_path/title (and thus path) changed.
-		ms, nDown, err := relocateMemo(ctx, client, ws, contentRoot, prev.Path, m, &prev, warn)
+		ms, nDown, err := relocateMemo(ctx, client, ws, parents, contentRoot, prev.Path, m, &prev, warn)
 		if err != nil {
 			return nil, err
 		}
@@ -245,12 +260,22 @@ func reconcileFullListing(ctx context.Context, client *Client, ws *WorkspaceConf
 	}
 	// Sparse checkout: a memo that left the mapped folder is no longer "alive"
 	// here, so it is reconciled as a local removal below.
-	return reconcileAgainst(ctx, client, ws, contentRoot, inScopeMemos(ws, current), state, res, out, warn)
+	inScope := inScopeMemos(ws, current)
+	// Sub-documents must be in this listing too, and for a sharper reason than in
+	// the incremental pass: everything tracked but absent from it is treated as
+	// deleted on the server and removed locally. Leaving them out would delete
+	// every sub-document from the checkout on the first reconcile.
+	subDocs, err := fetchSubDocs(ctx, client, inScope)
+	if err != nil {
+		return err
+	}
+	parents := newParentIndex(ws, state, inScope)
+	return reconcileAgainst(ctx, client, ws, parents, contentRoot, append(inScope, subDocs...), state, res, out, warn)
 }
 
 // reconcileAgainst is reconcileFullListing's logic over an already-fetched
 // listing: the pure step, and the unit-test seam that needs no server.
-func reconcileAgainst(ctx context.Context, client *Client, ws *WorkspaceConfig, contentRoot string, current []*v1pb.Memo, state *State, res *PullResult, out io.Writer, warn *attachmentWarner) error {
+func reconcileAgainst(ctx context.Context, client *Client, ws *WorkspaceConfig, parents parentIndex, contentRoot string, current []*v1pb.Memo, state *State, res *PullResult, out io.Writer, warn *attachmentWarner) error {
 	alive := make(map[string]*v1pb.Memo, len(current))
 	for _, m := range current {
 		alive[uidFromName(m.GetName())] = m
@@ -258,7 +283,7 @@ func reconcileAgainst(ctx context.Context, client *Client, ws *WorkspaceConfig, 
 
 	for _, uid := range sortedUIDs(state) {
 		if m := alive[uid]; m != nil {
-			if err := reconcileDrifted(ctx, client, ws, contentRoot, uid, m, state, res, out, warn); err != nil {
+			if err := reconcileDrifted(ctx, client, ws, parents, contentRoot, uid, m, state, res, out, warn); err != nil {
 				return err
 			}
 			continue
@@ -291,7 +316,7 @@ func reconcileAgainst(ctx context.Context, client *Client, ws *WorkspaceConfig, 
 		if _, tracked := state.Memos[uid]; tracked {
 			continue
 		}
-		ms, nDown, err := exportMemo(ctx, client, ws, contentRoot, m, nil, warn)
+		ms, nDown, err := exportMemo(ctx, client, ws, parents, contentRoot, m, nil, warn)
 		if err != nil {
 			return err
 		}
@@ -313,9 +338,9 @@ func reconcileAgainst(ctx context.Context, client *Client, ws *WorkspaceConfig, 
 // A locally modified file is never overwritten: a pure move would discard where
 // the edit lives, and a content difference with edits on both sides is a genuine
 // conflict. Either way the file is kept and reported so the user can push first.
-func reconcileDrifted(ctx context.Context, client *Client, ws *WorkspaceConfig, contentRoot, uid string, m *v1pb.Memo, state *State, res *PullResult, out io.Writer, warn *attachmentWarner) error {
+func reconcileDrifted(ctx context.Context, client *Client, ws *WorkspaceConfig, parents parentIndex, contentRoot, uid string, m *v1pb.Memo, state *State, res *PullResult, out io.Writer, warn *attachmentWarner) error {
 	prev := state.Memos[uid]
-	next := memoState(ws, m)
+	next := memoState(ws, parents, m)
 	movedOnServer := next.Path != prev.Path
 	changedOnServer := next.ContentHash != prev.ContentHash
 	if !movedOnServer && !changedOnServer {
@@ -351,7 +376,7 @@ func reconcileDrifted(ctx context.Context, client *Client, ws *WorkspaceConfig, 
 		}
 	}
 
-	ms, nDown, err := relocateMemo(ctx, client, ws, contentRoot, prev.Path, m, &prev, warn)
+	ms, nDown, err := relocateMemo(ctx, client, ws, parents, contentRoot, prev.Path, m, &prev, warn)
 	if err != nil {
 		return err
 	}

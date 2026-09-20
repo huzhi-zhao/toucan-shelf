@@ -187,6 +187,30 @@ func (c *Client) ListAllMemos(ctx context.Context, workspace, filter string) ([]
 	return out, nil
 }
 
+// ListMemoComments fetches a document's child memos — its comments and its
+// sub-documents, which share one relation and therefore one endpoint. Callers
+// pick out the sub-documents by folder path; see subdocs.go.
+//
+// Paginated the same way as ListAllMemos: the server caps a page, and a document
+// with many children would otherwise be silently truncated.
+func (c *Client) ListMemoComments(ctx context.Context, memoName string) ([]*v1pb.Memo, error) {
+	var out []*v1pb.Memo
+	pageToken := ""
+	for {
+		req := &v1pb.ListMemoCommentsRequest{Name: memoName, PageSize: 200, PageToken: pageToken}
+		resp, err := c.memo.ListMemoComments(ctx, connect.NewRequest(req))
+		if err != nil {
+			return nil, fmt.Errorf("list comments of %s: %w", memoName, err)
+		}
+		out = append(out, resp.Msg.GetMemos()...)
+		pageToken = resp.Msg.GetNextPageToken()
+		if pageToken == "" {
+			break
+		}
+	}
+	return out, nil
+}
+
 // GetMemo fetches a single memo by uid ("memos/{uid}"). Used by push to read the
 // server's current state for conflict detection.
 func (c *Client) GetMemo(ctx context.Context, uid string) (*v1pb.Memo, error) {

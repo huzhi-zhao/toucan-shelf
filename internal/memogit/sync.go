@@ -129,9 +129,9 @@ func ensureLocalIDs(contentRoot string, state *State) (int, error) {
 // memoState builds the sync-state baseline for a memo (path + metadata + hash).
 // The hash is over the server content (m.GetContent()), which is what push/pull
 // compare against — not over the possibly-stubbed local file bytes.
-func memoState(ws *WorkspaceConfig, m *v1pb.Memo) MemoState {
+func memoState(ws *WorkspaceConfig, parents parentIndex, m *v1pb.Memo) MemoState {
 	docType := docTypeString(m)
-	relPath := ws.LocalRelPath(m.GetFolderPath(), m.GetTitle(), docType)
+	relPath := localRelPathOf(ws, parents, m)
 	return MemoState{
 		Path:        relPath,
 		DocType:     docType,
@@ -148,16 +148,16 @@ func memoState(ws *WorkspaceConfig, m *v1pb.Memo) MemoState {
 // baseline MemoState plus the number of attachments freshly downloaded. prev is
 // the previous baseline for this memo (nil on first export), used to skip
 // re-downloading unchanged attachments.
-func exportMemo(ctx context.Context, client *Client, ws *WorkspaceConfig, contentRoot string, m *v1pb.Memo, prev *MemoState, warn *attachmentWarner) (MemoState, int, error) {
+func exportMemo(ctx context.Context, client *Client, ws *WorkspaceConfig, parents parentIndex, contentRoot string, m *v1pb.Memo, prev *MemoState, warn *attachmentWarner) (MemoState, int, error) {
 	var prevRefs []AttachmentRef
 	if prev != nil {
 		prevRefs = prev.Attachments
 	}
-	refs, n, err := downloadMemoAttachments(ctx, client, contentRoot, memoState(ws, m).Path, m, prevRefs, warn)
+	refs, n, err := downloadMemoAttachments(ctx, client, contentRoot, memoState(ws, parents, m).Path, m, prevRefs, warn)
 	if err != nil {
 		return MemoState{}, 0, err
 	}
-	ms, err := writeMemoDoc(ws, contentRoot, m, refs)
+	ms, err := writeMemoDoc(ws, parents, contentRoot, m, refs)
 	if err != nil {
 		return MemoState{}, 0, err
 	}
@@ -168,8 +168,8 @@ func exportMemo(ctx context.Context, client *Client, ws *WorkspaceConfig, conten
 // the given downloaded attachment refs, and returns its baseline MemoState. The
 // attachment download is done by the caller; this is the pure file-writing step
 // (also the unit-test seam that needs no server).
-func writeMemoDoc(ws *WorkspaceConfig, contentRoot string, m *v1pb.Memo, refs []AttachmentRef) (MemoState, error) {
-	ms := memoState(ws, m)
+func writeMemoDoc(ws *WorkspaceConfig, parents parentIndex, contentRoot string, m *v1pb.Memo, refs []AttachmentRef) (MemoState, error) {
+	ms := memoState(ws, parents, m)
 	ms.Attachments = refs
 	if err := writeFile(contentRoot, ms.Path, FileContent(m, refs)); err != nil {
 		return MemoState{}, err
@@ -180,12 +180,12 @@ func writeMemoDoc(ws *WorkspaceConfig, contentRoot string, m *v1pb.Memo, refs []
 // relocateMemo is like exportMemo but for an already-tracked memo whose file may
 // have moved (folder_path/title changed): it downloads attachments, writes the
 // new file, and removes the old one. Returns the new baseline + downloads.
-func relocateMemo(ctx context.Context, client *Client, ws *WorkspaceConfig, contentRoot, oldRel string, m *v1pb.Memo, prev *MemoState, warn *attachmentWarner) (MemoState, int, error) {
+func relocateMemo(ctx context.Context, client *Client, ws *WorkspaceConfig, parents parentIndex, contentRoot, oldRel string, m *v1pb.Memo, prev *MemoState, warn *attachmentWarner) (MemoState, int, error) {
 	var prevRefs []AttachmentRef
 	if prev != nil {
 		prevRefs = prev.Attachments
 	}
-	ms := memoState(ws, m)
+	ms := memoState(ws, parents, m)
 	refs, n, err := downloadMemoAttachments(ctx, client, contentRoot, ms.Path, m, prevRefs, warn)
 	if err != nil {
 		return MemoState{}, 0, err

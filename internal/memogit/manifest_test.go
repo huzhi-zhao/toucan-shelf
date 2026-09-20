@@ -229,7 +229,7 @@ func TestManifestDoesNotLookLikeALocalEdit(t *testing.T) {
 		att("a2", "report.pdf", "application/pdf", 13002342),
 	)
 
-	ms, err := writeMemoDoc(ws, root, m, refs)
+	ms, err := writeMemoDoc(ws, nil, root, m, refs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,7 +259,7 @@ func TestManifestSurvivesUnchangedReconcile(t *testing.T) {
 	ws := &WorkspaceConfig{}
 	m, refs := memoWithAttachments("body", att("a1", "chart.png", "image/png", 1024))
 
-	ms, err := writeMemoDoc(ws, root, m, refs)
+	ms, err := writeMemoDoc(ws, nil, root, m, refs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -273,7 +273,7 @@ func TestManifestSurvivesUnchangedReconcile(t *testing.T) {
 	// A nil client is safe: the refs already on disk match the server's sizes,
 	// so no download is attempted.
 	res := &PullResult{}
-	if err := reconcileAgainst(context.Background(), nil, ws, root,
+	if err := reconcileAgainst(context.Background(), nil, ws, nil, root,
 		[]*v1pb.Memo{m}, state, res, io.Discard, nil); err != nil {
 		t.Fatal(err)
 	}

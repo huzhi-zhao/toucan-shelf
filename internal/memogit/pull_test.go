@@ -23,7 +23,7 @@ func TestReconcileAdoptsUntrackedMemo(t *testing.T) {
 
 	// Baseline tracks one memo; its file is on disk and unmodified.
 	tracked := mkMemo("old1", "notes", "Existing", "body", v1pb.Memo_MARKDOWN)
-	trackedState, err := writeMemoDoc(ws, root, tracked, nil)
+	trackedState, err := writeMemoDoc(ws, nil, root, tracked, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +34,7 @@ func TestReconcileAdoptsUntrackedMemo(t *testing.T) {
 	missed := mkMemo("new1", "consult", "FirstTalk", "meeting notes", v1pb.Memo_MARKDOWN)
 
 	res := &PullResult{}
-	err = reconcileAgainst(context.Background(), nil, ws, root,
+	err = reconcileAgainst(context.Background(), nil, ws, nil, root,
 		[]*v1pb.Memo{tracked, missed}, state, res, io.Discard, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -76,11 +76,11 @@ func TestReconcileAdoptionIsIdempotent(t *testing.T) {
 	listing := []*v1pb.Memo{m}
 
 	first := &PullResult{}
-	if err := reconcileAgainst(context.Background(), nil, ws, root, listing, state, first, io.Discard, nil); err != nil {
+	if err := reconcileAgainst(context.Background(), nil, ws, nil, root, listing, state, first, io.Discard, nil); err != nil {
 		t.Fatal(err)
 	}
 	second := &PullResult{}
-	if err := reconcileAgainst(context.Background(), nil, ws, root, listing, state, second, io.Discard, nil); err != nil {
+	if err := reconcileAgainst(context.Background(), nil, ws, nil, root, listing, state, second, io.Discard, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -101,7 +101,7 @@ func TestReconcileAdoptsServerContentDrift(t *testing.T) {
 	ws := &WorkspaceConfig{}
 
 	tracked := mkMemo("d1", "notes", "Doc", "original body", v1pb.Memo_MARKDOWN)
-	trackedState, err := writeMemoDoc(ws, root, tracked, nil)
+	trackedState, err := writeMemoDoc(ws, nil, root, tracked, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestReconcileAdoptsServerContentDrift(t *testing.T) {
 	drifted := mkMemo("d1", "notes", "Doc", "rewritten on the web", v1pb.Memo_MARKDOWN)
 
 	res := &PullResult{}
-	if err := reconcileAgainst(context.Background(), nil, ws, root,
+	if err := reconcileAgainst(context.Background(), nil, ws, nil, root,
 		[]*v1pb.Memo{drifted}, state, res, io.Discard, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +139,7 @@ func TestReconcileDriftWithLocalEditsConflicts(t *testing.T) {
 	ws := &WorkspaceConfig{}
 
 	tracked := mkMemo("d1", "notes", "Doc", "original body", v1pb.Memo_MARKDOWN)
-	trackedState, err := writeMemoDoc(ws, root, tracked, nil)
+	trackedState, err := writeMemoDoc(ws, nil, root, tracked, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +151,7 @@ func TestReconcileDriftWithLocalEditsConflicts(t *testing.T) {
 
 	drifted := mkMemo("d1", "notes", "Doc", "their server edit", v1pb.Memo_MARKDOWN)
 	res := &PullResult{}
-	if err := reconcileAgainst(context.Background(), nil, ws, root,
+	if err := reconcileAgainst(context.Background(), nil, ws, nil, root,
 		[]*v1pb.Memo{drifted}, state, res, io.Discard, nil); err != nil {
 		t.Fatal(err)
 	}

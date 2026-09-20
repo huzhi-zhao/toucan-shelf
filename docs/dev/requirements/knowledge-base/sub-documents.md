@@ -230,10 +230,12 @@ MCP 刻意只暴露 9 个工具，因为每个工具的 JSON schema 在整个会
 - **本地布局**：`<父文档同级>/<父文档标题>.subdocs/<子文档标题>.md`。
   不直接镜像 `_sub/<uid>`——uid 目录对人和 agent 都不可读，
   而 memogit 本地树的全部价值就是可读。
-- **父文件尾部加 `memogit-subdocs` 清单**，列出子文档标题与本地路径。
-  理由与附件清单完全相同：
-  [agent-attachment-reading.md §2](../collaboration/agent-attachment-reading.md)
-  记录过"字节躺在磁盘上没人读，功能等于不存在"的教训，别再犯一次。
+- **不加 `memogit-subdocs` 清单。** 附件需要清单，是因为它的字节落在
+  `_attachments/<uid>/` —— 一个 uid 寻址、离文档很远、猜不出来的位置，
+  不写清单就真的没人读（[agent-attachment-reading.md §2](../collaboration/agent-attachment-reading.md)
+  记录过这个教训）。子文档不同：它的文件夹就叫 `<父文档标题>.subdocs`、
+  就挨着父文档文件，而且父文档正文里的脚注引用已经把它们点了一遍。
+  再加一份清单是同一事实的第三份副本。
 - **push**：`.subdocs/` 目录下的新文件按 `_sub/<父文档uid>` 创建，
   服务端用 §5 的同一条规则绑父——**两个通道一套语义**。
 - **pull**：增量同步按 `updated_ts` 选文档，所以**子文档的写入会顺带

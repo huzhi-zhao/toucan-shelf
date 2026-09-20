@@ -71,6 +71,14 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 	}
 	client := NewClient(cfg)
 	contentRoot := ContentRoot(root, ws)
+	// Where each tracked document's file lives, both ways round: sub-documents
+	// are placed beside their parent's file, so pushing one means recognizing
+	// which document the neighbouring file is.
+	parents := newParentIndex(ws, state, nil)
+	uidByPath := make(map[string]string, len(state.Memos))
+	for uid, ms := range state.Memos {
+		uidByPath[filepath.ToSlash(ms.Path)] = uid
+	}
 
 	present, err := listDocFiles(contentRoot, state)
 	if err != nil {
@@ -99,7 +107,7 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 	for i := range docs {
 		doc := docs[i]
 		if doc.UID == "" {
-			uid, err := pushNewDoc(ctx, client, ws, contentRoot, doc, state, res, dryRun, out)
+			uid, err := pushNewDoc(ctx, client, ws, parents, uidByPath, contentRoot, doc, state, res, dryRun, out)
 			if err != nil {
 				return nil, err
 			}
@@ -127,12 +135,12 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 			// its history, comments and inbound links follow the document, then fall
 			// through to the content comparison below — a move and an edit in the
 			// same push are two independent changes to the same memo.
-			moved, err := moveDoc(ctx, client, ws, doc, prev, dryRun, out)
+			moved, err := moveDoc(ctx, client, ws, parents, doc, prev, dryRun, out)
 			if err != nil {
 				return nil, err
 			}
 			if !dryRun {
-				prev = rebaseState(ws, moved, doc.Path, prev)
+				prev = rebaseState(ws, parents, moved, doc.Path, prev)
 				state.Memos[doc.UID] = prev
 			} else {
 				prev.Path = doc.Path
@@ -146,7 +154,7 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 			continue
 		}
 
-		if err := pushDocContent(ctx, client, ws, contentRoot, doc, prev, state, res, dryRun, out); err != nil {
+		if err := pushDocContent(ctx, client, ws, parents, contentRoot, doc, prev, state, res, dryRun, out); err != nil {
 			return nil, err
 		}
 	}
@@ -225,16 +233,33 @@ func reportOrphans(out io.Writer, res *PushResult) {
 // then stamps the file with the uid the server assigned so the next move of this
 // file is recognised as a move. Returns that uid ("" for a dry run, or for a PDF
 // stub, which is generated output and never becomes a document).
-func pushNewDoc(ctx context.Context, client *Client, ws *WorkspaceConfig, contentRoot string,
+func pushNewDoc(ctx context.Context, client *Client, ws *WorkspaceConfig, parents parentIndex, uidByPath map[string]string, contentRoot string,
 	doc localDoc, state *State, res *PushResult, dryRun bool, out io.Writer) (string, error) {
 	// PDF stubs are generated, not editable content — never push them.
 	if doc.DocType == "PDF" {
 		return "", nil
 	}
 	folderPath, title, docType := deriveMemoFromPath(doc.Path)
-	// Sparse checkout: recover the server folder_path from the local path (see
-	// ServerFolderPath for the two mapping modes).
-	folderPath = ws.ServerFolderPath(folderPath)
+	if parentRel, isSubDoc := ParentRelFromSubDocPath(doc.Path); isSubDoc {
+		// A file in a ".subdocs" folder belongs to the document whose file sits
+		// beside that folder. Its server folder path is the reserved one, which
+		// is what binds it to that parent — so it must NOT go through the sparse
+		// mapping, which would prepend a checkout prefix to a path the server
+		// parses rather than stores as a location.
+		parentUID, known := uidByPath[filepath.ToSlash(parentRel)]
+		if !known {
+			// The parent has never been pushed, so there is nothing to bind to
+			// yet. Skipping is the safe half: pushing it as an ordinary document
+			// would create a real document named after the folder.
+			fmt.Fprintf(out, "  ! %s: parent document %s is not synced yet, skipped\n", doc.Path, parentRel)
+			return "", nil
+		}
+		folderPath = SubDocFolderPath(parentUID)
+	} else {
+		// Sparse checkout: recover the server folder_path from the local path (see
+		// ServerFolderPath for the two mapping modes).
+		folderPath = ws.ServerFolderPath(folderPath)
+	}
 	fmt.Fprintf(out, "  + %s (new)\n", doc.Path)
 	if dryRun {
 		res.Created++
@@ -246,7 +271,7 @@ func pushNewDoc(ctx context.Context, client *Client, ws *WorkspaceConfig, conten
 	}
 	uid := uidFromName(created.GetName())
 	// Keep the local mapping even if the server normalized the title.
-	state.Memos[uid] = rebaseState(ws, created, doc.Path, MemoState{})
+	state.Memos[uid] = rebaseState(ws, parents, created, doc.Path, MemoState{})
 	if err := writeFile(contentRoot, doc.Path, InjectLocalID(doc.Content, uid, docType)); err != nil {
 		return "", err
 	}
@@ -257,7 +282,7 @@ func pushNewDoc(ctx context.Context, client *Client, ws *WorkspaceConfig, conten
 // moveDoc relocates a memo to match its file's new path. The target folder/title
 // are derived from the path, which is the same derivation used for new
 // documents, so a move and a create place a document identically.
-func moveDoc(ctx context.Context, client *Client, ws *WorkspaceConfig, doc localDoc,
+func moveDoc(ctx context.Context, client *Client, ws *WorkspaceConfig, parents parentIndex, doc localDoc,
 	prev MemoState, dryRun bool, out io.Writer) (*v1pb.Memo, error) {
 	folderPath, title, _ := deriveMemoFromPath(doc.Path)
 	folderPath = ws.ServerFolderPath(folderPath)
@@ -277,7 +302,7 @@ func moveDoc(ctx context.Context, client *Client, ws *WorkspaceConfig, doc local
 	// absorbs the server's own normalization and the filename sanitization, and
 	// asks the only question that matters: did the document end up where the file
 	// is?
-	if landed := memoState(ws, moved).Path; landed != doc.Path {
+	if landed := memoState(ws, parents, moved).Path; landed != doc.Path {
 		return nil, fmt.Errorf("server did not apply the move of %s: it now maps to %s, not %s "+
 			"(server too old to move documents? move it in the web UI and run `memogit pull`)",
 			prev.Path, landed, doc.Path)
@@ -287,7 +312,7 @@ func moveDoc(ctx context.Context, client *Client, ws *WorkspaceConfig, doc local
 
 // pushDocContent is the content half of a push for one tracked document:
 // conflict bookkeeping, the server re-check, and the actual content update.
-func pushDocContent(ctx context.Context, client *Client, ws *WorkspaceConfig, contentRoot string,
+func pushDocContent(ctx context.Context, client *Client, ws *WorkspaceConfig, parents parentIndex, contentRoot string,
 	doc localDoc, prev MemoState, state *State, res *PushResult, dryRun bool, out io.Writer) error {
 	uid := doc.UID
 
@@ -331,7 +356,7 @@ func pushDocContent(ctx context.Context, client *Client, ws *WorkspaceConfig, co
 			return err
 		}
 		// ConflictServerHash is cleared by the fresh baseline.
-		state.Memos[uid] = rebaseState(ws, updated, doc.Path, prev)
+		state.Memos[uid] = rebaseState(ws, parents, updated, doc.Path, prev)
 		res.Updated++
 		return nil
 	}
@@ -372,7 +397,7 @@ func pushDocContent(ctx context.Context, client *Client, ws *WorkspaceConfig, co
 	if err != nil {
 		return err
 	}
-	state.Memos[uid] = rebaseState(ws, updated, doc.Path, prev)
+	state.Memos[uid] = rebaseState(ws, parents, updated, doc.Path, prev)
 	res.Updated++
 	return nil
 }
@@ -382,8 +407,8 @@ func pushDocContent(ctx context.Context, client *Client, ws *WorkspaceConfig, co
 // have normalized the title, but the file on disk is what it is) and the
 // attachment record (pull owns that). ConflictServerHash is deliberately not
 // carried over — reaching here means the document is in sync again.
-func rebaseState(ws *WorkspaceConfig, m *v1pb.Memo, localPath string, prev MemoState) MemoState {
-	ms := memoState(ws, m)
+func rebaseState(ws *WorkspaceConfig, parents parentIndex, m *v1pb.Memo, localPath string, prev MemoState) MemoState {
+	ms := memoState(ws, parents, m)
 	ms.Path = localPath
 	ms.Attachments = prev.Attachments
 	return ms
