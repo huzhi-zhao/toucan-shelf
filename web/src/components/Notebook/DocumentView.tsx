@@ -537,6 +537,28 @@ const DocumentView = ({
     setCommentsOpen(true);
   }, []);
 
+  // The same click with the panel closed: open the panel on the comment, but do
+  // NOT raise the mark toolbar.
+  //
+  // With the panel closed the reader is reading, not annotating — and the
+  // toolbar's first-class action is an eraser, which is not something a stray
+  // click on a highlight should put under the cursor. Marks used to be inert
+  // here, which meant the only way to read what a highlight said was to know to
+  // open the panel first; the colour was a signal pointing at something
+  // unreachable.
+  //
+  // A bare mark (a highlight carrying no note) has no card in the panel, so this
+  // opens onto a list that does not contain it. That is still better than a dead
+  // click: the panel opening is the feedback, and it is where the mark's note
+  // would be if it had one.
+  const handleMarkOpen = useCallback((memoName: string) => {
+    setSelectionPopover(undefined);
+    setSelectedMemoName(memoName);
+    // The panel and the outline share the right dock.
+    setOutlineCollapsed(true);
+    setCommentsOpen(true);
+  }, []);
+
   // Restyle an existing mark, keeping its anchor and any note it carries.
   const updateMarkStyle = useCallback(
     async (comment: Memo, color: string, underline: boolean) => {
@@ -730,10 +752,11 @@ const DocumentView = ({
         marks={marks}
         contentKey={memo.content}
         selectedMemoName={selectedMemoName}
-        // Marking is a comment-panel activity: with the panel collapsed the document is just a
-        // document, so marks are shown but inert — the same rule the selection toolbar follows.
-        // Open the panel first, then mark or restyle.
-        onMarkClick={commentsOpen && !relinkTarget ? handleMarkClick : undefined}
+        // Restyling a mark is still a comment-panel activity (as is making one: the
+        // selection toolbar keeps that rule). Reading one is not — a click with the
+        // panel closed opens the panel on the comment instead of doing nothing.
+        // While re-anchoring, a click on a mark must not steal the gesture.
+        onMarkClick={relinkTarget ? undefined : commentsOpen ? handleMarkClick : handleMarkOpen}
         onUnresolved={setUnresolvedMarks}
         onDrifted={setDriftedMarks}
         onAnchors={setMarkAnchors}
