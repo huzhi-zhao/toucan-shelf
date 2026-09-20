@@ -28,11 +28,16 @@ interface Props {
 export const ReferenceListView = ({ subDocs, parentMemoName, highlightedMemoName, actions, className }: Props) => {
   const t = useTranslate();
 
-  // A document with no sub-documents shows nothing here — no empty section, and
-  // no entry in the outline either (its caller gates on the same emptiness).
-  // Creating one is an edit, and the controls for it live in the editor's own
-  // References block; a reader has no use for a section that is only a header.
-  if (subDocs.length === 0) return null;
+  // Whether an empty document shows this section at all is decided by whether
+  // there is anything to DO here, which is exactly `actions`:
+  //
+  //   preview (no actions) — nothing to list, nothing to add, so nothing is
+  //     drawn, and the outline's entry is gated on the same emptiness. A reader
+  //     has no use for a section that is only a header.
+  //   editor (actions)     — always drawn, empty or not. It is the only place a
+  //     sub-document can be created, so hiding it when there are none makes the
+  //     first one impossible to add.
+  if (subDocs.length === 0 && !actions) return null;
 
   return (
     <MetadataSection
