@@ -1,7 +1,6 @@
 import copy from "copy-to-clipboard";
 import { FileTextIcon, LinkIcon } from "lucide-react";
 import toast from "react-hot-toast";
-import { Link } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { extractMemoIdFromName } from "@/helpers/resource-names";
 import { cn } from "@/lib/utils";
@@ -12,8 +11,6 @@ import { subDocHref } from "@/utils/subDoc";
 
 interface Props {
   memo: Memo;
-  /** Where the reader came from, so the sub-document can offer a way back. */
-  parentPage?: string;
   /** Emphasized when the body's footnote-style reference points at this entry. */
   highlighted?: boolean;
   /** The document this sub-document hangs off, needed to write a reference to it. */
@@ -25,8 +22,13 @@ interface Props {
  * detail page, which is an ordinary memo page — so editing and printing (via the
  * reader's browser print) come for free rather than needing their own surface
  * here.
+ *
+ * It opens in a new tab rather than navigating in place. A sub-document is
+ * consulted while reading the document it belongs to, not instead of it: sending
+ * the reader away would cost them their scroll position in the main document and
+ * make them walk back for every aside they look at.
  */
-export const SubDocCard = ({ memo, parentPage, highlighted, parentMemoName }: Props) => {
+export const SubDocCard = ({ memo, highlighted, parentMemoName }: Props) => {
   const t = useTranslate();
   // A sub-document's body is markdown like any other document's, and its
   // frontmatter is chrome rather than content — showing "---\ntags: …" as the
@@ -34,9 +36,10 @@ export const SubDocCard = ({ memo, parentPage, highlighted, parentMemoName }: Pr
   const preview = parseFrontmatter(memo.content).body.trim().split("\n")[0] ?? "";
 
   return (
-    <Link
-      to={`/memos/${extractMemoIdFromName(memo.name)}`}
-      state={parentPage ? { from: parentPage } : undefined}
+    <a
+      href={`/memos/${extractMemoIdFromName(memo.name)}`}
+      target="_blank"
+      rel="noreferrer"
       className={cn(
         "group flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors",
         highlighted ? "border-primary/40 bg-primary/10" : "border-border/70 bg-background/65 hover:bg-accent/20",
@@ -74,7 +77,7 @@ export const SubDocCard = ({ memo, parentPage, highlighted, parentMemoName }: Pr
           <TooltipContent>{t("subdoc.copy-reference")}</TooltipContent>
         </Tooltip>
       )}
-    </Link>
+    </a>
   );
 };
 

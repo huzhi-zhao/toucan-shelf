@@ -32,7 +32,7 @@ import { InlineAttachmentProvider } from "@/components/MemoContent/InlineAttachm
 import { SubDocReferenceProvider } from "@/components/MemoContent/SubDocReferenceContext";
 import MemoEditor from "@/components/MemoEditor";
 import type { EditorController } from "@/components/MemoEditor/types/editorController";
-import { AttachmentListView, ReferenceActions, ReferenceListView } from "@/components/MemoMetadata";
+import { AttachmentListView, ReferenceListView } from "@/components/MemoMetadata";
 import { MemoViewContext, type MemoViewContextValue } from "@/components/MemoView/MemoViewContext";
 import { PdfDocumentView } from "@/components/PdfViewer/PdfDocumentView";
 import { Button } from "@/components/ui/button";
@@ -730,15 +730,13 @@ const DocumentView = ({
   // Sub-documents sit above the attachment list, in the same shape: attachments are
   // the part of a document's metadata that actually gets used, so that is where
   // content-belonging-to-this-document goes too.
-  const referencesSection = supportsComments && (
+  // Read-only in the preview: creating a sub-document is an edit, so those
+  // controls live in the editor's own References block. With nothing to list the
+  // whole section is absent — no empty header for a reader to wonder about, and
+  // the outline's entry is gated on the same emptiness.
+  const referencesSection = supportsComments && subDocs.length > 0 && (
     <div id={REFERENCES_ANCHOR_ID} className="relative z-10 mt-6 border-t border-border pt-4">
-      <ReferenceListView
-        subDocs={subDocs}
-        parentMemoName={memo.name}
-        parentPage="/"
-        highlightedMemoName={highlightedSubDoc}
-        actions={<ReferenceActions parentMemoName={memo.name} onCreated={() => refetchComments()} />}
-      />
+      <ReferenceListView subDocs={subDocs} parentMemoName={memo.name} highlightedMemoName={highlightedSubDoc} />
     </div>
   );
 
@@ -1153,6 +1151,9 @@ const DocumentView = ({
                 expand
                 cacheKey={`notebook-editor-${memo.name}`}
                 memo={memo}
+                // Adding a sub-document is an edit, so the References controls
+                // live here rather than in the preview.
+                showReferences={supportsComments}
                 onContentChange={setEditDraftContent}
                 onConfirm={() => {
                   // The edit that's about to land is what marks drift under, and the writer is the

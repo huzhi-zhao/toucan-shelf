@@ -34,6 +34,14 @@ export interface MemoEditorProps {
    * the comment sidebars (icon-only visibility, small Save/Cancel).
    */
   toolbarVariant?: "default" | "comment";
+  /**
+   * Show the References block (this document's sub-documents, plus the controls
+   * that create them). Opt-in rather than inferred: it is a Notebook-document
+   * affordance, and the same editor also composes comments, where a sub-document
+   * makes no sense. Ignored until the document exists — a sub-document needs a
+   * parent to hang off.
+   */
+  showReferences?: boolean;
 }
 
 export interface EditorContentProps {
@@ -63,6 +71,8 @@ export interface EditorToolbarProps {
 
 export interface EditorMetadataProps {
   memoName?: string;
+  /** See MemoEditorProps.showReferences. */
+  showReferences?: boolean;
 }
 
 export interface AudioRecorderPanelProps {
