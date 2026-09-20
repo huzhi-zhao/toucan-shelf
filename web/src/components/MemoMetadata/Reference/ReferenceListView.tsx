@@ -9,7 +9,6 @@ interface Props {
   subDocs: Memo[];
   /** The document these hang off; enables "copy reference" on each entry. */
   parentMemoName?: string;
-  parentPage?: string;
   /** The sub-document a body reference just pointed at, emphasized on arrival. */
   highlightedMemoName?: string;
   /** Header controls for creating sub-documents; omitted for a reader who cannot write. */
@@ -26,13 +25,14 @@ interface Props {
  * to put "content that belongs to this document but not in its body" is right
  * next to them, in the same shape — not behind a panel that has to be opened.
  */
-export const ReferenceListView = ({ subDocs, parentMemoName, parentPage, highlightedMemoName, actions, className }: Props) => {
+export const ReferenceListView = ({ subDocs, parentMemoName, highlightedMemoName, actions, className }: Props) => {
   const t = useTranslate();
 
-  // With nothing to list and no way to add anything, the section is pure chrome.
-  // It stays visible for a writer, though: an empty section is how they find out
-  // sub-documents exist at all.
-  if (subDocs.length === 0 && !actions) return null;
+  // A document with no sub-documents shows nothing here — no empty section, and
+  // no entry in the outline either (its caller gates on the same emptiness).
+  // Creating one is an edit, and the controls for it live in the editor's own
+  // References block; a reader has no use for a section that is only a header.
+  if (subDocs.length === 0) return null;
 
   return (
     <MetadataSection
@@ -44,13 +44,7 @@ export const ReferenceListView = ({ subDocs, parentMemoName, parentPage, highlig
       contentClassName="flex flex-col gap-1.5 p-1.5"
     >
       {subDocs.map((subDoc) => (
-        <SubDocCard
-          key={subDoc.name}
-          memo={subDoc}
-          parentMemoName={parentMemoName}
-          parentPage={parentPage}
-          highlighted={subDoc.name === highlightedMemoName}
-        />
+        <SubDocCard key={subDoc.name} memo={subDoc} parentMemoName={parentMemoName} highlighted={subDoc.name === highlightedMemoName} />
       ))}
     </MetadataSection>
   );

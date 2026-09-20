@@ -1,10 +1,10 @@
 import { type FC, useState } from "react";
-import { AttachmentListEditor, LocationDisplayEditor, RelationListEditor } from "@/components/MemoMetadata";
+import { AttachmentListEditor, LocationDisplayEditor, ReferenceListEditor, RelationListEditor } from "@/components/MemoMetadata";
 import { partitionInlinedAttachments } from "@/utils/attachment";
 import { useEditorContext, useEditorSelector } from "../state";
 import type { EditorMetadataProps } from "../types";
 
-export const EditorMetadata: FC<EditorMetadataProps> = ({ memoName }) => {
+export const EditorMetadata: FC<EditorMetadataProps> = ({ memoName, showReferences }) => {
   const { actions, dispatch } = useEditorContext();
   const attachments = useEditorSelector((s) => s.metadata.attachments);
   const content = useEditorSelector((s) => s.content);
@@ -32,6 +32,8 @@ export const EditorMetadata: FC<EditorMetadataProps> = ({ memoName }) => {
         onToggleShowInlineAttachments={() => setShowInlineAttachments((prev) => !prev)}
         memoName={memoName}
       />
+
+      {showReferences && memoName && <ReferenceListEditor memoName={memoName} />}
 
       <RelationListEditor
         relations={relations}

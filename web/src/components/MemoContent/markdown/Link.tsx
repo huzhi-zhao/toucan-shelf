@@ -60,6 +60,12 @@ export const Link = ({ children, className, href, node: _node, ...props }: LinkP
     return (
       <a
         href={`/memos/${extractMemoIdFromName(subDoc.name)}`}
+        // Opens in a new tab on the paths that do open it (a modified click, or
+        // a surface with no References section to jump to), matching how the
+        // section's own entries open: an aside is consulted alongside the
+        // document, not instead of it.
+        target="_blank"
+        rel="noreferrer"
         className={cn(markdownStyles.link, "decoration-dotted underline-offset-4", className)}
         title={subDoc.title}
         onClick={(e) => {

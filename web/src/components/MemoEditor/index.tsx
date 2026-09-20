@@ -62,6 +62,7 @@ const MemoEditorImpl = forwardRef<EditorController, MemoEditorProps>(
       onCancel,
       expand,
       toolbarVariant = "default",
+      showReferences,
     },
     forwardedRef,
   ) => {
@@ -478,7 +479,7 @@ const MemoEditorImpl = forwardRef<EditorController, MemoEditorProps>(
               expand && !isFocusMode && "sticky bottom-0 bg-background border-t border-border py-1.5 -mx-4 px-4 z-10",
             )}
           >
-            <EditorMetadata memoName={memoName} />
+            <EditorMetadata memoName={memoName} showReferences={showReferences} />
             {(() => {
               const Toolbar = toolbarVariant === "comment" && !isFocusMode ? CommentToolbar : EditorToolbar;
               return (

@@ -184,7 +184,7 @@ const MemoDetail = () => {
             </DocumentLinkProvider>
             {/* The document's sub-documents, above its comments — the same order
                 the Notebook preview puts them in, so the two surfaces read alike. */}
-            <ReferenceListView className="mt-4" subDocs={subDocs} parentPage={locationState?.from} />
+            <ReferenceListView className="mt-4" subDocs={subDocs} parentMemoName={displayMemo.name} />
             <MemoCommentSection
               memo={displayMemo}
               comments={comments}
