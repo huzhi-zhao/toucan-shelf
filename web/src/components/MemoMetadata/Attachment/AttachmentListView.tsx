@@ -41,6 +41,8 @@ import { resolveVisualGalleryLayout } from "./visualGalleryLayout";
 interface AttachmentListViewProps {
   attachments: Attachment[];
   onImagePreview?: (items: PreviewMediaItem[], index: number) => void;
+  /** Lets a caller fuse this section with the one above it (see DocumentView). */
+  className?: string;
 }
 
 type VisualItem = AttachmentVisualItem;
@@ -354,7 +356,7 @@ const LockedList = ({ attachments }: { attachments: Attachment[] }) => (
   </div>
 );
 
-const AttachmentListView = ({ attachments, onImagePreview }: AttachmentListViewProps) => {
+const AttachmentListView = ({ attachments, onImagePreview, className }: AttachmentListViewProps) => {
   const { visual, audio, docs, locked } = useMemo(() => separateAttachments(attachments), [attachments]);
   const visualItems = useMemo(() => buildAttachmentVisualItems(visual), [visual]);
   const previewItems = useMemo(() => visualItems.map((item) => item.previewItem), [visualItems]);
@@ -375,6 +377,7 @@ const AttachmentListView = ({ attachments, onImagePreview }: AttachmentListViewP
 
   return (
     <MetadataSection
+      className={className}
       icon={PaperclipIcon}
       title="Attachments"
       count={visualItems.length + audio.length + docs.length + locked.length}
