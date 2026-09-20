@@ -16,7 +16,7 @@
 
 | 域 | 覆盖 | 篇数 |
 |---|---|---|
-| [knowledge-base/](knowledge-base/) | 层级目录、workspace、知识库详情页与书架、文档版本历史 | 3（另有 1 篇同域文档暂平铺根下，见下） |
+| [knowledge-base/](knowledge-base/) | 层级目录、workspace、知识库详情页与书架、文档版本历史、子文档 | 4（另有 1 篇同域文档暂平铺根下，见下） |
 | [views/](views/) | html/pdf/view 三类渲染型文档、gallery view | 2 |
 | [editor/](editor/) | calendar 块、sheets 块、secret 加密块、受限内联样式渲染、draw.io 图、粘贴 HTML 转 Markdown | 6 |
 | [attachments/](attachments/) | 上传与媒体内联、访问控制与私密附件 | 2 |
@@ -41,6 +41,9 @@
   —— 知识库详情页与书架
 - [document-versioning.md](knowledge-base/document-versioning.md)
   —— 文档版本历史
+- [sub-documents.md](knowledge-base/sub-documents.md)
+  —— 子文档与 References 区块：承载主文档的附属长内容、`_sub/` 保留路径寻址、
+  正文脚注式引用、MCP/memogit 两通道的读写与级联生命周期
 
 ### views/
 
