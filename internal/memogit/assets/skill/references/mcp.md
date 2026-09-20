@@ -41,6 +41,23 @@ git 打架。走 MCP 就像读一个网页。
 用户可能会从 app 的 **⋯ → 复制 → 复制信息** 粘一段地址块给你（含 workspace 显示名 + uid、
 folder_path、title、`memos/uid`）。有它就直接 `memo_get_memo`，不用再解析。
 
+### 子文档：同样的三个字段，folder_path 换成保留路径
+
+要把长内容挂到某篇文档下面（而不是塞进它正文），用 `memo_create_memo`，
+`folder_path` 写 `_sub/<父文档uid>`：
+
+| 字段 | 值 |
+|------|-----|
+| `workspace` | **留空**，服务端按父文档填 |
+| `folder_path` | `_sub/gARJgubAwFkdrHCDzoerVv` |
+| `title` | `补充说明`（在该父文档下唯一） |
+
+没有专门的工具，也不需要你写 relation——**路径就是绑定**。
+
+**`rag_search` 搜不到子文档**，搜不到不等于不存在：要发现它们，读父文档
+（`memo_get_memo`）的 relations，或看父文档正文里的脚注引用
+（`/_sub/<uid>/<标题>.md`）。完整规则见 `hierarchy-and-doc-types.md` §3.5。
+
 ## 3. **`memo_update_memo` 是全量覆写，不是增量补丁**
 
 这是最容易静默毁掉文档的一条。它替换整个 `content` 字段。

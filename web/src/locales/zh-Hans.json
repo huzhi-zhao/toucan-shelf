@@ -1508,5 +1508,16 @@
     "editor-title": "编辑图",
     "saved": "图已保存",
     "save-failed": "保存失败"
+  },
+  "subdoc": {
+    "references": "References",
+    "new-sub-document": "新建子文档",
+    "upload-markdown": "上传 Markdown",
+    "untitled": "未命名",
+    "title-placeholder": "子文档标题",
+    "duplicate-title": "这篇文档下已经有同名子文档",
+    "open": "打开子文档",
+    "back-to-parent": "返回主文档",
+    "copy-reference": "复制引用"
   }
 }

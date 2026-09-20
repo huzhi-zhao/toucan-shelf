@@ -1609,5 +1609,16 @@
     "editor-title": "Edit diagram",
     "saved": "Diagram saved",
     "save-failed": "Failed to save the diagram"
+  },
+  "subdoc": {
+    "references": "References",
+    "new-sub-document": "New sub-document",
+    "upload-markdown": "Upload Markdown",
+    "untitled": "Untitled",
+    "title-placeholder": "Sub-document title",
+    "duplicate-title": "This document already has a sub-document with that title",
+    "open": "Open sub-document",
+    "back-to-parent": "Back to the document",
+    "copy-reference": "Copy reference"
   }
 }

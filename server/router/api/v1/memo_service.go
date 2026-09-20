@@ -160,6 +160,25 @@ func (s *APIV1Service) CreateMemo(ctx context.Context, request *v1pb.CreateMemoR
 		DocType:     convertDocTypeToStore(request.Memo.DocType),
 	}
 
+	// A folder path under the reserved sub-document namespace binds this new
+	// document to the parent it names — the path IS the binding. That is what
+	// lets an agent create one with nothing but the three fields it already
+	// addresses documents with: no relation write (which it cannot do anyway)
+	// and no extra MCP tool. See subdoc.go.
+	subDocParent, err := s.resolveSubDocParent(ctx, user, create.FolderPath)
+	if err != nil {
+		return nil, err
+	}
+	if subDocParent != nil {
+		// A sub-document is part of the document it hangs off, so it belongs to
+		// that document's knowledge base and is exactly as visible as it is.
+		// Without this it would land in the creator's *default* workspace (an
+		// unqualified create resolves there), which memogit would then check out
+		// into the wrong repository.
+		create.WorkspaceID = subDocParent.WorkspaceID
+		create.Visibility = subDocParent.Visibility
+	}
+
 	// Set custom timestamps if provided in the request.
 	if request.Memo.CreateTime != nil && request.Memo.CreateTime.IsValid() {
 		createdTs := request.Memo.CreateTime.AsTime().Unix()
@@ -217,6 +236,30 @@ func (s *APIV1Service) CreateMemo(ctx context.Context, request *v1pb.CreateMemoR
 			return nil, status.Errorf(codes.AlreadyExists, "memo with ID %q already exists", memoUID)
 		}
 		return nil, err
+	}
+
+	// Bind the sub-document to its parent. Same COMMENT relation a comment uses,
+	// so everything that already excludes comments (folder tree, search listings,
+	// RSS, stats) excludes sub-documents too, for free.
+	if subDocParent != nil {
+		if _, err := s.Store.UpsertMemoRelation(ctx, &store.MemoRelation{
+			MemoID:        memo.ID,
+			RelatedMemoID: subDocParent.ID,
+			Type:          store.MemoRelationComment,
+		}); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to bind sub-document to its parent")
+		}
+		// Reload so the response carries `parent`: it is derived from ParentUID,
+		// which the store resolves by joining the comment relation — and that
+		// relation did not exist when this row was read.
+		bound, err := s.Store.GetMemo(ctx, &store.FindMemo{ID: &memo.ID})
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to reload sub-document")
+		}
+		if bound != nil {
+			memo = bound
+		}
+		s.touchSubDocParentBestEffort(ctx, memo)
 	}
 
 	// Best-effort: index this memo's outbound links so the reverse-link index
@@ -645,6 +688,7 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 	folderPathUpdated := false
 	memoArchived := false
 	previousVisibility := memo.Visibility
+	previousRowStatus := memo.RowStatus
 	for _, path := range request.UpdateMask.Paths {
 		if path == "content" {
 			contentUpdated = true
@@ -683,7 +727,11 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 				// P1: archiving is a container-emptying-adjacent operation (see
 				// docs/dev/design/20260807-cross-reference-repair-plan.md P1) —
 				// reject it if other documents still link to this one.
-				refs, err := s.findExternalLinkReferences(ctx, []int32{memo.ID}, map[int32]bool{memo.ID: true})
+				excluded, err := s.internalReferenceExclusions(ctx, memo)
+				if err != nil {
+					return nil, status.Errorf(codes.Internal, "failed to resolve internal references: %v", err)
+				}
+				refs, err := s.findExternalLinkReferences(ctx, []int32{memo.ID}, excluded)
 				if err != nil {
 					return nil, status.Errorf(codes.Internal, "failed to check memo references: %v", err)
 				}
@@ -743,6 +791,14 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 			}
 		} else if path == "folder_path" {
 			folderPath := normalizeFolderPath(request.Memo.FolderPath)
+			// A sub-document's folder path is its binding to its parent, not a
+			// location a user chose — moving it would either strand it outside
+			// the tree with no parent or silently re-parent it. Neither is a
+			// move; both are rejected. Promoting a sub-document to a real
+			// document is a create-and-delete, done deliberately.
+			if IsReservedFolderPath(memo.FolderPath) || IsReservedFolderPath(folderPath) {
+				return nil, status.Errorf(codes.InvalidArgument, "a sub-document cannot be moved")
+			}
 			folderPathUpdated = true
 			previousFolderPath = memo.FolderPath
 			update.FolderPath = &folderPath
@@ -754,6 +810,11 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 			docType := convertDocTypeToStore(request.Memo.DocType)
 			update.DocType = &docType
 		} else if path == "workspace" {
+			// A sub-document lives in its parent's knowledge base by definition;
+			// moving it alone would break that.
+			if IsReservedFolderPath(memo.FolderPath) {
+				return nil, status.Errorf(codes.InvalidArgument, "a sub-document cannot be moved")
+			}
 			workspace, err := s.resolveWorkspaceForMemo(ctx, user, request.Memo.Workspace)
 			if err != nil {
 				return nil, err
@@ -819,6 +880,21 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 			return nil, status.Errorf(codes.Internal, "failed to cascade comment visibility: %v", err)
 		}
 	}
+
+	// A sub-document has no life of its own: it is part of the document it hangs
+	// off, so it follows that document into and out of the recycle bin. Comments
+	// deliberately do NOT follow — they are a discussion about the document, and
+	// archiving one has never meant archiving its thread.
+	if update.RowStatus != nil && *update.RowStatus != previousRowStatus {
+		if err := s.cascadeSubDocState(ctx, memo); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to cascade sub-document state: %v", err)
+		}
+	}
+
+	// Editing a sub-document is an edit to the document it belongs to, so the
+	// parent's updated_ts moves with it — both for the freshness tint and so an
+	// incremental mirror can see the change at all.
+	s.touchSubDocParentBestEffort(ctx, memo)
 
 	// P0: content changed, so this memo's outbound reverse-link index entries
 	// are stale — full reparse and overwrite. Best-effort by design.
@@ -963,7 +1039,11 @@ func (s *APIV1Service) DeleteMemo(ctx context.Context, request *v1pb.DeleteMemoR
 	}
 
 	// P1: reject a hard delete if other documents still link to this one.
-	refs, err := s.findExternalLinkReferences(ctx, []int32{memo.ID}, map[int32]bool{memo.ID: true})
+	excluded, err := s.internalReferenceExclusions(ctx, memo)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to resolve internal references: %v", err)
+	}
+	refs, err := s.findExternalLinkReferences(ctx, []int32{memo.ID}, excluded)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to check memo references: %v", err)
 	}
@@ -1013,6 +1093,7 @@ func (s *APIV1Service) DeleteMemo(ctx context.Context, request *v1pb.DeleteMemoR
 	if err = s.Store.DeleteMemo(ctx, &store.DeleteMemo{ID: memo.ID}); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete memo")
 	}
+	s.touchSubDocParentBestEffort(ctx, memo)
 
 	// Broadcast live refresh event.
 	s.SSEHub.Broadcast(&SSEEvent{

@@ -1,8 +1,11 @@
 import { Link as RouterLink } from "react-router-dom";
 import { classifyDocHref, useDocumentLinkContext } from "@/components/MemoContent/DocumentLinkContext";
 import { isInSiteHref, usePublicSiteRender } from "@/components/MemoContent/PublicSiteRenderContext";
+import { useSubDocReferences } from "@/components/MemoContent/SubDocReferenceContext";
+import { extractMemoIdFromName } from "@/helpers/resource-names";
 import { markdownStyles } from "@/lib/markdownStyles";
 import { cn } from "@/lib/utils";
+import { resolveSubDocHref } from "@/utils/subDoc";
 import type { ReactMarkdownProps } from "./types";
 
 interface LinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement>, ReactMarkdownProps {
@@ -41,6 +44,38 @@ interface LinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement>, React
 export const Link = ({ children, className, href, node: _node, ...props }: LinkProps) => {
   const docLinkContext = useDocumentLinkContext();
   const publicSite = usePublicSiteRender();
+  const subDocContext = useSubDocReferences();
+
+  // A link to this document's own sub-document reads as a footnote, not as a
+  // link out: the target is part of what is being read, so following it scrolls
+  // to its entry in the References section instead of navigating away. The href
+  // still points at the sub-document's page, so cmd-click and "copy link
+  // address" open it properly.
+  //
+  // Checked before the normal document-link resolution because that resolution
+  // runs against the workspace tree, which excludes sub-documents by design and
+  // would report this as a broken link.
+  const subDoc = subDocContext ? resolveSubDocHref(href, subDocContext.parentMemoName, subDocContext.subDocs) : undefined;
+  if (subDoc) {
+    return (
+      <a
+        href={`/memos/${extractMemoIdFromName(subDoc.name)}`}
+        className={cn(markdownStyles.link, "decoration-dotted underline-offset-4", className)}
+        title={subDoc.title}
+        onClick={(e) => {
+          // Any modified click keeps its native meaning (new tab, new window,
+          // download), so only a plain left click is turned into a jump.
+          if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+          if (!subDocContext?.onJump) return;
+          e.preventDefault();
+          subDocContext.onJump(subDoc.name);
+        }}
+        {...props}
+      >
+        {children}
+      </a>
+    );
+  }
 
   // On a published site the snapshot's own links ("/<slug>") are in-site
   // navigation, not external links to open in a new tab. They are rebased onto
