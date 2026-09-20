@@ -259,6 +259,7 @@ func (s *APIV1Service) CreateMemo(ctx context.Context, request *v1pb.CreateMemoR
 		if bound != nil {
 			memo = bound
 		}
+		s.touchSubDocParentBestEffort(ctx, memo)
 	}
 
 	// Best-effort: index this memo's outbound links so the reverse-link index
@@ -890,6 +891,11 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 		}
 	}
 
+	// Editing a sub-document is an edit to the document it belongs to, so the
+	// parent's updated_ts moves with it — both for the freshness tint and so an
+	// incremental mirror can see the change at all.
+	s.touchSubDocParentBestEffort(ctx, memo)
+
 	// P0: content changed, so this memo's outbound reverse-link index entries
 	// are stale — full reparse and overwrite. Best-effort by design.
 	if contentUpdated {
@@ -1087,6 +1093,7 @@ func (s *APIV1Service) DeleteMemo(ctx context.Context, request *v1pb.DeleteMemoR
 	if err = s.Store.DeleteMemo(ctx, &store.DeleteMemo{ID: memo.ID}); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete memo")
 	}
+	s.touchSubDocParentBestEffort(ctx, memo)
 
 	// Broadcast live refresh event.
 	s.SSEHub.Broadcast(&SSEEvent{

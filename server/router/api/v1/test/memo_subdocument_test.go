@@ -3,11 +3,13 @@ package test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	apiv1 "github.com/usememos/memos/proto/gen/api/v1"
 	v1 "github.com/usememos/memos/server/router/api/v1"
@@ -346,4 +348,68 @@ func TestSubDocumentInternalReferencesDoNotBlockArchive(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Error(t, archive(parent.Name), "an outside reference must still block archiving")
+}
+
+// A sub-document write moves its parent's updated_ts. That is the product rule
+// ("a sub-document is part of the document") made mechanical, and it is what
+// lets an incremental mirror — memogit selects on updated_ts — notice a
+// sub-document that changed while its parent sat still.
+func TestSubDocumentWriteTouchesParent(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestService(t)
+	defer ts.Cleanup()
+
+	userCtx, _, parent := subDocTestFixture(ctx, t, ts)
+	parentUID := memoUIDFromName(t, parent.Name)
+
+	// Park the parent's updated_ts in the past before each act, so the assertion
+	// does not depend on two writes landing in different whole seconds.
+	backdate := func() int64 {
+		t.Helper()
+		past := time.Now().Add(-time.Hour)
+		updated, err := ts.Service.UpdateMemo(userCtx, &apiv1.UpdateMemoRequest{
+			Memo:       &apiv1.Memo{Name: parent.Name, UpdateTime: timestamppb.New(past)},
+			UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"update_time"}},
+		})
+		require.NoError(t, err)
+		return updated.UpdateTime.AsTime().Unix()
+	}
+	parentUpdatedTs := func() int64 {
+		t.Helper()
+		memo, err := ts.Service.GetMemo(userCtx, &apiv1.GetMemoRequest{Name: parent.Name})
+		require.NoError(t, err)
+		return memo.UpdateTime.AsTime().Unix()
+	}
+
+	// Creating one.
+	before := backdate()
+	subDoc, err := ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
+		Memo: &apiv1.Memo{FolderPath: v1.SubDocFolderPath(parentUID), Title: "Appendix", Content: "x"},
+	})
+	require.NoError(t, err)
+	require.Greater(t, parentUpdatedTs(), before, "creating a sub-document updates its parent")
+
+	// Editing one.
+	before = backdate()
+	_, err = ts.Service.UpdateMemo(userCtx, &apiv1.UpdateMemoRequest{
+		Memo:       &apiv1.Memo{Name: subDoc.Name, Content: "rewritten"},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"content"}},
+	})
+	require.NoError(t, err)
+	require.Greater(t, parentUpdatedTs(), before, "editing a sub-document updates its parent")
+
+	// A comment must NOT: it is a discussion about the document, not content of it.
+	before = backdate()
+	_, err = ts.Service.CreateMemoComment(userCtx, &apiv1.CreateMemoCommentRequest{
+		Name:    parent.Name,
+		Comment: &apiv1.Memo{Content: "a remark"},
+	})
+	require.NoError(t, err)
+	require.Equal(t, before, parentUpdatedTs(), "a comment leaves its parent's timestamp alone")
+
+	// Removing one.
+	before = backdate()
+	_, err = ts.Service.DeleteMemo(userCtx, &apiv1.DeleteMemoRequest{Name: subDoc.Name})
+	require.NoError(t, err)
+	require.Greater(t, parentUpdatedTs(), before, "removing a sub-document updates its parent")
 }

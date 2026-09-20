@@ -2,7 +2,9 @@ package v1
 
 import (
 	"context"
+	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -214,4 +216,42 @@ func (s *APIV1Service) cascadeSubDocState(ctx context.Context, memo *store.Memo)
 		}
 	}
 	return nil
+}
+
+// touchSubDocParent bumps the parent's updated_ts when one of its sub-documents
+// is written.
+//
+// This is the product rule made mechanical: a sub-document is part of the
+// document it hangs off, so that document genuinely did change when its
+// sub-document changed, and its "last updated" should say so — in the workspace
+// tree's freshness tint as much as anywhere else.
+//
+// It is also what keeps an incremental mirror correct. memogit selects on
+// updated_ts and then walks each changed document's sub-documents; a
+// sub-document edited on the server while its parent sat still would otherwise
+// be invisible to every later sync, and the local copy would stay stale forever
+// with nothing reporting it.
+//
+// Best-effort on purpose: failing to bump a timestamp must not fail the write
+// that succeeded. The cost of a miss is one stale mirror entry until the next
+// write, not lost content.
+func (s *APIV1Service) touchSubDocParentBestEffort(ctx context.Context, memo *store.Memo) {
+	parentUID, ok := ParentUIDFromSubDocFolderPath(memo.FolderPath)
+	if !ok {
+		return
+	}
+	parent, err := s.Store.GetMemo(ctx, &store.FindMemo{UID: &parentUID})
+	if err != nil || parent == nil {
+		return
+	}
+	now := time.Now().Unix()
+	if err := s.Store.UpdateMemo(ctx, &store.UpdateMemo{
+		ID:        parent.ID,
+		UpdatedTs: &now,
+		// Neither the parent's title nor its content changed, so this must not
+		// re-queue it for embedding.
+		SkipReindex: true,
+	}); err != nil {
+		slog.Warn("failed to touch sub-document parent", slog.Any("err", err))
+	}
 }
