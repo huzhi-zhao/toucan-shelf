@@ -816,5 +816,15 @@
     "select-visibility": "瀏覽權限",
     "tags": "標籤",
     "upload-attachment": "上傳附件"
+  },
+  "subdoc": {
+    "references": "References",
+    "new-sub-document": "新增子文件",
+    "upload-markdown": "上傳 Markdown",
+    "untitled": "未命名",
+    "title-placeholder": "子文件標題",
+    "duplicate-title": "這篇文件底下已經有同名子文件",
+    "open": "開啟子文件",
+    "back-to-parent": "返回主文件"
   }
 }

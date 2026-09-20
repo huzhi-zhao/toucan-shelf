@@ -31,7 +31,7 @@ import MemoContent from "@/components/MemoContent";
 import { InlineAttachmentProvider } from "@/components/MemoContent/InlineAttachmentContext";
 import MemoEditor from "@/components/MemoEditor";
 import type { EditorController } from "@/components/MemoEditor/types/editorController";
-import { AttachmentListView } from "@/components/MemoMetadata";
+import { AttachmentListView, REFERENCES_ANCHOR_ID, ReferenceActions, ReferenceListView } from "@/components/MemoMetadata";
 import { MemoViewContext, type MemoViewContextValue } from "@/components/MemoView/MemoViewContext";
 import { PdfDocumentView } from "@/components/PdfViewer/PdfDocumentView";
 import { Button } from "@/components/ui/button";
@@ -73,6 +73,7 @@ import { DEFAULT_MARK_COLOR } from "@/utils/markColors";
 import { attachmentUIDsOf, hashMemoState } from "@/utils/memoState";
 import { useReadingDensity } from "@/utils/readingDensity";
 import { getDocScrollPosition, restoreScrollTopWhenReady, saveDocScrollPosition } from "@/utils/scrollPositionCache";
+import { splitChildMemos } from "@/utils/subDoc";
 import DocumentOutline, { ATTACHMENTS_ANCHOR_ID } from "./DocumentOutline";
 
 // How long after a save a drift report is still treated as "caused by that save", and so
@@ -173,7 +174,12 @@ const DocumentView = ({
   // Comments carrying a pdf/epub annotation are anchored to an *attachment* (managed by the
   // PDF/EPUB reader's own annotation sidebar), not to this document's body — so keep them out
   // of the doc comment panel. Only doc-body comments (plain or heading-anchored) belong here.
-  const docComments = useMemo(() => comments.filter((c) => !c.pdfAnnotation && !c.epubAnnotation), [comments]);
+  // A document's children are its comments AND its sub-documents — one relation,
+  // one list call. Splitting them here is what keeps a long sub-document from
+  // being rendered as a comment card, which is the noise the feature exists to
+  // remove. See utils/subDoc.ts.
+  const { comments: childComments, subDocs } = useMemo(() => splitChildMemos(comments), [comments]);
+  const docComments = useMemo(() => childComments.filter((c) => !c.pdfAnnotation && !c.epubAnnotation), [childComments]);
   // Every doc comment that carries a text quote also draws as an in-text mark. Comments anchored
   // only to a heading (or to nothing) contribute no mark and just live in the sidebar.
   const marks = useMemo<DocMark[]>(
@@ -680,6 +686,19 @@ const DocumentView = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, scrollCacheKey]);
 
+  // Sub-documents sit above the attachment list, in the same shape: attachments are
+  // the part of a document's metadata that actually gets used, so that is where
+  // content-belonging-to-this-document goes too.
+  const referencesSection = supportsComments && (
+    <div id={REFERENCES_ANCHOR_ID} className="relative z-10 mt-6 border-t border-border pt-4">
+      <ReferenceListView
+        subDocs={subDocs}
+        parentPage="/"
+        actions={<ReferenceActions parentMemoName={memo.name} onCreated={() => refetchComments()} />}
+      />
+    </div>
+  );
+
   // The in-text marking apparatus: the overlay plus the two floating toolbars (one for a fresh
   // selection, one for an existing mark). Rendered as the last child of whichever positioned
   // element wraps the rendered document — a markdown document, or a VIEW document's blocks.
@@ -1022,6 +1041,7 @@ const DocumentView = ({
                     readonly={false}
                   />
                 </div>
+                {referencesSection}
                 {remainingAttachments.length > 0 && (
                   <div id={ATTACHMENTS_ANCHOR_ID} className="relative z-10 mt-6 border-t border-border pt-4">
                     <AttachmentListView attachments={remainingAttachments} />
@@ -1070,6 +1090,7 @@ const DocumentView = ({
                   </InlineAttachmentProvider>
                 </MemoViewContext.Provider>
               </div>
+              {referencesSection}
               {remainingAttachments.length > 0 && (
                 <div id={ATTACHMENTS_ANCHOR_ID} className="relative z-10 mt-6 border-t border-border pt-4">
                   <AttachmentListView attachments={remainingAttachments} />

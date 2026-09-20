@@ -1,6 +1,6 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 import { ArrowUpLeftFromCircleIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo as useReactMemo, useRef, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import MemoCommentSection from "@/components/MemoCommentSection";
 import { extractWorkspaceQualifiedTitles } from "@/components/MemoContent/crossWorkspace";
@@ -14,6 +14,7 @@ import { EmbedAncestryProvider } from "@/components/MemoContent/EmbedAncestryCon
 import { MentionResolutionProvider } from "@/components/MemoContent/MentionResolutionContext";
 import { MemoDetailSidebar, MemoDetailSidebarDrawer } from "@/components/MemoDetailSidebar";
 import type { EditorController } from "@/components/MemoEditor/types/editorController";
+import { ReferenceListView } from "@/components/MemoMetadata";
 import MemoView from "@/components/MemoView";
 import MobileHeader from "@/components/MobileHeader";
 import { memoNamePrefix } from "@/helpers/resource-names";
@@ -27,6 +28,7 @@ import { useWorkspaceTree } from "@/hooks/useWorkspaceQueries";
 import { cn } from "@/lib/utils";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 import { resolveHeadingTarget } from "@/utils/heading-anchor";
+import { splitChildMemos } from "@/utils/subDoc";
 
 const MemoDetail = () => {
   const md = useMediaQuery("md");
@@ -79,13 +81,17 @@ const MemoDetail = () => {
   });
 
   const {
-    data: comments = [],
+    data: children = [],
     fetchNextPage: fetchNextComments,
     hasNextPage: hasNextComments,
     isFetchingNextPage: isFetchingNextComments,
   } = useInfiniteMemoComments(memoName, {
     enabled: !!memo,
   });
+  // Sub-documents arrive in the same list as comments (one relation underneath),
+  // and must not be rendered as comment cards — see utils/subDoc.ts. They are
+  // reachable from the document's References section instead.
+  const { comments, subDocs } = useReactMemo(() => splitChildMemos(children), [children]);
 
   // Scroll to the hash target once it's in the DOM. The effect re-runs as the memo loads (footnote
   // anchors) and as comments arrive (comment anchors), since the target may render in either; the
@@ -135,7 +141,7 @@ const MemoDetail = () => {
                   viewTransition
                 >
                   <ArrowUpLeftFromCircleIcon className="w-4 h-auto shrink-0 opacity-60 mr-2" />
-                  <span className="truncate">{parentMemo.content}</span>
+                  <span className="truncate">{parentMemo.title || parentMemo.content}</span>
                 </Link>
               </div>
             )}
@@ -176,6 +182,9 @@ const MemoDetail = () => {
                 />
               </EmbedAncestryProvider>
             </DocumentLinkProvider>
+            {/* The document's sub-documents, above its comments — the same order
+                the Notebook preview puts them in, so the two surfaces read alike. */}
+            <ReferenceListView className="mt-4" subDocs={subDocs} parentPage={locationState?.from} />
             <MemoCommentSection
               memo={displayMemo}
               comments={comments}
