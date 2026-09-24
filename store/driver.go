@@ -97,6 +97,7 @@ type Driver interface {
 	DeleteWorkspace(ctx context.Context, delete *DeleteWorkspace) error
 	CreateWorkspaceFolder(ctx context.Context, create *WorkspaceFolder) (*WorkspaceFolder, error)
 	ListWorkspaceFolders(ctx context.Context, find *FindWorkspaceFolder) ([]*WorkspaceFolder, error)
+	UpsertWorkspaceFolderSort(ctx context.Context, upsert *UpsertWorkspaceFolderSort) (*WorkspaceFolder, error)
 	DeleteWorkspaceFolder(ctx context.Context, delete *DeleteWorkspaceFolder) error
 	RenameWorkspaceFolder(ctx context.Context, workspaceID int32, oldPath, newPath string) error
 

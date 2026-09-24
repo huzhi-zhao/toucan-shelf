@@ -3769,6 +3769,40 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/v1/workspaces/{workspace}/folders:updateSort:
+        post:
+            tags:
+                - WorkspaceService
+            description: |-
+                UpdateWorkspaceFolderSort sets (or clears) one folder's own document-sort
+                 override. Clearing it puts the folder back to inheriting.
+            operationId: WorkspaceService_UpdateWorkspaceFolderSort
+            parameters:
+                - name: workspace
+                  in: path
+                  description: The workspace id.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/UpdateWorkspaceFolderSortRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/WorkspaceFolder'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/workspaces/{workspace}/grants:
         get:
             tags:
@@ -6690,6 +6724,24 @@ components:
                         Published pages on this site that linked to the page just taken down. Their
                          snapshots keep the now-dead link until they are republished, which is the
                          price the snapshot model pays.
+        UpdateWorkspaceFolderSortRequest:
+            required:
+                - parent
+                - path
+            type: object
+            properties:
+                parent:
+                    type: string
+                    description: 'Required. Format: workspaces/{workspace}'
+                path:
+                    type: string
+                    description: Required. The folder path whose sort override is being set.
+                sortField:
+                    type: string
+                    description: The sort field to pin this folder to, or empty to go back to inheriting.
+                sortOrder:
+                    type: string
+                    description: The sort direction to pin this folder to, or empty to go back to inheriting.
         UpsertMemoReactionRequest:
             required:
                 - name
@@ -7168,6 +7220,18 @@ components:
                 path:
                     type: string
                     description: Required. The slash-separated path of the folder, relative to the workspace root.
+                sortField:
+                    type: string
+                    description: |-
+                        This folder's own sort override, governing how its direct children are
+                         ordered. Empty means "inherit": the nearest ancestor folder that sets one
+                         wins, and failing that the workspace's own setting. One of "createTime",
+                         "updateTime", "alphabetical".
+                sortOrder:
+                    type: string
+                    description: |-
+                        This folder's own sort direction override. Empty means inherit, exactly as
+                         sort_field does. One of "asc", "desc".
         WorkspaceGrant:
             required:
                 - user
@@ -7268,6 +7332,16 @@ components:
                     type: string
                     description: Set only when type == DOCUMENT.
                     format: date-time
+                sortField:
+                    type: string
+                    description: |-
+                        Set only when type == FOLDER: this folder's OWN sort override, empty when it
+                         inherits. Deliberately not the resolved value — a client that only saw the
+                         resolved one could not tell an inherited setting from one set here, and so
+                         could not offer "back to inherited".
+                sortOrder:
+                    type: string
+                    description: Set only when type == FOLDER. Empty means inherit, as sort_field does.
             description: A single node (folder or document) in a workspace's hierarchy.
 tags:
     - name: AIService

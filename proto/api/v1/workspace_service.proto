@@ -67,6 +67,14 @@ service WorkspaceService {
       body: "folder"
     };
   }
+  // UpdateWorkspaceFolderSort sets (or clears) one folder's own document-sort
+  // override. Clearing it puts the folder back to inheriting.
+  rpc UpdateWorkspaceFolderSort(UpdateWorkspaceFolderSortRequest) returns (WorkspaceFolder) {
+    option (google.api.http) = {
+      post: "/api/v1/{parent=workspaces/*}/folders:updateSort"
+      body: "*"
+    };
+  }
   // RenameWorkspaceFolder renames a folder and moves all memos/subfolders under it.
   rpc RenameWorkspaceFolder(RenameWorkspaceFolderRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
@@ -174,6 +182,16 @@ message WorkspaceFolder {
 
   // Required. The slash-separated path of the folder, relative to the workspace root.
   string path = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // This folder's own sort override, governing how its direct children are
+  // ordered. Empty means "inherit": the nearest ancestor folder that sets one
+  // wins, and failing that the workspace's own setting. One of "createTime",
+  // "updateTime", "alphabetical".
+  string sort_field = 3;
+
+  // This folder's own sort direction override. Empty means inherit, exactly as
+  // sort_field does. One of "asc", "desc".
+  string sort_order = 4;
 }
 
 // A single node (folder or document) in a workspace's hierarchy.
@@ -208,6 +226,15 @@ message WorkspaceTreeNode {
 
   // Set only when type == DOCUMENT.
   google.protobuf.Timestamp update_time = 9;
+
+  // Set only when type == FOLDER: this folder's OWN sort override, empty when it
+  // inherits. Deliberately not the resolved value — a client that only saw the
+  // resolved one could not tell an inherited setting from one set here, and so
+  // could not offer "back to inherited".
+  string sort_field = 10;
+
+  // Set only when type == FOLDER. Empty means inherit, as sort_field does.
+  string sort_order = 11;
 }
 
 message CreateWorkspaceRequest {
@@ -299,6 +326,20 @@ message CreateWorkspaceFolderRequest {
 
   // Required. The folder to create.
   WorkspaceFolder folder = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UpdateWorkspaceFolderSortRequest {
+  // Required. Format: workspaces/{workspace}
+  string parent = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Required. The folder path whose sort override is being set.
+  string path = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The sort field to pin this folder to, or empty to go back to inheriting.
+  string sort_field = 3;
+
+  // The sort direction to pin this folder to, or empty to go back to inheriting.
+  string sort_order = 4;
 }
 
 message RenameWorkspaceFolderRequest {
