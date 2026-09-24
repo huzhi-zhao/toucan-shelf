@@ -1338,6 +1338,7 @@
     "sort-update-time": "Update time",
     "sort-alphabetical": "Alphabetical",
     "sort-folders-first": "Folders first",
+    "sort-inherit-value": "Inherit ({{value}})",
     "change-cover": "Change cover",
     "set-cover-color": "Set cover color",
     "set-cover-image": "Set cover image",

@@ -33,6 +33,9 @@ import { isLayoutDocTypeName } from "@/utils/docType";
 import { useTranslate } from "@/utils/i18n";
 import type { FreshnessMap } from "./notebookFreshness";
 import { freshnessClass, freshnessKey } from "./notebookFreshness";
+import type { NotebookSortField, NotebookSortOrder } from "./notebookSort";
+import { resolveSortField, resolveSortOrder } from "./notebookSort";
+import { FolderSortMenuItems } from "./WorkspaceSortMenu";
 
 interface Props {
   node: WorkspaceTreeNode;
@@ -44,6 +47,11 @@ interface Props {
   selectedMemo?: string;
   // Recency tints keyed by node; absent when the workspace has nothing recent to highlight.
   freshness?: FreshnessMap;
+  // What this node's level sorts by absent an override: the workspace's setting at
+  // the root, and the enclosing folder's resolved rule further down. The folder
+  // sort menu needs it to name what "inherit" currently resolves to.
+  inheritedSortField: NotebookSortField;
+  inheritedSortOrder: NotebookSortOrder;
   onSelectDocument: (memoName: string) => void;
   onOpenDocumentInNewTab?: (memoName: string) => void;
   onMoveDocument?: (memoName: string) => void;
@@ -77,6 +85,8 @@ const FileTreeNode = ({
   workspaceTitle,
   selectedMemo,
   freshness,
+  inheritedSortField,
+  inheritedSortOrder,
   onSelectDocument,
   onOpenDocumentInNewTab,
   onMoveDocument,
@@ -98,6 +108,10 @@ const FileTreeNode = ({
     () => isFolder && !!selectedMemo && containsSelectedMemo(node, selectedMemo),
     [isFolder, node, selectedMemo],
   );
+  // This folder's resolved rule: its own override if it has one, else what it
+  // inherits. It governs the children, so it is also what they inherit in turn.
+  const childSortField = resolveSortField(node.sortField, inheritedSortField);
+  const childSortOrder = resolveSortOrder(node.sortOrder, inheritedSortOrder);
   const [manualExpanded, setManualExpanded] = useState<boolean | null>(null);
   // Drop any manual expand/collapse override whenever the opened document changes so the
   // tree re-syncs to the selection: expand exactly the ancestors of the opened doc and
@@ -277,6 +291,23 @@ const FileTreeNode = ({
                   <DropdownMenuItem onClick={() => onRenameFolder(node.path)}>{t("common.rename")}</DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
+              {/* Sorting is per folder; without a workspace to address it against there
+                  is nothing to save it to, so the submenu is simply absent. */}
+              {workspaceName && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>{t("notebook.sort-by")}</DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <FolderSortMenuItems
+                      workspaceName={workspaceName}
+                      path={node.path}
+                      sortField={node.sortField}
+                      sortOrder={node.sortOrder}
+                      inheritedField={inheritedSortField}
+                      inheritedOrder={inheritedSortOrder}
+                    />
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )}
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>{t("common.copy")}</DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
@@ -331,6 +362,8 @@ const FileTreeNode = ({
               workspaceTitle={workspaceTitle}
               selectedMemo={selectedMemo}
               freshness={freshness}
+              inheritedSortField={childSortField}
+              inheritedSortOrder={childSortOrder}
               onSelectDocument={onSelectDocument}
               onOpenDocumentInNewTab={onOpenDocumentInNewTab}
               onMoveDocument={onMoveDocument}

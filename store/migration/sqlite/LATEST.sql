@@ -120,6 +120,10 @@ CREATE TABLE workspace_folder (
   workspace_id INTEGER NOT NULL,
   path TEXT NOT NULL,
   created_ts BIGINT NOT NULL DEFAULT (strftime('%s', 'now')),
+  -- Per-folder document-sort override. '' means inherit: the nearest ancestor
+  -- folder that sets one wins, falling back to workspace.sort_field/sort_order.
+  sort_field TEXT NOT NULL DEFAULT '',
+  sort_order TEXT NOT NULL DEFAULT '',
   UNIQUE(workspace_id, path)
 );
 

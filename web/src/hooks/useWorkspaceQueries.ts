@@ -150,6 +150,23 @@ export function useCreateWorkspaceFolder() {
   });
 }
 
+/**
+ * Pin one folder's document sort, or clear it back to inheriting by passing empty
+ * strings. Only the tree is invalidated: the workspace row itself is untouched.
+ */
+export function useUpdateWorkspaceFolderSort() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ parent, path, sortField, sortOrder }: { parent: string; path: string; sortField: string; sortOrder: string }) => {
+      return workspaceServiceClient.updateWorkspaceFolderSort({ parent, path, sortField, sortOrder });
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.tree(variables.parent, false) });
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.tree(variables.parent, true) });
+    },
+  });
+}
+
 export function useRenameWorkspaceFolder() {
   const queryClient = useQueryClient();
   return useMutation({

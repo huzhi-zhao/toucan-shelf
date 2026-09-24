@@ -28,6 +28,7 @@ const (
 	WorkspaceService_GetWorkspaceTree_FullMethodName              = "/memos.api.v1.WorkspaceService/GetWorkspaceTree"
 	WorkspaceService_BatchGetWorkspaceTreesByTitle_FullMethodName = "/memos.api.v1.WorkspaceService/BatchGetWorkspaceTreesByTitle"
 	WorkspaceService_CreateWorkspaceFolder_FullMethodName         = "/memos.api.v1.WorkspaceService/CreateWorkspaceFolder"
+	WorkspaceService_UpdateWorkspaceFolderSort_FullMethodName     = "/memos.api.v1.WorkspaceService/UpdateWorkspaceFolderSort"
 	WorkspaceService_RenameWorkspaceFolder_FullMethodName         = "/memos.api.v1.WorkspaceService/RenameWorkspaceFolder"
 	WorkspaceService_MoveWorkspaceFolder_FullMethodName           = "/memos.api.v1.WorkspaceService/MoveWorkspaceFolder"
 	WorkspaceService_DeleteWorkspaceFolder_FullMethodName         = "/memos.api.v1.WorkspaceService/DeleteWorkspaceFolder"
@@ -66,6 +67,9 @@ type WorkspaceServiceClient interface {
 	BatchGetWorkspaceTreesByTitle(ctx context.Context, in *BatchGetWorkspaceTreesByTitleRequest, opts ...grpc.CallOption) (*BatchGetWorkspaceTreesByTitleResponse, error)
 	// CreateWorkspaceFolder creates a (possibly empty) folder within a workspace.
 	CreateWorkspaceFolder(ctx context.Context, in *CreateWorkspaceFolderRequest, opts ...grpc.CallOption) (*WorkspaceFolder, error)
+	// UpdateWorkspaceFolderSort sets (or clears) one folder's own document-sort
+	// override. Clearing it puts the folder back to inheriting.
+	UpdateWorkspaceFolderSort(ctx context.Context, in *UpdateWorkspaceFolderSortRequest, opts ...grpc.CallOption) (*WorkspaceFolder, error)
 	// RenameWorkspaceFolder renames a folder and moves all memos/subfolders under it.
 	RenameWorkspaceFolder(ctx context.Context, in *RenameWorkspaceFolderRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// MoveWorkspaceFolder moves a folder (and everything under it) into another
@@ -171,6 +175,16 @@ func (c *workspaceServiceClient) CreateWorkspaceFolder(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *workspaceServiceClient) UpdateWorkspaceFolderSort(ctx context.Context, in *UpdateWorkspaceFolderSortRequest, opts ...grpc.CallOption) (*WorkspaceFolder, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WorkspaceFolder)
+	err := c.cc.Invoke(ctx, WorkspaceService_UpdateWorkspaceFolderSort_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *workspaceServiceClient) RenameWorkspaceFolder(ctx context.Context, in *RenameWorkspaceFolderRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -270,6 +284,9 @@ type WorkspaceServiceServer interface {
 	BatchGetWorkspaceTreesByTitle(context.Context, *BatchGetWorkspaceTreesByTitleRequest) (*BatchGetWorkspaceTreesByTitleResponse, error)
 	// CreateWorkspaceFolder creates a (possibly empty) folder within a workspace.
 	CreateWorkspaceFolder(context.Context, *CreateWorkspaceFolderRequest) (*WorkspaceFolder, error)
+	// UpdateWorkspaceFolderSort sets (or clears) one folder's own document-sort
+	// override. Clearing it puts the folder back to inheriting.
+	UpdateWorkspaceFolderSort(context.Context, *UpdateWorkspaceFolderSortRequest) (*WorkspaceFolder, error)
 	// RenameWorkspaceFolder renames a folder and moves all memos/subfolders under it.
 	RenameWorkspaceFolder(context.Context, *RenameWorkspaceFolderRequest) (*emptypb.Empty, error)
 	// MoveWorkspaceFolder moves a folder (and everything under it) into another
@@ -318,6 +335,9 @@ func (UnimplementedWorkspaceServiceServer) BatchGetWorkspaceTreesByTitle(context
 }
 func (UnimplementedWorkspaceServiceServer) CreateWorkspaceFolder(context.Context, *CreateWorkspaceFolderRequest) (*WorkspaceFolder, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateWorkspaceFolder not implemented")
+}
+func (UnimplementedWorkspaceServiceServer) UpdateWorkspaceFolderSort(context.Context, *UpdateWorkspaceFolderSortRequest) (*WorkspaceFolder, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateWorkspaceFolderSort not implemented")
 }
 func (UnimplementedWorkspaceServiceServer) RenameWorkspaceFolder(context.Context, *RenameWorkspaceFolderRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method RenameWorkspaceFolder not implemented")
@@ -505,6 +525,24 @@ func _WorkspaceService_CreateWorkspaceFolder_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkspaceService_UpdateWorkspaceFolderSort_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateWorkspaceFolderSortRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkspaceServiceServer).UpdateWorkspaceFolderSort(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkspaceService_UpdateWorkspaceFolderSort_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkspaceServiceServer).UpdateWorkspaceFolderSort(ctx, req.(*UpdateWorkspaceFolderSortRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _WorkspaceService_RenameWorkspaceFolder_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RenameWorkspaceFolderRequest)
 	if err := dec(in); err != nil {
@@ -669,6 +707,10 @@ var WorkspaceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateWorkspaceFolder",
 			Handler:    _WorkspaceService_CreateWorkspaceFolder_Handler,
+		},
+		{
+			MethodName: "UpdateWorkspaceFolderSort",
+			Handler:    _WorkspaceService_UpdateWorkspaceFolderSort_Handler,
 		},
 		{
 			MethodName: "RenameWorkspaceFolder",
