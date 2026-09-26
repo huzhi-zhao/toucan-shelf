@@ -45,3 +45,7 @@ web/coverage/
 # design canvas: generated payload (~2.5MB) and the logo copy the seeder needs
 /.poster/toucanshelf-poster.html
 /.poster/logo.svg
+
+# Vite / Vitest caches (accidentally committed once from the repo root).
+.vite/
+node_modules/
