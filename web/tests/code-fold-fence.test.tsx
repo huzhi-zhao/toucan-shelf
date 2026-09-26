@@ -64,3 +64,21 @@ describe("code fence fold token → data-fold", () => {
     expect(props["data-fold"]).toBeUndefined();
   });
 });
+
+describe("code fence nocopy token → data-nocopy", () => {
+  it("survives rehype-raw and rehype-sanitize", () => {
+    const props = renderCodeProps("```text nocopy\nsecret\n```\n");
+    expect(props["data-nocopy"]).toBe("true");
+    expect(props["data-fold"]).toBeUndefined();
+  });
+
+  it("combines with fold", () => {
+    const props = renderCodeProps("```text nocopy fold=open\nsecret\n```\n");
+    expect(props["data-nocopy"]).toBe("true");
+    expect(props["data-fold"]).toBe("open");
+  });
+
+  it("does not match a token that merely starts with nocopy", () => {
+    expect(renderCodeProps("```text nocopying\nx\n```\n")["data-nocopy"]).toBeUndefined();
+  });
+});

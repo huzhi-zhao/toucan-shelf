@@ -26,6 +26,27 @@ function compareNodes(a: WorkspaceTreeNode, b: WorkspaceTreeNode, field: Noteboo
   return aSeconds - bSeconds;
 }
 
+/**
+ * Resolve one folder's own override against what it would otherwise inherit.
+ * An empty override means "inherit", and so does an unrecognized one: falling
+ * back to the global default there would silently break the inheritance chain
+ * for every folder below.
+ */
+export function resolveSortField(own: string | undefined, inherited: NotebookSortField): NotebookSortField {
+  return own === "createTime" || own === "updateTime" || own === "alphabetical" ? own : inherited;
+}
+
+export function resolveSortOrder(own: string | undefined, inherited: NotebookSortOrder): NotebookSortOrder {
+  return own === "asc" || own === "desc" ? own : inherited;
+}
+
+/**
+ * Sort a level of the tree, then each folder's contents under that folder's own
+ * rule. `field`/`order` are what this level inherits — the workspace's setting at
+ * the root, and the resolved rule of the enclosing folder further down. A folder's
+ * override governs the documents *inside* it, not where the folder itself lands
+ * among its siblings, which is the enclosing level's business.
+ */
 export function sortTree(
   nodes: WorkspaceTreeNode[],
   field: NotebookSortField,
@@ -43,9 +64,11 @@ export function sortTree(
     const result = compareNodes(a, b, field);
     return order === "asc" ? result : -result;
   });
-  return sorted.map((node) =>
-    node.type === WorkspaceTreeNode_NodeType.FOLDER && node.children.length > 0
-      ? { ...node, children: sortTree(node.children, field, order, foldersFirst) }
-      : node,
-  );
+  return sorted.map((node) => {
+    if (node.type !== WorkspaceTreeNode_NodeType.FOLDER || node.children.length === 0) return node;
+    return {
+      ...node,
+      children: sortTree(node.children, resolveSortField(node.sortField, field), resolveSortOrder(node.sortOrder, order), foldersFirst),
+    };
+  });
 }

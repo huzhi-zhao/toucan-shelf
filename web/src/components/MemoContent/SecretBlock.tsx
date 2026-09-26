@@ -1,12 +1,4 @@
-import {
-  CheckIcon,
-  CopyIcon,
-  LoaderCircleIcon,
-  LockIcon,
-  LockOpenIcon,
-  PencilIcon,
-  TriangleAlertIcon,
-} from "lucide-react";
+import { CheckIcon, CopyIcon, LoaderCircleIcon, LockIcon, LockOpenIcon, PencilIcon, TriangleAlertIcon } from "lucide-react";
 import { createContext, type FormEvent, useContext, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";

@@ -1,7 +1,12 @@
 import { render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { TILE_SPRITES } from "@/components/Placeholder/tileSprites";
 import About from "@/pages/About";
+
+// The page title depends on the app-level InstanceProvider, which is outside
+// this component's rendered product story.
+vi.mock("@/hooks/usePageTitle", () => ({ default: () => {} }));
+vi.mock("@/utils/i18n", () => ({ useTranslate: () => () => "About" }));
 
 describe("<About>", () => {
   afterEach(() => {

@@ -17,11 +17,7 @@ import { cn } from "@/lib/utils";
 import { Visibility } from "@/types/proto/api/v1/memo_service_pb";
 import { getAttachmentUrl } from "@/utils/attachment";
 import { useTranslate } from "@/utils/i18n";
-import {
-  getDocScrollPosition,
-  restoreScrollTopWhenReady,
-  saveDocScrollPosition,
-} from "@/utils/scrollPositionCache";
+import { getDocScrollPosition, restoreScrollTopWhenReady, saveDocScrollPosition } from "@/utils/scrollPositionCache";
 
 // Header hides once the user has scrolled down past this many px from their last
 // direction change, and reappears as soon as they scroll back up.
@@ -39,10 +35,7 @@ const AttachmentPreview = () => {
   const t = useTranslate();
   const params = useParams();
   const [toolbarSlot, setToolbarSlot] = useState<HTMLElement | null>(null);
-  const toolbarSlotRef = useCallback(
-    (node: HTMLDivElement | null) => setToolbarSlot(node),
-    [],
-  );
+  const toolbarSlotRef = useCallback((node: HTMLDivElement | null) => setToolbarSlot(node), []);
   const [textContent, setTextContent] = useState<string | null>(null);
   const [textError, setTextError] = useState(false);
   const [headerHidden, setHeaderHidden] = useState(false);
@@ -53,36 +46,23 @@ const AttachmentPreview = () => {
   const epubScrollerRef = useRef<HTMLElement | null>(null);
   const lastScrollTopRef = useRef(0);
   const hideAnchorRef = useRef(0);
-  const saveScrollTimeoutRef = useRef<
-    ReturnType<typeof setTimeout> | undefined
-  >(undefined);
+  const saveScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const name = params.uid ? `${attachmentNamePrefix}${params.uid}` : "";
-  const {
-    data: attachment,
-    isLoading,
-    error,
-  } = useAttachment(name, { enabled: !!name });
+  const { data: attachment, isLoading, error } = useAttachment(name, { enabled: !!name });
 
   const isHtml = attachment ? isHtmlAttachment(attachment) : false;
   const isPdf = attachment ? isPdfAttachment(attachment) : false;
   const isEpub = attachment ? isEpubAttachment(attachment) : false;
   // Markdown is fetched as raw text like HTML is, but rendered through the same MemoContent
   // pipeline the notebook document page uses, so a .md attachment reads exactly like a document.
-  const isMarkdown = attachment
-    ? !isHtml && !isPdf && !isEpub && isMarkdownAttachment(attachment)
-    : false;
-  const cachedPosition = attachment
-    ? getDocScrollPosition(attachment.name)
-    : undefined;
+  const isMarkdown = attachment ? !isHtml && !isPdf && !isEpub && isMarkdownAttachment(attachment) : false;
+  const cachedPosition = attachment ? getDocScrollPosition(attachment.name) : undefined;
 
   const isParentMemoQueryEnabled = !!attachment?.memo && isHtml;
-  const { data: parentMemo, isPending: isParentMemoPending } = useMemoQuery(
-    attachment?.memo ?? "",
-    {
-      enabled: isParentMemoQueryEnabled,
-    },
-  );
+  const { data: parentMemo, isPending: isParentMemoPending } = useMemoQuery(attachment?.memo ?? "", {
+    enabled: isParentMemoQueryEnabled,
+  });
   // Scripts only run for HTML attachments on memos that are still PRIVATE (creator-only).
   // Anything shared (PROTECTED/PUBLIC) stays script-free to prevent stored XSS from
   // reaching other viewers. See AttachmentPreview iframe below.
@@ -90,8 +70,7 @@ const AttachmentPreview = () => {
   // A sandboxed iframe locks in its permissions at srcDoc navigation time, so we must
   // know isPrivate *before* first render — otherwise a later attribute change can't
   // retroactively grant/revoke script execution. Wait for the visibility check to settle.
-  const isVisibilityResolved =
-    !isParentMemoQueryEnabled || !isParentMemoPending;
+  const isVisibilityResolved = !isParentMemoQueryEnabled || !isParentMemoPending;
 
   useEffect(() => {
     if (!attachment) {
@@ -148,10 +127,7 @@ const AttachmentPreview = () => {
 
     if (isPdf && attachment) {
       clearTimeout(saveScrollTimeoutRef.current);
-      saveScrollTimeoutRef.current = setTimeout(
-        () => saveDocScrollPosition(attachment.name, { scrollTop }),
-        300,
-      );
+      saveScrollTimeoutRef.current = setTimeout(() => saveDocScrollPosition(attachment.name, { scrollTop }), 300);
     }
   }, [isPdf, attachment, applyScrollDirection]);
 
@@ -178,12 +154,7 @@ const AttachmentPreview = () => {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      if (
-        target &&
-        (target.isContentEditable ||
-          /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
-      )
-        return;
+      if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
       if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
 
       const el = epubScrollerRef.current ?? scrollContainerRef.current;
@@ -201,11 +172,7 @@ const AttachmentPreview = () => {
   }, []);
 
   if (isLoading) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center text-sm text-muted-foreground">
-        {t("pdf.loading")}
-      </div>
-    );
+    return <div className="flex h-screen w-screen items-center justify-center text-sm text-muted-foreground">{t("pdf.loading")}</div>;
   }
 
   if (error || !attachment || (!isPdf && !isHtml && !isEpub && !isMarkdown)) {
@@ -227,23 +194,13 @@ const AttachmentPreview = () => {
             headerHidden ? "h-0 border-b-0" : "h-11 py-2",
           )}
         >
-          <span
-            className="truncate text-sm font-medium text-foreground"
-            title={attachment.filename}
-          >
+          <span className="truncate text-sm font-medium text-foreground" title={attachment.filename}>
             {attachment.filename}
           </span>
-          <div
-            ref={toolbarSlotRef}
-            className="flex shrink-0 items-center gap-1"
-          />
+          <div ref={toolbarSlotRef} className="flex shrink-0 items-center gap-1" />
         </div>
       )}
-      <div
-        ref={scrollContainerRef}
-        onScroll={handleScroll}
-        className="min-h-0 flex-1 overflow-y-auto"
-      >
+      <div ref={scrollContainerRef} onScroll={handleScroll} className="min-h-0 flex-1 overflow-y-auto">
         {isPdf && toolbarSlot && (
           <PdfDocumentView
             url={getAttachmentUrl(attachment)}
@@ -253,9 +210,7 @@ const AttachmentPreview = () => {
             attachmentName={attachment.name}
             filename={attachment.filename}
             initialPageNumber={cachedPosition?.page}
-            onPageNumberChange={(page) =>
-              saveDocScrollPosition(attachment.name, { page })
-            }
+            onPageNumberChange={(page) => saveDocScrollPosition(attachment.name, { page })}
           />
         )}
         {isEpub && toolbarSlot && (
@@ -268,9 +223,7 @@ const AttachmentPreview = () => {
             attachmentName={attachment.name}
             initialReaderSettings={attachment.readerSettings}
             initialCfi={cachedPosition?.cfi}
-            onLocationChange={(cfi) =>
-              saveDocScrollPosition(attachment.name, { cfi })
-            }
+            onLocationChange={(cfi) => saveDocScrollPosition(attachment.name, { cfi })}
             onScroll={(scrollTop, scroller) => {
               epubScrollerRef.current = scroller;
               applyScrollDirection(scrollTop);
@@ -279,13 +232,9 @@ const AttachmentPreview = () => {
         )}
         {isMarkdown &&
           (textError ? (
-            <div className="flex h-full items-center justify-center text-sm text-destructive">
-              {t("attachment-preview.unavailable")}
-            </div>
+            <div className="flex h-full items-center justify-center text-sm text-destructive">{t("attachment-preview.unavailable")}</div>
           ) : textContent === null ? (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              {t("pdf.loading")}
-            </div>
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">{t("pdf.loading")}</div>
           ) : (
             <div className="mx-auto w-full max-w-3xl px-6 py-4">
               <MemoContent content={textContent} density="reading" />
@@ -293,13 +242,9 @@ const AttachmentPreview = () => {
           ))}
         {isHtml &&
           (textError ? (
-            <div className="flex h-full items-center justify-center text-sm text-destructive">
-              {t("attachment-preview.unavailable")}
-            </div>
+            <div className="flex h-full items-center justify-center text-sm text-destructive">{t("attachment-preview.unavailable")}</div>
           ) : !isVisibilityResolved ? (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              {t("pdf.loading")}
-            </div>
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">{t("pdf.loading")}</div>
           ) : (
             <iframe
               key={isPrivate ? "private" : "shared"}

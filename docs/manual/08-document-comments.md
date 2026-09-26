@@ -120,12 +120,20 @@ Markdown or View document open, in **Preview** mode. (PDF documents use §8.3;
 HTML documents have no marks or comments: `const supportsComments = !isPdf &&
 !isHtml`.)
 
-> **Marking is a comments-panel activity.** Marks are always *drawn*, but
-> selecting text to mark, and clicking a mark to restyle it, **only work while
-> the comment panel is open**. With the panel closed the document is just a
-> document. Open the panel first (the 💬 speech-bubble icon in the title bar),
-> then mark. The panel shares the right-hand dock with the outline — opening one
-> closes the other.
+> **Making and restyling a mark is a comments-panel activity; reading one is
+> not.** Marks are always *drawn*. Selecting text to mark, and clicking a mark to
+> restyle it, **only work while the comment panel is open** — open it first (the
+> 💬 speech-bubble icon in the title bar), then mark.
+>
+> Clicking a mark with the panel **closed** opens the panel on that comment
+> (scrolled to its card, the mark brightened) *without* raising the mark toolbar.
+> Reading what a highlight says is a reader's act, and the toolbar's first-class
+> control is an eraser — not something a stray click should put under the cursor.
+> A **bare mark** carries no note and so has no card; clicking one still opens
+> the panel, onto a list that does not contain it.
+>
+> The panel shares the right-hand dock with the outline — opening one closes the
+> other.
 
 ### Making a mark or comment
 

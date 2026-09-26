@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import PageLoadingSkeleton from "@/components/PageLoadingSkeleton";
 import { useOpenLastDocument } from "@/hooks/useOpenLastDocument";
 
 /**
@@ -14,7 +15,7 @@ const RootRedirect = () => {
     void openLastDocument();
   }, [openLastDocument]);
 
-  return null;
+  return <PageLoadingSkeleton variant="landing" />;
 };
 
 export default RootRedirect;

@@ -4,6 +4,7 @@ import { getRequestToken, refreshAccessToken } from "@/connect";
 import { useAuth } from "@/contexts/AuthContext";
 import { memoKeys } from "@/hooks/useMemoQueries";
 import { userKeys } from "@/hooks/useUserQueries";
+import { workspaceKeys } from "@/hooks/useWorkspaceQueries";
 
 /**
  * Reconnection parameters for SSE connection.
@@ -132,6 +133,7 @@ export function useLiveMemoRefresh() {
       // Resync active collaborative views after reconnect because the server may have
       // dropped events while the client was disconnected or backpressured.
       queryClient.invalidateQueries({ queryKey: memoKeys.all, refetchType: "active" });
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.trees(), refetchType: "active" });
       queryClient.invalidateQueries({ queryKey: userKeys.stats(), refetchType: "active" });
     };
 
@@ -349,10 +351,11 @@ function logLinkRepairs(event: SSEChangeEvent) {
   console.groupEnd();
 }
 
-function handleSSEEvent(event: SSEChangeEvent, queryClient: ReturnType<typeof useQueryClient>) {
+export function handleSSEEvent(event: SSEChangeEvent, queryClient: ReturnType<typeof useQueryClient>) {
   switch (event.type) {
     case SSE_EVENT_TYPES.memoCreated:
       queryClient.invalidateQueries({ queryKey: memoKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.trees() });
       queryClient.invalidateQueries({ queryKey: userKeys.stats() });
       break;
 
@@ -360,6 +363,7 @@ function handleSSEEvent(event: SSEChangeEvent, queryClient: ReturnType<typeof us
       logLinkRepairs(event);
       queryClient.invalidateQueries({ queryKey: memoKeys.detail(event.name) });
       queryClient.invalidateQueries({ queryKey: memoKeys.lists() });
+      if (!event.parent) queryClient.invalidateQueries({ queryKey: workspaceKeys.trees() });
       if (event.parent) {
         queryClient.invalidateQueries({ queryKey: memoKeys.comments(event.parent) });
       }
@@ -368,6 +372,7 @@ function handleSSEEvent(event: SSEChangeEvent, queryClient: ReturnType<typeof us
     case SSE_EVENT_TYPES.memoDeleted:
       queryClient.removeQueries({ queryKey: memoKeys.detail(event.name) });
       queryClient.invalidateQueries({ queryKey: memoKeys.lists() });
+      if (!event.parent) queryClient.invalidateQueries({ queryKey: workspaceKeys.trees() });
       queryClient.invalidateQueries({ queryKey: userKeys.stats() });
       break;
 

@@ -118,13 +118,24 @@ memogit 推回来的是本地 git 里的人工内容。
 
 `agent_session_open`（`proto/store/memo.proto`）是 `MemoPayload` 里的一个
 `bool` 字段：当前内容是否由 agent（MCP 通道）写入，人类写入时清零。选择放进
-`MemoPayload`（JSON 列）而非新增数据库列，是因为三个数据库驱动都不需要写迁移，
+`MemoPayload`（JSON 列）而非新增数据库列，SQLite 无需写迁移，
 且该 bit 不参与任何查询过滤。零值 `false`（= 当前内容是人写的）恰好是安全
 方向：老文档没有该字段、字段刚上线、序列化丢失，都会退化成"下次 agent 写入时
 建一个快照"，最坏结果是多一个快照，不会丢数据。
 
 proto 里的注释明确写了"这不是锁，不得用于并发控制"，对应
 [ADR-0014](../../adr/0014-agent-session-open-not-a-lock.md)。
+
+编辑器提示另用 `agent_edit_acknowledged` 记录人是否已点开编辑器看过当前 MCP 修改。
+这个 bit 不参与基线快照判断；下一次内容由 MCP 写入时清零，使提示重新出现。
+
+### 编辑按钮的 MCP 修改标记
+
+当前内容经 MCP 修改、且人尚未点开编辑器时，文档的"编辑"按钮带 🌟；悬停
+tooltip 写"MCP 刚改过"。人点击按钮就视为已检查，标记立即消失，无需保存。
+`Memo.agent_edit_pending` 是公开 API 的只读状态，确认走 `AcknowledgeAgentEdit`
+单独入口；该操作不改变正文、更新时间或 `agent_session_open`。下一次 MCP 写入
+会清掉确认位，让标记重新出现。
 
 ## 7. 明确不做的事
 
@@ -138,9 +149,6 @@ proto 里的注释明确写了"这不是锁，不得用于并发控制"，对应
 - **路径寻址的复合工具**（如 `doc_read(path="架构/存储层设计")`）——现有架构是
   "tool ≡ OpenAPI operation" 的严格映射，做复合工具需新增
   `MemoService_GetMemoByPath` RPC，成本偏高，先观察是否真的需要。
-- **编辑器软提示**——人类打开 `agent_session_open == true` 的文档时提示"此
-  文档有 AI 编辑且尚未确认"。flag 已经建好，后续可低成本补上，但目前未落地。
-  TODO(确认)：未在 `web/` 前端代码中找到对应的 UI 实现，确认这仍是未落地状态。
 
 ## 8. 已知残留风险
 

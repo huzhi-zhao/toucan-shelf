@@ -43,6 +43,15 @@ service MemoService {
     };
     option (google.api.method_signature) = "memo,update_mask";
   }
+  // AcknowledgeAgentEdit records that a human opened the editor after an MCP
+  // edit. It does not change content or the agent baseline-snapshot state.
+  rpc AcknowledgeAgentEdit(AcknowledgeAgentEditRequest) returns (Memo) {
+    option (google.api.http) = {
+      post: "/api/v1/{name=memos/*}:acknowledgeAgentEdit"
+      body: "*"
+    };
+    option (google.api.method_signature) = "name";
+  }
   // DeleteMemo deletes a memo.
   rpc DeleteMemo(DeleteMemoRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {delete: "/api/v1/{name=memos/*}"};
@@ -336,6 +345,10 @@ message Memo {
   // changing it neither rewrites the document nor shows up in a memogit export.
   optional DocConfig doc_config = 27 [(google.api.field_behavior) = OPTIONAL];
 
+  // Output only. An MCP edit is waiting to be seen in the document editor.
+  // Opening the editor acknowledges it without changing the document content.
+  bool agent_edit_pending = 28 [(google.api.field_behavior) = OUTPUT_ONLY];
+
   enum DocType {
     DOC_TYPE_UNSPECIFIED = 0;
     MARKDOWN = 1;
@@ -603,6 +616,15 @@ message UpdateMemoRequest {
 
   // Required. The list of fields to update.
   google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message AcknowledgeAgentEditRequest {
+  // Required. The resource name of the memo.
+  // Format: memos/{memo}
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {type: "memos.api.v1/Memo"}
+  ];
 }
 
 message DeleteMemoRequest {

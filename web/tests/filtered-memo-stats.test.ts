@@ -29,7 +29,9 @@ import { useAllUserStats, useUserStats } from "@/hooks/useUserQueries";
 const wrapper = ({ children }: { children: ReactNode }) => children as never;
 
 const ts = (year: number, month: number, day: number) => ({
-  seconds: BigInt(Math.floor(Date.UTC(year, month - 1, day) / 1000)),
+  // Activity is grouped by the viewer's local date. Noon avoids a UTC-midnight
+  // fixture landing on the previous calendar day in western time zones.
+  seconds: BigInt(Math.floor(new Date(year, month - 1, day, 12).getTime() / 1000)),
   nanos: 0,
 });
 

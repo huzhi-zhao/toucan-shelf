@@ -130,13 +130,15 @@ export const SANITIZE_SCHEMA = {
     // `data-sheet-id` carries a sheets block's style-overlay anchor from the fence
     // info string (```sheets id=xxx) through to CodeBlock; see remark-sheets-id.
     // `data-fold`/`data-fold-title` carry a collapsible code block's initial state
-    // and header label from the same info string; see remark-code-fold.
+    // and header label from the same info string; `data-nocopy` marks a block
+    // whose text should not be copyable. See remark-code-fold.
     code: [
       ...(defaultSchema.attributes?.code || []),
       ["className", ...KATEX_INLINE_CLASS_NAMES, ...KATEX_BLOCK_CLASS_NAMES],
       "dataSheetId",
       "dataFold",
       "dataFoldTitle",
+      "dataNocopy",
     ],
     span: [...(defaultSchema.attributes?.span || []), ["className", ...SPAN_CLASS_NAMES], ["aria*"], ["data*"]],
     mark: [["className", ...MARK_CLASS_NAMES]],

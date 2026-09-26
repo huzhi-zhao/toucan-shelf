@@ -25,36 +25,36 @@ const renderAt = (initialEntry: string, children: ReactNode) =>
   render(<MemoryRouter initialEntries={[initialEntry]}>{children}</MemoryRouter>);
 
 describe("LandingRoute", () => {
-  it("renders the nested home page for an authenticated visitor at /", () => {
+  it("renders the nested entry redirect for an authenticated visitor at /", () => {
     mockedUseCurrentUser.mockReturnValue(fakeUser);
 
     renderAt(
       "/",
       <Routes>
         <Route path="/" element={<LandingRoute />}>
-          <Route index element={<div data-testid="home">home</div>} />
+          <Route index element={<div data-testid="entry">entry</div>} />
         </Route>
         <Route path="/explore" element={<LocationProbe />} />
       </Routes>,
     );
 
-    expect(screen.getByTestId("home")).toHaveTextContent("home");
+    expect(screen.getByTestId("entry")).toHaveTextContent("entry");
   });
 
-  it("sends an unauthenticated visitor from the entry to /explore", () => {
+  it("sends an unauthenticated visitor from the entry to /auth", () => {
     mockedUseCurrentUser.mockReturnValue(undefined);
 
     renderAt(
       "/",
       <Routes>
         <Route path="/" element={<LandingRoute />}>
-          <Route index element={<div data-testid="home">home</div>} />
+          <Route index element={<div data-testid="entry">entry</div>} />
         </Route>
-        <Route path="/explore" element={<LocationProbe />} />
+        <Route path="/auth" element={<LocationProbe />} />
       </Routes>,
     );
 
-    expect(screen.getByTestId("location").textContent).toBe("/explore");
+    expect(screen.getByTestId("location").textContent).toBe("/auth?redirect=%2F");
   });
 
   it("preserves the query string and hash when redirecting an unauthenticated visitor", () => {
@@ -66,13 +66,13 @@ describe("LandingRoute", () => {
       "/?filter=tag:work#latest",
       <Routes>
         <Route path="/" element={<LandingRoute />}>
-          <Route index element={<div data-testid="home">home</div>} />
+          <Route index element={<div data-testid="entry">entry</div>} />
         </Route>
-        <Route path="/explore" element={<LocationProbe />} />
+        <Route path="/auth" element={<LocationProbe />} />
       </Routes>,
     );
 
-    expect(screen.getByTestId("location").textContent).toBe("/explore?filter=tag:work#latest");
+    expect(screen.getByTestId("location").textContent).toBe("/auth?redirect=%2F%3Ffilter%3Dtag%3Awork%23latest");
   });
 });
 

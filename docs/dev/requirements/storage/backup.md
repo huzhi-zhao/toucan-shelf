@@ -28,16 +28,13 @@ admin-only 的全站运维操作，不是"用户数据导出"。本项目单实�
 - 临时文件用完即删（`defer` 清理）。
 - 触发方式两种，共用同一份实现（[server/backup/backup.go](../../../../server/backup/backup.go) 的 `Run`）：
   - **手动**：管理员在 Storage 设置页点击"立即备份"，对应 `InstanceService.BackupNow` RPC。
-  - **自动**：[server/runner/backup/runner.go](../../../../server/runner/backup/runner.go) 每 7 天一次，
-    但周期的判定依据是存储里的 `last_backup_time`，不是内存计时器。runner 每小时轮询一次，
-    只在「从未备份过」「距上次成功备份已满 7 天」「上次尝试失败」三种情况下才真正执行，
-    并在启动时先判定一次——进程停机期间到期的备份会在启动后补跑。未配置 S3 时直接跳过，
-    不记失败尝试。
+  - **自动**：[server/runner/backup/runner.go](../../../../server/runner/backup/runner.go) 启动时根据
+    上次备份时间判断是否到期，此后每小时复查；成功后隔 7 天再运行，失败后至少隔 1 小时重试。
+    未配置 S3 时跳过，不记录失败。
 - 每次备份（无论成功失败）都会把结果写回 `InstanceSetting_BACKUP`
-  （`last_backup_time` / `last_backup_success` / `last_backup_error`），供 UI 展示。
-  两个方向的字段保留都是显式的：管理员编辑路径模板时服务端强制保留这三个状态字段；
-  备份写回状态时先读出现有设置，保留管理员配置的 `path_template`
-  （`UpsertInstanceSetting` 是整体替换而非字段级 patch）。
+  （`last_backup_time` / `last_backup_success` / `last_backup_error`），供 UI 展示；
+  管理员编辑路径模板时这几个字段会被服务端强制保留，不会被覆盖清空；
+  备份运行时更新状态字段，也会保留管理员设置的路径模板。
 
 ## 保留与清理
 

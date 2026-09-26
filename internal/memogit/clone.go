@@ -84,10 +84,14 @@ func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter
 		return err
 	}
 	contentRoot := ContentRoot(root, wsCfg)
+	// Sub-documents are placed beside their parent's file, so their paths depend
+	// on where the parents land; a clone starts from an empty state, so the index
+	// is built entirely from this listing.
+	parents := newParentIndex(wsCfg, state, memos)
 	warn := &attachmentWarner{out: out}
 	attachmentCount := 0
 	for _, m := range memos {
-		ms, nDown, err := exportMemo(ctx, client, wsCfg, contentRoot, m, nil, warn)
+		ms, nDown, err := exportMemo(ctx, client, wsCfg, parents, contentRoot, m, nil, warn)
 		if err != nil {
 			return err
 		}

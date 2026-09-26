@@ -58,6 +58,9 @@ const (
 	// WorkspaceServiceCreateWorkspaceFolderProcedure is the fully-qualified name of the
 	// WorkspaceService's CreateWorkspaceFolder RPC.
 	WorkspaceServiceCreateWorkspaceFolderProcedure = "/memos.api.v1.WorkspaceService/CreateWorkspaceFolder"
+	// WorkspaceServiceUpdateWorkspaceFolderSortProcedure is the fully-qualified name of the
+	// WorkspaceService's UpdateWorkspaceFolderSort RPC.
+	WorkspaceServiceUpdateWorkspaceFolderSortProcedure = "/memos.api.v1.WorkspaceService/UpdateWorkspaceFolderSort"
 	// WorkspaceServiceRenameWorkspaceFolderProcedure is the fully-qualified name of the
 	// WorkspaceService's RenameWorkspaceFolder RPC.
 	WorkspaceServiceRenameWorkspaceFolderProcedure = "/memos.api.v1.WorkspaceService/RenameWorkspaceFolder"
@@ -108,6 +111,9 @@ type WorkspaceServiceClient interface {
 	BatchGetWorkspaceTreesByTitle(context.Context, *connect.Request[v1.BatchGetWorkspaceTreesByTitleRequest]) (*connect.Response[v1.BatchGetWorkspaceTreesByTitleResponse], error)
 	// CreateWorkspaceFolder creates a (possibly empty) folder within a workspace.
 	CreateWorkspaceFolder(context.Context, *connect.Request[v1.CreateWorkspaceFolderRequest]) (*connect.Response[v1.WorkspaceFolder], error)
+	// UpdateWorkspaceFolderSort sets (or clears) one folder's own document-sort
+	// override. Clearing it puts the folder back to inheriting.
+	UpdateWorkspaceFolderSort(context.Context, *connect.Request[v1.UpdateWorkspaceFolderSortRequest]) (*connect.Response[v1.WorkspaceFolder], error)
 	// RenameWorkspaceFolder renames a folder and moves all memos/subfolders under it.
 	RenameWorkspaceFolder(context.Context, *connect.Request[v1.RenameWorkspaceFolderRequest]) (*connect.Response[emptypb.Empty], error)
 	// MoveWorkspaceFolder moves a folder (and everything under it) into another
@@ -184,6 +190,12 @@ func NewWorkspaceServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(workspaceServiceMethods.ByName("CreateWorkspaceFolder")),
 			connect.WithClientOptions(opts...),
 		),
+		updateWorkspaceFolderSort: connect.NewClient[v1.UpdateWorkspaceFolderSortRequest, v1.WorkspaceFolder](
+			httpClient,
+			baseURL+WorkspaceServiceUpdateWorkspaceFolderSortProcedure,
+			connect.WithSchema(workspaceServiceMethods.ByName("UpdateWorkspaceFolderSort")),
+			connect.WithClientOptions(opts...),
+		),
 		renameWorkspaceFolder: connect.NewClient[v1.RenameWorkspaceFolderRequest, emptypb.Empty](
 			httpClient,
 			baseURL+WorkspaceServiceRenameWorkspaceFolderProcedure,
@@ -239,6 +251,7 @@ type workspaceServiceClient struct {
 	getWorkspaceTree              *connect.Client[v1.GetWorkspaceTreeRequest, v1.GetWorkspaceTreeResponse]
 	batchGetWorkspaceTreesByTitle *connect.Client[v1.BatchGetWorkspaceTreesByTitleRequest, v1.BatchGetWorkspaceTreesByTitleResponse]
 	createWorkspaceFolder         *connect.Client[v1.CreateWorkspaceFolderRequest, v1.WorkspaceFolder]
+	updateWorkspaceFolderSort     *connect.Client[v1.UpdateWorkspaceFolderSortRequest, v1.WorkspaceFolder]
 	renameWorkspaceFolder         *connect.Client[v1.RenameWorkspaceFolderRequest, emptypb.Empty]
 	moveWorkspaceFolder           *connect.Client[v1.MoveWorkspaceFolderRequest, v1.MoveWorkspaceFolderResponse]
 	deleteWorkspaceFolder         *connect.Client[v1.DeleteWorkspaceFolderRequest, emptypb.Empty]
@@ -286,6 +299,11 @@ func (c *workspaceServiceClient) BatchGetWorkspaceTreesByTitle(ctx context.Conte
 // CreateWorkspaceFolder calls memos.api.v1.WorkspaceService.CreateWorkspaceFolder.
 func (c *workspaceServiceClient) CreateWorkspaceFolder(ctx context.Context, req *connect.Request[v1.CreateWorkspaceFolderRequest]) (*connect.Response[v1.WorkspaceFolder], error) {
 	return c.createWorkspaceFolder.CallUnary(ctx, req)
+}
+
+// UpdateWorkspaceFolderSort calls memos.api.v1.WorkspaceService.UpdateWorkspaceFolderSort.
+func (c *workspaceServiceClient) UpdateWorkspaceFolderSort(ctx context.Context, req *connect.Request[v1.UpdateWorkspaceFolderSortRequest]) (*connect.Response[v1.WorkspaceFolder], error) {
+	return c.updateWorkspaceFolderSort.CallUnary(ctx, req)
 }
 
 // RenameWorkspaceFolder calls memos.api.v1.WorkspaceService.RenameWorkspaceFolder.
@@ -350,6 +368,9 @@ type WorkspaceServiceHandler interface {
 	BatchGetWorkspaceTreesByTitle(context.Context, *connect.Request[v1.BatchGetWorkspaceTreesByTitleRequest]) (*connect.Response[v1.BatchGetWorkspaceTreesByTitleResponse], error)
 	// CreateWorkspaceFolder creates a (possibly empty) folder within a workspace.
 	CreateWorkspaceFolder(context.Context, *connect.Request[v1.CreateWorkspaceFolderRequest]) (*connect.Response[v1.WorkspaceFolder], error)
+	// UpdateWorkspaceFolderSort sets (or clears) one folder's own document-sort
+	// override. Clearing it puts the folder back to inheriting.
+	UpdateWorkspaceFolderSort(context.Context, *connect.Request[v1.UpdateWorkspaceFolderSortRequest]) (*connect.Response[v1.WorkspaceFolder], error)
 	// RenameWorkspaceFolder renames a folder and moves all memos/subfolders under it.
 	RenameWorkspaceFolder(context.Context, *connect.Request[v1.RenameWorkspaceFolderRequest]) (*connect.Response[emptypb.Empty], error)
 	// MoveWorkspaceFolder moves a folder (and everything under it) into another
@@ -422,6 +443,12 @@ func NewWorkspaceServiceHandler(svc WorkspaceServiceHandler, opts ...connect.Han
 		connect.WithSchema(workspaceServiceMethods.ByName("CreateWorkspaceFolder")),
 		connect.WithHandlerOptions(opts...),
 	)
+	workspaceServiceUpdateWorkspaceFolderSortHandler := connect.NewUnaryHandler(
+		WorkspaceServiceUpdateWorkspaceFolderSortProcedure,
+		svc.UpdateWorkspaceFolderSort,
+		connect.WithSchema(workspaceServiceMethods.ByName("UpdateWorkspaceFolderSort")),
+		connect.WithHandlerOptions(opts...),
+	)
 	workspaceServiceRenameWorkspaceFolderHandler := connect.NewUnaryHandler(
 		WorkspaceServiceRenameWorkspaceFolderProcedure,
 		svc.RenameWorkspaceFolder,
@@ -482,6 +509,8 @@ func NewWorkspaceServiceHandler(svc WorkspaceServiceHandler, opts ...connect.Han
 			workspaceServiceBatchGetWorkspaceTreesByTitleHandler.ServeHTTP(w, r)
 		case WorkspaceServiceCreateWorkspaceFolderProcedure:
 			workspaceServiceCreateWorkspaceFolderHandler.ServeHTTP(w, r)
+		case WorkspaceServiceUpdateWorkspaceFolderSortProcedure:
+			workspaceServiceUpdateWorkspaceFolderSortHandler.ServeHTTP(w, r)
 		case WorkspaceServiceRenameWorkspaceFolderProcedure:
 			workspaceServiceRenameWorkspaceFolderHandler.ServeHTTP(w, r)
 		case WorkspaceServiceMoveWorkspaceFolderProcedure:
@@ -535,6 +564,10 @@ func (UnimplementedWorkspaceServiceHandler) BatchGetWorkspaceTreesByTitle(contex
 
 func (UnimplementedWorkspaceServiceHandler) CreateWorkspaceFolder(context.Context, *connect.Request[v1.CreateWorkspaceFolderRequest]) (*connect.Response[v1.WorkspaceFolder], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.WorkspaceService.CreateWorkspaceFolder is not implemented"))
+}
+
+func (UnimplementedWorkspaceServiceHandler) UpdateWorkspaceFolderSort(context.Context, *connect.Request[v1.UpdateWorkspaceFolderSortRequest]) (*connect.Response[v1.WorkspaceFolder], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.WorkspaceService.UpdateWorkspaceFolderSort is not implemented"))
 }
 
 func (UnimplementedWorkspaceServiceHandler) RenameWorkspaceFolder(context.Context, *connect.Request[v1.RenameWorkspaceFolderRequest]) (*connect.Response[emptypb.Empty], error) {

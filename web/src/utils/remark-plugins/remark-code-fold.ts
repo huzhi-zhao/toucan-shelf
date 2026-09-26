@@ -1,8 +1,9 @@
 import type { Code, Root } from "mdast";
 import { visit } from "unist-util-visit";
 
-// Promotes a fenced block's `fold` info-string token to real `data-fold` /
-// `data-fold-title` attributes on the emitted <code> element.
+// Promotes a fenced block's `fold` / `nocopy` info-string tokens to real
+// `data-fold` / `data-fold-title` / `data-nocopy` attributes on the emitted
+// <code> element.
 //
 // Why a plugin: react-markdown exposes the fence meta as the mdast code node's
 // `meta`, but that lives on `node.data`, which `rehype-raw` strips when it
@@ -13,6 +14,8 @@ import { visit } from "unist-util-visit";
 // Syntax: ```ts fold             — collapsed on first render
 //         ```ts fold=open        — toggle shown, expanded on first render
 //         ```ts fold title="xxx" — custom header label
+//         ```text nocopy         — no copy button, text not selectable
+const NOCOPY_RE = /(?:^|\s)nocopy(?=\s|$)/;
 const FOLD_RE = /(?:^|\s)fold(?:=(open|closed))?(?=\s|$)/;
 const TITLE_RE = /(?:^|\s)title="([^"]*)"/;
 
@@ -21,9 +24,14 @@ export const remarkCodeFold = () => {
     visit(tree, "code", (node: Code) => {
       if (!node.meta) return;
       const fold = FOLD_RE.exec(node.meta);
-      if (!fold) return;
+      const nocopy = NOCOPY_RE.test(node.meta);
+      if (!fold && !nocopy) return;
       const data = (node.data ??= {});
       const hProperties = ((data as { hProperties?: Record<string, unknown> }).hProperties ??= {});
+      if (nocopy) {
+        hProperties["data-nocopy"] = "true";
+      }
+      if (!fold) return;
       hProperties["data-fold"] = fold[1] ?? "closed";
       const title = TITLE_RE.exec(node.meta);
       if (title) {

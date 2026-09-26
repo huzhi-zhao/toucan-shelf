@@ -134,11 +134,28 @@ func (d *DB) DeleteWorkspace(ctx context.Context, delete *store.DeleteWorkspace)
 }
 
 func (d *DB) CreateWorkspaceFolder(ctx context.Context, create *store.WorkspaceFolder) (*store.WorkspaceFolder, error) {
-	stmt := "INSERT INTO `workspace_folder` (`workspace_id`, `path`) VALUES (?, ?) RETURNING `id`, `created_ts`"
-	if err := d.db.QueryRowContext(ctx, stmt, create.WorkspaceID, create.Path).Scan(&create.ID, &create.CreatedTs); err != nil {
+	stmt := "INSERT INTO `workspace_folder` (`workspace_id`, `path`, `sort_field`, `sort_order`) VALUES (?, ?, ?, ?) RETURNING `id`, `created_ts`"
+	if err := d.db.QueryRowContext(ctx, stmt, create.WorkspaceID, create.Path, create.SortField, create.SortOrder).Scan(&create.ID, &create.CreatedTs); err != nil {
 		return nil, err
 	}
 	return create, nil
+}
+
+// UpsertWorkspaceFolderSort pins (or, with empty strings, un-pins) one folder's
+// document sort. The folder may have no row yet — a folder that exists only
+// because memos name it in their folder_path — so this inserts one. That is
+// harmless: the tree builder unions folder rows with the paths implied by memos,
+// and a row for a path that was already implied changes nothing about the tree.
+func (d *DB) UpsertWorkspaceFolderSort(ctx context.Context, upsert *store.UpsertWorkspaceFolderSort) (*store.WorkspaceFolder, error) {
+	stmt := "INSERT INTO `workspace_folder` (`workspace_id`, `path`, `sort_field`, `sort_order`) VALUES (?, ?, ?, ?) " +
+		"ON CONFLICT(`workspace_id`, `path`) DO UPDATE SET `sort_field` = excluded.`sort_field`, `sort_order` = excluded.`sort_order` " +
+		"RETURNING `id`, `workspace_id`, `path`, `created_ts`, `sort_field`, `sort_order`"
+	f := &store.WorkspaceFolder{}
+	if err := d.db.QueryRowContext(ctx, stmt, upsert.WorkspaceID, upsert.Path, upsert.SortField, upsert.SortOrder).
+		Scan(&f.ID, &f.WorkspaceID, &f.Path, &f.CreatedTs, &f.SortField, &f.SortOrder); err != nil {
+		return nil, err
+	}
+	return f, nil
 }
 
 func (d *DB) ListWorkspaceFolders(ctx context.Context, find *store.FindWorkspaceFolder) ([]*store.WorkspaceFolder, error) {
@@ -151,7 +168,7 @@ func (d *DB) ListWorkspaceFolders(ctx context.Context, find *store.FindWorkspace
 	}
 
 	rows, err := d.db.QueryContext(ctx, fmt.Sprintf(`
-		SELECT id, workspace_id, path, created_ts
+		SELECT id, workspace_id, path, created_ts, sort_field, sort_order
 		FROM workspace_folder
 		WHERE %s ORDER BY path ASC`, strings.Join(where, " AND ")),
 		args...,
@@ -164,7 +181,7 @@ func (d *DB) ListWorkspaceFolders(ctx context.Context, find *store.FindWorkspace
 	var list []*store.WorkspaceFolder
 	for rows.Next() {
 		f := &store.WorkspaceFolder{}
-		if err := rows.Scan(&f.ID, &f.WorkspaceID, &f.Path, &f.CreatedTs); err != nil {
+		if err := rows.Scan(&f.ID, &f.WorkspaceID, &f.Path, &f.CreatedTs, &f.SortField, &f.SortOrder); err != nil {
 			return nil, err
 		}
 		list = append(list, f)

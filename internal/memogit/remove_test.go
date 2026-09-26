@@ -28,7 +28,7 @@ func TestRemoveTrackedFilesLeavesUnrelatedFiles(t *testing.T) {
 	ws := &WorkspaceConfig{}
 
 	mine := mkMemo("m1", "notes", "Mine", "body", v1pb.Memo_MARKDOWN)
-	mineState, err := writeMemoDoc(ws, root, mine, nil)
+	mineState, err := writeMemoDoc(ws, nil, root, mine, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

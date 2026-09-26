@@ -78,6 +78,20 @@ Writing:
   ![](...) is media only and never a document reference. Do not hand-write
   /memos/{uid} links.
 
+Sub-documents:
+- A document's long-form asides live as sub-documents of it rather than in its
+  body. Create one with memo_create_memo and folder_path "_sub/{parent uid}",
+  leaving workspace empty: that reserved path IS the binding, so the server
+  attaches it to that document and gives it the parent's knowledge base and
+  visibility. No relation write, no extra tool.
+- Titles are unique per parent. The path must be exactly "_sub/{uid}"; anything
+  else under "_sub" is rejected rather than created as a loose document.
+- rag_search does NOT index sub-documents, so "no search hit" does not mean
+  "does not exist": find them through the parent's relations (memo_get_memo) or
+  the footnote references in its body, written /_sub/{uid}/{title}.md.
+- A sub-document cannot be moved and follows its parent when archived. Rewrite
+  it freely instead of trying to remove it.
+
 Updating:
 - memo_update_memo replaces the whole content field; it is not an incremental
   patch. Always memo_get_memo first, edit the full text, then write it back.

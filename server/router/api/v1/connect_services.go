@@ -351,6 +351,14 @@ func (s *ConnectServiceHandler) UpdateMemo(ctx context.Context, req *connect.Req
 	return connect.NewResponse(resp), nil
 }
 
+func (s *ConnectServiceHandler) AcknowledgeAgentEdit(ctx context.Context, req *connect.Request[v1pb.AcknowledgeAgentEditRequest]) (*connect.Response[v1pb.Memo], error) {
+	resp, err := s.APIV1Service.AcknowledgeAgentEdit(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (s *ConnectServiceHandler) DeleteMemo(ctx context.Context, req *connect.Request[v1pb.DeleteMemoRequest]) (*connect.Response[emptypb.Empty], error) {
 	resp, err := s.APIV1Service.DeleteMemo(ctx, req.Msg)
 	if err != nil {
@@ -827,6 +835,14 @@ func (s *ConnectServiceHandler) BatchGetWorkspaceTreesByTitle(ctx context.Contex
 
 func (s *ConnectServiceHandler) CreateWorkspaceFolder(ctx context.Context, req *connect.Request[v1pb.CreateWorkspaceFolderRequest]) (*connect.Response[v1pb.WorkspaceFolder], error) {
 	resp, err := s.APIV1Service.CreateWorkspaceFolder(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) UpdateWorkspaceFolderSort(ctx context.Context, req *connect.Request[v1pb.UpdateWorkspaceFolderSortRequest]) (*connect.Response[v1pb.WorkspaceFolder], error) {
+	resp, err := s.APIV1Service.UpdateWorkspaceFolderSort(ctx, req.Msg)
 	if err != nil {
 		return nil, convertGRPCError(err)
 	}

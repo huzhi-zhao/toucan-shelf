@@ -69,12 +69,29 @@ type WorkspaceFolder struct {
 	WorkspaceID int32
 	Path        string
 	CreatedTs   int64
+	// SortField and SortOrder are this folder's own sort override for its direct
+	// children. Empty means inherit — from the nearest ancestor folder that sets
+	// one, and failing that from the workspace. Folders with no row at all (the
+	// implicit ones, which exist only because a memo's folder_path names them)
+	// inherit for the same reason: there is nothing to override with.
+	SortField string
+	SortOrder string
 }
 
 // FindWorkspaceFolder specifies filter criteria for querying workspace folders.
 type FindWorkspaceFolder struct {
 	WorkspaceID *int32
 	Path        *string
+}
+
+// UpsertWorkspaceFolderSort sets one folder's sort override, creating the row
+// when the folder is only implied by the memos under it. Empty strings clear the
+// override and put the folder back to inheriting.
+type UpsertWorkspaceFolderSort struct {
+	WorkspaceID int32
+	Path        string
+	SortField   string
+	SortOrder   string
 }
 
 // DeleteWorkspaceFolder specifies which workspace folder to delete.
@@ -123,6 +140,12 @@ func (s *Store) CreateWorkspaceFolder(ctx context.Context, create *WorkspaceFold
 // ListWorkspaceFolders retrieves workspace folders matching the filter criteria.
 func (s *Store) ListWorkspaceFolders(ctx context.Context, find *FindWorkspaceFolder) ([]*WorkspaceFolder, error) {
 	return s.driver.ListWorkspaceFolders(ctx, find)
+}
+
+// UpsertWorkspaceFolderSort sets a folder's document-sort override, materializing
+// the folder row if it did not exist yet.
+func (s *Store) UpsertWorkspaceFolderSort(ctx context.Context, upsert *UpsertWorkspaceFolderSort) (*WorkspaceFolder, error) {
+	return s.driver.UpsertWorkspaceFolderSort(ctx, upsert)
 }
 
 // DeleteWorkspaceFolder permanently removes a workspace folder record.

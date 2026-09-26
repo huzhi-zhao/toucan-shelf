@@ -23,7 +23,7 @@ import { AISelectionToolbar } from "./AISelectionToolbar";
  * editor serializes into state.content on every change and exposes its
  * formatting capability for the focus-mode toolbar.
  */
-export const EditorContent = forwardRef<EditorController, EditorContentProps>(({ placeholder, expand }, ref) => {
+export const EditorContent = forwardRef<EditorController, EditorContentProps>(({ placeholder, expand, fill }, ref) => {
   const t = useTranslate();
   const { actions, dispatch, getState } = useEditorContext();
   const uploadWorkspace = useUploadWorkspace();
@@ -119,6 +119,7 @@ export const EditorContent = forwardRef<EditorController, EditorContentProps>(({
         placeholder={placeholder || ""}
         isFocusMode={isFocusMode}
         expand={expand}
+        fill={fill}
         onContentChange={handleContentChange}
         onPaste={handlePaste}
         readOnly={isUploadingMedia}

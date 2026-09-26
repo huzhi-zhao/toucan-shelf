@@ -49,6 +49,7 @@ vi.mock("@/components/MemoView/MemoViewContext", () => ({
     openEditor: vi.fn(),
     openPreview: vi.fn(),
   }),
+  useMemoViewDerived: () => ({ isInMemoDetailPage: false }),
 }));
 
 const createMemo = (content: string) => ({

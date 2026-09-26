@@ -296,7 +296,9 @@ func (s *APIV1Service) workspaceTreeNodes(ctx context.Context, workspaceID int32
 
 	root := newTreeDir()
 	for _, f := range folders {
-		root.ensurePath(strings.Split(strings.Trim(f.Path, "/"), "/"))
+		dir := root.ensurePath(strings.Split(strings.Trim(f.Path, "/"), "/"))
+		dir.sortField = f.SortField
+		dir.sortOrder = f.SortOrder
 	}
 	for _, m := range memos {
 		if m.RowStatus == store.Archived != archived {
@@ -441,6 +443,89 @@ func (s *APIV1Service) CreateWorkspaceFolder(ctx context.Context, request *v1pb.
 		Name: WorkspaceNamePrefix + workspace.UID + "/folders/" + folder.Path,
 		Path: folder.Path,
 	}, nil
+}
+
+// validSortFields/validSortOrders mirror what the workspace-level sort accepts.
+// "" is allowed on a folder and means "inherit", which is not a thing a
+// workspace can be, so the two sets are checked separately from the workspace's.
+var (
+	validSortFields = map[string]bool{"createTime": true, "updateTime": true, "alphabetical": true}
+	validSortOrders = map[string]bool{"asc": true, "desc": true}
+)
+
+// UpdateWorkspaceFolderSort pins one folder's document sort, or clears it back to
+// inherited. Editor access, like the other folder operations: which order a
+// folder shows its own documents in is part of the knowledge base's contents,
+// not a workspace-level setting the way the base's default sort is.
+func (s *APIV1Service) UpdateWorkspaceFolderSort(ctx context.Context, request *v1pb.UpdateWorkspaceFolderSortRequest) (*v1pb.WorkspaceFolder, error) {
+	workspace, _, err := s.getWorkspaceWithAccess(ctx, request.Parent, WorkspaceRoleEditor)
+	if err != nil {
+		return nil, err
+	}
+	path := normalizeFolderPath(request.Path)
+	if path == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "path is required")
+	}
+	// "" clears the override; anything else has to be a value the client can
+	// actually sort by, or the folder would silently fall back to the default
+	// instead of to what it inherits.
+	if request.SortField != "" && !validSortFields[request.SortField] {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid sort_field: %q", request.SortField)
+	}
+	if request.SortOrder != "" && !validSortOrders[request.SortOrder] {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid sort_order: %q", request.SortOrder)
+	}
+
+	// The upsert materializes a folder row, so an unchecked path would conjure a
+	// folder into the tree. A folder is real if it has a row already or if some
+	// document lives at or under it — the same union the tree is built from.
+	exists, err := s.folderExists(ctx, workspace.ID, path)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, status.Errorf(codes.NotFound, "folder not found: %s", path)
+	}
+
+	folder, err := s.Store.UpsertWorkspaceFolderSort(ctx, &store.UpsertWorkspaceFolderSort{
+		WorkspaceID: workspace.ID,
+		Path:        path,
+		SortField:   request.SortField,
+		SortOrder:   request.SortOrder,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to update folder sort: %v", err)
+	}
+	return &v1pb.WorkspaceFolder{
+		Name:      WorkspaceNamePrefix + workspace.UID + "/folders/" + folder.Path,
+		Path:      folder.Path,
+		SortField: folder.SortField,
+		SortOrder: folder.SortOrder,
+	}, nil
+}
+
+// folderExists reports whether a path names a folder the tree would show: one
+// with a workspace_folder row, or one implied by a document's folder_path.
+func (s *APIV1Service) folderExists(ctx context.Context, workspaceID int32, path string) (bool, error) {
+	rows, err := s.Store.ListWorkspaceFolders(ctx, &store.FindWorkspaceFolder{WorkspaceID: &workspaceID, Path: &path})
+	if err != nil {
+		return false, status.Errorf(codes.Internal, "failed to look up folder: %v", err)
+	}
+	if len(rows) > 0 {
+		return true, nil
+	}
+	// Archived documents are included on purpose: the archived view is a tree too,
+	// and its folders are worth sorting the same way.
+	memos, err := s.Store.ListMemos(ctx, &store.FindMemo{
+		WorkspaceID:      &workspaceID,
+		FolderPathPrefix: &path,
+		ExcludeContent:   true,
+		ExcludeComments:  true,
+	})
+	if err != nil {
+		return false, status.Errorf(codes.Internal, "failed to look up folder contents: %v", err)
+	}
+	return len(memos) > 0, nil
 }
 
 func (s *APIV1Service) RenameWorkspaceFolder(ctx context.Context, request *v1pb.RenameWorkspaceFolderRequest) (*emptypb.Empty, error) {
@@ -744,6 +829,10 @@ func (s *APIV1Service) MoveWorkspaceFolder(ctx context.Context, request *v1pb.Mo
 		if _, err := s.Store.CreateWorkspaceFolder(ctx, &store.WorkspaceFolder{
 			WorkspaceID: destination.ID,
 			Path:        target,
+			// The sort override describes the folder, not the knowledge base it
+			// happens to sit in, so it travels with it.
+			SortField: f.SortField,
+			SortOrder: f.SortOrder,
 		}); err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to create destination folder: %v", err)
 		}
@@ -1089,6 +1178,12 @@ func normalizeFolderPath(path string) string {
 type treeDir struct {
 	children map[string]*treeDir
 	docs     []*store.Memo
+	// sortField/sortOrder are this folder's OWN override, empty when it inherits.
+	// Folders that exist only because a memo's folder_path names them have no row
+	// to carry one, so they stay empty and inherit — which is what they did before
+	// per-folder sorting existed.
+	sortField string
+	sortOrder string
 }
 
 func newTreeDir() *treeDir {
@@ -1124,11 +1219,14 @@ func (d *treeDir) toNodes(prefix string) []*v1pb.WorkspaceTreeNode {
 		if prefix != "" {
 			childPath = prefix + "/" + name
 		}
+		child := d.children[name]
 		nodes = append(nodes, &v1pb.WorkspaceTreeNode{
-			Type:     v1pb.WorkspaceTreeNode_FOLDER,
-			Name:     name,
-			Path:     childPath,
-			Children: d.children[name].toNodes(childPath),
+			Type:      v1pb.WorkspaceTreeNode_FOLDER,
+			Name:      name,
+			Path:      childPath,
+			Children:  child.toNodes(childPath),
+			SortField: child.sortField,
+			SortOrder: child.sortOrder,
 		})
 	}
 

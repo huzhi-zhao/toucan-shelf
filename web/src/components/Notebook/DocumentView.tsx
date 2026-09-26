@@ -1,5 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { FieldMaskSchema, timestampDate } from "@bufbuild/protobuf/wkt";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ArchiveIcon,
   ArchiveRestoreIcon,
@@ -28,9 +29,10 @@ import { MARK_TOOLBAR_ATTR, MarkToolbar } from "@/components/MarkToolbar";
 import CreateVersionDialog from "@/components/MemoActionMenu/CreateVersionDialog";
 import MemoContent from "@/components/MemoContent";
 import { InlineAttachmentProvider } from "@/components/MemoContent/InlineAttachmentContext";
+import { SubDocReferenceProvider } from "@/components/MemoContent/SubDocReferenceContext";
 import MemoEditor from "@/components/MemoEditor";
 import type { EditorController } from "@/components/MemoEditor/types/editorController";
-import { AttachmentListView } from "@/components/MemoMetadata";
+import { AttachmentListView, ReferenceListView } from "@/components/MemoMetadata";
 import { MemoViewContext, type MemoViewContextValue } from "@/components/MemoView/MemoViewContext";
 import { PdfDocumentView } from "@/components/PdfViewer/PdfDocumentView";
 import { Button } from "@/components/ui/button";
@@ -47,11 +49,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { memoServiceClient } from "@/connect";
 import { useSoftBreakDefault } from "@/contexts/AuthContext";
 import useMediaQuery from "@/hooks/useMediaQuery";
 import { useCreateMemoHistory, useMemoHistories, useRestoreMemoHistory } from "@/hooks/useMemoHistoryQueries";
-import { useInfiniteMemoComments, useUpdateMemo } from "@/hooks/useMemoQueries";
+import { memoKeys, useInfiniteMemoComments, useUpdateMemo } from "@/hooks/useMemoQueries";
 import { cn } from "@/lib/utils";
 import { State } from "@/types/proto/api/v1/common_pb";
 import {
@@ -71,7 +74,8 @@ import { DEFAULT_MARK_COLOR } from "@/utils/markColors";
 import { attachmentUIDsOf, hashMemoState } from "@/utils/memoState";
 import { useReadingDensity } from "@/utils/readingDensity";
 import { getDocScrollPosition, restoreScrollTopWhenReady, saveDocScrollPosition } from "@/utils/scrollPositionCache";
-import DocumentOutline, { ATTACHMENTS_ANCHOR_ID } from "./DocumentOutline";
+import { splitChildMemos } from "@/utils/subDoc";
+import DocumentOutline, { ATTACHMENTS_ANCHOR_ID, REFERENCES_ANCHOR_ID } from "./DocumentOutline";
 
 // How long after a save a drift report is still treated as "caused by that save", and so
 // eligible to be written back. Long enough to cover the refetch and re-render, short enough
@@ -118,6 +122,7 @@ const DocumentView = ({
   onOpenDocument,
 }: Props) => {
   const t = useTranslate();
+  const queryClient = useQueryClient();
   const isDesktop = useMediaQuery("lg");
   const isHtml = memo.docType === Memo_DocType.HTML;
   const isPdf = memo.docType === Memo_DocType.PDF;
@@ -131,6 +136,7 @@ const DocumentView = ({
   // out of anchoring so a mark can never latch onto a card that a later query drops.
   const supportsMarks = supportsComments;
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [highlightedSubDoc, setHighlightedSubDoc] = useState<string | undefined>();
   // The floating mark toolbar, shown over the current text selection in the preview. Its anchor
   // is captured up front (heading + text quote) because the selection itself is gone the moment
   // focus moves to the toolbar.
@@ -167,7 +173,12 @@ const DocumentView = ({
   // Comments carrying a pdf/epub annotation are anchored to an *attachment* (managed by the
   // PDF/EPUB reader's own annotation sidebar), not to this document's body — so keep them out
   // of the doc comment panel. Only doc-body comments (plain or heading-anchored) belong here.
-  const docComments = useMemo(() => comments.filter((c) => !c.pdfAnnotation && !c.epubAnnotation), [comments]);
+  // A document's children are its comments AND its sub-documents — one relation,
+  // one list call. Splitting them here is what keeps a long sub-document from
+  // being rendered as a comment card, which is the noise the feature exists to
+  // remove. See utils/subDoc.ts.
+  const { comments: childComments, subDocs } = useMemo(() => splitChildMemos(comments), [comments]);
+  const docComments = useMemo(() => childComments.filter((c) => !c.pdfAnnotation && !c.epubAnnotation), [childComments]);
   // Every doc comment that carries a text quote also draws as an in-text mark. Comments anchored
   // only to a heading (or to nothing) contribute no mark and just live in the sidebar.
   const marks = useMemo<DocMark[]>(
@@ -355,6 +366,34 @@ const DocumentView = ({
     window.open(`/${memo.name}`, "_blank", "noopener");
   };
 
+  const handleOpenEdit = () => {
+    setMode("edit");
+    if (!memo.agentEditPending) return;
+
+    // The click itself acknowledges the edit; saving content is unrelated.
+    // Hide the badge at once and restore server state if the request fails.
+    queryClient.setQueryData<Memo>(memoKeys.detail(memo.name), { ...memo, agentEditPending: false });
+    void memoServiceClient.acknowledgeAgentEdit({ name: memo.name }).then(
+      (updated) => queryClient.setQueryData(memoKeys.detail(updated.name), updated),
+      () => {
+        void queryClient.invalidateQueries({ queryKey: memoKeys.detail(memo.name) });
+        toast.error(t("message.update-failed"));
+      },
+    );
+  };
+
+  const editButton = (
+    <Button variant={mode === "edit" ? "secondary" : "ghost"} size="sm" className="rounded-none h-6 px-2 text-xs" onClick={handleOpenEdit}>
+      <PencilIcon className="w-3 h-3 mr-1" />
+      {t("notebook.edit")}
+      {memo.agentEditPending && (
+        <span className="ml-1" role="img" aria-label={t("notebook.mcp-edited-tooltip")}>
+          🌟
+        </span>
+      )}
+    </Button>
+  );
+
   useEffect(() => {
     if (mode !== "edit") setEditDraftContent(null);
   }, [mode]);
@@ -491,6 +530,28 @@ const DocumentView = ({
     setSelectionPopover(undefined);
     setSelectedMemoName(memoName);
     setActiveMark({ memoName, x: point.x, y: point.y });
+    setOutlineCollapsed(true);
+    setCommentsOpen(true);
+  }, []);
+
+  // The same click with the panel closed: open the panel on the comment, but do
+  // NOT raise the mark toolbar.
+  //
+  // With the panel closed the reader is reading, not annotating — and the
+  // toolbar's first-class action is an eraser, which is not something a stray
+  // click on a highlight should put under the cursor. Marks used to be inert
+  // here, which meant the only way to read what a highlight said was to know to
+  // open the panel first; the colour was a signal pointing at something
+  // unreachable.
+  //
+  // A bare mark (a highlight carrying no note) has no card in the panel, so this
+  // opens onto a list that does not contain it. That is still better than a dead
+  // click: the panel opening is the feedback, and it is where the mark's note
+  // would be if it had one.
+  const handleMarkOpen = useCallback((memoName: string) => {
+    setSelectionPopover(undefined);
+    setSelectedMemoName(memoName);
+    // The panel and the outline share the right dock.
     setOutlineCollapsed(true);
     setCommentsOpen(true);
   }, []);
@@ -646,6 +707,58 @@ const DocumentView = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, scrollCacheKey]);
 
+  // Following a sub-document reference in the body scrolls to its entry rather
+  // than navigating: the target is part of this document, so reading it must not
+  // cost the reader their place. The entry is emphasized on arrival, since a
+  // scroll on its own leaves you guessing which row you were sent to.
+  const jumpToSubDoc = useCallback((memoName: string) => {
+    setHighlightedSubDoc(memoName);
+    document.getElementById(REFERENCES_ANCHOR_ID)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
+  const subDocReferenceValue = useMemo(
+    () => ({
+      parentMemoName: memo.name,
+      subDocs: subDocs.map((subDoc) => ({ name: subDoc.name, title: subDoc.title })),
+      onJump: jumpToSubDoc,
+    }),
+    [memo.name, subDocs, jumpToSubDoc],
+  );
+
+  // Sub-documents sit above the attachment list, in the same shape: attachments are
+  // the part of a document's metadata that actually gets used, so that is where
+  // content-belonging-to-this-document goes too.
+  // Read-only in the preview: creating a sub-document is an edit, so those
+  // controls live in the editor's own References block. With nothing to list the
+  // whole section is absent — no empty header for a reader to wonder about, and
+  // the outline's entry is gated on the same emptiness.
+  const hasReferences = supportsComments && subDocs.length > 0;
+  const hasAttachments = remainingAttachments.length > 0;
+
+  // References and attachments are one block of "what else is attached to this
+  // document", so they are drawn as one: a single rule separating them from the
+  // body, and no gap or second rule between them. The two cards are fused at the
+  // seam (no doubled border, no rounded notch) — each section's own tinted
+  // header is what says a new one has started.
+  const metadataSections = (hasReferences || hasAttachments) && (
+    <div className="relative z-10 mt-6 border-t border-border pt-4">
+      {hasReferences && (
+        <div id={REFERENCES_ANCHOR_ID}>
+          <ReferenceListView
+            className={cn(hasAttachments && "rounded-b-none")}
+            subDocs={subDocs}
+            parentMemoName={memo.name}
+            highlightedMemoName={highlightedSubDoc}
+          />
+        </div>
+      )}
+      {hasAttachments && (
+        <div id={ATTACHMENTS_ANCHOR_ID}>
+          <AttachmentListView className={cn(hasReferences && "rounded-t-none border-t-0")} attachments={remainingAttachments} />
+        </div>
+      )}
+    </div>
+  );
+
   // The in-text marking apparatus: the overlay plus the two floating toolbars (one for a fresh
   // selection, one for an existing mark). Rendered as the last child of whichever positioned
   // element wraps the rendered document — a markdown document, or a VIEW document's blocks.
@@ -656,10 +769,11 @@ const DocumentView = ({
         marks={marks}
         contentKey={memo.content}
         selectedMemoName={selectedMemoName}
-        // Marking is a comment-panel activity: with the panel collapsed the document is just a
-        // document, so marks are shown but inert — the same rule the selection toolbar follows.
-        // Open the panel first, then mark or restyle.
-        onMarkClick={commentsOpen && !relinkTarget ? handleMarkClick : undefined}
+        // Restyling a mark is still a comment-panel activity (as is making one: the
+        // selection toolbar keeps that rule). Reading one is not — a click with the
+        // panel closed opens the panel on the comment instead of doing nothing.
+        // While re-anchoring, a click on a mark must not steal the gesture.
+        onMarkClick={relinkTarget ? undefined : commentsOpen ? handleMarkClick : handleMarkOpen}
         onUnresolved={setUnresolvedMarks}
         onDrifted={setDriftedMarks}
         onAnchors={setMarkAnchors}
@@ -746,15 +860,14 @@ const DocumentView = ({
               >
                 {t("notebook.preview")}
               </Button>
-              <Button
-                variant={mode === "edit" ? "secondary" : "ghost"}
-                size="sm"
-                className="rounded-none h-6 px-2 text-xs"
-                onClick={() => setMode("edit")}
-              >
-                <PencilIcon className="w-3 h-3 mr-1" />
-                {t("notebook.edit")}
-              </Button>
+              {memo.agentEditPending ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>{editButton}</TooltipTrigger>
+                  <TooltipContent>{t("notebook.mcp-edited-tooltip")}</TooltipContent>
+                </Tooltip>
+              ) : (
+                editButton
+              )}
             </div>
           )}
           {isHtml && mode === "edit" && (
@@ -989,11 +1102,7 @@ const DocumentView = ({
                     readonly={false}
                   />
                 </div>
-                {remainingAttachments.length > 0 && (
-                  <div id={ATTACHMENTS_ANCHOR_ID} className="relative z-10 mt-6 border-t border-border pt-4">
-                    <AttachmentListView attachments={remainingAttachments} />
-                  </div>
-                )}
+                {metadataSections}
                 {markOverlay}
               </div>
             ) : (
@@ -1026,22 +1135,20 @@ const DocumentView = ({
               <div className="relative z-10">
                 <MemoViewContext.Provider value={buildPreviewContext(memo)}>
                   <InlineAttachmentProvider attachments={memo.attachments}>
-                    <MemoContent
-                      content={memo.content}
-                      memoName={memo.name}
-                      density={density}
-                      showProperties={docConfig.showProperties}
-                      softBreak={docConfig.softBreak}
-                      onPropertyChange={propertyChangeHandler}
-                    />
+                    <SubDocReferenceProvider value={subDocReferenceValue}>
+                      <MemoContent
+                        content={memo.content}
+                        memoName={memo.name}
+                        density={density}
+                        showProperties={docConfig.showProperties}
+                        softBreak={docConfig.softBreak}
+                        onPropertyChange={propertyChangeHandler}
+                      />
+                    </SubDocReferenceProvider>
                   </InlineAttachmentProvider>
                 </MemoViewContext.Provider>
               </div>
-              {remainingAttachments.length > 0 && (
-                <div id={ATTACHMENTS_ANCHOR_ID} className="relative z-10 mt-6 border-t border-border pt-4">
-                  <AttachmentListView attachments={remainingAttachments} />
-                </div>
-              )}
+              {metadataSections}
               {markOverlay}
             </div>
           ) : (
@@ -1053,6 +1160,9 @@ const DocumentView = ({
                 expand
                 cacheKey={`notebook-editor-${memo.name}`}
                 memo={memo}
+                // Adding a sub-document is an edit, so the References controls
+                // live here rather than in the preview.
+                showReferences={supportsComments}
                 onContentChange={setEditDraftContent}
                 onConfirm={() => {
                   // The edit that's about to land is what marks drift under, and the writer is the
@@ -1072,7 +1182,8 @@ const DocumentView = ({
             <DocumentOutline
               content={outlineContent}
               containerRef={previewRef}
-              hasAttachments={remainingAttachments.length > 0}
+              hasAttachments={hasAttachments}
+              hasReferences={hasReferences}
               isEditing={mode === "edit"}
               onScrollToLine={(line) => editorRef.current?.scrollToLine(line)}
             />
@@ -1134,7 +1245,8 @@ const DocumentView = ({
             <DocumentOutline
               content={outlineContent}
               containerRef={previewRef}
-              hasAttachments={remainingAttachments.length > 0}
+              hasAttachments={hasAttachments}
+              hasReferences={hasReferences}
               isEditing={mode === "edit"}
               onScrollToLine={(line) => editorRef.current?.scrollToLine(line)}
             />

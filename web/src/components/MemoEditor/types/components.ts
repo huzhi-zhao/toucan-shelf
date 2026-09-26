@@ -34,11 +34,33 @@ export interface MemoEditorProps {
    * the comment sidebars (icon-only visibility, small Save/Cancel).
    */
   toolbarVariant?: "default" | "comment";
+  /**
+   * Size the editor to the space left below it in the viewport, instead of the
+   * fixed cap a normal-mode editor gets (`max-height: 50vh`).
+   *
+   * For a surface where the editor IS the page's work area but the page has no
+   * definite height to inherit — the memo detail page, which scrolls in the
+   * document like every other page. `expand` cannot serve there: it sizes by
+   * `height: 100%`, which needs a definite-height ancestor, and it also carries
+   * the full-page editor's other choices (no card frame, sticky action bar,
+   * periodic auto-save). This one changes height and nothing else.
+   */
+  fillViewport?: boolean;
+  /**
+   * Show the References block (this document's sub-documents, plus the controls
+   * that create them). Opt-in rather than inferred: it is a Notebook-document
+   * affordance, and the same editor also composes comments, where a sub-document
+   * makes no sense. Ignored until the document exists — a sub-document needs a
+   * parent to hang off.
+   */
+  showReferences?: boolean;
 }
 
 export interface EditorContentProps {
   placeholder?: string;
   expand?: boolean;
+  /** See MemoEditorProps.fillViewport: the editor fills its host instead of capping. */
+  fill?: boolean;
 }
 
 export interface EditorToolbarProps {
@@ -63,6 +85,8 @@ export interface EditorToolbarProps {
 
 export interface EditorMetadataProps {
   memoName?: string;
+  /** See MemoEditorProps.showReferences. */
+  showReferences?: boolean;
 }
 
 export interface AudioRecorderPanelProps {

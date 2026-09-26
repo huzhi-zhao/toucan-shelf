@@ -1,4 +1,4 @@
-import { type PointerEvent, useEffect, useRef, useState } from "react";
+import { lazy, type PointerEvent, Suspense, useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, useLocation, useSearchParams } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import { useInstance } from "@/contexts/InstanceContext";
@@ -7,8 +7,12 @@ import useCurrentUser from "@/hooks/useCurrentUser";
 import useMediaQuery from "@/hooks/useMediaQuery";
 import useSidebarMode from "@/hooks/useSidebarMode";
 import { cn } from "@/lib/utils";
+import { ROUTES } from "@/router/routes";
 import { buildAuthRoute, shouldGatePrivateInstance } from "@/utils/auth-redirect";
+import { withChunkReload } from "@/utils/dynamicImport";
 import { useTranslate } from "@/utils/i18n";
+
+const Landing = lazy(() => withChunkReload(() => import("@/pages/Landing")));
 
 const MEMOS_DEPLOY_URL = "https://usememos.com/docs/deploy";
 const SIDEBAR_HOVER_OPEN_DELAY_MS = 200;
@@ -78,6 +82,18 @@ const RootLayout = () => {
     clearTimeout(sidebarHoverTimeoutRef.current);
     setSidebarExpanded(false);
   };
+
+  // An anonymous visitor at the bare domain gets the product introduction instead
+  // of being bounced to /auth — on private instances too, since it shows no data.
+  // It replaces the app chrome entirely; every other guest URL falls through to
+  // the gates below.
+  if (!currentUser && pathname === ROUTES.HOME) {
+    return (
+      <Suspense fallback={null}>
+        <Landing />
+      </Suspense>
+    );
+  }
 
   // Private instance (no InstanceURL configured): anonymous visitors may only reach
   // share links; everything else redirects to the sign-in page, preserving the intended

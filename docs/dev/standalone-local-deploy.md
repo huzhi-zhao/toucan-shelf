@@ -30,50 +30,21 @@ CGO_ENABLED=0 go build -o memos ./cmd/memos
 | S3 客户端 | [internal/storage/s3/s3.go](../../internal/storage/s3/s3.go) |
 | 附件走 S3 | 已有 |
 | DB 备份到 S3 | [server/backup/backup.go](../../server/backup/backup.go)：`VACUUM INTO` 快照 + gzip + 上传 |
-| 定时备份 | [server/runner/backup/runner.go](../../server/runner/backup/runner.go)，见下方"已知问题" |
+| 定时备份 | [server/runner/backup/runner.go](../../server/runner/backup/runner.go)：启动时检查到期状态，之后每小时复查 |
 | 手动备份 | `BackupNow` API |
 | 备份状态 | 记在 `InstanceSetting_BACKUP`，UI 可见 |
 | 从 S3 恢复 | **没有**——已核实仓库内不存在任何"启动时从 S3 拉取快照恢复"的代码路径 |
 | 首启引导 UI | 没有——没有配置 S3 的引导流程，也没有"未配置远程备份"的警告条 |
 | 打包 CI | 有但未生效——`.github/workflows-disabled/release.yml` 里存在 goos/goarch 构建矩阵与多平台镜像矩阵，但整个 workflows 目录处于停用状态，且相关段落本身也被注释掉 |
 
-## 已修复的备份问题
+## 自动备份现状
 
-自动备份曾有两个 bug，影响**现有线上实例**，与 standalone 部署与否无关，已修复。
-两段原始诊断保留在下面，便于回溯当时的判断。
+[server/runner/backup/runner.go](../../server/runner/backup/runner.go) 在启动时读取持久化的
+`LastBackupTime`，到期便补跑；之后每小时复查。成功备份的间隔仍固定为 7 天，失败
+后最早 1 小时重试，尚无可配置间隔。未配置 S3 时不运行自动备份。
 
-### 间隔硬编码 + 无启动补跑（已修复）
-
-[server/runner/backup/runner.go](../../server/runner/backup/runner.go) 里
-`runnerInterval` 硬编码为 `7 * 24 * time.Hour`，调度靠一个纯内存 `time.Ticker`：
-
-- **启动时不跑**，第一次触发必须等进程连续运行满 7 天。
-- **进度不持久化**，计时器活在内存里，每次重启归零；`LastBackupTime` 只被写入和展示，
-  没有任何一处读它来决定该不该跑。
-- 也没有配置项能把这个间隔改短——间隔既是硬编码常量，也不存在把它接到
-  `InstanceSetting` 或环境变量的路径。
-
-线上是积极开发的项目，部署频率远高于 7 天，两个缺陷相乘的结果是自动备份实际上
-从未真正按周期触发过，只能靠手动 `BackupNow`。
-
-**修法**：周期判定改为读存储里的 `last_backup_time`，ticker 只当轮询心跳
-（每小时一次），并在 runner 启动时先判定一次，停机期间到期的备份会补跑。未配置 S3 时
-直接跳过，不再每次轮询都记一笔失败尝试；上次尝试失败则下一次轮询就重试。间隔本身仍是
-常量 `backupInterval`，把它做成配置项是另一件事，没有一并做。
-
-### 自定义备份路径被静默重置（已修复）
-
-[server/backup/backup.go](../../server/backup/backup.go) 的 `Run()` 记录备份状态时，
-新建一个 `InstanceBackupSetting{LastBackupTime, LastBackupSuccess}` 并整体覆盖写回，
-没有带上已有的 `PathTemplate` 字段。`UpsertInstanceSetting` 是整体替换而非字段级
-patch，所以用户在设置里配置的自定义路径模板每备份一次就被清空一次，下次读取时又被
-自动填回默认模板——配置悄悄消失，UI 上不会有任何提示。
-
-**修法**：`Run()` 写回状态前先读出现有设置，只覆盖 `last_backup_*` 三个字段，
-`path_template` 原样带上。
-
-这两个 bug 原记录在 `docs/plans/2026-08-04-standalone-local-deploy/02-backup-bugs.md`
-（该文件随 docs/plans 迁移清理已删除，内容并入本节）。
+[server/backup/backup.go](../../server/backup/backup.go) 记录成功或失败状态时保留已有的
+`PathTemplate`，不会清除管理员设置的自定义路径。
 
 ## 关键决策
 

@@ -4,9 +4,10 @@ import { AUTH_REDIRECT_PARAM, buildAuthRoute, getSafeRedirectPath, requiresFullP
 import { ROUTES } from "./routes";
 
 /**
- * Index-route gate mounted at `/`. Authenticated visitors fall through to the
- * nested Home page; unauthenticated visitors are redirected to `/auth`, with
- * the original location preserved so they return to `/` after signing in.
+ * Gate for the bare domain and the path-based knowledge-base URLs. Authenticated
+ * visitors fall through; unauthenticated visitors are redirected to `/auth`, with the
+ * original location preserved so they return to it after signing in. (A guest at
+ * exactly `/` never reaches this gate: RootLayout shows them the Landing page.)
  */
 export const LandingRoute = () => {
   const currentUser = useCurrentUser();
