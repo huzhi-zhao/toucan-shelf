@@ -16,7 +16,7 @@ import { useTranslate } from "@/utils/i18n";
 import { convertVisibilityFromString } from "@/utils/memo";
 import { AudioRecorderPanel, EditorContent, EditorMetadata, FocusModeOverlay, TimestampPopover } from "./components";
 import { FOCUS_MODE_STYLES, FORMATTING_TOOLBAR_STORAGE_KEY, PERIODIC_SAVE_STORAGE_KEY } from "./constants";
-import { useAudioRecorder, useAutoSave, useFocusMode, useKeyboard, useMemoInit, usePeriodicSave } from "./hooks";
+import { useAudioRecorder, useAutoSave, useFillViewportHeight, useFocusMode, useKeyboard, useMemoInit, usePeriodicSave } from "./hooks";
 import { errorService, memoService, transcriptionService, validationService } from "./services";
 import { EditorProvider, UploadWorkspaceProvider, useEditorContext, useEditorSelector, useUploadWorkspace } from "./state";
 import { CommentToolbar, EditorToolbar, FormattingToolbar } from "./Toolbar";
@@ -63,6 +63,7 @@ const MemoEditorImpl = forwardRef<EditorController, MemoEditorProps>(
       expand,
       toolbarVariant = "default",
       showReferences,
+      fillViewport,
     },
     forwardedRef,
   ) => {
@@ -93,6 +94,12 @@ const MemoEditorImpl = forwardRef<EditorController, MemoEditorProps>(
     const lastPeriodicSaveContentRef = useRef<string | undefined>(undefined);
 
     const memoName = memo?.name;
+
+    // Fill the rest of the screen on a surface that asks for it (the memo detail
+    // page). Measured rather than inherited — see the hook for why `expand`'s
+    // `height: 100%` cannot work on a document-scrolled page. Focus mode already
+    // owns the whole viewport, so it wins.
+    const { ref: rootRef, height: fillHeight, filling: isFilling } = useFillViewportHeight(fillViewport && !isFocusMode);
     const canTranscribe = useMemo(() => {
       const providerId = aiSetting.transcription?.providerId ?? "";
       if (!providerId) return false;
@@ -433,6 +440,8 @@ const MemoEditorImpl = forwardRef<EditorController, MemoEditorProps>(
         - In normal mode: stays relative with max-height constraint
       */}
         <div
+          ref={rootRef}
+          style={fillHeight ? { height: fillHeight } : undefined}
           className={cn(
             "group relative w-full flex flex-col justify-between items-start px-4 pt-3 pb-1 gap-2",
             expand && !isFocusMode ? "bg-inherit" : "bg-card rounded-lg border border-border",
@@ -455,8 +464,8 @@ const MemoEditorImpl = forwardRef<EditorController, MemoEditorProps>(
             </div>
           )}
 
-          {/* Editor content grows to fill available space in focus mode, or when `expand` is set */}
-          <EditorContent ref={editorRef} placeholder={placeholder} expand={expand} />
+          {/* Editor content grows to fill available space in focus mode, or when `expand`/`fillViewport` is set */}
+          <EditorContent ref={editorRef} placeholder={placeholder} expand={expand} fill={isFilling} />
 
           {isAudioRecorderOpen && (audioRecorder.isBusy || isTranscribingAudio) && (
             <AudioRecorderPanel

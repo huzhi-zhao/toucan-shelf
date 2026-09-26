@@ -8,6 +8,7 @@ export { useDragAndDrop } from "./useDragAndDrop";
 export { useEditorActiveState } from "./useEditorActiveState";
 export { COMPACT_TOOLBAR_WIDTH, isCompactWidth, useElementWidth } from "./useElementWidth";
 export { useFileUpload } from "./useFileUpload";
+export { useFillViewportHeight } from "./useFillViewportHeight";
 export { useFocusMode } from "./useFocusMode";
 export { useKeyboard } from "./useKeyboard";
 export { useLinkMemo } from "./useLinkMemo";

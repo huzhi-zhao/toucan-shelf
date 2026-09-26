@@ -31,6 +31,7 @@ const MemoViewImpl = (props: MemoViewProps, forwardedRef: React.ForwardedRef<Edi
     onToggleSidebar,
     onEditingChange,
     onDraftContentChange,
+    fillViewportEditor,
   } = props;
   const cardRef = useRef<HTMLDivElement>(null);
   const [showEditor, setShowEditor] = useState(false);
@@ -131,6 +132,7 @@ const MemoViewImpl = (props: MemoViewProps, forwardedRef: React.ForwardedRef<Edi
         className="mb-2"
         cacheKey={`inline-memo-editor-${memoData.name}`}
         memo={memoData}
+        fillViewport={fillViewportEditor}
         parentMemoName={memoData.parent || undefined}
         onContentChange={onDraftContentChange}
         onConfirm={closeEditor}

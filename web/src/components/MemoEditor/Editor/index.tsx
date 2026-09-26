@@ -18,12 +18,14 @@ interface EditorProps {
   onPaste: (event: React.ClipboardEvent) => void;
   isFocusMode?: boolean;
   expand?: boolean;
+  /** Fill the host's height instead of capping at the normal-mode max-height. */
+  fill?: boolean;
   /** Locks the editor (no typing/caret movement) while a pasted/dropped media file uploads. */
   readOnly?: boolean;
 }
 
 const Editor = forwardRef(function Editor(props: EditorProps, ref: React.ForwardedRef<EditorController>) {
-  const { className, initialContent, placeholder, onContentChange, onPaste, isFocusMode, expand, readOnly } = props;
+  const { className, initialContent, placeholder, onContentChange, onPaste, isFocusMode, expand, fill, readOnly } = props;
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const controllerRef = useRef<EditorController | null>(null);
@@ -100,19 +102,19 @@ const Editor = forwardRef(function Editor(props: EditorProps, ref: React.Forward
     <div
       className={cn(
         "flex flex-col justify-start items-start relative w-full bg-inherit",
-        isFocusMode || expand ? "flex-1 min-h-0" : "h-auto",
+        isFocusMode || expand || fill ? "flex-1 min-h-0" : "h-auto",
         className,
       )}
       // The caret-layout fix (a9ac008a) moves scrolling into .cm-scroller and
       // relies on this attribute to let .cm-editor fill a tall host. Our expand
-      // mode is tall like focus mode, so it opts in too.
-      data-focus-mode={isFocusMode || expand || undefined}
+      // and fill modes are tall like focus mode, so they opt in too.
+      data-focus-mode={isFocusMode || expand || fill || undefined}
     >
       <div
         ref={hostRef}
         className={cn(
           "w-full text-base",
-          isFocusMode || expand ? "flex-1 h-0" : "h-full",
+          isFocusMode || expand || fill ? "flex-1 h-0" : "h-full",
           expand && !isFocusMode && "pb-16",
           readOnly && "cursor-wait opacity-70",
         )}

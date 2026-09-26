@@ -734,9 +734,31 @@ const DocumentView = ({
   // controls live in the editor's own References block. With nothing to list the
   // whole section is absent — no empty header for a reader to wonder about, and
   // the outline's entry is gated on the same emptiness.
-  const referencesSection = supportsComments && subDocs.length > 0 && (
-    <div id={REFERENCES_ANCHOR_ID} className="relative z-10 mt-6 border-t border-border pt-4">
-      <ReferenceListView subDocs={subDocs} parentMemoName={memo.name} highlightedMemoName={highlightedSubDoc} />
+  const hasReferences = supportsComments && subDocs.length > 0;
+  const hasAttachments = remainingAttachments.length > 0;
+
+  // References and attachments are one block of "what else is attached to this
+  // document", so they are drawn as one: a single rule separating them from the
+  // body, and no gap or second rule between them. The two cards are fused at the
+  // seam (no doubled border, no rounded notch) — each section's own tinted
+  // header is what says a new one has started.
+  const metadataSections = (hasReferences || hasAttachments) && (
+    <div className="relative z-10 mt-6 border-t border-border pt-4">
+      {hasReferences && (
+        <div id={REFERENCES_ANCHOR_ID}>
+          <ReferenceListView
+            className={cn(hasAttachments && "rounded-b-none")}
+            subDocs={subDocs}
+            parentMemoName={memo.name}
+            highlightedMemoName={highlightedSubDoc}
+          />
+        </div>
+      )}
+      {hasAttachments && (
+        <div id={ATTACHMENTS_ANCHOR_ID}>
+          <AttachmentListView className={cn(hasReferences && "rounded-t-none border-t-0")} attachments={remainingAttachments} />
+        </div>
+      )}
     </div>
   );
 
@@ -1083,12 +1105,7 @@ const DocumentView = ({
                     readonly={false}
                   />
                 </div>
-                {referencesSection}
-                {remainingAttachments.length > 0 && (
-                  <div id={ATTACHMENTS_ANCHOR_ID} className="relative z-10 mt-6 border-t border-border pt-4">
-                    <AttachmentListView attachments={remainingAttachments} />
-                  </div>
-                )}
+                {metadataSections}
                 {markOverlay}
               </div>
             ) : (
@@ -1134,12 +1151,7 @@ const DocumentView = ({
                   </InlineAttachmentProvider>
                 </MemoViewContext.Provider>
               </div>
-              {referencesSection}
-              {remainingAttachments.length > 0 && (
-                <div id={ATTACHMENTS_ANCHOR_ID} className="relative z-10 mt-6 border-t border-border pt-4">
-                  <AttachmentListView attachments={remainingAttachments} />
-                </div>
-              )}
+              {metadataSections}
               {markOverlay}
             </div>
           ) : (
@@ -1173,8 +1185,8 @@ const DocumentView = ({
             <DocumentOutline
               content={outlineContent}
               containerRef={previewRef}
-              hasAttachments={remainingAttachments.length > 0}
-              hasReferences={subDocs.length > 0}
+              hasAttachments={hasAttachments}
+              hasReferences={hasReferences}
               isEditing={mode === "edit"}
               onScrollToLine={(line) => editorRef.current?.scrollToLine(line)}
             />
@@ -1236,8 +1248,8 @@ const DocumentView = ({
             <DocumentOutline
               content={outlineContent}
               containerRef={previewRef}
-              hasAttachments={remainingAttachments.length > 0}
-              hasReferences={subDocs.length > 0}
+              hasAttachments={hasAttachments}
+              hasReferences={hasReferences}
               isEditing={mode === "edit"}
               onScrollToLine={(line) => editorRef.current?.scrollToLine(line)}
             />
