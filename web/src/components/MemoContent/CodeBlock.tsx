@@ -1,7 +1,7 @@
 import copy from "copy-to-clipboard";
 import hljs from "highlight.js";
 import { CheckIcon, ChevronRightIcon, CopyIcon } from "lucide-react";
-import { isValidElement, type ReactElement, type ReactNode, useEffect, useMemo, useState } from "react";
+import { isValidElement, type ReactElement, type ReactNode, type SyntheticEvent, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { markdownStyles } from "@/lib/markdownStyles";
 import { cn } from "@/lib/utils";
@@ -35,9 +35,13 @@ export const CodeBlock = ({ children, className, node: _node, ...props }: CodeBl
   // title="xxx"), promoted to real attributes by remark-code-fold. Only plain
   // code blocks honour it — the special blocks below (mermaid/sheets/…) return
   // early and render their own chrome.
-  const foldProps = codeElement?.props as { "data-fold"?: string; "data-fold-title"?: string } | undefined;
+  const foldProps = codeElement?.props as { "data-fold"?: string; "data-fold-title"?: string; "data-nocopy"?: string } | undefined;
   const foldMode = foldProps?.["data-fold"];
   const foldTitle = foldProps?.["data-fold-title"];
+  // ```text nocopy — deterrence only: no Copy button, no selection, and copy /
+  // drag / context-menu are swallowed. The markdown source is still readable to
+  // anyone who can open the editor, and devtools can't be stopped.
+  const noCopy = foldProps?.["data-nocopy"] === "true";
   // Must be declared with the other hooks, above the early returns — see the note below.
   const [collapsed, setCollapsed] = useState(foldMode === "closed");
 
@@ -200,8 +204,13 @@ export const CodeBlock = ({ children, className, node: _node, ...props }: CodeBl
     }
   };
 
+  const blockCopy = (event: SyntheticEvent) => event.preventDefault();
+
   return (
-    <pre className={cn("relative rounded-lg border border-border bg-muted/20 overflow-hidden", markdownStyles.blockWrapper)}>
+    <pre
+      className={cn("relative rounded-lg border border-border bg-muted/20 overflow-hidden", markdownStyles.blockWrapper)}
+      {...(noCopy && { onCopy: blockCopy, onCut: blockCopy, onDragStart: blockCopy, onContextMenu: blockCopy })}
+    >
       {/* Header with language label and copy button */}
       <div className="flex items-center justify-between px-2 py-1 border-b border-border bg-muted/30">
         {foldMode ? (
@@ -217,36 +226,38 @@ export const CodeBlock = ({ children, className, node: _node, ...props }: CodeBl
         ) : (
           <span className="text-xs text-foreground select-none">{language || "text"}</span>
         )}
-        <button
-          onClick={handleCopy}
-          className={cn(
-            "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs",
-            "transition-colors duration-200",
-            "hover:bg-accent active:scale-95",
-            copied ? "text-primary" : "text-muted-foreground hover:text-foreground",
-          )}
-          aria-label={copied ? "Copied" : "Copy code"}
-          title={copied ? "Copied!" : "Copy code"}
-        >
-          {copied ? (
-            <>
-              <CheckIcon className="w-3.5 h-3.5" />
-              <span>Copied</span>
-            </>
-          ) : (
-            <>
-              <CopyIcon className="w-3.5 h-3.5" />
-              <span>Copy</span>
-            </>
-          )}
-        </button>
+        {!noCopy && (
+          <button
+            onClick={handleCopy}
+            className={cn(
+              "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs",
+              "transition-colors duration-200",
+              "hover:bg-accent active:scale-95",
+              copied ? "text-primary" : "text-muted-foreground hover:text-foreground",
+            )}
+            aria-label={copied ? "Copied" : "Copy code"}
+            title={copied ? "Copied!" : "Copy code"}
+          >
+            {copied ? (
+              <>
+                <CheckIcon className="w-3.5 h-3.5" />
+                <span>Copied</span>
+              </>
+            ) : (
+              <>
+                <CopyIcon className="w-3.5 h-3.5" />
+                <span>Copy</span>
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Code content. Hidden rather than unmounted when collapsed, so toggling
           doesn't re-run highlighting and the copy button keeps working. */}
       <div className={cn("overflow-x-auto", collapsed && "hidden")}>
         <code
-          className={cn("block px-3 py-2 text-sm leading-relaxed", `language-${language}`)}
+          className={cn("block px-3 py-2 text-sm leading-relaxed", `language-${language}`, noCopy && "select-none")}
           dangerouslySetInnerHTML={{ __html: highlightedCode }}
         />
       </div>

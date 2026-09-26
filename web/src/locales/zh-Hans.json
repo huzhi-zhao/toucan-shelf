@@ -1520,5 +1520,27 @@
     "open": "打开子文档",
     "back-to-parent": "返回主文档",
     "copy-reference": "复制引用"
+  },
+  "landing": {
+    "eyebrow": "自托管知识库",
+    "headline": "你知道的一切，像图书馆一样收好。",
+    "subhead": "知识库、文件夹、文档组成真正的层级结构，内置交互视图、AI Agent 接入和对外发布。单个二进制文件，基于 SQLite 运行。",
+    "cta": "登录你的书架",
+    "features-title": "核心功能",
+    "feature-hierarchy-title": "层级知识库",
+    "feature-hierarchy-body": "知识库、多级文件夹和子文档，配合书架总览。任意浏览器即可阅读和编辑。",
+    "feature-view-blocks-title": "视图块",
+    "feature-view-blocks-body": "日历、看板、网格、表格以代码块形式嵌在文档里，直接在预览中编辑。",
+    "feature-gallery-title": "画廊视图",
+    "feature-gallery-body": "按文件夹、标签或属性筛选的卡片墙。视图只存配置，看到的永远是最新数据。",
+    "feature-agents-title": "AI Agent 协作",
+    "feature-agents-body": "memogit 把知识库检出为本地文件；MCP 通过 HTTP 直接访问。两者都会先给人工版本留快照。",
+    "feature-search-title": "混合检索",
+    "feature-search-body": "全文关键词检索与向量相似度融合排序，关键词兜底覆盖所有文档类型。",
+    "feature-publish-title": "发布与分享",
+    "feature-publish-body": "单篇文档可通过链接分享，也可发布到你自己的公开站点，带主题、导航和站点地图。",
+    "feature-storage-title": "附件",
+    "feature-storage-body": "文件存放在本地或 S3 兼容对象存储，始终经由应用鉴权后提供访问。",
+    "footer": "自托管 · 单个 Go 二进制 · SQLite"
   }
 }
