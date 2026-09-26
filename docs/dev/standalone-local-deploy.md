@@ -35,7 +35,7 @@ CGO_ENABLED=0 go build -o memos ./cmd/memos
 | 备份状态 | 记在 `InstanceSetting_BACKUP`，UI 可见 |
 | 从 S3 恢复 | **没有**——已核实仓库内不存在任何"启动时从 S3 拉取快照恢复"的代码路径 |
 | 首启引导 UI | 没有——没有配置 S3 的引导流程，也没有"未配置远程备份"的警告条 |
-| 打包 CI | 未核实是否已配置多平台构建 pipeline，`TODO(确认)` |
+| 打包 CI | 有但未生效——`.github/workflows-disabled/release.yml` 里存在 goos/goarch 构建矩阵与多平台镜像矩阵，但整个 workflows 目录处于停用状态，且相关段落本身也被注释掉 |
 
 ## 自动备份现状
 
@@ -64,8 +64,8 @@ SQLite + 对象存储备份只能有一个写者，多台机器先后启动会�
 ### 不强制配置 S3
 
 首次启动不强制要求填 S3 配置。计划中的做法是允许无 S3 启动、功能完整，未配置远程
-备份时界面持续显示警告条。已核对：界面仍没有这条警告或无 S3 时的降级提示逻辑，
-见根目录 [TODO.md](../../TODO.md)。
+备份时界面持续显示警告条。**已核实未实现**：前端没有这条警告条，也没有无 S3 时的
+降级提示。索引见 [TODO.md](../../TODO.md)。
 
 ## 凭证与快照安全
 
@@ -77,8 +77,8 @@ SQLite + 对象存储备份只能有一个写者，多台机器先后启动会�
 standalone 模式下计划让 S3 凭证只能来自环境变量（`TOUCAN_S3_ENDPOINT` /
 `_REGION` / `_BUCKET` / `_ACCESS_KEY_ID` / `_ACCESS_KEY_SECRET`），因为恢复发生时
 本地 DB 还不存在，不可能从一个尚未存在的数据库里读出连接 S3 所需的凭证。副产品是
-快照天然不含 S3 密钥。已核对：这条环境变量读取路径尚未实现，见根目录
-[TODO.md](../../TODO.md)。
+快照天然不含 S3 密钥。**已核实未实现**：`TOUCAN_S3_*` 在 Go 代码里零命中，凭证仍然只从
+DB 读。索引见 [TODO.md](../../TODO.md)。
 
 线上（docker）部署仍从 DB 读凭证，靠 IAM 权限收敛（Access Key 锁死单 bucket + bucket
 私有）而非代码兜底。

@@ -24,7 +24,6 @@
     "archive": "Archivovat",
     "archived": "Archivované",
     "attachments": "Přílohy",
-    "auto-expand": "Automaticky rozbalit",
     "avatar": "Avatar",
     "basic": "Základní",
     "beta": "Beta",
@@ -103,10 +102,8 @@
     "sign-out": "Odhlásit se",
     "sign-up": "Zaregistrovat se",
     "statistics": "Statistiky",
-    "tags": "Štítky",
     "title": "Název",
     "today": "Dnes",
-    "tree-mode": "Stromový pohled",
     "type": "Typ",
     "unpin": "Odepnout",
     "update": "Aktualizovat",
@@ -186,8 +183,6 @@
   },
   "memo": {
     "archived-at": "Archivováno na",
-    "click-to-hide-sensitive-content": "Klikněte pro skrytí citlivého obsahu",
-    "click-to-show-sensitive-content": "Klikněte pro zobrazení citlivého obsahu",
     "code": "Kód",
     "comment": {
       "self": "Komentáře",
@@ -637,25 +632,6 @@
       "url": "URL",
       "label": "Webhooky"
     },
-    "tags": {
-      "label": "Tagy",
-      "title": "Metadata značky",
-      "description": "Přiřaďte volitelné barvy zobrazení značkám v celé instanci nebo rozmažte odpovídající obsah poznámky. S názvy značek se zachází jako s ukotvenými vzory regulárních výrazů.",
-      "background-color": "Barva pozadí",
-      "blur-content": "Rozmazání obsahu",
-      "no-tags-configured": "Nejsou nakonfigurována žádná metadata značky.",
-      "tag-name": "Název značky",
-      "tag-name-placeholder": "např. work nebo project/.*",
-      "tag-already-exists": "Značka již existuje.",
-      "tag-pattern-hint": "Název značky nebo vzor regulárního výrazu (např. project/.* odpovídá všem značkám project/)",
-      "invalid-regex": "Neplatný nebo nebezpečný vzor regulárního výrazu.",
-      "using-default-color": "Použití výchozí barvy.",
-      "add-rule": "Přidat pravidlo",
-      "configured-rules": "Nastavená pravidla",
-      "default-color": "Výchozí",
-      "matching-rule": "Ukotvený regulární výraz",
-      "used-count": "poznámky {{count}}"
-    },
     "ai": {
       "add-provider": "Přidat poskytovatele",
       "api-key": "klíč API",
@@ -755,22 +731,6 @@
       "refresh": "Obnovit",
       "load-error": "Statistiky se nepodařilo načíst"
     }
-  },
-  "tag": {
-    "all-tags": "Všechny štítky",
-    "create-tag": "Vytvořit štítek",
-    "create-tags-guide": "Štítky můžete vytvořit zadáním `#tag`.",
-    "delete-confirm": "Jste si jisti, že chcete tento štítek odstranit? Všechny související poznámky budou archivovány.",
-    "delete-success": "Štítek úspěšně odstraněn",
-    "delete-tag": "Odstranit štítek",
-    "new-name": "Nový název",
-    "no-tag-found": "Žádný štítek nenalezen",
-    "old-name": "Původní název",
-    "rename-error-empty": "Název štítku nemůže být prázdný nebo obsahovat mezery",
-    "rename-error-repeat": "Nový název se nemůže shodovat s původním názvem",
-    "rename-success": "Štítek úspěšně přejmenován",
-    "rename-tag": "Přejmenovat štítek",
-    "rename-tip": "Všechny vaše poznámky s tímto štítkem budou aktualizovány."
   },
   "tooltip": {
     "link-memo": "Propojit poznámku",

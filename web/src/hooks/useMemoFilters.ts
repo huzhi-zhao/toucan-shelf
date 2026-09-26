@@ -89,8 +89,6 @@ export const useMemoFilters = (options: UseMemoFiltersOptions = {}): string | un
         if (!excludeContentSearch) {
           conditions.push(`content.contains(${escapeFilterValue(filter.value)})`);
         }
-      } else if (filter.factor === "tagSearch") {
-        conditions.push(`tag in [${escapeFilterValue(filter.value)}]`);
       } else if (filter.factor === "pinned") {
         if (includePinned) {
           conditions.push(`pinned`);

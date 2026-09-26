@@ -24,7 +24,6 @@
     "archive": "Archivia",
     "archived": "Archiviati",
     "attachments": "Allegati",
-    "auto-expand": "Espandi automaticamente",
     "avatar": "Avatar",
     "basic": "Base",
     "beta": "Beta",
@@ -103,10 +102,8 @@
     "sign-out": "Esci",
     "sign-up": "Registrati",
     "statistics": "Statistiche",
-    "tags": "Tags",
     "title": "Titolo",
     "today": "Oggi",
-    "tree-mode": "Vista ad albero",
     "type": "Tipo",
     "unpin": "Rimuovi",
     "update": "Aggiorna",
@@ -186,8 +183,6 @@
   },
   "memo": {
     "archived-at": "Archiviato il",
-    "click-to-hide-sensitive-content": "Clicca per nascondere contenuti sensibili",
-    "click-to-show-sensitive-content": "Clicca per mostrare contenuti sensibili",
     "code": "Codice",
     "comment": {
       "self": "Commenti",
@@ -637,25 +632,6 @@
       "url": "URL",
       "label": "Webhooks"
     },
-    "tags": {
-      "label": "Tag",
-      "title": "Tagga i metadati",
-      "description": "Assegna colori di visualizzazione opzionali ai tag a livello di istanza o sfoca il contenuto dei promemoria corrispondenti. I nomi dei tag vengono trattati come modelli regex ancorati.",
-      "background-color": "Colore di sfondo",
-      "blur-content": "Sfoca il contenuto",
-      "no-tags-configured": "Nessun metadato del tag configurato.",
-      "tag-name": "Nome dell'etichetta",
-      "tag-name-placeholder": "ad es. work o project/.*",
-      "tag-already-exists": "L'etichetta esiste già.",
-      "tag-pattern-hint": "Nome del tag o modello regex (ad esempio project/.* corrisponde a tutti i tag project/)",
-      "invalid-regex": "Modello regex non valido o non sicuro.",
-      "using-default-color": "Utilizzando il colore predefinito.",
-      "add-rule": "Aggiungi regola",
-      "configured-rules": "Regole configurate",
-      "default-color": "Predefinita",
-      "matching-rule": "Regex ancorata",
-      "used-count": "promemoria {{count}}"
-    },
     "ai": {
       "add-provider": "Aggiungi fornitore",
       "api-key": "Tasto API",
@@ -755,22 +731,6 @@
       "refresh": "Aggiorna",
       "load-error": "Impossibile caricare le statistiche"
     }
-  },
-  "tag": {
-    "all-tags": "Tutti i Tags",
-    "create-tag": "Crea Tag",
-    "create-tags-guide": "Puoi creare tag inserendo `#tag`.",
-    "delete-confirm": "Confermi di voler eliminare questo tag? Tutti i memo collegati saranno archiviati.",
-    "delete-success": "Tag eliminato con successo",
-    "delete-tag": "Elimina Tag",
-    "new-name": "Nuovo nome",
-    "no-tag-found": "Nessun tag trovato",
-    "old-name": "Vecchio nome",
-    "rename-error-empty": "Il nome del tag non può essere vuoto o contenere spazi",
-    "rename-error-repeat": "Il nuovo nome non può essere uguale al vecchio",
-    "rename-success": "Tag rinominato con successo",
-    "rename-tag": "Rinomina tag",
-    "rename-tip": "Tutti i tuoi memo con questo tag saranno aggiornati."
   },
   "tooltip": {
     "link-memo": "Link Memo",

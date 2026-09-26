@@ -109,7 +109,6 @@ func (s *APIV1Service) ListAllUserStats(ctx context.Context, request *v1pb.ListA
 			if _, exists := userMemoStatMap[memo.CreatorID]; !exists {
 				userMemoStatMap[memo.CreatorID] = &v1pb.UserStats{
 					Name:                  "",
-					TagCount:              make(map[string]int32),
 					MemoCreatedTimestamps: []*timestamppb.Timestamp{},
 					MemoUpdatedTimestamps: []*timestamppb.Timestamp{},
 					PinnedMemos:           []string{},
@@ -130,11 +129,9 @@ func (s *APIV1Service) ListAllUserStats(ctx context.Context, request *v1pb.ListA
 			// Count memo stats
 			stats.TotalMemoCount++
 
-			// Count tags and other properties
+			// Count content properties. There is no tag counting: the `#tag` syntax is gone
+			// (see docs/dev/roadmap.md) and tag_count stays empty.
 			if memo.Payload != nil {
-				for _, tag := range memo.Payload.Tags {
-					stats.TagCount[tag]++
-				}
 				if memo.Payload.Property != nil {
 					if memo.Payload.Property.HasLink {
 						stats.MemoTypeStats.LinkCount++
@@ -219,7 +216,6 @@ func (s *APIV1Service) GetUserStats(ctx context.Context, request *v1pb.GetUserSt
 
 	createdTimestamps := []*timestamppb.Timestamp{}
 	updatedTimestamps := []*timestamppb.Timestamp{}
-	tagCount := make(map[string]int32)
 	linkCount := int32(0)
 	codeCount := int32(0)
 	todoCount := int32(0)
@@ -248,9 +244,6 @@ func (s *APIV1Service) GetUserStats(ctx context.Context, request *v1pb.GetUserSt
 			updatedTimestamps = append(updatedTimestamps, timestamppb.New(time.Unix(memo.UpdatedTs, 0)))
 			// Count different memo types based on content.
 			if memo.Payload != nil {
-				for _, tag := range memo.Payload.Tags {
-					tagCount[tag]++
-				}
 				if memo.Payload.Property != nil {
 					if memo.Payload.Property.HasLink {
 						linkCount++
@@ -278,7 +271,6 @@ func (s *APIV1Service) GetUserStats(ctx context.Context, request *v1pb.GetUserSt
 		Name:                  fmt.Sprintf("%s/stats", BuildUserName(user.Username)),
 		MemoCreatedTimestamps: createdTimestamps,
 		MemoUpdatedTimestamps: updatedTimestamps,
-		TagCount:              tagCount,
 		PinnedMemos:           pinnedMemos,
 		TotalMemoCount:        totalMemoCount,
 		MemoTypeStats: &v1pb.UserStats_MemoTypeStats{

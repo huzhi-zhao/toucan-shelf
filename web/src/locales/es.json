@@ -24,7 +24,6 @@
     "archive": "Archivar",
     "archived": "Archivado",
     "attachments": "Adjuntos",
-    "auto-expand": "Auto expandir",
     "avatar": "Avatar",
     "basic": "Básico",
     "beta": "Beta",
@@ -103,10 +102,8 @@
     "sign-out": "Cerrar sesión",
     "sign-up": "Registrarse",
     "statistics": "Estadísticas",
-    "tags": "Etiquetas",
     "title": "Título",
     "today": "Hoy",
-    "tree-mode": "Modo árbol",
     "type": "Tipo",
     "unpin": "Desenganchar",
     "update": "Actualizar",
@@ -186,8 +183,6 @@
   },
   "memo": {
     "archived-at": "Archivado en",
-    "click-to-hide-sensitive-content": "Haz clic para ocultar contenido sensible",
-    "click-to-show-sensitive-content": "Haz clic para mostrar contenido sensible",
     "code": "Código",
     "comment": {
       "self": "Comentarios",
@@ -637,25 +632,6 @@
       "url": "URL",
       "label": "Webhooks"
     },
-    "tags": {
-      "label": "Etiquetas",
-      "title": "Metadatos de etiquetas",
-      "description": "Asigne colores de visualización opcionales a etiquetas en toda la instancia o difumine el contenido de la nota coincidente. Los nombres de las etiquetas se tratan como patrones de expresiones regulares anclados.",
-      "background-color": "Color de fondo",
-      "blur-content": "Contenido borroso",
-      "no-tags-configured": "No hay metadatos de etiqueta configurados.",
-      "tag-name": "Nombre de etiqueta",
-      "tag-name-placeholder": "por ej. work o project/.*",
-      "tag-already-exists": "La etiqueta ya existe.",
-      "tag-pattern-hint": "Nombre de etiqueta o patrón de expresión regular (por ejemplo, project/.* coincide con todas las etiquetas project/)",
-      "invalid-regex": "Patrón de expresiones regulares no válido o inseguro.",
-      "using-default-color": "Usando el color predeterminado.",
-      "add-rule": "Agregar regla",
-      "configured-rules": "Reglas configuradas",
-      "default-color": "Por defecto",
-      "matching-rule": "expresión regular anclada",
-      "used-count": "notas {{count}}"
-    },
     "ai": {
       "add-provider": "Agregar proveedor",
       "api-key": "clave API",
@@ -755,22 +731,6 @@
       "refresh": "Refrescar",
       "load-error": "No se pudieron cargar las estadísticas"
     }
-  },
-  "tag": {
-    "all-tags": "Todas las etiquetas",
-    "create-tag": "Crear etiqueta",
-    "create-tags-guide": "Puedes crear etiquetas escribiendo `#etiqueta`.",
-    "delete-confirm": "¿Estás seguro de eliminar esta etiqueta? Todos los memos relacionados serán archivados.",
-    "delete-success": "Etiqueta eliminada correctamente",
-    "delete-tag": "Eliminar etiqueta",
-    "new-name": "Nombre nuevo",
-    "no-tag-found": "No se encontró ninguna etiqueta",
-    "old-name": "Nombre anterior",
-    "rename-error-empty": "El nombre de la etiqueta no puede estar vacío ni contener espacios",
-    "rename-error-repeat": "El nombre nuevo no puede ser igual al anterior",
-    "rename-success": "Etiqueta renombrada correctamente",
-    "rename-tag": "Renombrar etiqueta",
-    "rename-tip": "Todos tus memos con esta etiqueta serán actualizados."
   },
   "tooltip": {
     "link-memo": "Vincular memo",

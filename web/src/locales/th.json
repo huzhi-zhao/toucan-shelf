@@ -23,7 +23,6 @@
     "archive": "เก็บถาวร",
     "archived": "เก็บถาวรแล้ว",
     "attachments": "ไฟล์แนบ",
-    "auto-expand": "ขยายอัตโนมัติ",
     "avatar": "สัญลักษณ์",
     "basic": "ทั่วไป",
     "beta": "รุ่นเบต้า",
@@ -102,10 +101,8 @@
     "sign-out": "ออกจากระบบ",
     "sign-up": "สมัครใช้งาน",
     "statistics": "สถิติ",
-    "tags": "ป้ายกำกับ",
     "title": "ชื่อเรื่อง",
     "today": "วันนี้",
-    "tree-mode": "โหมดต้นไม้",
     "type": "ประเภท",
     "unpin": "ลบการปักหมุด",
     "update": "อัปเดต",
@@ -172,8 +169,6 @@
   },
   "memo": {
     "archived-at": "เก็บถาวรไว้ที่",
-    "click-to-hide-sensitive-content": "คลิกเพื่อซ่อนเนื้อหาไม่เหมาะสม (NSFW)",
-    "click-to-show-sensitive-content": "คลิกเพื่อแสดงเนื้อหาไม่เหมาะสม (NSFW)",
     "code": "โค้ด",
     "comment": {
       "self": "ความคิดเห็น",
@@ -500,37 +495,7 @@
       "title": "Webhook",
       "url": "URL",
       "label": "Webhook"
-    },
-    "tags": {
-      "label": "แท็ก",
-      "title": "แท็กข้อมูลเมตา",
-      "description": "กำหนดสีที่แสดงเพิ่มเติมให้กับแท็กทั่วทั้งอินสแตนซ์ หรือเบลอเนื้อหาบันทึกที่ตรงกัน ชื่อแท็กจะถือเป็นรูปแบบ regex แบบ Anchored",
-      "background-color": "สีพื้นหลัง",
-      "blur-content": "เบลอเนื้อหา",
-      "no-tags-configured": "ไม่มีการกำหนดค่าข้อมูลเมตาของแท็ก",
-      "tag-name": "ชื่อแท็ก",
-      "tag-name-placeholder": "เช่น work หรือ project/.*",
-      "tag-already-exists": "มีแท็กอยู่แล้ว",
-      "tag-pattern-hint": "ชื่อแท็กหรือรูปแบบ regex (เช่น project/.* ตรงกับแท็ก project/ ทั้งหมด)",
-      "invalid-regex": "รูปแบบ regex ไม่ถูกต้องหรือไม่ปลอดภัย",
-      "using-default-color": "การใช้สีเริ่มต้น"
     }
-  },
-  "tag": {
-    "all-tags": "แท็กทั้งหมด",
-    "create-tag": "สร้างแท็ก",
-    "create-tags-guide": "คุณสามารถสร้างแท็กได้โดยป้อน `#tag`",
-    "delete-confirm": "คุณแน่ใจหรือว่าจะลบแท็กนี้? บันทึกที่เกี่ยวข้องทั้งหมดจะถูกเก็บถาวร",
-    "delete-success": "ลบแท็กเรียบร้อยแล้ว",
-    "delete-tag": "ลบแท็ก",
-    "new-name": "ชื่อใหม่",
-    "no-tag-found": "ไม่พบแท็ก",
-    "old-name": "ชื่อเก่า",
-    "rename-error-empty": "ชื่อแท็กต้องไม่ว่างเปล่าหรือมีช่องว่าง",
-    "rename-error-repeat": "ชื่อใหม่ต้องไม่เหมือนกับชื่อเดิม",
-    "rename-success": "เปลี่ยนชื่อแท็กสำเร็จ",
-    "rename-tag": "เปลี่ยนชื่อแท็ก",
-    "rename-tip": "บันทึกทั้งหมดที่มีแท็กนี้จะถูกอัปเดต"
   },
   "tooltip": {
     "link-memo": "ลิงก์บันทึกช่วยจำ",

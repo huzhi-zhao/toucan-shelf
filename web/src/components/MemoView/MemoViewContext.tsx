@@ -16,10 +16,7 @@ export interface MemoViewContextValue {
   cardWidth: number;
   isArchived: boolean;
   readonly: boolean;
-  showBlurredContent: boolean;
-  blurred: boolean;
   openEditor: () => void;
-  toggleBlurVisibility: () => void;
   openPreview: (items: string | string[] | PreviewMediaItem[], index?: number) => void;
 }
 

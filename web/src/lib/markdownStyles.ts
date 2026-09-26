@@ -102,21 +102,8 @@ export const markdownStyles = {
 export const headingClass = (level: HeadingLevel): string => headingClasses[level];
 
 /**
- * Tag pill styling for the read-only memo view (MemoContent/Tag.tsx). Split into
- * two tokens so the viewer can swap `defaultColor` for an inline custom color.
- * (The editor does not use these; it colors `#tag` source via the
- * `cm-memo-tag` decoration in Editor/theme.ts.)
- */
-export const tagStyles = {
-  /** Shape, padding, and typography — always applied. */
-  base: "inline-flex items-center align-baseline px-1.5 py-0.5 text-[0.9em] leading-none font-normal rounded-full border",
-  /** Default theme color, used when no custom tag color is set. */
-  defaultColor: "border-primary text-primary bg-primary/15",
-} as const;
-
-/**
  * `@mention` styling for the read-only memo view (MemoContent/Mention.tsx).
- * Unlike a tag this is not a pill — it is a primary-colored accent (the read-only
+ * It is a primary-colored accent, not a pill (the read-only
  * view adds `hover:underline` for its link). (The editor does not use these; it
  * colors `@mention` source via the `cm-memo-mention` decoration in
  * Editor/theme.ts.)

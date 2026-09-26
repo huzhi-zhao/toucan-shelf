@@ -23,7 +23,6 @@
     "archive": "Lưu trữ",
     "archived": "Đã lưu trữ",
     "attachments": "Tệp đính kèm",
-    "auto-expand": "Mở rộng tự động",
     "avatar": "Ảnh đại diện",
     "basic": "Cơ bản",
     "beta": "Beta",
@@ -102,10 +101,8 @@
     "sign-out": "Đăng xuất",
     "sign-up": "Đăng ký",
     "statistics": "Thống kê",
-    "tags": "Thẻ",
     "title": "Tiêu đề",
     "today": "Hôm nay",
-    "tree-mode": "Chế độ cây",
     "type": "Loại",
     "unpin": "Bỏ ghim",
     "update": "Cập nhật",
@@ -172,8 +169,6 @@
   },
   "memo": {
     "archived-at": "Đã lưu trữ lúc",
-    "click-to-hide-sensitive-content": "Nhấp để ẩn nội dung nhạy cảm",
-    "click-to-show-sensitive-content": "Nhấp để hiện nội dung nhạy cảm",
     "code": "Mã",
     "comment": {
       "self": "Bình luận",
@@ -500,37 +495,7 @@
       "title": "Webhook",
       "url": "Url",
       "label": "Webhook"
-    },
-    "tags": {
-      "label": "Thẻ",
-      "title": "Siêu dữ liệu thẻ",
-      "description": "Gán màu hiển thị tùy chọn cho toàn bộ thẻ hoặc làm mờ nội dung ghi nhớ phù hợp. Tên thẻ được coi là mẫu biểu thức chính quy được neo.",
-      "background-color": "Màu nền",
-      "blur-content": "Làm mờ nội dung",
-      "no-tags-configured": "Không có siêu dữ liệu thẻ nào được định cấu hình.",
-      "tag-name": "Tên thẻ",
-      "tag-name-placeholder": "ví dụ: công việc hoặc project/.*",
-      "tag-already-exists": "Thẻ đã tồn tại.",
-      "tag-pattern-hint": "Tên thẻ hoặc mẫu biểu thức chính quy (ví dụ: project/.* khớp với tất cả các thẻ project/)",
-      "invalid-regex": "Mẫu biểu thức chính quy không hợp lệ hoặc không an toàn.",
-      "using-default-color": "Sử dụng màu mặc định."
     }
-  },
-  "tag": {
-    "all-tags": "Tất cả thẻ",
-    "create-tag": "Tạo thẻ",
-    "create-tags-guide": "Bạn có thể tạo thẻ bằng cách nhập `#thẻ`.",
-    "delete-confirm": "Bạn có chắc chắn muốn xóa thẻ này không? Tất cả các ghi chú liên quan sẽ được lưu trữ.",
-    "delete-success": "Đã xóa thẻ thành công",
-    "delete-tag": "Xóa thẻ",
-    "new-name": "Tên mới",
-    "no-tag-found": "Không tìm thấy thẻ",
-    "old-name": "Tên cũ",
-    "rename-error-empty": "Tên thẻ không được để trống hoặc chứa khoảng trắng",
-    "rename-error-repeat": "Tên mới không được trùng với tên cũ",
-    "rename-success": "Đổi tên thẻ thành công",
-    "rename-tag": "Đổi tên thẻ",
-    "rename-tip": "Tất cả ghi chú có thẻ này sẽ được cập nhật."
   },
   "tooltip": {
     "link-memo": "Liên kết ghi chú",

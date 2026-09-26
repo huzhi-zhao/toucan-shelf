@@ -468,7 +468,7 @@ func newShareAttachmentTestServices(ctx context.Context, t *testing.T) (*apiv1se
 		Data:        t.TempDir(),
 	}
 	secret := "test-secret"
-	markdownService := markdown.NewService(markdown.WithTagExtension())
+	markdownService := markdown.NewService()
 	apiService := &apiv1service.APIV1Service{
 		Secret:          secret,
 		Profile:         testProfile,

@@ -61,7 +61,6 @@
     "archive": "Arhīvs",
     "archived": "Arhivēts",
     "attachments": "Pielikumi",
-    "auto-expand": "Automātiski izvērst",
     "avatar": "Iemiesojums",
     "basic": "Pamata",
     "beta": "Beta",
@@ -141,10 +140,8 @@
     "sign-out": "Izrakstīties",
     "sign-up": "Pierakstīties",
     "statistics": "Statistika",
-    "tags": "Tagi",
     "title": "Nosaukums",
     "today": "Šodien",
-    "tree-mode": "Koku režīms",
     "type": "Tips",
     "unlink": "Atsaistīt",
     "unpin": "Atspraust",
@@ -223,8 +220,6 @@
   },
   "memo": {
     "archived-at": "Arhivēts plkst",
-    "click-to-hide-sensitive-content": "Noklikšķiniet, lai paslēptu sensitīvu saturu",
-    "click-to-show-sensitive-content": "Noklikšķiniet, lai parādītu sensitīvu saturu",
     "code": "Kods",
     "comment": {
       "self": "komentāri",
@@ -755,25 +750,6 @@
       "url": "URL",
       "label": "Webhooks"
     },
-    "tags": {
-      "label": "Tagi",
-      "title": "Tagu metadati",
-      "description": "Piešķiriet izvēles displeja krāsas tagiem visas instances mērogā vai aizmiglojiet atbilstošo piezīmju saturu. Tagu nosaukumi tiek uzskatīti par noenkurotiem regulārās izteiksmes modeļiem.",
-      "add-rule": "Pievienojiet noteikumu",
-      "background-color": "Fona krāsa",
-      "blur-content": "Aizmiglot saturu",
-      "configured-rules": "Konfigurēti noteikumi",
-      "default-color": "Noklusējums",
-      "matching-rule": "Noenkurots regex",
-      "no-tags-configured": "Nav konfigurēti taga metadati.",
-      "tag-name": "Atzīmes nosaukums",
-      "tag-name-placeholder": "piem. darbs vai projekts/.*",
-      "tag-already-exists": "Tags jau pastāv.",
-      "tag-pattern-hint": "Taga nosaukums vai regulārā izteiksmes modelis (piem., projekts/.* atbilst visiem projektiem/tagiem)",
-      "invalid-regex": "Nederīgs vai nedrošs regulārās izteiksmes modelis.",
-      "used-count": "{{count}} piezīmes",
-      "using-default-color": "Izmantojot noklusējuma krāsu."
-    },
     "resource-stats": {
       "label": "Resursi",
       "title": "Resursu statistika",
@@ -792,22 +768,6 @@
       "refresh": "Atsvaidzināt",
       "load-error": "Neizdevās ielādēt statistiku"
     }
-  },
-  "tag": {
-    "all-tags": "Visas atzīmes",
-    "create-tag": "Izveidot tagu",
-    "create-tags-guide": "Varat izveidot tagus, ievadot `#tag`.",
-    "delete-confirm": "Vai tiešām vēlaties dzēst šo atzīmi? Visas saistītās piezīmes tiks arhivētas.",
-    "delete-success": "Tags veiksmīgi izdzēsts",
-    "delete-tag": "Dzēst tagu",
-    "new-name": "Jauns Vārds",
-    "no-tag-found": "Nav atrasta neviena atzīme",
-    "old-name": "Vecais Vārds",
-    "rename-error-empty": "Atzīmes nosaukums nedrīkst būt tukšs, un tajā nedrīkst būt atstarpes",
-    "rename-error-repeat": "Jaunais nosaukums nevar būt tāds pats kā vecais nosaukums",
-    "rename-success": "Tags veiksmīgi pārdēvēts",
-    "rename-tag": "Pārdēvēt tagu",
-    "rename-tip": "Visas jūsu piezīmes ar šo atzīmi tiks atjauninātas."
   },
   "tooltip": {
     "link-memo": "Saites piezīme",

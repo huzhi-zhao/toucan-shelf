@@ -12,10 +12,11 @@ admin-only 的全站运维操作，不是"用户数据导出"。本项目单实�
 
 - 只备份 **SQLite 数据库文件本身**（memo / 用户 / 设置等结构化数据）。
 - **不包含**已上传的附件/图片文件本身——附件走独立的 S3 存储，不在本机制覆盖范围。
-- 仅当 `Profile.Driver == "sqlite"` 时可用；MySQL/Postgres 驱动已随
-  [存储层收敛](sqlite-as-sole-datasource.md)整体删除，`profile.Driver` 字段仍保留用于此处判断
-  （[server/backup/backup.go](../../../../server/backup/backup.go) 与
-  [server/runner/backup/runner.go](../../../../server/runner/backup/runner.go) 均显式检查）。
+- SQLite 专用。MySQL/Postgres 驱动已随
+  [存储层收敛](sqlite-as-sole-datasource.md)整体删除，备份侧原有的两处
+  `Driver == "sqlite"` 判断也在那次收敛里一并展开，现在
+  [server/backup/backup.go](../../../../server/backup/backup.go) 与
+  [server/runner/backup/runner.go](../../../../server/runner/backup/runner.go) 都不再判断驱动。
 - 依赖：instance 级 S3 存储配置已保存凭证（复用 Attachment storage 同一份 S3 client 封装）；
   未配置 S3 时备份直接返回错误。
 
@@ -54,7 +55,8 @@ admin-only 的全站运维操作，不是"用户数据导出"。本项目单实�
 - 不实现 S3 生命周期规则的自动化配置，只做文档引导。
 - 不支持 MySQL/Postgres（驱动已删除，`store.Driver != "sqlite"` 直接拒绝）。
 
-## TODO(确认)
+## 未决
 
-- 备份的 bucket/前缀是否允许 admin 单独指定一个备份专用桶（而非只能复用 Attachment
-  storage 同一个桶换 prefix）——原设计文档列为未决问题，未在代码中找到确认结论。
+- 备份的 bucket 是否允许 admin 单独指定一个备份专用桶。已核实代码：`run()` 直接读
+  `GetInstanceStorageSetting().GetS3Config()`，只能复用 Attachment storage 的同一个桶换
+  prefix，独立桶未实现。这是原设计文档列为未决的产品问题，不是实现遗漏，定了再做。

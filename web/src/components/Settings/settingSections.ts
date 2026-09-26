@@ -10,7 +10,6 @@ import {
   type LucideIcon,
   MailIcon,
   Settings2Icon,
-  TagsIcon,
   UserIcon,
   UsersIcon,
   WebhookIcon,
@@ -28,7 +27,6 @@ import ResourceStatsSection from "@/components/Settings/ResourceStatsSection";
 import SitesSection from "@/components/Settings/SitesSection";
 import SSOSection from "@/components/Settings/SSOSection";
 import StorageSection from "@/components/Settings/StorageSection";
-import TagsSection from "@/components/Settings/TagsSection";
 import WebhookSection from "@/components/Settings/WebhookSection";
 import { InstanceSetting_Key } from "@/types/proto/api/v1/instance_service_pb";
 
@@ -43,7 +41,6 @@ export type SettingSectionKey =
   | "storage"
   | "notification"
   | "sso"
-  | "tags"
   | "ai"
   | "site"
   | "resource-stats";
@@ -108,13 +105,6 @@ export const SETTINGS_SECTIONS: SettingSectionDefinition[] = [
     labelKey: "setting.memo.label",
     icon: LibraryIcon,
     component: MemoRelatedSettings,
-  },
-  {
-    key: "tags",
-    scope: "basic",
-    labelKey: "setting.tags.label",
-    icon: TagsIcon,
-    component: TagsSection,
   },
   {
     key: "storage",

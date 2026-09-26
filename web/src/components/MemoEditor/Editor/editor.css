@@ -6,7 +6,7 @@
  *
  * Token classes (.cm-md-*) come from the tagHighlighter in theme.ts; heading
  * line classes (.cm-md-h*) from headingDecorations.ts; #tag/@mention
- * (.cm-memo-*) from tagMentionDecorations.ts; the rest are CodeMirror's own.
+ * (.cm-memo-*) from mentionDecorations.ts; the rest are CodeMirror's own.
  */
 .memo-editor-content {
   & .cm-editor {
@@ -98,13 +98,12 @@
     font-weight: 600;
   }
 
-  /* #tag / @mention decorations. */
-  & .cm-memo-tag,
+  /* @mention decorations. */
   & .cm-memo-mention {
     color: var(--primary);
   }
 
-  /* Tag autocomplete popover — app surface, not CodeMirror defaults. */
+  /* Autocomplete popover — app surface, not CodeMirror defaults. */
   & .cm-tooltip.cm-tooltip-autocomplete {
     background: var(--popover);
     color: var(--popover-foreground);

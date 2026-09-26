@@ -66,7 +66,7 @@ Each gallery block has exactly one scope (`GalleryScope`):
 | Scope | Meaning |
 |-------|---------|
 | **Folder** (`{ type: "folder" }`) | The direct children of the View document's own folder. |
-| **Tag** (`{ type: "tag", tag }`) | All documents carrying the given tag. |
+| **Tag** (`{ type: "tag", tag }`) | All documents whose frontmatter `tags:` property carries the given tag (a scalar `tags: work` counts as a one-item list). |
 | **Property** (`{ type: "property", filters }`) | Documents matching a set of frontmatter property equalities (ANDed together; list properties match if any item equals the value). Only equality is supported. |
 
 ---

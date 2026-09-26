@@ -24,7 +24,6 @@
     "archive": "Archiválás",
     "archived": "Archívum",
     "attachments": "Mellékletek",
-    "auto-expand": "Automatikus kinyitás",
     "avatar": "Avatar",
     "basic": "Általános",
     "beta": "Béta",
@@ -103,10 +102,8 @@
     "sign-out": "Kijelentkezés",
     "sign-up": "Regisztráció",
     "statistics": "Statisztikák",
-    "tags": "Címkék",
     "title": "Cím",
     "today": "Ma",
-    "tree-mode": "Fa nézet",
     "type": "Típus",
     "unpin": "Feloldás",
     "update": "Frissítés",
@@ -186,8 +183,6 @@
   },
   "memo": {
     "archived-at": "Archiválva:",
-    "click-to-hide-sensitive-content": "Kattints a kényes tartalom elrejtéséhez",
-    "click-to-show-sensitive-content": "Kattints a kényes tartalom megjelenítéséhez",
     "code": "Kód",
     "comment": {
       "self": "Hozzászólások",
@@ -637,25 +632,6 @@
       "url": "URL",
       "label": "Webhooks"
     },
-    "tags": {
-      "label": "Címkék",
-      "title": "Címke metaadatok",
-      "description": "Rendeljen opcionális megjelenítési színeket a címkékhez az egész példányra kiterjedően, vagy homályosítsa el a megfelelő emlékeztető tartalmát. A címkeneveket a rendszer rögzített regex mintákként kezeli.",
-      "background-color": "Háttérszín",
-      "blur-content": "Tartalom elhomályosítása",
-      "no-tags-configured": "Nincsenek konfigurálva címke metaadatok.",
-      "tag-name": "Címke neve",
-      "tag-name-placeholder": "pl. work vagy project/.*",
-      "tag-already-exists": "A címke már létezik.",
-      "tag-pattern-hint": "Címke neve vagy reguláris kifejezési mintája (pl. a project/.* megfelel az összes project/ címkének)",
-      "invalid-regex": "Érvénytelen vagy nem biztonságos reguláris kifejezés.",
-      "using-default-color": "Az alapértelmezett szín használata.",
-      "add-rule": "Szabály hozzáadása",
-      "configured-rules": "Konfigurált szabályok",
-      "default-color": "Alapértelmezett",
-      "matching-rule": "Horgonyzott regex",
-      "used-count": "{{count}} feljegyzések"
-    },
     "ai": {
       "add-provider": "Szolgáltató hozzáadása",
       "api-key": "API kulcs",
@@ -755,22 +731,6 @@
       "refresh": "Frissítés",
       "load-error": "Nem sikerült betölteni a statisztikákat"
     }
-  },
-  "tag": {
-    "all-tags": "Minden címke",
-    "create-tag": "Címke létrehozása",
-    "create-tags-guide": "Létrehozhatsz címkéket `#címke` beírásával.",
-    "delete-confirm": "Biztosan törlöd ezt a címkét? Minden kapcsolódó jegyzet archiválva lesz.",
-    "delete-success": "Címke sikeresen törölve",
-    "delete-tag": "Címke törlése",
-    "new-name": "Új név",
-    "no-tag-found": "Nem található címke",
-    "old-name": "Régi név",
-    "rename-error-empty": "A címke neve nem lehet üres vagy tartalmazhat szóközt",
-    "rename-error-repeat": "Az új név nem lehet azonos a régi névvel",
-    "rename-success": "Címke sikeresen átnevezve",
-    "rename-tag": "Címke átnevezése",
-    "rename-tip": "Minden jegyzeted ezzel a címkével frissülni fog."
   },
   "tooltip": {
     "link-memo": "Jegyzet hivatkozása",

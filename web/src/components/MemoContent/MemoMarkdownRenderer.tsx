@@ -20,7 +20,6 @@ import {
   getAlertType,
   isEmbedElement,
   isMentionElement,
-  isTagElement,
   isTaskListItemElement,
 } from "@/types/markdown";
 import { type MemoProperty, parseFrontmatter } from "@/utils/frontmatter";
@@ -36,7 +35,6 @@ import { remarkMention } from "@/utils/remark-plugins/remark-mention";
 import { remarkPreserveType } from "@/utils/remark-plugins/remark-preserve-type";
 import { remarkSheetsId } from "@/utils/remark-plugins/remark-sheets-id";
 import { remarkSplitMixedTaskLists } from "@/utils/remark-plugins/remark-split-mixed-task-lists";
-import { remarkTag } from "@/utils/remark-plugins/remark-tag";
 import { remarkTaskStatus } from "@/utils/remark-plugins/remark-task-status";
 import { CodeBlock } from "./CodeBlock";
 import { SANITIZE_SCHEMA } from "./constants";
@@ -46,7 +44,6 @@ import { Mention } from "./Mention";
 import { Alert, AnchorLink, Blockquote, Heading, HorizontalRule, Image, InlineCode, Link, List, ListItem, Paragraph } from "./markdown";
 import { PropertiesPanel } from "./PropertiesPanel";
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "./Table";
-import { Tag } from "./Tag";
 import { TaskListItem } from "./TaskListItem";
 import { TrustedIframe } from "./TrustedIframe";
 
@@ -119,7 +116,7 @@ export const MemoMarkdownRenderer = ({
   const { properties, body } = useMemo(() => parseFrontmatter(content), [content]);
   // `![[target]]` is substituted for a sentinel run before the parser ever sees it — see
   // remark-embed.ts for why this can't be done as a post-parse text-node scan like
-  // mention/tag are.
+  // mentions are.
   const renderedBody = useMemo(() => substituteEmbedSyntax(body), [body]);
   const softBreakDefault = useSoftBreakDefault();
   // remark-breaks turns every newline into a `<br>`. That is what someone typing a
@@ -137,7 +134,6 @@ export const MemoMarkdownRenderer = ({
       remarkSplitMixedTaskLists,
       ...(hardBreaks ? [remarkBreaks] : []),
       remarkMention,
-      remarkTag,
       remarkEmbed,
       remarkCounter,
       remarkHighlight,
@@ -169,9 +165,6 @@ export const MemoMarkdownRenderer = ({
       if (node && isMentionElement(node)) {
         const username = getMentionUsername(node, spanProps.children);
         return <Mention {...spanProps} node={node} data-mention={username} resolved={resolvedMentionUsernames.has(username)} />;
-      }
-      if (node && isTagElement(node)) {
-        return <Tag {...spanProps} node={node} />;
       }
       if (node && isEmbedElement(node)) {
         return <Embed target={getEmbedTarget(node)} />;

@@ -1,11 +1,5 @@
 import type { Data, Element as HastElement } from "hast";
 
-export interface TagNode {
-  type: "tagNode";
-  value: string;
-  data: TagNodeData;
-}
-
 export interface MentionNode {
   type: "mentionNode";
   value: string;
@@ -18,12 +12,6 @@ export interface EmbedNode {
   data: EmbedNodeData;
 }
 
-export interface TagNodeData {
-  hName: "span";
-  hProperties: TagNodeProperties;
-  hChildren: Array<{ type: "text"; value: string }>;
-}
-
 export interface MentionNodeData {
   hName: "span";
   hProperties: MentionNodeProperties;
@@ -34,11 +22,6 @@ export interface EmbedNodeData {
   hName: "span";
   hProperties: EmbedNodeProperties;
   hChildren: Array<{ type: "text"; value: string }>;
-}
-
-export interface TagNodeProperties {
-  className: string;
-  "data-tag": string;
 }
 
 export interface MentionNodeProperties {
@@ -57,27 +40,6 @@ export interface ExtendedData extends Data {
 
 export function hasExtendedData(node: unknown): node is { data: ExtendedData } {
   return typeof node === "object" && node !== null && "data" in node && typeof (node as { data: unknown }).data === "object";
-}
-
-export function isTagElement(node: HastElement): boolean {
-  if (hasExtendedData(node) && node.data.mdastType === "tagNode") {
-    return true;
-  }
-
-  const dataTag = node.properties?.["data-tag"];
-  if (typeof dataTag === "string" && dataTag !== "") {
-    return true;
-  }
-
-  const className = node.properties?.className;
-  if (Array.isArray(className) && className.includes("tag")) {
-    return true;
-  }
-  if (typeof className === "string" && className.split(/\s+/).includes("tag")) {
-    return true;
-  }
-
-  return false;
 }
 
 export function isMentionElement(node: HastElement): boolean {

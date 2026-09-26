@@ -85,8 +85,25 @@
 - [ ] **sheets 快照写入失败重试** —— 当前是静默覆盖。留待多人协作编辑时一并处理。
       见 [sheets-block.md](docs/dev/requirements/editor/sheets-block.md)。
 
-- [ ] **SQLite 驱动泄漏点清理** —— 已排查出五处显式判断，可直接作为清理清单。
-      见 [sqlite-as-sole-datasource.md](docs/dev/requirements/storage/sqlite-as-sole-datasource.md)。
+- [ ] **无远程备份时的警告条** —— 允许无 S3 启动是既定决策，配套的"未配置远程备份"警告条
+      与降级提示仍未实现，已核实前端无任何相关逻辑。
+      见 [standalone-local-deploy.md](docs/dev/standalone-local-deploy.md)。
+
+- [ ] **S3 凭证的环境变量读取路径** —— standalone 恢复场景下本地 DB 还不存在，凭证只能来自
+      `TOUCAN_S3_*` 环境变量。已核实这批变量在代码里零命中，凭证仍只从 DB 读；这条是
+      "从 S3 恢复"的前置。出处同上。
+
+- [ ] **备份专用桶** —— 备份现在只能复用 Attachment storage 的同一个桶换 prefix。
+      是否允许 admin 单独指定一个备份桶是未决的产品问题，不是实现遗漏。
+      见 [backup.md §未决](docs/dev/requirements/storage/backup.md)。
+
+- [ ] **存量附件按 workspace 前缀搬迁** —— 搬迁脚本不存在、从未执行。新旧混存不影响访问，
+      要不要搬是产品判断。
+      见 [upload-and-inline-media.md](docs/dev/requirements/attachments/upload-and-inline-media.md)。
+
+- [ ] **自动备份间隔做成配置项** —— 周期判定已改为读 `last_backup_time` 并在启动时补跑，
+      但间隔本身仍是常量 `backupInterval`，接到 `InstanceSetting` 或环境变量未做。
+      出处同上。
 
 - [ ] **知识库物理删除** —— `DeleteWorkspace` RPC 保留（要求库为空）但前端不给入口。
       见 [workspace-detail-and-shelf.md](docs/dev/requirements/knowledge-base/workspace-detail-and-shelf.md)。
@@ -95,11 +112,11 @@
       已预留扩展点，是否做成知识库详情页的可配置项未定。
       见 [rag-search.md](docs/dev/rag-search.md)。
 
-- [ ] **正文 `#tag` 的解析与统计清除** —— `#tag` 已暂停使用（决策与理由见
-      [roadmap.md](docs/dev/roadmap.md)）。清除范围是 `memopayload` 的抽取、
-      `user_service_stats` 的标签统计、以及编辑器里的 `#` 高亮与补全。
-      **没排期，因为老文档正文里还留着 `#tag` 文本**——删解析之前要先决定这些文本
-      怎么办（原样留着当普通文字，还是迁移进 frontmatter）。
+- [ ] **`#tag` 在 proto 与 CEL filter 里的残留** —— 正文 `#tag` 已移除（见
+      [roadmap.md](docs/dev/roadmap.md)），但 `MemoPayload.tags`、`Memo.tags`、
+      `UserStats.tag_count` 三个字段仍在 proto 里，永远为空；删字段是破坏性改动，且要
+      重新跑 buf 生成。CEL filter 的 `tags` / `tag` 也仍在，是一套通用 JSON 列表机制，
+      现在查不到任何数据。两者一起做一次收尾。
 
 - [ ] **RAG 的生成环节（真正的 RAG）** —— 检索已完备，缺"检索 top-K → 交给 LLM →
       带来源生成回答"。**有明确触发条件，条件未满足前不排期**，
@@ -114,7 +131,4 @@
 
 ## 三、待确认（先核实，别当需求排期）
 
-- [ ] **附件搬迁脚本是否已执行** —— 见
-      [upload-and-inline-media.md](docs/dev/requirements/attachments/upload-and-inline-media.md)。
-- [ ] **全站备份的若干项** —— 见
-      [backup.md §TODO(确认)](docs/dev/requirements/storage/backup.md)。
+暂无。上一批三条已核实完毕，结论已回写各自文档，未实现的部分见上面的「已定未做」。

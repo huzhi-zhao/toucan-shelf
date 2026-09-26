@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/usememos/memos/internal/profile"
@@ -37,13 +38,15 @@ func Run(ctx context.Context, profile *profile.Profile, stores *store.Store) err
 
 	// The admin updates path_template while the runner updates status. Preserve the
 	// existing template when recording either a successful or failed attempt.
-	backupSetting, err := stores.GetInstanceBackupSetting(ctx)
+	stored, err := stores.GetInstanceBackupSetting(ctx)
 	if err != nil {
 		if runErr != nil {
 			return runErr
 		}
 		return errors.Wrap(err, "failed to get backup setting for status")
 	}
+	// Clone it: the getter hands out a pointer into the instance-setting cache.
+	backupSetting := proto.Clone(stored).(*storepb.InstanceBackupSetting)
 	backupSetting.LastBackupTime = timestamppb.Now()
 	backupSetting.LastBackupSuccess = runErr == nil
 	backupSetting.LastBackupError = ""

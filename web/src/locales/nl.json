@@ -24,7 +24,6 @@
     "archive": "Archiveren",
     "archived": "Gearchiveerd",
     "attachments": "Bijlagen",
-    "auto-expand": "Auto uitklappen",
     "avatar": "Avatar",
     "basic": "Simpel",
     "beta": "Beta",
@@ -103,10 +102,8 @@
     "sign-out": "Uitloggen",
     "sign-up": "Registreren",
     "statistics": "Statistieken",
-    "tags": "Labels",
     "title": "Titel",
     "today": "Vandaag",
-    "tree-mode": "Boomstructuur",
     "type": "Type",
     "unpin": "Losmaken",
     "update": "Bijwerken",
@@ -186,8 +183,6 @@
   },
   "memo": {
     "archived-at": "Gearchiveerd op",
-    "click-to-hide-sensitive-content": "Klik om NSFW-inhoud te verbergen",
-    "click-to-show-sensitive-content": "Klik om NSFW-inhoud te tonen",
     "code": "Code",
     "comment": {
       "self": "Opmerkingen",
@@ -637,25 +632,6 @@
       "url": "URL",
       "label": "Webhooks"
     },
-    "tags": {
-      "label": "Labels",
-      "title": "Metagegevens van tags",
-      "description": "Wijs optionele weergavekleuren toe aan tags voor de hele instantie, of vervaag overeenkomende memo-inhoud. Tagnamen worden behandeld als verankerde regex-patronen.",
-      "background-color": "Achtergrondkleur",
-      "blur-content": "Inhoud vervagen",
-      "no-tags-configured": "Geen tag-metagegevens geconfigureerd.",
-      "tag-name": "Tagnaam",
-      "tag-name-placeholder": "bijv. work of project/.*",
-      "tag-already-exists": "Label bestaat al.",
-      "tag-pattern-hint": "Tagnaam of regex-patroon (bijvoorbeeld project/.* komt overeen met alle project/ tags)",
-      "invalid-regex": "Ongeldig of onveilig regex-patroon.",
-      "using-default-color": "Standaardkleur gebruiken.",
-      "add-rule": "Regel toevoegen",
-      "configured-rules": "Geconfigureerde regels",
-      "default-color": "Standaard",
-      "matching-rule": "Verankerde regex",
-      "used-count": "{{count}}-memo's"
-    },
     "ai": {
       "add-provider": "Aanbieder toevoegen",
       "api-key": "API-sleutel",
@@ -755,22 +731,6 @@
       "refresh": "Vernieuwen",
       "load-error": "Kan statistieken niet laden"
     }
-  },
-  "tag": {
-    "all-tags": "Alle labels",
-    "create-tag": "Label aanmaken",
-    "create-tags-guide": "Je kunt labels aanmaken door `#label` in te voeren.",
-    "delete-confirm": "Weet je zeker dat je dit label wilt verwijderen? Alle gerelateerde memos worden gearchiveerd.",
-    "delete-success": "Label succesvol verwijderd",
-    "delete-tag": "Label verwijderen",
-    "new-name": "Nieuwe naam",
-    "no-tag-found": "Geen labels gevonden",
-    "old-name": "Oude naam",
-    "rename-error-empty": "Labelnaam mag niet leeg zijn of spaties bevatten",
-    "rename-error-repeat": "Nieuwe naam mag niet hetzelfde zijn als de oude naam",
-    "rename-success": "Label succesvol hernoemd",
-    "rename-tag": "Label hernoemen",
-    "rename-tip": "Al je memos met dit label worden automatisch bijgewerkt."
   },
   "tooltip": {
     "link-memo": "Memo linken",

@@ -30,7 +30,6 @@ The home page is a **three-pane document workspace**, not a feed:
 │  • Search     │           · outline toggle · ⋮      │    • H2      │
 │  • File tree  │                                     │  • Heading 2 │
 │  • Calendar   │   Body: rendered document           │              │
-│  • Tags       │                                     │              │
 │  • Archived ☑ │                                     │              │
 └───────────────┴─────────────────────────────────────┴──────────────┘
 ```
@@ -39,8 +38,8 @@ Key behaviors:
 
 - **Preview first.** Opening a document always shows the rendered preview. Use
   the **Preview / Edit** toggle in the header to switch to editing.
-- **Filters vs. structure.** The calendar, tags, and search box are *filters*
-  over the current workspace. The **file tree is the primary navigator.**
+- **Filters vs. structure.** The calendar and search box are *filters* over the
+  current workspace. The **file tree is the primary navigator.**
 - **Resume where you left off.** The app remembers the last workspace and
   document you had open (stored as the `LAST_OPENED` user setting). Returning to
   `/` reopens them automatically.

@@ -61,7 +61,6 @@
     "archive": "Archyvas",
     "archived": "Suarchyvuota",
     "attachments": "Priedai",
-    "auto-expand": "Automatiškai išplėsti",
     "avatar": "Avataras",
     "basic": "Pagrindinis",
     "beta": "Beta",
@@ -141,10 +140,8 @@
     "sign-out": "Atsijungti",
     "sign-up": "Užsiregistruoti",
     "statistics": "Statistika",
-    "tags": "Žymos",
     "title": "Pavadinimas",
     "today": "Šiandien",
-    "tree-mode": "Medžio režimas",
     "type": "Tipas",
     "unlink": "Atsieti",
     "unpin": "Atsegti",
@@ -223,8 +220,6 @@
   },
   "memo": {
     "archived-at": "Archyvuota adresu",
-    "click-to-hide-sensitive-content": "Spustelėkite, kad paslėptumėte jautrų turinį",
-    "click-to-show-sensitive-content": "Spustelėkite, kad būtų rodomas jautrus turinys",
     "code": "Kodas",
     "comment": {
       "self": "Komentarai",
@@ -755,25 +750,6 @@
       "url": "URL",
       "label": "Webhooks"
     },
-    "tags": {
-      "label": "Žymos",
-      "title": "Žymės metaduomenys",
-      "description": "Priskirkite pasirenkamas ekrano spalvas žymoms visose bylose arba suliekite atitinkamą atmintinės turinį. Žymų pavadinimai traktuojami kaip įtvirtinti reguliarieji reiškiniai.",
-      "add-rule": "Pridėti taisyklę",
-      "background-color": "Fono spalva",
-      "blur-content": "Sulieti turinį",
-      "configured-rules": "Sukonfigūruotos taisyklės",
-      "default-color": "Numatytoji",
-      "matching-rule": "Įtvirtintas reguliarusis reiškinys",
-      "no-tags-configured": "Žymos metaduomenys nesukonfigūruoti.",
-      "tag-name": "Žymės pavadinimas",
-      "tag-name-placeholder": "pvz. darbas arba projektas/.*",
-      "tag-already-exists": "Žyma jau yra.",
-      "tag-pattern-hint": "Žymos pavadinimas arba reguliariojo reiškinio šablonas (pvz., projektas/.* atitinka visus projektus/žymas)",
-      "invalid-regex": "Netinkamas arba nesaugus reguliariojo reiškinio šablonas.",
-      "used-count": "{{count}} atmintinės",
-      "using-default-color": "Numatytosios spalvos naudojimas."
-    },
     "resource-stats": {
       "label": "Ištekliai",
       "title": "Išteklių statistika",
@@ -792,22 +768,6 @@
       "refresh": "Atnaujinti",
       "load-error": "Nepavyko įkelti statistikos"
     }
-  },
-  "tag": {
-    "all-tags": "Visos žymos",
-    "create-tag": "Sukurti žymą",
-    "create-tags-guide": "Galite sukurti žymas įvesdami `#tag`.",
-    "delete-confirm": "Ar tikrai norite ištrinti šią žymą? Visos susijusios pastabos bus archyvuojamos.",
-    "delete-success": "Žyma sėkmingai ištrinta",
-    "delete-tag": "Ištrinti žymą",
-    "new-name": "Naujas Vardas",
-    "no-tag-found": "Žyma nerasta",
-    "old-name": "Senas Vardas",
-    "rename-error-empty": "Žymos pavadinimo laukas negali būti tuščias ir jame negali būti tarpų",
-    "rename-error-repeat": "Naujas vardas negali būti toks pat kaip senasis",
-    "rename-success": "Žyma sėkmingai pervardyta",
-    "rename-tag": "Pervardyti žymą",
-    "rename-tip": "Visos jūsų atmintinės su šia žyma bus atnaujintos."
   },
   "tooltip": {
     "link-memo": "Nuorodos atmintinė",

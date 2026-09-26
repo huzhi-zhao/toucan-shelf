@@ -41,8 +41,7 @@ MemoEditor/
 │   │                           #   controller refs, syncs initialContent in/out
 │   ├── extensions.ts           # buildEditorExtensions(): assembles the CM extension set
 │   ├── theme.ts                # Syntax-highlight style + editor theme (CSS-var colors)
-│   ├── tagMentionDecorations.ts# ViewPlugin that decorates #tag / @mention spans
-│   ├── tagAutocomplete.ts      # CM autocompletion source for #tag
+│   ├── mentionDecorations.ts   # ViewPlugin that decorates @mention spans
 │   ├── formatting.ts           # FormattingController impl (toggle marks, headings, lists)
 │   └── controller.ts           # EditorController impl over an EditorView
 ├── formatting/
@@ -75,16 +74,17 @@ Uses `useReducer` + Context for predictable state transitions. All state changes
 
 ### Editor extensions
 
-`Editor/extensions.ts` exports `buildEditorExtensions()`, which composes the CodeMirror extension set: `@codemirror/lang-markdown` (with GFM), line wrapping, a placeholder, the editor theme, the `#tag`/`@mention` decoration plugin, the `#tag` autocomplete, and an update listener that pushes document changes back to the reducer via `onChange`.
+`Editor/extensions.ts` exports `buildEditorExtensions()`, which composes the CodeMirror extension set: `@codemirror/lang-markdown` (with GFM), line wrapping, a placeholder, the editor theme, the `@mention` decoration plugin, the `![[doc` embed autocomplete, and an update listener that pushes document changes back to the reducer via `onChange`.
 
 `Editor/theme.ts` defines the decorated-source look: a `HighlightStyle` over the Lezer markdown highlight tags (headings, strong, emphasis, code, links, quotes, markers) and an `EditorView.theme`. Colors come from CSS custom properties so light/dark themes just work. This is the editor's own styling — the read-only memo view styles itself separately via `@/lib/markdownStyles`.
 
-### Tags and mentions
+### Mentions
 
-`#tag` autocomplete and `#tag`/`@mention` decoration both reuse the shared grammar so the editor can't drift from the rest of the app:
+`@mention` decoration reuses the shared grammar so the editor can't drift from the rest of the app:
 
-- `Editor/tagMentionDecorations.ts` is a `ViewPlugin` that scans the visible ranges and adds `cm-memo-tag` / `cm-memo-mention` marks, matching against `TAG_RUN` (`@/utils/tag-grammar`) and `MENTION_RUN` (`@/utils/mention-grammar`).
-- `Editor/tagAutocomplete.ts` is a CodeMirror autocompletion source for `#tag`, matching the in-progress token with `TAG_CHAR_CLASS` (`@/utils/tag-grammar`) and offering known tags (from `useTagCounts`).
+- `Editor/mentionDecorations.ts` is a `ViewPlugin` that scans the visible ranges and adds `cm-memo-mention` marks, matching against `MENTION_RUN` (`@/utils/mention-grammar`).
+
+There is no `#tag` counterpart: the body tag syntax was removed (see `docs/dev/roadmap.md`), so a `#` in the text is plain content. Document classification lives in the frontmatter `tags:` property.
 
 ### Services
 

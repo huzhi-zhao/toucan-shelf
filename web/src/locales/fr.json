@@ -24,7 +24,6 @@
     "archive": "Archiver",
     "archived": "Archivé",
     "attachments": "Pièces jointes",
-    "auto-expand": "Déplier automatiquement",
     "avatar": "Avatar",
     "basic": "Basique",
     "beta": "Bêta",
@@ -103,10 +102,8 @@
     "sign-out": "Déconnexion",
     "sign-up": "S'inscrire",
     "statistics": "Statistiques",
-    "tags": "Tags",
     "title": "Titre",
     "today": "Aujourd'hui",
-    "tree-mode": "Mode arborescence",
     "type": "Type",
     "unpin": "Désépingler",
     "update": "Mettre à jour",
@@ -186,8 +183,6 @@
   },
   "memo": {
     "archived-at": "Archivé le",
-    "click-to-hide-sensitive-content": "Cliquez pour masquer le contenu sensible",
-    "click-to-show-sensitive-content": "Cliquez pour afficher le contenu sensible",
     "code": "Code",
     "comment": {
       "self": "Commentaires",
@@ -637,25 +632,6 @@
       "url": "URL",
       "label": "Webhooks"
     },
-    "tags": {
-      "label": "Balises",
-      "title": "Métadonnées des balises",
-      "description": "Attribuez des couleurs d'affichage facultatives aux balises à l'échelle de l'instance ou floutez le contenu du mémo correspondant. Les noms de balises sont traités comme des modèles d’expression régulière ancrés.",
-      "background-color": "Couleur de fond",
-      "blur-content": "Flou du contenu",
-      "no-tags-configured": "Aucune métadonnée de balise configurée.",
-      "tag-name": "Nom de la balise",
-      "tag-name-placeholder": "par ex. work ou project/.*",
-      "tag-already-exists": "La balise existe déjà.",
-      "tag-pattern-hint": "Nom de la balise ou modèle d'expression régulière (par exemple, project/.* correspond à toutes les balises project/)",
-      "invalid-regex": "Modèle d'expression régulière invalide ou dangereux.",
-      "using-default-color": "Utilisation de la couleur par défaut.",
-      "add-rule": "Ajouter une règle",
-      "configured-rules": "Règles configurées",
-      "default-color": "Défaut",
-      "matching-rule": "Regex ancrée",
-      "used-count": "Mémos {{count}}"
-    },
     "ai": {
       "add-provider": "Ajouter un fournisseur",
       "api-key": "Clé API",
@@ -755,22 +731,6 @@
       "refresh": "Rafraîchir",
       "load-error": "Échec du chargement des statistiques"
     }
-  },
-  "tag": {
-    "all-tags": "Tous les tags",
-    "create-tag": "Créer un tag",
-    "create-tags-guide": "Vous pouvez créer des tags en saisissant `#tag`.",
-    "delete-confirm": "Êtes-vous sûr de vouloir supprimer ce tag ? Toutes les notes associées seront archivées.",
-    "delete-success": "Tag supprimé avec succès",
-    "delete-tag": "Supprimer le tag",
-    "new-name": "Nouveau nom",
-    "no-tag-found": "Aucun tag trouvé",
-    "old-name": "Ancien nom",
-    "rename-error-empty": "Le nom du tag ne peut pas être vide ou contenir des espaces",
-    "rename-error-repeat": "Le nouveau nom ne peut pas être identique à l'ancien",
-    "rename-success": "Tag renommé avec succès",
-    "rename-tag": "Renommer le tag",
-    "rename-tip": "Toutes vos notes avec ce tag seront mises à jour."
   },
   "tooltip": {
     "link-memo": "Lier une note",

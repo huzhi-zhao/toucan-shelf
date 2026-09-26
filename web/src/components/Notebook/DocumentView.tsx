@@ -107,10 +107,7 @@ const buildPreviewContext = (memo: Memo): MemoViewContextValue => ({
   cardWidth: 0,
   isArchived: memo.state === State.ARCHIVED,
   readonly: false,
-  showBlurredContent: false,
-  blurred: false,
   openEditor: () => {},
-  toggleBlurVisibility: () => {},
   openPreview: () => {},
 });
 

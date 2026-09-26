@@ -24,7 +24,6 @@
     "archive": "Arkivera",
     "archived": "Arkiverad",
     "attachments": "Bilagor",
-    "auto-expand": "Autoexpandera",
     "avatar": "Profilbild",
     "basic": "Grundläggande",
     "beta": "Beta",
@@ -103,10 +102,8 @@
     "sign-out": "Logga ut",
     "sign-up": "Bli medlem",
     "statistics": "Statistik",
-    "tags": "Taggar",
     "title": "Titel",
     "today": "Idag",
-    "tree-mode": "Trädvy",
     "type": "Typ",
     "unpin": "Ta bort fäst",
     "update": "Uppdatera",
@@ -186,8 +183,6 @@
   },
   "memo": {
     "archived-at": "Arkiverad",
-    "click-to-hide-sensitive-content": "Klicka för att dölja känsligt innehåll (NSFW)",
-    "click-to-show-sensitive-content": "Klicka för att visa känsligt innehåll (NSFW)",
     "code": "Kod",
     "comment": {
       "self": "Kommentarer",
@@ -637,25 +632,6 @@
       "url": "URL",
       "label": "Webhooks"
     },
-    "tags": {
-      "label": "Taggar",
-      "title": "Tagga metadata",
-      "description": "Tilldela valfria skärmfärger till taggar för hela instansen, eller gör matchande memoinnehåll oskarpa. Taggnamn behandlas som förankrade regexmönster.",
-      "background-color": "Bakgrundsfärg",
-      "blur-content": "Oskärpa innehåll",
-      "no-tags-configured": "Ingen taggmetadata har konfigurerats.",
-      "tag-name": "Taggnamn",
-      "tag-name-placeholder": "t.ex. work eller project/.*",
-      "tag-already-exists": "Taggen finns redan.",
-      "tag-pattern-hint": "Taggnamn eller regexmönster (t.ex. project/.* matchar alla project/-taggar)",
-      "invalid-regex": "Ogiltigt eller osäkert regexmönster.",
-      "using-default-color": "Använder standardfärg.",
-      "add-rule": "Lägg till regel",
-      "configured-rules": "Konfigurerade regler",
-      "default-color": "Standard",
-      "matching-rule": "Förankrat regex",
-      "used-count": "{{count}}-memon"
-    },
     "ai": {
       "add-provider": "Lägg till leverantör",
       "api-key": "API-nyckel",
@@ -755,22 +731,6 @@
       "refresh": "Uppdatera",
       "load-error": "Det gick inte att läsa in statistik"
     }
-  },
-  "tag": {
-    "all-tags": "Alla taggar",
-    "create-tag": "Skapa tagg",
-    "create-tags-guide": "Du kan skapa taggar genom att skriva `#tag`.",
-    "delete-confirm": "Är du säker på att ta bort denna tagg? Alla relaterade anteckningar kommer att arkiveras.",
-    "delete-success": "Tagg raderades framgångsrikt",
-    "delete-tag": "Ta bort tagg",
-    "new-name": "Nytt namn",
-    "no-tag-found": "Ingen tagg hittades",
-    "old-name": "Gammalt namn",
-    "rename-error-empty": "Taggnamn kan inte vara tomt eller innehålla mellanslag",
-    "rename-error-repeat": "Nytt namn kan inte vara samma som det gamla namnet",
-    "rename-success": "Tagg bytte namn framgångsrikt",
-    "rename-tag": "Byt namn på tagg",
-    "rename-tip": "Alla dina anteckningar med denna tagg kommer att uppdateras"
   },
   "tooltip": {
     "link-memo": "Länk till anteckning",

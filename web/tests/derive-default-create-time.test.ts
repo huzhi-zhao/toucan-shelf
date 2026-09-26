@@ -11,7 +11,7 @@ describe("deriveDefaultCreateTimeFromFilters", () => {
 
   it("returns undefined when no displayTime filter is present", () => {
     const filters: MemoFilter[] = [
-      { factor: "tagSearch", value: "work" },
+      { factor: "contentSearch", value: "work" },
       { factor: "pinned", value: "true" },
     ];
     expect(deriveDefaultCreateTimeFromFilters(filters, now)).toBeUndefined();
@@ -31,7 +31,7 @@ describe("deriveDefaultCreateTimeFromFilters", () => {
 
   it("ignores extra non-displayTime filters", () => {
     const filters: MemoFilter[] = [
-      { factor: "tagSearch", value: "work" },
+      { factor: "contentSearch", value: "work" },
       { factor: "displayTime", value: "2025-05-01" },
       { factor: "pinned", value: "true" },
     ];

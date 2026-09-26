@@ -67,7 +67,7 @@ slug）、按 `site.canonical` 下发 `Link: rel="canonical"`、非规范入口 
 
 ---
 
-## 已暂停的能力
+## 已移除的能力
 
 ### 正文 `#tag`
 
@@ -75,11 +75,22 @@ slug）、按 `site.canonical` 下发 `Link: rel="canonical"`、非规范入口 
 `memo.payload.tags`。
 
 本项目是知识库不是 memo 流：文档的分类走 frontmatter 的 `tags:` 属性
-（属性面板里看得见、改得动，一处声明而不是散落正文）。**`#tag` 因此暂停**——
-现有解析和统计代码保留，但不再作为任何新功能的输入。
+（属性面板里看得见、改得动，一处声明而不是散落正文）。`#tag` 先暂停、后**移除**。
+线上从一开始就没有用过它，所以不存在需要迁移的存量数据——正文里残留的 `#` 文本
+原样留着，按普通文字渲染，这是移除时明确选定的处置方式。
 
-对外发布已经先落地了这条：`site_publication` 的 tags 只读 frontmatter，
-`#tag` 一个都不进快照（见
-[public-publishing/tech-design.md](design/20260823-public-publishing/tech-design.md) 第 5 步）。
+移除范围：goldmark 的 tag 扩展与 `ExtractTags` / `RenameTag`、`memopayload` 的抽取
+（改为清空 `payload.tags`）、`UserStats.tag_count` 的统计、`Memo.tags` 的填充，以及前端
+的编辑器高亮与补全、正文 tag 胶囊渲染、侧栏标签区与标签树、标签元数据设置页（颜色与
+模糊）、按标签模糊正文的整条链路。
 
-清除遗留解析代码的待办见 [TODO.md](../../TODO.md)。
+两处顺带的语义收敛：
+
+- gallery 视图的 **tag 规则**原先读 `Memo.tags`（即 `#tag`），改为读 frontmatter 的
+  `tags:` 属性；日历新建文档时也改为往 frontmatter 写 `tags:`，不再往正文塞 `#tag`。
+- 对外发布一直只读 frontmatter，本来就不受影响（见
+  [public-publishing/tech-design.md](design/20260823-public-publishing/tech-design.md) 第 5 步）。
+
+未随此次一并删掉的残留见 [TODO.md](../../TODO.md)：proto 里的 `MemoPayload.tags` /
+`Memo.tags` / `UserStats.tag_count` 字段仍在（删字段是破坏性改动，且需要 buf 重新生成），
+CEL filter 的 `tags` / `tag` 字段也仍在（它是一套通用的 JSON 列表机制，现在查不到任何数据）。

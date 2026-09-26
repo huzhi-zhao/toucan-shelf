@@ -61,7 +61,6 @@
     "archive": "Arhivă",
     "archived": "Arhivat",
     "attachments": "Atasamente",
-    "auto-expand": "Extindere automată",
     "avatar": "Avatar",
     "basic": "De bază",
     "beta": "Beta",
@@ -141,10 +140,8 @@
     "sign-out": "Sign out",
     "sign-up": "Înscrie-te",
     "statistics": "Statistici",
-    "tags": "Etichete",
     "title": "Titlu",
     "today": "Astăzi",
-    "tree-mode": "Modul arbore",
     "type": "Tip",
     "unlink": "Deconectați",
     "unpin": "Anulați fixarea",
@@ -223,8 +220,6 @@
   },
   "memo": {
     "archived-at": "Arhivat la",
-    "click-to-hide-sensitive-content": "Faceți clic pentru a ascunde conținutul sensibil",
-    "click-to-show-sensitive-content": "Faceți clic pentru a afișa conținut sensibil",
     "code": "Cod",
     "comment": {
       "self": "Comentarii",
@@ -755,25 +750,6 @@
       "url": "URL",
       "label": "Webhooks"
     },
-    "tags": {
-      "label": "Etichete",
-      "title": "Metadatele etichetelor",
-      "description": "Atribuiți culori opționale de afișare etichetelor la nivelul întregii instanțe sau estompați conținutul memo care se potrivește. Numele etichetelor sunt tratate ca modele regex ancorate.",
-      "add-rule": "Adăugați o regulă",
-      "background-color": "Culoare de fundal",
-      "blur-content": "Încețoșează conținutul",
-      "configured-rules": "Reguli configurate",
-      "default-color": "Implicit",
-      "matching-rule": "Regex ancorat",
-      "no-tags-configured": "Nu au fost configurate metadate de etichetă.",
-      "tag-name": "Numele etichetei",
-      "tag-name-placeholder": "de ex. lucrare sau proiect/.*",
-      "tag-already-exists": "Eticheta există deja.",
-      "tag-pattern-hint": "Numele etichetei sau modelul regex (de exemplu, proiect/.* se potrivește cu toate etichetele/proiectul)",
-      "invalid-regex": "Model regex nevalid sau nesigur.",
-      "used-count": "note {{count}}",
-      "using-default-color": "Folosind culoarea implicită."
-    },
     "resource-stats": {
       "label": "Resurse",
       "title": "Statistica resurselor",
@@ -792,22 +768,6 @@
       "refresh": "Reîmprospăta",
       "load-error": "Nu s-au încărcat statisticile"
     }
-  },
-  "tag": {
-    "all-tags": "Toate etichetele",
-    "create-tag": "Creați etichetă",
-    "create-tags-guide": "Puteți crea etichete introducând `#tag`.",
-    "delete-confirm": "Sigur doriți să ștergeți această etichetă? Toate notele aferente vor fi arhivate.",
-    "delete-success": "Eticheta a fost ștearsă cu succes",
-    "delete-tag": "Ștergeți eticheta",
-    "new-name": "Nume nou",
-    "no-tag-found": "Nu a fost găsită nicio etichetă",
-    "old-name": "Nume vechi",
-    "rename-error-empty": "Numele etichetei nu poate fi gol sau conține spații",
-    "rename-error-repeat": "Numele nou nu poate fi același cu numele vechi",
-    "rename-success": "Etichetă redenumită cu succes",
-    "rename-tag": "Redenumiți eticheta",
-    "rename-tip": "Toate notele dvs. cu această etichetă vor fi actualizate."
   },
   "tooltip": {
     "link-memo": "Link Memo",

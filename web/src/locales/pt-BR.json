@@ -23,7 +23,6 @@
     "archive": "Arquivar",
     "archived": "Arquivo",
     "attachments": "Anexos",
-    "auto-expand": "Expandir automaticamente",
     "avatar": "Avatar",
     "basic": "Básico",
     "beta": "Beta",
@@ -102,10 +101,8 @@
     "sign-out": "Sair",
     "sign-up": "Registrar",
     "statistics": "Estatísticas",
-    "tags": "Tags",
     "title": "Título",
     "today": "Hoje",
-    "tree-mode": "Modo árvore",
     "type": "Tipo",
     "unpin": "Desafixar",
     "update": "Atualizar",
@@ -172,8 +169,6 @@
   },
   "memo": {
     "archived-at": "Arquivado em",
-    "click-to-hide-sensitive-content": "Ocultar conteúdo impróprio",
-    "click-to-show-sensitive-content": "Mostrar conteúdo impróprio",
     "code": "Código",
     "comment": {
       "self": "Comentários",
@@ -500,37 +495,7 @@
       "title": "Webhooks",
       "url": "URL",
       "label": "Webhooks"
-    },
-    "tags": {
-      "label": "Etiquetas",
-      "title": "Metadados de tags",
-      "description": "Atribua cores de exibição opcionais a tags em toda a instância ou desfoque o conteúdo do memorando correspondente. Os nomes das tags são tratados como padrões regex ancorados.",
-      "background-color": "Cor de fundo",
-      "blur-content": "Desfocar conteúdo",
-      "no-tags-configured": "Nenhum metadado de tag configurado.",
-      "tag-name": "Nome da etiqueta",
-      "tag-name-placeholder": "por exemplo work ou project/.*",
-      "tag-already-exists": "A etiqueta já existe.",
-      "tag-pattern-hint": "Nome da tag ou padrão regex (por exemplo, project/.* corresponde a todas as tags project/)",
-      "invalid-regex": "Padrão regex inválido ou inseguro.",
-      "using-default-color": "Usando a cor padrão."
     }
-  },
-  "tag": {
-    "all-tags": "Todas as Tags",
-    "create-tag": "Criar Tag",
-    "create-tags-guide": "Você pode criar tags inserindo `#tag`.",
-    "delete-confirm": "Tem certeza de que deseja excluir esta tag?\nTodos os memos relacionados serão arquivados.",
-    "delete-success": "Tag deletada com êxito",
-    "delete-tag": "Excluir Tag",
-    "new-name": "Novo Nome",
-    "no-tag-found": "Nenhuma tag encontrada",
-    "old-name": "Nome Antigo",
-    "rename-error-empty": "O nome da tag não pode ser vazio ou conter espaços",
-    "rename-error-repeat": "O novo nome não pode ser o mesmo que o antigo",
-    "rename-success": "Tag renomeada com êxito",
-    "rename-tag": "Renomear tag",
-    "rename-tip": "Todos seus memos com essa tag serão atualizados."
   },
   "tooltip": {
     "link-memo": "Vincular Memo",

@@ -4,10 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 import Editor from "@/components/MemoEditor/Editor";
 import type { EditorController } from "@/components/MemoEditor/types/editorController";
 
-vi.mock("@/hooks/useUserQueries", () => ({
-  useTagCounts: () => ({ data: {} }),
-}));
-
 describe("Editor", () => {
   it("loads markdown and serializes it back verbatim", () => {
     const ref = createRef<EditorController>();

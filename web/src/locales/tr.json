@@ -24,7 +24,6 @@
     "archive": "Arşiv",
     "archived": "Arşivlendi",
     "attachments": "Ekler",
-    "auto-expand": "Otomatik genişlet",
     "avatar": "Profil Resmi",
     "basic": "Temel",
     "beta": "Beta sürümü",
@@ -103,10 +102,8 @@
     "sign-out": "Çıkış yap",
     "sign-up": "Kayıt ol",
     "statistics": "İstatistikler",
-    "tags": "Etiketler",
     "title": "Başlık",
     "today": "Bugün",
-    "tree-mode": "Ağaç modu",
     "type": "Tür",
     "unpin": "Sabitlemeyi kaldır",
     "update": "Güncelle",
@@ -186,8 +183,6 @@
   },
   "memo": {
     "archived-at": "Arşivlenme tarihi",
-    "click-to-hide-sensitive-content": "Hassas içeriği gizlemek için tıklayın",
-    "click-to-show-sensitive-content": "Hassas içeriği göstermek için tıklayın",
     "code": "Kod",
     "comment": {
       "self": "Yorumlar",
@@ -637,25 +632,6 @@
       "url": "URL",
       "label": "Webhook'lar"
     },
-    "tags": {
-      "label": "Etiketler",
-      "title": "Etiket meta verileri",
-      "description": "Etiketlere sunucu genelinde isteğe bağlı görüntüleme renkleri atayın veya eşleşen not içeriğini bulanıklaştırın. Etiket adları sabitlenmiş regex desenleri olarak değerlendirilir.",
-      "background-color": "Arka plan rengi",
-      "blur-content": "İçeriği bulanıklaştır",
-      "no-tags-configured": "Yapılandırılmış etiket meta verisi yok.",
-      "tag-name": "Etiket adı",
-      "tag-name-placeholder": "ör. is veya proje/.*",
-      "tag-already-exists": "Etiket zaten mevcut.",
-      "tag-pattern-hint": "Etiket adı veya regex deseni (ör. proje/.* tüm proje/ etiketlerini eşleştirir)",
-      "invalid-regex": "Geçersiz veya güvenli olmayan regex deseni.",
-      "using-default-color": "Varsayılan renk kullanılıyor.",
-      "add-rule": "Kural ekle",
-      "configured-rules": "Yapılandırılmış kurallar",
-      "default-color": "Varsayılan",
-      "matching-rule": "Bağlantılı normal ifade",
-      "used-count": "{{count}} notları"
-    },
     "ai": {
       "add-provider": "Sağlayıcı ekle",
       "api-key": "API tuşu",
@@ -755,22 +731,6 @@
       "refresh": "Yenile",
       "load-error": "İstatistikler yüklenemedi"
     }
-  },
-  "tag": {
-    "all-tags": "Tüm Etiketler",
-    "create-tag": "Etiket Oluştur",
-    "create-tags-guide": "`#etiket` yazarak etiket oluşturabilirsiniz.",
-    "delete-confirm": "Bu etiketi silmek istediğinizden emin misiniz? İlgili tüm notlar arşivlenecektir.",
-    "delete-success": "Etiket başarıyla silindi",
-    "delete-tag": "Etiketi Sil",
-    "new-name": "Yeni İsim",
-    "no-tag-found": "Etiket bulunamadı",
-    "old-name": "Eski İsim",
-    "rename-error-empty": "Etiket adı boş olamaz veya boşluk içeremez",
-    "rename-error-repeat": "Yeni isim eski isimle aynı olamaz",
-    "rename-success": "Etiket başarıyla yeniden adlandırıldı",
-    "rename-tag": "Etiketi yeniden adlandır",
-    "rename-tip": "Bu etiketle ilişkili tüm notların etiketini değiştirecektir."
   },
   "tooltip": {
     "link-memo": "Notu Bağla",

@@ -2,11 +2,9 @@ import { useMemo } from "react";
 import { GalleryDocCard } from "@/components/GalleryView/GalleryDocCard";
 import GalleryViewRenderer from "@/components/GalleryView/GalleryViewRenderer";
 import { AttachmentListView, LocationDisplayView, RelationListView } from "@/components/MemoMetadata";
-import { cn } from "@/lib/utils";
 import { Memo_DocType, MemoRelation_Type } from "@/types/proto/api/v1/memo_service_pb";
 import { getAttachmentUrl, partitionInlinedAttachments } from "@/utils/attachment";
 import { isLayoutDoc } from "@/utils/docType";
-import { useTranslate } from "@/utils/i18n";
 import MemoContent from "../../MemoContent";
 import { InlineAttachmentProvider } from "../../MemoContent/InlineAttachmentContext";
 import { MemoReactionListView } from "../../MemoReactionListView";
@@ -14,19 +12,8 @@ import { useMemoHandlers } from "../hooks";
 import { useMemoViewContext, useMemoViewDerived } from "../MemoViewContext";
 import type { MemoBodyProps } from "../types";
 
-const BlurOverlay: React.FC<{ onClick?: () => void }> = ({ onClick }) => {
-  const t = useTranslate();
-  return (
-    <div className="absolute inset-0 z-10 pt-4 flex items-center justify-center" onClick={onClick}>
-      <div className="rounded-lg border border-border bg-card px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-accent hover:bg-accent hover:text-foreground">
-        {t("memo.click-to-show-sensitive-content")}
-      </div>
-    </div>
-  );
-};
-
 const MemoBody: React.FC<MemoBodyProps> = ({ compact, autoFold }) => {
-  const { memo, parentPage, showBlurredContent, blurred, readonly, openEditor, openPreview, toggleBlurVisibility } = useMemoViewContext();
+  const { memo, parentPage, readonly, openEditor, openPreview } = useMemoViewContext();
   const { isInMemoDetailPage } = useMemoViewDerived();
 
   const { handleMemoContentClick, handleMemoContentDoubleClick } = useMemoHandlers({ readonly, openEditor, openPreview });
@@ -42,12 +29,7 @@ const MemoBody: React.FC<MemoBodyProps> = ({ compact, autoFold }) => {
 
   return (
     <>
-      <div
-        className={cn(
-          "w-full flex flex-col justify-start items-start gap-2",
-          blurred && !showBlurredContent && "blur-lg transition-all duration-200",
-        )}
-      >
+      <div className="w-full flex flex-col justify-start items-start gap-2">
         {isView ? (
           isInMemoDetailPage ? (
             <GalleryViewRenderer memo={memo} />
@@ -80,8 +62,6 @@ const MemoBody: React.FC<MemoBodyProps> = ({ compact, autoFold }) => {
         {memo.location && <LocationDisplayView location={memo.location} />}
         <MemoReactionListView memo={memo} reactions={memo.reactions} />
       </div>
-
-      {blurred && !showBlurredContent && <BlurOverlay onClick={toggleBlurVisibility} />}
     </>
   );
 };
