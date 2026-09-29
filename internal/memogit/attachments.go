@@ -45,6 +45,16 @@ func (w *attachmentWarner) warn(docPath, filename, attachmentName string, err er
 	}
 }
 
+// fetchMemoAttachments is downloadMemoAttachments gated on the workspace's
+// NoAttachments setting: a workspace checked out without attachments records no
+// refs, so its doc files carry no manifest and nothing lands in _attachments/.
+func fetchMemoAttachments(ctx context.Context, client *Client, ws *WorkspaceConfig, contentRoot, docPath string, m *v1pb.Memo, prev []AttachmentRef, warn *attachmentWarner) ([]AttachmentRef, int, error) {
+	if ws.NoAttachments {
+		return nil, 0, nil
+	}
+	return downloadMemoAttachments(ctx, client, contentRoot, docPath, m, prev, warn)
+}
+
 // downloadMemoAttachments downloads all of a memo's attachments into the
 // content root (one-way: bytes are pulled down for local/LLM context and never
 // pushed back). It skips any attachment already present locally at the same

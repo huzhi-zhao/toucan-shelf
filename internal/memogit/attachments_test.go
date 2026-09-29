@@ -64,12 +64,46 @@ func TestDownloadMemoAttachmentsSkipsServerErrors(t *testing.T) {
 func TestErrorBodySuffix(t *testing.T) {
 	cases := map[string]string{
 		`{"message":"failed to get attachment reader"}`: " (failed to get attachment reader)",
-		"plain text\n":                                  " (plain text)",
-		"":                                              "",
+		"plain text\n": " (plain text)",
+		"":             "",
 	}
 	for body, want := range cases {
 		if got := errorBodySuffix(strings.NewReader(body)); got != want {
 			t.Errorf("errorBodySuffix(%q) = %q, want %q", body, got, want)
 		}
+	}
+}
+
+// A workspace cloned with --no-attachments must never hit the server for bytes
+// and must record no refs, so doc files carry no manifest and pulls stay stable.
+func TestFetchMemoAttachmentsHonorsNoAttachments(t *testing.T) {
+	hits := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits++
+		_, _ = w.Write([]byte("bytes"))
+	}))
+	defer srv.Close()
+
+	client := NewClient(&Config{Server: srv.URL, Token: "t"})
+	m := &v1pb.Memo{
+		Name:        "memos/m1",
+		Content:     "body",
+		Attachments: []*v1pb.Attachment{{Name: "attachments/a1", Filename: "big.pdf", Size: 5}},
+	}
+	root := t.TempDir()
+	ws := &WorkspaceConfig{Dir: "KB", NoAttachments: true}
+
+	refs, n, err := fetchMemoAttachments(context.Background(), client, ws, root, "Doc.md", m, nil, &attachmentWarner{})
+	if err != nil || n != 0 || refs != nil {
+		t.Fatalf("expected no download, got refs=%+v n=%d err=%v", refs, n, err)
+	}
+	if hits != 0 {
+		t.Fatalf("expected no server requests, got %d", hits)
+	}
+	if _, err := os.Stat(filepath.Join(root, attachmentsDir)); !os.IsNotExist(err) {
+		t.Fatalf("expected no %s directory, stat err=%v", attachmentsDir, err)
+	}
+	if strings.Contains(FileContent(m, refs), manifestKey) {
+		t.Fatalf("expected no attachment manifest in doc content")
 	}
 }

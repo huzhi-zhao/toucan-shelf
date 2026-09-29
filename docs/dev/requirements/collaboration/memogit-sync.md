@@ -149,6 +149,13 @@ local/LLM context and never pushed back"）、`push.go` 顶部的"Attachments ar
 阶段 5，没有更晚近的规划文档推翻或确认它。**排期与否留给需求侧决定**，代码现状本身
 已经确认清楚。
 
+**`--no-attachments`：整库不下载附件。** `memogit clone --no-attachments <库名>`
+把 `no_attachments: true` 记进该知识库的 config 条目，之后 clone / pull 都经
+`fetchMemoAttachments` 跳过下载：不生成 `_attachments/`，文档末尾没有
+`memogit-attachments` 注释块，PDF 占位文件只列附件名、没有本地链接。push 不受影响
+（本来就不发附件）。用于云端沙箱这类每次都重新 clone、只关心正文的场景。开关只在
+clone 时设定；对已有检出改这个值会让所有带附件的文件显得被改动，应当 `rm` 后重新 clone。
+
 ## 8. 给 AI agent 的入口：AGENTS.md / CLAUDE.md / .cursor
 
 `memogit clone` 和 `memogit pull` 会自动在 checkout root 及每个知识库子目录里
