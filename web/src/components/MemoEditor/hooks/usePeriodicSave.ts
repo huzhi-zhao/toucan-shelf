@@ -1,4 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import { useLocalStorage } from "@/hooks";
+import { PERIODIC_SAVE_STORAGE_KEY } from "../constants";
 
 /**
  * How often an opted-in editor commits the document to the server while the
@@ -50,4 +52,35 @@ export const usePeriodicSave = ({ enabled, save }: { enabled: boolean; save: () 
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [enabled]);
+};
+
+/**
+ * Reads/writes the per-document opt-in for periodic saving.
+ *
+ * Scoped to a single memo on purpose: a global toggle meant that turning
+ * auto-save on once left it on for every document opened afterwards, so an
+ * accidental edit (a stray cut/paste) in an unrelated document could be
+ * committed without the user ever pressing Save.
+ */
+export const usePeriodicSavePreference = (memoName: string | undefined) => {
+  const [enabledDocs, setEnabledDocs] = useLocalStorage<Record<string, boolean>>(PERIODIC_SAVE_STORAGE_KEY, {});
+  const enabled = Boolean(memoName && enabledDocs?.[memoName]);
+
+  const setEnabled = useCallback(
+    (next: boolean) => {
+      if (!memoName) return;
+      setEnabledDocs((current) => {
+        const docs = { ...(current ?? {}) };
+        if (next) {
+          docs[memoName] = true;
+        } else {
+          delete docs[memoName];
+        }
+        return docs;
+      });
+    },
+    [memoName, setEnabledDocs],
+  );
+
+  return [enabled, setEnabled] as const;
 };

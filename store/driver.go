@@ -48,6 +48,7 @@ type Driver interface {
 	// MemoHistory model related methods.
 	CreateMemoHistory(ctx context.Context, create *MemoHistory) (*MemoHistory, error)
 	ListMemoHistories(ctx context.Context, find *FindMemoHistory) ([]*MemoHistory, error)
+	PruneAutoMemoHistories(ctx context.Context, memoID int32, cutoffTs int64, keep int) (int64, error)
 
 	// MemoChunk / RAG index related methods.
 	ReplaceMemoChunks(ctx context.Context, memoID int32, chunks []*MemoChunk) error

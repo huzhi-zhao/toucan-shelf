@@ -68,9 +68,14 @@ CREATE TABLE memo_history (
   content_hash TEXT NOT NULL DEFAULT '',
   attachments TEXT NOT NULL DEFAULT '[]',
   creator_id INTEGER NOT NULL,
-  created_ts BIGINT NOT NULL DEFAULT (strftime('%s', 'now'))
+  created_ts BIGINT NOT NULL DEFAULT (strftime('%s', 'now')),
+  -- 'manual' (user-named, kept forever), 'auto' (written by auto-save before it
+  -- overwrote content; subject to retention) or 'agent_baseline' (the last
+  -- human state before an AI write; kept forever).
+  source TEXT NOT NULL DEFAULT 'manual'
 );
 CREATE INDEX idx_memo_history_memo_id ON memo_history (memo_id, created_ts);
+CREATE INDEX idx_memo_history_memo_id_source ON memo_history (memo_id, source, created_ts);
 
 -- workspace
 CREATE TABLE workspace (

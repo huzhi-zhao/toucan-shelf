@@ -12,5 +12,9 @@ export const FOCUS_MODE_STYLES = {
 // normal (non-focus) mode. Defaults to off.
 export const FORMATTING_TOOLBAR_STORAGE_KEY = "memos-editor-formatting-toolbar";
 // localStorage key for the opt-in "auto-save" toggle next to the Save button
-// (periodic real saves while editing an existing document). Defaults to off.
-export const PERIODIC_SAVE_STORAGE_KEY = "memos-editor-periodic-save";
+// (periodic real saves while editing an existing document). Holds the set of
+// documents the user opted in for, keyed by memo name — the preference is
+// deliberately per-document, so switching to another document never inherits an
+// opt-in made elsewhere and silently commits edits to it. Defaults to off, and
+// disabling drops the entry so the map only grows with documents actually opted in.
+export const PERIODIC_SAVE_STORAGE_KEY = "memos-editor-periodic-save-docs";

@@ -1117,6 +1117,18 @@ paths:
                   schema:
                     type: string
                     format: field-mask
+                - name: autoSave
+                  in: query
+                  description: |-
+                    Optional. Set when the editor's auto-save issued this update, so the server
+                     keeps an automatic version of the content it is about to overwrite.
+                  schema:
+                    enum:
+                        - AUTO_SAVE_UNSPECIFIED
+                        - AUTO_SAVE_SESSION_START
+                        - AUTO_SAVE_PERIODIC
+                    type: string
+                    format: enum
             requestBody:
                 content:
                     application/json:
@@ -5512,7 +5524,19 @@ components:
                     items:
                         $ref: '#/components/schemas/MemoHistory_Attachment'
                     description: Output only. The attachment set captured at snapshot time.
-            description: MemoHistory is a manually-created snapshot (version) of a memo's content.
+                source:
+                    readOnly: true
+                    enum:
+                        - SOURCE_UNSPECIFIED
+                        - MANUAL
+                        - AUTO
+                        - AGENT_BASELINE
+                    type: string
+                    description: |-
+                        Output only. What produced this version. Set by the server; a client
+                         creating a version always gets MANUAL.
+                    format: enum
+            description: MemoHistory is a snapshot (version) of a memo's content.
         MemoHistory_Attachment:
             type: object
             properties:

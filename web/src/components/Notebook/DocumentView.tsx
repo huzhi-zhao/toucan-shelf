@@ -33,6 +33,7 @@ import { SubDocReferenceProvider } from "@/components/MemoContent/SubDocReferenc
 import MemoEditor from "@/components/MemoEditor";
 import type { EditorController } from "@/components/MemoEditor/types/editorController";
 import { AttachmentListView, ReferenceListView } from "@/components/MemoMetadata";
+import { MemoVersionLabel } from "@/components/MemoVersionLabel";
 import { MemoViewContext, type MemoViewContextValue } from "@/components/MemoView/MemoViewContext";
 import { PdfDocumentView } from "@/components/PdfViewer/PdfDocumentView";
 import { Button } from "@/components/ui/button";
@@ -1000,7 +1001,7 @@ const DocumentView = ({
                           histories.map((history) => (
                             <DropdownMenuItem key={history.name} onClick={() => handleSwitchVersion(history)}>
                               <div className="flex flex-col">
-                                <span className="text-sm">{history.displayName || t("memo.unnamed-version")}</span>
+                                <MemoVersionLabel history={history} />
                                 <span className="text-xs text-muted-foreground flex items-center gap-1">
                                   {history.createTime && timestampDate(history.createTime).toLocaleString()}
                                   {history.attachments.length > 0 && (
