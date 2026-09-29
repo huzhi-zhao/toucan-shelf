@@ -82,6 +82,13 @@ type WorkspaceConfig struct {
 	// Filter is an optional CEL clause applied on clone/pull for this workspace
 	// (in addition to the implicit "own memos only" scoping), e.g. `"work" in tags`.
 	Filter string `yaml:"filter,omitempty"`
+	// NoAttachments, when true, never downloads attachment bytes for this
+	// workspace: no _attachments/ tree, no attachment manifest in doc files, and
+	// PDF stubs list their attachments without a local link. Set at clone time;
+	// flipping it on an existing checkout rewrites every file that has
+	// attachments, so re-clone instead. Push is unaffected — it never sends
+	// attachments either way.
+	NoAttachments bool `yaml:"no_attachments,omitempty"`
 }
 
 // stateName returns the identity/state-file key for this workspace: the explicit

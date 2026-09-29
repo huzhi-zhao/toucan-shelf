@@ -153,7 +153,7 @@ func exportMemo(ctx context.Context, client *Client, ws *WorkspaceConfig, parent
 	if prev != nil {
 		prevRefs = prev.Attachments
 	}
-	refs, n, err := downloadMemoAttachments(ctx, client, contentRoot, memoState(ws, parents, m).Path, m, prevRefs, warn)
+	refs, n, err := fetchMemoAttachments(ctx, client, ws, contentRoot, memoState(ws, parents, m).Path, m, prevRefs, warn)
 	if err != nil {
 		return MemoState{}, 0, err
 	}
@@ -186,7 +186,7 @@ func relocateMemo(ctx context.Context, client *Client, ws *WorkspaceConfig, pare
 		prevRefs = prev.Attachments
 	}
 	ms := memoState(ws, parents, m)
-	refs, n, err := downloadMemoAttachments(ctx, client, contentRoot, ms.Path, m, prevRefs, warn)
+	refs, n, err := fetchMemoAttachments(ctx, client, ws, contentRoot, ms.Path, m, prevRefs, warn)
 	if err != nil {
 		return MemoState{}, 0, err
 	}

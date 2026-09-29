@@ -90,7 +90,7 @@ func loginCmd() *cobra.Command {
 
 func cloneCmd() *cobra.Command {
 	var filter, sparse, dir string
-	var sparseSubdir bool
+	var sparseSubdir, noAttachments bool
 	cmd := &cobra.Command{
 		Use:   "clone [workspace-title]",
 		Short: "First export of a workspace (or one folder via --sparse-checkout) + git init + baseline commit",
@@ -132,9 +132,10 @@ func cloneCmd() *cobra.Command {
 			if len(args) == 1 {
 				workspaceTitle = args[0]
 			}
-			return memogit.Clone(cmd.Context(), root, cfg, workspaceTitle, filter, sparse, sparseSubdir, cmd.OutOrStdout())
+			return memogit.Clone(cmd.Context(), root, cfg, workspaceTitle, filter, sparse, sparseSubdir, noAttachments, cmd.OutOrStdout())
 		},
 	}
+	cmd.Flags().BoolVar(&noAttachments, "no-attachments", false, "never download attachment bytes for this knowledge base (recorded in config; pull keeps honoring it)")
 	cmd.Flags().StringVar(&filter, "filter", "", "optional CEL filter, e.g. '\"work\" in tags'")
 	cmd.Flags().StringVar(&sparse, "sparse-checkout", "", "check out only this server folder")
 	cmd.Flags().BoolVar(&sparseSubdir, "sparse-subdir", false, "keep --sparse-checkout's folder as a subdirectory of the checkout root, instead of stripping it (default: stripped, so the folder's contents sit at the root)")

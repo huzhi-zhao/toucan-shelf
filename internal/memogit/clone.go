@@ -17,7 +17,7 @@ import (
 // check out; if empty, the user's default (first) workspace is used, but only
 // when they have exactly one — with several, the title must be given
 // explicitly so clone never guesses the wrong knowledge base.
-func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter, sparse string, sparseSubdir bool, out io.Writer) error {
+func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter, sparse string, sparseSubdir, noAttachments bool, out io.Writer) error {
 	client := NewClient(cfg)
 	user, err := client.CurrentUser(ctx)
 	if err != nil {
@@ -30,10 +30,11 @@ func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter
 		return err
 	}
 	wsCfg := &WorkspaceConfig{
-		Workspace: remote.GetName(),
-		Title:     remote.GetTitle(),
-		Dir:       workspaceDir(remote.GetTitle()),
-		Filter:    filter,
+		Workspace:     remote.GetName(),
+		Title:         remote.GetTitle(),
+		Dir:           workspaceDir(remote.GetTitle()),
+		Filter:        filter,
+		NoAttachments: noAttachments,
 	}
 	// A sparse checkout maps one server folder to the checkout root itself: the
 	// content sits at the root (Dir "."), the folder prefix is stripped locally
