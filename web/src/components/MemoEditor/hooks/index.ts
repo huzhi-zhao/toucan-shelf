@@ -14,4 +14,4 @@ export { useKeyboard } from "./useKeyboard";
 export { useLinkMemo } from "./useLinkMemo";
 export { useLocation } from "./useLocation";
 export { useMemoInit } from "./useMemoInit";
-export { PERIODIC_SAVE_INTERVAL_MS, usePeriodicSave } from "./usePeriodicSave";
+export { PERIODIC_SAVE_INTERVAL_MS, usePeriodicSave, usePeriodicSavePreference } from "./usePeriodicSave";

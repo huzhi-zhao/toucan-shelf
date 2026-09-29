@@ -70,6 +70,7 @@ func (s *APIV1Service) CreateMemoHistory(ctx context.Context, request *v1pb.Crea
 		Payload:     memo.Payload,
 		Attachments: snapshotAttachments,
 		CreatorID:   user.ID,
+		Source:      store.MemoHistoryManual,
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create memo history")
@@ -286,5 +287,21 @@ func convertMemoHistoryFromStore(history *store.MemoHistory, memoUID string) *v1
 		ContentHash: history.ContentHash,
 		CreateTime:  timestamppb.New(time.Unix(history.CreatedTs, 0)),
 		Attachments: attachments,
+		Source:      convertMemoHistorySourceFromStore(history.Source),
+	}
+}
+
+func convertMemoHistorySourceFromStore(source store.MemoHistorySource) v1pb.MemoHistory_Source {
+	switch source {
+	case store.MemoHistoryAuto:
+		return v1pb.MemoHistory_AUTO
+	case store.MemoHistoryAgentBaseline:
+		return v1pb.MemoHistory_AGENT_BASELINE
+	case store.MemoHistoryManual:
+		return v1pb.MemoHistory_MANUAL
+	default:
+		// Rows written before the column existed, and anything a future version
+		// adds: treat as the kind that is never pruned.
+		return v1pb.MemoHistory_MANUAL
 	}
 }

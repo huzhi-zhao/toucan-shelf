@@ -29,9 +29,9 @@ func (d *DB) CreateMemoHistory(ctx context.Context, create *store.MemoHistory) (
 		}
 		attachments = string(attachmentBytes)
 	}
-	fields := []string{"`uid`", "`memo_id`", "`name`", "`title`", "`content`", "`payload`", "`content_hash`", "`attachments`", "`creator_id`"}
-	placeholder := []string{"?", "?", "?", "?", "?", "?", "?", "?", "?"}
-	args := []any{create.UID, create.MemoID, create.Name, create.Title, create.Content, payload, create.ContentHash, attachments, create.CreatorID}
+	fields := []string{"`uid`", "`memo_id`", "`name`", "`title`", "`content`", "`payload`", "`content_hash`", "`attachments`", "`creator_id`", "`source`"}
+	placeholder := []string{"?", "?", "?", "?", "?", "?", "?", "?", "?", "?"}
+	args := []any{create.UID, create.MemoID, create.Name, create.Title, create.Content, payload, create.ContentHash, attachments, create.CreatorID, string(create.Source)}
 	if create.CreatedTs != 0 {
 		fields = append(fields, "`created_ts`")
 		placeholder = append(placeholder, "?")
@@ -62,8 +62,11 @@ func (d *DB) ListMemoHistories(ctx context.Context, find *store.FindMemoHistory)
 	if find.ContentHash != nil {
 		where, args = append(where, "`content_hash` = ?"), append(args, *find.ContentHash)
 	}
+	if find.Source != nil {
+		where, args = append(where, "`source` = ?"), append(args, string(*find.Source))
+	}
 
-	query := "SELECT `id`, `uid`, `memo_id`, `name`, `title`, `content`, `payload`, `content_hash`, `attachments`, `creator_id`, `created_ts` FROM `memo_history` WHERE " +
+	query := "SELECT `id`, `uid`, `memo_id`, `name`, `title`, `content`, `payload`, `content_hash`, `attachments`, `creator_id`, `created_ts`, `source` FROM `memo_history` WHERE " +
 		strings.Join(where, " AND ") + " ORDER BY `created_ts` DESC, `id` DESC"
 	if find.Limit != nil {
 		query = fmt.Sprintf("%s LIMIT %d", query, *find.Limit)
@@ -83,6 +86,7 @@ func (d *DB) ListMemoHistories(ctx context.Context, find *store.FindMemoHistory)
 		memoHistory := &store.MemoHistory{}
 		var payloadBytes []byte
 		var attachmentBytes []byte
+		var source string
 		if err := rows.Scan(
 			&memoHistory.ID,
 			&memoHistory.UID,
@@ -95,9 +99,11 @@ func (d *DB) ListMemoHistories(ctx context.Context, find *store.FindMemoHistory)
 			&attachmentBytes,
 			&memoHistory.CreatorID,
 			&memoHistory.CreatedTs,
+			&source,
 		); err != nil {
 			return nil, err
 		}
+		memoHistory.Source = store.MemoHistorySource(source)
 		payload := &storepb.MemoPayload{}
 		if err := protojsonUnmarshaler.Unmarshal(payloadBytes, payload); err != nil {
 			return nil, err
@@ -114,4 +120,21 @@ func (d *DB) ListMemoHistories(ctx context.Context, find *store.FindMemoHistory)
 		return nil, err
 	}
 	return list, nil
+}
+
+// PruneAutoMemoHistories deletes the memo's auto versions that fall outside
+// retention: created before cutoffTs, or ranked past the newest `keep`. Both
+// rules run in one statement so a prune never has to load version bodies —
+// these rows carry full document content.
+func (d *DB) PruneAutoMemoHistories(ctx context.Context, memoID int32, cutoffTs int64, keep int) (int64, error) {
+	if keep < 0 {
+		keep = 0
+	}
+	stmt := "DELETE FROM `memo_history` WHERE `memo_id` = ? AND `source` = ? AND (`created_ts` < ? OR `id` NOT IN (" +
+		"SELECT `id` FROM `memo_history` WHERE `memo_id` = ? AND `source` = ? ORDER BY `created_ts` DESC, `id` DESC LIMIT ?))"
+	result, err := d.db.ExecContext(ctx, stmt, memoID, string(store.MemoHistoryAuto), cutoffTs, memoID, string(store.MemoHistoryAuto), keep)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

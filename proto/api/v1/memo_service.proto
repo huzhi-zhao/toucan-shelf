@@ -616,6 +616,25 @@ message UpdateMemoRequest {
 
   // Required. The list of fields to update.
   google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // Optional. Set when the editor's auto-save issued this update, so the server
+  // keeps an automatic version of the content it is about to overwrite.
+  AutoSave auto_save = 3 [(google.api.field_behavior) = OPTIONAL];
+
+  // Whether auto-save triggered an update, and if so where in the editing
+  // session it sits. The distinction exists because only the first auto-save of
+  // a session overwrites content the user has not seen saved yet.
+  enum AutoSave {
+    // A save the user asked for. No automatic version is written.
+    AUTO_SAVE_UNSPECIFIED = 0;
+    // The first auto-save since this editor opened the document. Always
+    // versions the state being overwritten — that copy is what survives an
+    // accidental cut-and-paste into the wrong document.
+    AUTO_SAVE_SESSION_START = 1;
+    // A later tick of the same editing session. Versioned at most once per
+    // autoVersionMinInterval so a long session leaves a readable list.
+    AUTO_SAVE_PERIODIC = 2;
+  }
 }
 
 message AcknowledgeAgentEditRequest {
@@ -884,7 +903,7 @@ message GetMemoByShareRequest {
   string share_id = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
-// MemoHistory is a manually-created snapshot (version) of a memo's content.
+// MemoHistory is a snapshot (version) of a memo's content.
 message MemoHistory {
   option (google.api.resource) = {
     type: "memos.api.v1/MemoHistory"
@@ -913,6 +932,23 @@ message MemoHistory {
 
   // Output only. The attachment set captured at snapshot time.
   repeated Attachment attachments = 7 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Output only. What produced this version. Set by the server; a client
+  // creating a version always gets MANUAL.
+  Source source = 8 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // What produced a version. Only AUTO versions are ever deleted.
+  enum Source {
+    SOURCE_UNSPECIFIED = 0;
+    // The user asked for this version and named it. Kept forever.
+    MANUAL = 1;
+    // Written by auto-save before it overwrote the stored content. Kept for a
+    // bounded age and count per document, since these accumulate unprompted.
+    AUTO = 2;
+    // The last human-authored state before an AI write. Kept forever: once the
+    // agent has overwritten it, this is the only copy of what the human wrote.
+    AGENT_BASELINE = 3;
+  }
 
   // A lightweight reference to an attachment captured in a version snapshot.
   message Attachment {

@@ -675,6 +675,17 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 		}
 	}
 
+	// The same idea for the other kind of write nobody pressed a button for:
+	// auto-save. An agent write is covered by the baseline rule above and never
+	// by this one, so the flag is ignored on that channel. Failing the save when
+	// the version cannot be written is deliberate — an unrecoverable silent
+	// overwrite is the exact thing this path exists to prevent.
+	if authorshipWrite && !actorIsAgent {
+		if _, err := s.snapshotAutoVersionIfNeeded(ctx, memo, user.ID, request.AutoSave); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to snapshot auto version: %v", err)
+		}
+	}
+
 	update := &store.UpdateMemo{
 		ID: memo.ID,
 	}

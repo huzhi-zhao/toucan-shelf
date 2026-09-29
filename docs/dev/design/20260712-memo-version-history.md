@@ -6,6 +6,11 @@
 > 迁移注记：对应需求见
 > [../requirements/knowledge-base/document-versioning.md](../requirements/knowledge-base/document-versioning.md)。
 > 附件版本化的落地方案与切换版本 RPC 已实现，均与本文正文（§8-9）一致。
+>
+> 修订注记：本文 §2.4 的"不做自动快照、不做数量上限"两条已被推翻 —— 自动保存
+> 会在覆盖正文前留版本，AI 改写前也会留人类基线，两者与手动版本用
+> `memo_history.source` 区分，只有自动保存那类有保留上限（90 天 / 每篇 10 条）。
+> 以需求文档 §1.1 为准。
 
 ## 1. 需求背景
 

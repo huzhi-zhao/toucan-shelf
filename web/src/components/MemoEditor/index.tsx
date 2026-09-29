@@ -11,12 +11,22 @@ import { userKeys } from "@/hooks/useUserQueries";
 import { handleError } from "@/lib/error";
 import { cn } from "@/lib/utils";
 import { InstanceSetting_Key } from "@/types/proto/api/v1/instance_service_pb";
+import { UpdateMemoRequest_AutoSave } from "@/types/proto/api/v1/memo_service_pb";
 import { hasFrontmatter } from "@/utils/frontmatter";
 import { useTranslate } from "@/utils/i18n";
 import { convertVisibilityFromString } from "@/utils/memo";
 import { AudioRecorderPanel, EditorContent, EditorMetadata, FocusModeOverlay, TimestampPopover } from "./components";
-import { FOCUS_MODE_STYLES, FORMATTING_TOOLBAR_STORAGE_KEY, PERIODIC_SAVE_STORAGE_KEY } from "./constants";
-import { useAudioRecorder, useAutoSave, useFillViewportHeight, useFocusMode, useKeyboard, useMemoInit, usePeriodicSave } from "./hooks";
+import { FOCUS_MODE_STYLES, FORMATTING_TOOLBAR_STORAGE_KEY } from "./constants";
+import {
+  useAudioRecorder,
+  useAutoSave,
+  useFillViewportHeight,
+  useFocusMode,
+  useKeyboard,
+  useMemoInit,
+  usePeriodicSave,
+  usePeriodicSavePreference,
+} from "./hooks";
 import { errorService, memoService, transcriptionService, validationService } from "./services";
 import { EditorProvider, UploadWorkspaceProvider, useEditorContext, useEditorSelector, useUploadWorkspace } from "./state";
 import { CommentToolbar, EditorToolbar, FormattingToolbar } from "./Toolbar";
@@ -87,13 +97,18 @@ const MemoEditorImpl = forwardRef<EditorController, MemoEditorProps>(
     // Persisted preference: also show the formatting toolbar in normal mode. Focus
     // mode always shows it regardless; this only governs the non-focus layout.
     const [isFormattingToolbarVisible, setFormattingToolbarVisible] = useLocalStorage(FORMATTING_TOOLBAR_STORAGE_KEY, false);
-    // Persisted preference: keep committing the document to the server on a timer
-    // so a long editing session can't be lost by forgetting to press Save.
-    const [isPeriodicSaveEnabled, setPeriodicSaveEnabled] = useLocalStorage(PERIODIC_SAVE_STORAGE_KEY, false);
     // Content of the last successful periodic save, so idle ticks cost nothing.
     const lastPeriodicSaveContentRef = useRef<string | undefined>(undefined);
+    // Whether auto-save has already committed once since this editor opened.
+    // The first commit is the one that overwrites content the user never saved
+    // themselves, so the server always versions it; see UpdateMemoRequest.AutoSave.
+    const autoSaveSessionStartedRef = useRef(false);
 
     const memoName = memo?.name;
+    // Persisted preference, per document: keep committing this document to the
+    // server on a timer so a long editing session can't be lost by forgetting to
+    // press Save. Opting in here never carries over to the next document opened.
+    const [isPeriodicSaveEnabled, setPeriodicSaveEnabled] = usePeriodicSavePreference(memoName);
 
     // Fill the rest of the screen on a surface that asks for it (the memo detail
     // page). Measured rather than inherited — see the hook for why `expand`'s
@@ -143,9 +158,13 @@ const MemoEditorImpl = forwardRef<EditorController, MemoEditorProps>(
       if (lastPeriodicSaveContentRef.current === content) {
         return;
       }
-      const saved = await saveMemo({ silent: true });
+      const saved = await saveMemo({
+        silent: true,
+        autoSave: autoSaveSessionStartedRef.current ? UpdateMemoRequest_AutoSave.PERIODIC : UpdateMemoRequest_AutoSave.SESSION_START,
+      });
       if (saved) {
         lastPeriodicSaveContentRef.current = content;
+        autoSaveSessionStartedRef.current = true;
       }
     }
     usePeriodicSave({ enabled: canPeriodicSave && isPeriodicSaveEnabled, save: handlePeriodicSave });
@@ -327,7 +346,7 @@ const MemoEditorImpl = forwardRef<EditorController, MemoEditorProps>(
     // Shared by the Save button and the periodic auto-save. A silent save keeps
     // the editor open and untouched: no reset, no onConfirm, no draft discard —
     // the user is still typing.
-    async function saveMemo({ silent }: { silent: boolean }): Promise<boolean> {
+    async function saveMemo({ silent, autoSave }: { silent: boolean; autoSave?: UpdateMemoRequest_AutoSave }): Promise<boolean> {
       // Read the latest state imperatively — this component no longer subscribes
       // to content, so the closure can't rely on a per-render `state` snapshot.
       const state = getState();
@@ -353,6 +372,7 @@ const MemoEditorImpl = forwardRef<EditorController, MemoEditorProps>(
           epubAnnotation,
           docAnchor,
           workspace: uploadWorkspace,
+          autoSave,
         });
 
         if (!result.hasChanges) {

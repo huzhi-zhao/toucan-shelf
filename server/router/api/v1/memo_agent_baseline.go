@@ -147,6 +147,7 @@ func (s *APIV1Service) snapshotHumanBaselineIfNeeded(ctx context.Context, memo *
 		Payload:     memo.Payload,
 		Attachments: snapshotAttachments,
 		CreatorID:   creatorID,
+		Source:      store.MemoHistoryAgentBaseline,
 	}); err != nil {
 		return false, err
 	}

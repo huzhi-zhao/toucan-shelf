@@ -5,7 +5,7 @@ import { memoServiceClient } from "@/connect";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 import { AttachmentSchema } from "@/types/proto/api/v1/attachment_service_pb";
 import type { DocAnchor, EpubAnnotation, Memo, PdfAnnotation } from "@/types/proto/api/v1/memo_service_pb";
-import { MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
+import { MemoSchema, UpdateMemoRequest_AutoSave } from "@/types/proto/api/v1/memo_service_pb";
 import type { EditorState } from "../state";
 import { uploadService } from "./uploadService";
 
@@ -84,6 +84,12 @@ export const memoService = {
       docAnchor?: DocAnchor;
       /** Workspace ("workspaces/{uid}") the uploaded attachments belong to. */
       workspace?: string;
+      /**
+       * Where this save sits in an auto-save session. The server keeps an
+       * automatic version of the content it is about to overwrite, so leaving
+       * this unset (a save the user pressed) means no version is written.
+       */
+      autoSave?: UpdateMemoRequest_AutoSave;
     },
   ): Promise<{ memoName: string; hasChanges: boolean; updateTime?: Date }> {
     // 1. Upload local files first
@@ -106,6 +112,7 @@ export const memoService = {
       const memo = await memoServiceClient.updateMemo({
         memo: create(MemoSchema, patch as Record<string, unknown>),
         updateMask: create(FieldMaskSchema, { paths: Array.from(mask) }),
+        autoSave: options.autoSave,
       });
       return { memoName: memo.name, hasChanges: true, updateTime: memo.updateTime ? timestampDate(memo.updateTime) : undefined };
     }

@@ -22,6 +22,7 @@ import {
 import { useState } from "react";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { isPublicAttachment } from "@/components/MemoMetadata/Attachment/attachmentHelpers";
+import { MemoVersionLabel } from "@/components/MemoVersionLabel";
 import MoveDocumentDialog from "@/components/Notebook/MoveDocumentDialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -203,7 +204,7 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
                         histories.map((history) => (
                           <DropdownMenuItem key={history.name} onClick={() => handleSwitchVersion(history, histories)}>
                             <div className="flex flex-col">
-                              <span className="text-sm">{history.displayName || t("memo.unnamed-version")}</span>
+                              <MemoVersionLabel history={history} />
                               <span className="text-xs text-muted-foreground flex items-center gap-1">
                                 {history.createTime && timestampDate(history.createTime).toLocaleString()}
                                 {history.attachments.length > 0 && (

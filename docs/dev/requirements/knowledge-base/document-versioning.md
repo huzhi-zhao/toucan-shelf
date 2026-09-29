@@ -1,6 +1,7 @@
 # 文档版本历史（Memo Version History）
 
-手动创建的全量快照，不做自动快照、不做 diff、不做数量上限。
+全量快照，不做 diff。版本分三种来源：人手动存的、AI 改写前自动留的、
+自动保存覆盖前自动留的（见 §1.1），只有最后一种有保留上限。
 
 ## 1. 能力范围
 
@@ -9,14 +10,48 @@
 - **查看版本列表**：菜单子菜单展示该 memo 的所有历史版本（时间倒序）。
 - **恢复到某个版本**：把选中版本的内容与附件集合写回 memo。
 - **附件随版本快照**：见 §3。
+- **自动版本与保留策略**：见 §1.1。
 
-明确不做：自动/定时快照、版本数量上限或清理策略、服务端 diff/patch 存储
-（每个版本都是内容全量快照）、版本对比 UI、删除单条历史版本。
+明确不做：服务端 diff/patch 存储（每个版本都是内容全量快照）、版本对比 UI、
+删除单条历史版本。
+
+## 1.1 版本来源与保留策略
+
+`memo_history.source`（`store/memo_history.go` `MemoHistorySource`）标记一条版本
+是谁留下的。这是保留策略的唯一依据 —— 只有 `auto` 会被删。
+
+| source | 谁写的 | 保留 |
+| --- | --- | --- |
+| `manual` | 用户点"创建为版本"并命名 | 永久 |
+| `auto` | 编辑器自动保存在覆盖正文前留的 | 90 天内、每篇最多 10 条 |
+| `agent_baseline` | AI 改写前的最后一份人类内容 | 永久 |
+
+**为什么 `auto` 要有上限而另外两种没有**：手动版本是用户自己按出来的，数量天然可控；
+`agent_baseline` 在 AI 覆盖之后往往是人写的那份唯一的副本，过期删掉等于真丢。
+只有 `auto` 是没人按按钮就自己长出来的，所以只有它需要被约束。
+
+**自动版本的产生时机**（`server/router/api/v1/memo_auto_version.go`）：
+自动保存每 30 秒提交一次，但不是每次提交都留版本。
+
+- **会话第一次自动保存**：一定留。这一份是"你进来之前文档长什么样"，
+  也就是误剪切被自动保存覆盖后唯一能找回原文的东西。
+- **之后的每次 tick**：距上一条 `auto` 版本不足 `autoVersionMinInterval`（10 分钟）
+  则跳过。否则再留一条。
+- 两种情况都会先做 hash 去重：当前状态已经能从任一已存版本恢复时不重复留
+  （判定规则同 §3 / §5）。
+
+客户端通过 `UpdateMemoRequest.auto_save` 告知服务端这次写入处在会话的哪个位置
+（`AUTO_SAVE_SESSION_START` / `AUTO_SAVE_PERIODIC`），不传即用户手按的保存，不留版本。
+MCP 通道上这个字段被忽略 —— agent 写入走 `agent_baseline` 那条规则。
+
+**保留策略的执行时机**：在写入一条 `auto` 版本之后就地执行
+（`Store.PruneAutoMemoHistories`，单条 DELETE 同时处理"超期"和"超量"两条规则），
+没有后台清理任务。因为 `auto` 版本只在这条路径上产生，这也是文档唯一可能超出配额的时刻。
 
 ## 2. 数据模型
 
-`memo_history` 表，只在用户主动创建版本时插入一行；`memo` 主表结构不变，
-`memo.content` 永远是当前生效内容（`store/memo_history.go`）：
+`memo_history` 表，在用户主动创建版本、或 §1.1 的两条自动规则触发时插入一行；
+`memo` 主表结构不变，`memo.content` 永远是当前生效内容（`store/memo_history.go`）：
 
 - `id` / `uid`
 - `memo_id`：所属 memo
@@ -25,8 +60,9 @@
 - `attachments`：快照时刻的附件集合（JSON，见 §3）
 - `content_hash`：`content + 附件 uid 集合` 的 SHA-256 摘要，见 §3
 - `creator_id` / `created_ts`
+- `source`：版本来源，见 §1.1
 
-历史记录只增不改不删（无 Update/Delete 接口）。
+历史记录只增不改（无 Update 接口）；唯一的删除是 §1.1 的 `auto` 保留策略。
 
 ## 3. 内容与附件快照的一致性（content_hash）
 
@@ -61,6 +97,7 @@ message MemoHistory {
   string content_hash = 5;   // output only
   google.protobuf.Timestamp create_time = 6;
   repeated Attachment attachments = 7;  // output only
+  Source source = 8;         // output only，见 §1.1
 }
 
 rpc CreateMemoHistory(CreateMemoHistoryRequest) returns (MemoHistory);
@@ -92,6 +129,9 @@ memo 执行恢复，即存在未保存的改动时阻断）；前端也做一次
 
 ## 6. 前端
 
+- 自动版本在列表里不另起一栏，与手动版本按时间混排，用灰色的"自动保存"
+  代替版本名以示区分（`MemoVersionLabel.tsx`）—— 自动版本没有名字，
+  标签在前端按 `source` 渲染，所以跟随界面语言而不是写死在库里。
 - 入口：`MemoActionMenu.tsx` 的"版本"子菜单 —— "创建为版本"（打开
   `CreateVersionDialog.tsx`）、"查看版本"（列出历史，选中触发恢复流程）。
 - 状态与请求封装：`useMemoHistoryQueries.ts`（`useMemoHistories` /
