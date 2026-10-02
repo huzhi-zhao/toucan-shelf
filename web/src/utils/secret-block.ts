@@ -43,9 +43,17 @@ export const LOCAL_SECRET_ID_PREFIX = "local-";
 
 export const isLocalSecretId = (id: string): boolean => id.startsWith(LOCAL_SECRET_ID_PREFIX);
 
-export const newLocalSecretId = (): string => {
+// A placeholder inserted from the "restricted secret" menu item. It only
+// preselects the restricted form in the setup card; whether a block is restricted
+// is decided by the server record, never by anything in the document body.
+export const LOCAL_RESTRICTED_SECRET_ID_PREFIX = `${LOCAL_SECRET_ID_PREFIX}r-`;
+
+export const isRestrictedLocalSecretId = (id: string): boolean => id.startsWith(LOCAL_RESTRICTED_SECRET_ID_PREFIX);
+
+export const newLocalSecretId = (options?: { restricted?: boolean }): string => {
   const bytes = crypto.getRandomValues(new Uint8Array(8));
-  return LOCAL_SECRET_ID_PREFIX + Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  const prefix = options?.restricted ? LOCAL_RESTRICTED_SECRET_ID_PREFIX : LOCAL_SECRET_ID_PREFIX;
+  return prefix + Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 };
 
 // parseSecretBlock reads a `toucan-secret` block body. Returns null for anything

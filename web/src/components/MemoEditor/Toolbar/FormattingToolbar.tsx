@@ -23,6 +23,7 @@ import {
   PencilIcon,
   QuoteIcon,
   ScrollTextIcon,
+  ShieldIcon,
   SquareKanbanIcon,
   TablePropertiesIcon,
   TagsIcon,
@@ -361,6 +362,12 @@ export function FormattingToolbar({ controllerRef, onExit, className }: Formatti
           <DropdownMenuItem onClick={() => controllerRef.current?.insertMarkdown(`\n${secretBlockFence(newLocalSecretId())}\n`)}>
             <LockIcon className="w-4 h-4" />
             {t("editor.secret.block")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => controllerRef.current?.insertMarkdown(`\n${secretBlockFence(newLocalSecretId({ restricted: true }))}\n`)}
+          >
+            <ShieldIcon className="w-4 h-4" />
+            {t("editor.secret.restricted")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

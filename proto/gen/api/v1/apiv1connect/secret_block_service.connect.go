@@ -49,6 +49,21 @@ const (
 	// SecretBlockServiceDeleteSecretBlockProcedure is the fully-qualified name of the
 	// SecretBlockService's DeleteSecretBlock RPC.
 	SecretBlockServiceDeleteSecretBlockProcedure = "/memos.api.v1.SecretBlockService/DeleteSecretBlock"
+	// SecretBlockServiceGetSecretBlockSummaryProcedure is the fully-qualified name of the
+	// SecretBlockService's GetSecretBlockSummary RPC.
+	SecretBlockServiceGetSecretBlockSummaryProcedure = "/memos.api.v1.SecretBlockService/GetSecretBlockSummary"
+	// SecretBlockServiceRequestSecretBlockUnlockProcedure is the fully-qualified name of the
+	// SecretBlockService's RequestSecretBlockUnlock RPC.
+	SecretBlockServiceRequestSecretBlockUnlockProcedure = "/memos.api.v1.SecretBlockService/RequestSecretBlockUnlock"
+	// SecretBlockServiceCancelSecretBlockUnlockProcedure is the fully-qualified name of the
+	// SecretBlockService's CancelSecretBlockUnlock RPC.
+	SecretBlockServiceCancelSecretBlockUnlockProcedure = "/memos.api.v1.SecretBlockService/CancelSecretBlockUnlock"
+	// SecretBlockServiceUpdateSecretBlockPolicyProcedure is the fully-qualified name of the
+	// SecretBlockService's UpdateSecretBlockPolicy RPC.
+	SecretBlockServiceUpdateSecretBlockPolicyProcedure = "/memos.api.v1.SecretBlockService/UpdateSecretBlockPolicy"
+	// SecretBlockServiceCancelSecretBlockPolicyChangeProcedure is the fully-qualified name of the
+	// SecretBlockService's CancelSecretBlockPolicyChange RPC.
+	SecretBlockServiceCancelSecretBlockPolicyChangeProcedure = "/memos.api.v1.SecretBlockService/CancelSecretBlockPolicyChange"
 )
 
 // SecretBlockServiceClient is a client for the memos.api.v1.SecretBlockService service.
@@ -75,7 +90,30 @@ type SecretBlockServiceClient interface {
 	// DeleteSecretBlock permanently destroys a record. There is no recovery, and no
 	// caller other than the user acting deliberately ever invokes this — deleting or
 	// duplicating a document leaves its referenced secrets untouched.
+	//
+	// A restricted block cannot be deleted directly: deleting it is the same as
+	// lifting its restriction, so the restriction has to be lifted first (which
+	// waits like any other policy change). Fails with FAILED_PRECONDITION otherwise.
 	DeleteSecretBlock(context.Context, *connect.Request[v1.DeleteSecretBlockRequest]) (*connect.Response[emptypb.Empty], error)
+	// GetSecretBlockSummary returns one block without its envelope. It is how a
+	// restricted block learns its unlock state without spending a viewing window:
+	// GetSecretBlock on a restricted block starts the window the first time it
+	// succeeds.
+	GetSecretBlockSummary(context.Context, *connect.Request[v1.GetSecretBlockSummaryRequest]) (*connect.Response[v1.SecretBlockSummary], error)
+	// RequestSecretBlockUnlock asks for a restricted block's envelope to become
+	// available. The server checks the typed confirmation text and computes when
+	// the block opens from the block's policy and the server clock — the client
+	// has no say in either. See docs/dev/requirements/editor/restricted-secret-block.md.
+	RequestSecretBlockUnlock(context.Context, *connect.Request[v1.RequestSecretBlockUnlockRequest]) (*connect.Response[v1.SecretBlockSummary], error)
+	// CancelSecretBlockUnlock withdraws a request that is still waiting.
+	CancelSecretBlockUnlock(context.Context, *connect.Request[v1.CancelSecretBlockUnlockRequest]) (*connect.Response[v1.SecretBlockSummary], error)
+	// UpdateSecretBlockPolicy restricts a block, changes its policy, or lifts the
+	// restriction (an unset policy). Restricting an unrestricted block applies
+	// immediately; every change to an already restricted block — tighter or looser —
+	// is scheduled and takes effect only after the block's normal unlock delay.
+	UpdateSecretBlockPolicy(context.Context, *connect.Request[v1.UpdateSecretBlockPolicyRequest]) (*connect.Response[v1.SecretBlockSummary], error)
+	// CancelSecretBlockPolicyChange withdraws a scheduled policy change.
+	CancelSecretBlockPolicyChange(context.Context, *connect.Request[v1.CancelSecretBlockPolicyChangeRequest]) (*connect.Response[v1.SecretBlockSummary], error)
 }
 
 // NewSecretBlockServiceClient constructs a client for the memos.api.v1.SecretBlockService service.
@@ -119,16 +157,51 @@ func NewSecretBlockServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithSchema(secretBlockServiceMethods.ByName("DeleteSecretBlock")),
 			connect.WithClientOptions(opts...),
 		),
+		getSecretBlockSummary: connect.NewClient[v1.GetSecretBlockSummaryRequest, v1.SecretBlockSummary](
+			httpClient,
+			baseURL+SecretBlockServiceGetSecretBlockSummaryProcedure,
+			connect.WithSchema(secretBlockServiceMethods.ByName("GetSecretBlockSummary")),
+			connect.WithClientOptions(opts...),
+		),
+		requestSecretBlockUnlock: connect.NewClient[v1.RequestSecretBlockUnlockRequest, v1.SecretBlockSummary](
+			httpClient,
+			baseURL+SecretBlockServiceRequestSecretBlockUnlockProcedure,
+			connect.WithSchema(secretBlockServiceMethods.ByName("RequestSecretBlockUnlock")),
+			connect.WithClientOptions(opts...),
+		),
+		cancelSecretBlockUnlock: connect.NewClient[v1.CancelSecretBlockUnlockRequest, v1.SecretBlockSummary](
+			httpClient,
+			baseURL+SecretBlockServiceCancelSecretBlockUnlockProcedure,
+			connect.WithSchema(secretBlockServiceMethods.ByName("CancelSecretBlockUnlock")),
+			connect.WithClientOptions(opts...),
+		),
+		updateSecretBlockPolicy: connect.NewClient[v1.UpdateSecretBlockPolicyRequest, v1.SecretBlockSummary](
+			httpClient,
+			baseURL+SecretBlockServiceUpdateSecretBlockPolicyProcedure,
+			connect.WithSchema(secretBlockServiceMethods.ByName("UpdateSecretBlockPolicy")),
+			connect.WithClientOptions(opts...),
+		),
+		cancelSecretBlockPolicyChange: connect.NewClient[v1.CancelSecretBlockPolicyChangeRequest, v1.SecretBlockSummary](
+			httpClient,
+			baseURL+SecretBlockServiceCancelSecretBlockPolicyChangeProcedure,
+			connect.WithSchema(secretBlockServiceMethods.ByName("CancelSecretBlockPolicyChange")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // secretBlockServiceClient implements SecretBlockServiceClient.
 type secretBlockServiceClient struct {
-	listSecretBlocks  *connect.Client[v1.ListSecretBlocksRequest, v1.ListSecretBlocksResponse]
-	getSecretBlock    *connect.Client[v1.GetSecretBlockRequest, v1.SecretBlock]
-	createSecretBlock *connect.Client[v1.CreateSecretBlockRequest, v1.SecretBlock]
-	updateSecretBlock *connect.Client[v1.UpdateSecretBlockRequest, v1.SecretBlock]
-	deleteSecretBlock *connect.Client[v1.DeleteSecretBlockRequest, emptypb.Empty]
+	listSecretBlocks              *connect.Client[v1.ListSecretBlocksRequest, v1.ListSecretBlocksResponse]
+	getSecretBlock                *connect.Client[v1.GetSecretBlockRequest, v1.SecretBlock]
+	createSecretBlock             *connect.Client[v1.CreateSecretBlockRequest, v1.SecretBlock]
+	updateSecretBlock             *connect.Client[v1.UpdateSecretBlockRequest, v1.SecretBlock]
+	deleteSecretBlock             *connect.Client[v1.DeleteSecretBlockRequest, emptypb.Empty]
+	getSecretBlockSummary         *connect.Client[v1.GetSecretBlockSummaryRequest, v1.SecretBlockSummary]
+	requestSecretBlockUnlock      *connect.Client[v1.RequestSecretBlockUnlockRequest, v1.SecretBlockSummary]
+	cancelSecretBlockUnlock       *connect.Client[v1.CancelSecretBlockUnlockRequest, v1.SecretBlockSummary]
+	updateSecretBlockPolicy       *connect.Client[v1.UpdateSecretBlockPolicyRequest, v1.SecretBlockSummary]
+	cancelSecretBlockPolicyChange *connect.Client[v1.CancelSecretBlockPolicyChangeRequest, v1.SecretBlockSummary]
 }
 
 // ListSecretBlocks calls memos.api.v1.SecretBlockService.ListSecretBlocks.
@@ -156,6 +229,32 @@ func (c *secretBlockServiceClient) DeleteSecretBlock(ctx context.Context, req *c
 	return c.deleteSecretBlock.CallUnary(ctx, req)
 }
 
+// GetSecretBlockSummary calls memos.api.v1.SecretBlockService.GetSecretBlockSummary.
+func (c *secretBlockServiceClient) GetSecretBlockSummary(ctx context.Context, req *connect.Request[v1.GetSecretBlockSummaryRequest]) (*connect.Response[v1.SecretBlockSummary], error) {
+	return c.getSecretBlockSummary.CallUnary(ctx, req)
+}
+
+// RequestSecretBlockUnlock calls memos.api.v1.SecretBlockService.RequestSecretBlockUnlock.
+func (c *secretBlockServiceClient) RequestSecretBlockUnlock(ctx context.Context, req *connect.Request[v1.RequestSecretBlockUnlockRequest]) (*connect.Response[v1.SecretBlockSummary], error) {
+	return c.requestSecretBlockUnlock.CallUnary(ctx, req)
+}
+
+// CancelSecretBlockUnlock calls memos.api.v1.SecretBlockService.CancelSecretBlockUnlock.
+func (c *secretBlockServiceClient) CancelSecretBlockUnlock(ctx context.Context, req *connect.Request[v1.CancelSecretBlockUnlockRequest]) (*connect.Response[v1.SecretBlockSummary], error) {
+	return c.cancelSecretBlockUnlock.CallUnary(ctx, req)
+}
+
+// UpdateSecretBlockPolicy calls memos.api.v1.SecretBlockService.UpdateSecretBlockPolicy.
+func (c *secretBlockServiceClient) UpdateSecretBlockPolicy(ctx context.Context, req *connect.Request[v1.UpdateSecretBlockPolicyRequest]) (*connect.Response[v1.SecretBlockSummary], error) {
+	return c.updateSecretBlockPolicy.CallUnary(ctx, req)
+}
+
+// CancelSecretBlockPolicyChange calls
+// memos.api.v1.SecretBlockService.CancelSecretBlockPolicyChange.
+func (c *secretBlockServiceClient) CancelSecretBlockPolicyChange(ctx context.Context, req *connect.Request[v1.CancelSecretBlockPolicyChangeRequest]) (*connect.Response[v1.SecretBlockSummary], error) {
+	return c.cancelSecretBlockPolicyChange.CallUnary(ctx, req)
+}
+
 // SecretBlockServiceHandler is an implementation of the memos.api.v1.SecretBlockService service.
 type SecretBlockServiceHandler interface {
 	// ListSecretBlocks returns the caller's secret blocks as metadata only.
@@ -180,7 +279,30 @@ type SecretBlockServiceHandler interface {
 	// DeleteSecretBlock permanently destroys a record. There is no recovery, and no
 	// caller other than the user acting deliberately ever invokes this — deleting or
 	// duplicating a document leaves its referenced secrets untouched.
+	//
+	// A restricted block cannot be deleted directly: deleting it is the same as
+	// lifting its restriction, so the restriction has to be lifted first (which
+	// waits like any other policy change). Fails with FAILED_PRECONDITION otherwise.
 	DeleteSecretBlock(context.Context, *connect.Request[v1.DeleteSecretBlockRequest]) (*connect.Response[emptypb.Empty], error)
+	// GetSecretBlockSummary returns one block without its envelope. It is how a
+	// restricted block learns its unlock state without spending a viewing window:
+	// GetSecretBlock on a restricted block starts the window the first time it
+	// succeeds.
+	GetSecretBlockSummary(context.Context, *connect.Request[v1.GetSecretBlockSummaryRequest]) (*connect.Response[v1.SecretBlockSummary], error)
+	// RequestSecretBlockUnlock asks for a restricted block's envelope to become
+	// available. The server checks the typed confirmation text and computes when
+	// the block opens from the block's policy and the server clock — the client
+	// has no say in either. See docs/dev/requirements/editor/restricted-secret-block.md.
+	RequestSecretBlockUnlock(context.Context, *connect.Request[v1.RequestSecretBlockUnlockRequest]) (*connect.Response[v1.SecretBlockSummary], error)
+	// CancelSecretBlockUnlock withdraws a request that is still waiting.
+	CancelSecretBlockUnlock(context.Context, *connect.Request[v1.CancelSecretBlockUnlockRequest]) (*connect.Response[v1.SecretBlockSummary], error)
+	// UpdateSecretBlockPolicy restricts a block, changes its policy, or lifts the
+	// restriction (an unset policy). Restricting an unrestricted block applies
+	// immediately; every change to an already restricted block — tighter or looser —
+	// is scheduled and takes effect only after the block's normal unlock delay.
+	UpdateSecretBlockPolicy(context.Context, *connect.Request[v1.UpdateSecretBlockPolicyRequest]) (*connect.Response[v1.SecretBlockSummary], error)
+	// CancelSecretBlockPolicyChange withdraws a scheduled policy change.
+	CancelSecretBlockPolicyChange(context.Context, *connect.Request[v1.CancelSecretBlockPolicyChangeRequest]) (*connect.Response[v1.SecretBlockSummary], error)
 }
 
 // NewSecretBlockServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -220,6 +342,36 @@ func NewSecretBlockServiceHandler(svc SecretBlockServiceHandler, opts ...connect
 		connect.WithSchema(secretBlockServiceMethods.ByName("DeleteSecretBlock")),
 		connect.WithHandlerOptions(opts...),
 	)
+	secretBlockServiceGetSecretBlockSummaryHandler := connect.NewUnaryHandler(
+		SecretBlockServiceGetSecretBlockSummaryProcedure,
+		svc.GetSecretBlockSummary,
+		connect.WithSchema(secretBlockServiceMethods.ByName("GetSecretBlockSummary")),
+		connect.WithHandlerOptions(opts...),
+	)
+	secretBlockServiceRequestSecretBlockUnlockHandler := connect.NewUnaryHandler(
+		SecretBlockServiceRequestSecretBlockUnlockProcedure,
+		svc.RequestSecretBlockUnlock,
+		connect.WithSchema(secretBlockServiceMethods.ByName("RequestSecretBlockUnlock")),
+		connect.WithHandlerOptions(opts...),
+	)
+	secretBlockServiceCancelSecretBlockUnlockHandler := connect.NewUnaryHandler(
+		SecretBlockServiceCancelSecretBlockUnlockProcedure,
+		svc.CancelSecretBlockUnlock,
+		connect.WithSchema(secretBlockServiceMethods.ByName("CancelSecretBlockUnlock")),
+		connect.WithHandlerOptions(opts...),
+	)
+	secretBlockServiceUpdateSecretBlockPolicyHandler := connect.NewUnaryHandler(
+		SecretBlockServiceUpdateSecretBlockPolicyProcedure,
+		svc.UpdateSecretBlockPolicy,
+		connect.WithSchema(secretBlockServiceMethods.ByName("UpdateSecretBlockPolicy")),
+		connect.WithHandlerOptions(opts...),
+	)
+	secretBlockServiceCancelSecretBlockPolicyChangeHandler := connect.NewUnaryHandler(
+		SecretBlockServiceCancelSecretBlockPolicyChangeProcedure,
+		svc.CancelSecretBlockPolicyChange,
+		connect.WithSchema(secretBlockServiceMethods.ByName("CancelSecretBlockPolicyChange")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/memos.api.v1.SecretBlockService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SecretBlockServiceListSecretBlocksProcedure:
@@ -232,6 +384,16 @@ func NewSecretBlockServiceHandler(svc SecretBlockServiceHandler, opts ...connect
 			secretBlockServiceUpdateSecretBlockHandler.ServeHTTP(w, r)
 		case SecretBlockServiceDeleteSecretBlockProcedure:
 			secretBlockServiceDeleteSecretBlockHandler.ServeHTTP(w, r)
+		case SecretBlockServiceGetSecretBlockSummaryProcedure:
+			secretBlockServiceGetSecretBlockSummaryHandler.ServeHTTP(w, r)
+		case SecretBlockServiceRequestSecretBlockUnlockProcedure:
+			secretBlockServiceRequestSecretBlockUnlockHandler.ServeHTTP(w, r)
+		case SecretBlockServiceCancelSecretBlockUnlockProcedure:
+			secretBlockServiceCancelSecretBlockUnlockHandler.ServeHTTP(w, r)
+		case SecretBlockServiceUpdateSecretBlockPolicyProcedure:
+			secretBlockServiceUpdateSecretBlockPolicyHandler.ServeHTTP(w, r)
+		case SecretBlockServiceCancelSecretBlockPolicyChangeProcedure:
+			secretBlockServiceCancelSecretBlockPolicyChangeHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -259,4 +421,24 @@ func (UnimplementedSecretBlockServiceHandler) UpdateSecretBlock(context.Context,
 
 func (UnimplementedSecretBlockServiceHandler) DeleteSecretBlock(context.Context, *connect.Request[v1.DeleteSecretBlockRequest]) (*connect.Response[emptypb.Empty], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.SecretBlockService.DeleteSecretBlock is not implemented"))
+}
+
+func (UnimplementedSecretBlockServiceHandler) GetSecretBlockSummary(context.Context, *connect.Request[v1.GetSecretBlockSummaryRequest]) (*connect.Response[v1.SecretBlockSummary], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.SecretBlockService.GetSecretBlockSummary is not implemented"))
+}
+
+func (UnimplementedSecretBlockServiceHandler) RequestSecretBlockUnlock(context.Context, *connect.Request[v1.RequestSecretBlockUnlockRequest]) (*connect.Response[v1.SecretBlockSummary], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.SecretBlockService.RequestSecretBlockUnlock is not implemented"))
+}
+
+func (UnimplementedSecretBlockServiceHandler) CancelSecretBlockUnlock(context.Context, *connect.Request[v1.CancelSecretBlockUnlockRequest]) (*connect.Response[v1.SecretBlockSummary], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.SecretBlockService.CancelSecretBlockUnlock is not implemented"))
+}
+
+func (UnimplementedSecretBlockServiceHandler) UpdateSecretBlockPolicy(context.Context, *connect.Request[v1.UpdateSecretBlockPolicyRequest]) (*connect.Response[v1.SecretBlockSummary], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.SecretBlockService.UpdateSecretBlockPolicy is not implemented"))
+}
+
+func (UnimplementedSecretBlockServiceHandler) CancelSecretBlockPolicyChange(context.Context, *connect.Request[v1.CancelSecretBlockPolicyChangeRequest]) (*connect.Response[v1.SecretBlockSummary], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.SecretBlockService.CancelSecretBlockPolicyChange is not implemented"))
 }

@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -21,6 +22,9 @@ const client = vi.hoisted(() => ({
   getSecretBlock: vi.fn(() => Promise.reject(new Error("must not be called"))),
   createSecretBlock: vi.fn(() => Promise.reject(new Error("must not be called"))),
   updateSecretBlock: vi.fn(() => Promise.reject(new Error("must not be called"))),
+  // Every initialized block asks for its summary to learn whether it is
+  // restricted. These tests are about ordinary blocks, so it never is.
+  getSecretBlockSummary: vi.fn(),
 }));
 vi.mock("@/connect", () => ({ secretBlockServiceClient: client }));
 
@@ -61,9 +65,11 @@ const codeChild = (body: string) => <code className="language-toucan-secret">{bo
 
 const renderBlock = (body: string) =>
   render(
-    <MemoryRouter>
-      <SecretBlock>{codeChild(body)}</SecretBlock>
-    </MemoryRouter>,
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <MemoryRouter>
+        <SecretBlock>{codeChild(body)}</SecretBlock>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 
 let masterKey: MasterKey;
@@ -76,6 +82,8 @@ beforeEach(() => {
   client.getSecretBlock.mockReset();
   client.createSecretBlock.mockReset();
   client.updateSecretBlock.mockReset();
+  client.getSecretBlockSummary.mockReset();
+  client.getSecretBlockSummary.mockImplementation(async ({ name }: { name: string }) => ({ name, hint: "" }));
 });
 
 describe("extractLanguage", () => {

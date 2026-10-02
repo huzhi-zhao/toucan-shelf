@@ -197,41 +197,50 @@ func (s *APIV1Service) ListSecretBlocks(ctx context.Context, _ *v1pb.ListSecretB
 
 	response := &v1pb.ListSecretBlocksResponse{SecretBlocks: []*v1pb.SecretBlockSummary{}}
 	for _, summary := range summaries {
+		gate := &secretBlockGate{ID: summary.ID, Policy: summary.Policy, PendingPolicy: summary.PendingPolicy, PendingPolicyEffectiveTs: summary.PendingPolicyEffectiveTs}
+		if err := s.settleSecretBlockGate(ctx, gate); err != nil {
+			return nil, status.Errorf(codes.Internal, "%v", err)
+		}
+		restriction, err := s.buildSecretBlockRestriction(ctx, gate)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to read secret block restriction: %v", err)
+		}
 		response.SecretBlocks = append(response.SecretBlocks, &v1pb.SecretBlockSummary{
 			Name:           secretBlockName(summary.UID),
 			Hint:           summary.Hint,
 			CiphertextSize: summary.CiphertextSize,
 			CreateTime:     timestamppb.New(time.Unix(summary.CreatedTs, 0)),
 			UpdateTime:     timestamppb.New(time.Unix(summary.UpdatedTs, 0)),
+			Restriction:    restriction,
 		})
 	}
 	return response, nil
 }
 
 func (s *APIV1Service) GetSecretBlock(ctx context.Context, request *v1pb.GetSecretBlockRequest) (*v1pb.SecretBlock, error) {
-	user, err := s.fetchCurrentUser(ctx)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
-	}
-	if user == nil {
-		return nil, status.Errorf(codes.Unauthenticated, "authentication required")
-	}
-	uid, err := extractSecretBlockUID(request.Name)
+	// Scoped by creator in the query, so another user's uid simply finds nothing.
+	// Responses already carry Cache-Control: no-store from MetadataInterceptor.
+	sb, gate, err := s.loadOwnedSecretBlock(ctx, request.Name)
 	if err != nil {
 		return nil, err
 	}
+	// A restricted block's envelope is served only inside its viewing window.
+	if err := s.passSecretBlockGate(ctx, gate); err != nil {
+		return nil, err
+	}
+	return s.secretBlockResponse(ctx, sb, gate)
+}
 
-	// Scoped by creator in the query, so another user's uid simply finds nothing.
-	// Responses already carry Cache-Control: no-store from MetadataInterceptor.
-	sb, err := s.Store.GetSecretBlock(ctx, &store.FindSecretBlock{UID: &uid, CreatorID: &user.ID})
+// secretBlockResponse converts a record for a response that carries its envelope,
+// attaching the restriction state when the block is restricted.
+func (s *APIV1Service) secretBlockResponse(ctx context.Context, sb *store.SecretBlock, gate *secretBlockGate) (*v1pb.SecretBlock, error) {
+	restriction, err := s.buildSecretBlockRestriction(ctx, gate)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get secret block: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to read secret block restriction: %v", err)
 	}
-	if sb == nil {
-		return nil, status.Errorf(codes.NotFound, "secret block not found")
-	}
-
-	return convertSecretBlockFromStore(sb), nil
+	out := convertSecretBlockFromStore(sb)
+	out.Restriction = restriction
+	return out, nil
 }
 
 func (s *APIV1Service) CreateSecretBlock(ctx context.Context, request *v1pb.CreateSecretBlockRequest) (*v1pb.SecretBlock, error) {
@@ -253,6 +262,17 @@ func (s *APIV1Service) CreateSecretBlock(ctx context.Context, request *v1pb.Crea
 		return nil, err
 	}
 
+	policyRaw := ""
+	if request.Policy != nil {
+		policy, err := secretBlockPolicyFromRequest(request.Policy)
+		if err != nil {
+			return nil, err
+		}
+		if policyRaw, err = marshalSecretBlockPolicy(policy); err != nil {
+			return nil, status.Errorf(codes.Internal, "%v", err)
+		}
+	}
+
 	created, err := s.Store.CreateSecretBlock(ctx, &store.SecretBlock{
 		UID:           shortuuid.New(),
 		CreatorID:     user.ID,
@@ -264,11 +284,12 @@ func (s *APIV1Service) CreateSecretBlock(ctx context.Context, request *v1pb.Crea
 		Nonce:         envelope.Nonce,
 		Verifier:      envelope.Verifier,
 		Ciphertext:    envelope.Ciphertext,
+		Policy:        policyRaw,
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create secret block: %v", err)
 	}
-	return convertSecretBlockFromStore(created), nil
+	return s.secretBlockResponse(ctx, created, &secretBlockGate{ID: created.ID, Policy: created.Policy})
 }
 
 func (s *APIV1Service) UpdateSecretBlock(ctx context.Context, request *v1pb.UpdateSecretBlockRequest) (*v1pb.SecretBlock, error) {
@@ -314,22 +335,32 @@ func (s *APIV1Service) UpdateSecretBlock(ctx context.Context, request *v1pb.Upda
 	if updated == nil {
 		return nil, status.Errorf(codes.NotFound, "secret block not found")
 	}
-	return convertSecretBlockFromStore(updated), nil
+	// Replacing a restricted block's content is allowed at any time: it writes a
+	// new envelope and reveals nothing. The response echoes the caller's own new
+	// envelope, never the one it replaced. The policy columns are untouched here.
+	return s.secretBlockResponse(ctx, updated, &secretBlockGate{
+		ID:                       updated.ID,
+		Policy:                   updated.Policy,
+		PendingPolicy:            updated.PendingPolicy,
+		PendingPolicyEffectiveTs: updated.PendingPolicyEffectiveTs,
+	})
 }
 
 func (s *APIV1Service) DeleteSecretBlock(ctx context.Context, request *v1pb.DeleteSecretBlockRequest) (*emptypb.Empty, error) {
-	user, err := s.fetchCurrentUser(ctx)
+	sb, gate, err := s.loadOwnedSecretBlock(ctx, request.Name)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
-	}
-	if user == nil {
-		return nil, status.Errorf(codes.Unauthenticated, "authentication required")
-	}
-	uid, err := extractSecretBlockUID(request.Name)
-	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			// Deleting what is already gone has always succeeded.
+			return &emptypb.Empty{}, nil
+		}
 		return nil, err
 	}
-	if err := s.Store.DeleteSecretBlock(ctx, &store.DeleteSecretBlock{UID: uid, CreatorID: user.ID}); err != nil {
+	// Deleting a restricted block would be the quickest way around its gate, so
+	// the restriction has to be lifted first — which waits like any policy change.
+	if gate.Policy != "" {
+		return nil, status.Errorf(codes.FailedPrecondition, "lift the restriction before deleting this secret block")
+	}
+	if err := s.Store.DeleteSecretBlock(ctx, &store.DeleteSecretBlock{UID: sb.UID, CreatorID: sb.CreatorID}); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete secret block: %v", err)
 	}
 	return &emptypb.Empty{}, nil

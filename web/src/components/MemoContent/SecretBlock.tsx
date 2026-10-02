@@ -1,3 +1,4 @@
+import { create } from "@bufbuild/protobuf";
 import { CheckIcon, CopyIcon, LoaderCircleIcon, LockIcon, LockOpenIcon, PencilIcon, TriangleAlertIcon } from "lucide-react";
 import { createContext, type FormEvent, useContext, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -7,12 +8,14 @@ import { MaskedInput } from "@/components/ui/masked-input";
 import { Textarea } from "@/components/ui/textarea";
 import { secretBlockServiceClient } from "@/connect";
 import { useAuth } from "@/contexts/AuthContext";
+import { fetchSecretBlockSummary, useSecretBlockSummary, useSetSecretBlockSummary } from "@/hooks/useSecretBlockSummary";
 import { useSecretMasterKey } from "@/hooks/useSecretMasterKey";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/router/routes";
+import { SecretBlockPolicy_Preset, SecretBlockSummarySchema } from "@/types/proto/api/v1/secret_block_service_pb";
 import type { Translations } from "@/utils/i18n";
 import { useTranslate } from "@/utils/i18n";
-import { isLocalSecretId, parseSecretBlock, rewriteSecretBlock, sanitizeSecretHint } from "@/utils/secret-block";
+import { isLocalSecretId, isRestrictedLocalSecretId, parseSecretBlock, rewriteSecretBlock, sanitizeSecretHint } from "@/utils/secret-block";
 import {
   decryptWithMasterKey,
   encryptWithMasterKey,
@@ -25,6 +28,7 @@ import {
 import { getSecretMasterKey } from "@/utils/secret-session";
 import { useBlockSource } from "./BlockSourceContext";
 import { MemoMarkdownRenderer } from "./MemoMarkdownRenderer";
+import { type PolicyDraft, PolicyFields, policyFromDraft, RestrictedSecretBlock } from "./RestrictedSecretBlock";
 import { extractCodeContent } from "./utils";
 
 interface SecretBlockProps {
@@ -42,6 +46,13 @@ const NO_MENTIONS = new Set<string>();
 const SETTINGS_LINK = `${ROUTES.SETTING}#preference`;
 
 type Status = "idle" | "working";
+
+const DEFAULT_RESTRICTED_DRAFT: PolicyDraft = { preset: SecretBlockPolicy_Preset.HIGH_IMPACT, prompt: "", confirmText: "" };
+
+// The setup card starts in restricted mode only for a placeholder inserted from
+// the "restricted secret" menu item.
+const initialRestrictedDraft = (id: string | undefined): PolicyDraft | null =>
+  id && isRestrictedLocalSecretId(id) ? DEFAULT_RESTRICTED_DRAFT : null;
 
 /**
  * Whether the first fetch has resolved this block's envelope.
@@ -81,6 +92,18 @@ export const SecretBlock = ({ children, className }: SecretBlockProps) => {
   const refId = ref?.id;
   const refHint = ref?.hint ?? "";
 
+  // Restricted setup: null means an ordinary block. The content is asked for up
+  // front because a restricted block cannot simply be opened to fill in later.
+  const [restrictedDraft, setRestrictedDraft] = useState<PolicyDraft | null>(() => initialRestrictedDraft(refId));
+  const [contentDraft, setContentDraft] = useState("");
+  const [backupAck, setBackupAck] = useState(false);
+
+  // Whether the record is restricted is the server's call. Fetched as a summary,
+  // which never carries the envelope and so never starts a viewing window.
+  const summaryName = ref && !isLocalSecretId(ref.id) && !nested && currentUser ? `secretBlocks/${ref.id}` : undefined;
+  const summaryQuery = useSecretBlockSummary(summaryName);
+  const setSummary = useSetSecretBlockSummary();
+
   // Any change of identity relocks. Together with state being component-local,
   // this is what makes a reload — or any remount — return to the locked card.
   useEffect(() => {
@@ -92,6 +115,9 @@ export const SecretBlock = ({ children, className }: SecretBlockProps) => {
     setKeyResolved(false);
     setEnvelope(null);
     setPassphrase("");
+    setRestrictedDraft(initialRestrictedDraft(refId));
+    setContentDraft("");
+    setBackupAck(false);
   }, [refId]);
 
   // Locking the session — by the idle timer, by the global lock, by signing out —
@@ -117,6 +143,9 @@ export const SecretBlock = ({ children, className }: SecretBlockProps) => {
   }
   if (!currentUser) {
     return <SecretNotice className={className} tone="muted" title={t("secret-block.sign-in-required")} />;
+  }
+  if (summaryQuery.data?.restriction) {
+    return <RestrictedSecretBlock summary={summaryQuery.data} title={title} className={className} />;
   }
 
   // A local id means the block has been written but never initialized: there is no
@@ -197,9 +226,13 @@ export const SecretBlock = ({ children, className }: SecretBlockProps) => {
     try {
       const hint = sanitizeSecretHint(hintDraft);
       const created = await secretBlockServiceClient.createSecretBlock({
-        secretBlock: { name: "", hint, envelope: await encryptWithMasterKey("", masterKey) },
+        secretBlock: { name: "", hint, envelope: await encryptWithMasterKey(restrictedDraft ? contentDraft : "", masterKey) },
+        policy: restrictedDraft ? policyFromDraft(restrictedDraft) : undefined,
       });
       const uid = created.name.replace(/^secretBlocks\//, "");
+      // Seed the summary so the block renders as restricted the moment its id
+      // lands in the document, instead of flashing the ordinary card first.
+      setSummary(create(SecretBlockSummarySchema, { name: created.name, hint, restriction: created.restriction }));
 
       const nextSource = rewriteSecretBlock(blockSource.source, ref.id, { id: uid, hint });
       if (nextSource === null) {
@@ -211,9 +244,15 @@ export const SecretBlock = ({ children, className }: SecretBlockProps) => {
       blockSource.save(nextSource);
 
       setKeyResolved(true);
+      setStatus("idle");
+      if (restrictedDraft) {
+        // A restricted block is not shown after creation: its content is what
+        // the reader just typed, and from here on it sits behind the gate.
+        setContentDraft("");
+        return;
+      }
       setPlaintext("");
       setDraft("");
-      setStatus("idle");
     } catch (err) {
       fail("secret-block.error.create-failed", err instanceof Error ? err.message : String(err));
     }
@@ -231,6 +270,24 @@ export const SecretBlock = ({ children, className }: SecretBlockProps) => {
     if (busy) return;
     setStatus("working");
     setErrorKey("");
+
+    // A block restricted since this card loaded (or before its summary arrived)
+    // must not be fetched here: for a restricted block the fetch is what starts
+    // the viewing window. Learn its state and let the restricted card take over.
+    let summary = summaryQuery.data;
+    if (!summary) {
+      try {
+        summary = await fetchSecretBlockSummary(`secretBlocks/${ref.id}`);
+        setSummary(summary);
+      } catch {
+        fail("secret-block.error.not-found");
+        return;
+      }
+    }
+    if (summary.restriction) {
+      setStatus("idle");
+      return;
+    }
 
     const env = await fetchEnvelope();
     if (!env) {
@@ -413,6 +470,13 @@ export const SecretBlock = ({ children, className }: SecretBlockProps) => {
   // that a single button is the whole interface — and in an unlocked session it
   // stays that way.
   const needsPassphrase = uninitialized ? !masterKeyState.unlocked : keyResolved && !masterKeyState.unlocked;
+  // A restricted block needs its confirmation text, something to protect, and —
+  // for a key whose loss can stop work — an acknowledged offline copy.
+  const restrictedReady =
+    restrictedDraft === null ||
+    (restrictedDraft.confirmText.trim() !== "" &&
+      contentDraft !== "" &&
+      (restrictedDraft.preset !== SecretBlockPolicy_Preset.HIGH_IMPACT || backupAck));
   const promptKey: Translations = "secret-block.master-passphrase-placeholder";
 
   return (
@@ -437,6 +501,48 @@ export const SecretBlock = ({ children, className }: SecretBlockProps) => {
               disabled={busy}
             />
           )}
+          {uninitialized && (
+            <fieldset className="flex w-full flex-wrap items-center gap-3 text-sm" disabled={busy}>
+              <label className="flex items-center gap-1.5">
+                <input type="radio" checked={restrictedDraft === null} onChange={() => setRestrictedDraft(null)} />
+                {t("secret-block.restricted.mode-plain")}
+              </label>
+              <label className="flex items-center gap-1.5">
+                <input
+                  type="radio"
+                  checked={restrictedDraft !== null}
+                  onChange={() => setRestrictedDraft(restrictedDraft ?? DEFAULT_RESTRICTED_DRAFT)}
+                />
+                {t("secret-block.restricted.mode-restricted")}
+              </label>
+            </fieldset>
+          )}
+          {uninitialized && restrictedDraft && (
+            <div className="flex w-full max-w-xl flex-col gap-2">
+              <PolicyFields draft={restrictedDraft} onChange={setRestrictedDraft} busy={busy} t={t} />
+              <Textarea
+                rows={3}
+                autoComplete="off"
+                spellCheck={false}
+                className="font-mono text-sm"
+                placeholder={t("secret-block.restricted.content-placeholder")}
+                aria-label={t("secret-block.restricted.content-placeholder")}
+                value={contentDraft}
+                onChange={(event) => setContentDraft(event.target.value)}
+                disabled={busy}
+              />
+              {restrictedDraft.preset === SecretBlockPolicy_Preset.HIGH_IMPACT && (
+                <label className="flex items-start gap-2 text-sm">
+                  <input type="checkbox" className="mt-1" checked={backupAck} onChange={(event) => setBackupAck(event.target.checked)} />
+                  <span>
+                    {t("secret-block.restricted.offline-backup")}
+                    <span className="block text-xs text-muted-foreground">{t("secret-block.restricted.offline-backup-hint")}</span>
+                  </span>
+                </label>
+              )}
+              <p className="text-xs text-muted-foreground">{t("secret-block.restricted.limitations")}</p>
+            </div>
+          )}
           {needsPassphrase && (
             <MaskedInput
               revealable
@@ -452,7 +558,7 @@ export const SecretBlock = ({ children, className }: SecretBlockProps) => {
               disabled={busy}
             />
           )}
-          <Button type="submit" size="sm" disabled={busy || (needsPassphrase && passphrase === "")}>
+          <Button type="submit" size="sm" disabled={busy || (needsPassphrase && passphrase === "") || (uninitialized && !restrictedReady)}>
             {busy ? <LoaderCircleIcon className="w-4 h-4 animate-spin" /> : <LockOpenIcon className="w-4 h-4" />}
             {uninitialized ? t("secret-block.create-block") : t("secret-block.unlock")}
           </Button>

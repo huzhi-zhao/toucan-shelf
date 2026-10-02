@@ -281,7 +281,8 @@
       "popover": "Popover"
     },
     "secret": {
-      "block": "Secret block"
+      "block": "Secret block",
+      "restricted": "Restricted secret"
     },
     "view": {
       "trigger": "View",
@@ -1559,7 +1560,58 @@
     "no-master-key": "Set a master passphrase before creating encrypted blocks.",
     "unlock-first": "Enter your master passphrase to unlock this session, then create the block.",
     "unlock-dialog-title": "Unlock master passphrase",
-    "unlock-dialog-description": "Unlocks encrypted content and locked attachments for this session."
+    "unlock-dialog-description": "Unlocks encrypted content and locked attachments for this session.",
+    "restricted": {
+      "badge-low": "Restricted · low impact",
+      "badge-high": "Restricted · high impact",
+      "mode-plain": "Ordinary secret",
+      "mode-restricted": "Restricted (unlocking needs a request and a wait)",
+      "preset-label": "Impact",
+      "preset-high": "High impact: requests 08:00–18:00 wait 30 minutes, other times wait until the next 08:00; one emergency unlock per 30 days",
+      "preset-low": "Low impact: every request waits until the next 08:00; no emergency unlock",
+      "prompt-placeholder": "A note to your future self (shown before every request)",
+      "confirm-text-placeholder": "Confirmation text (must be typed exactly to request)",
+      "content-placeholder": "The password or content to protect",
+      "offline-backup": "I have an offline copy of this outside Toucan",
+      "offline-backup-hint": "If Toucan is unavailable (server down, master passphrase forgotten) this secret is unreachable. A high-impact key needs an offline copy.",
+      "limitations": "The server enforces this to stop impulses, not administrators: reading the database, changing the server clock, or developer tools during viewing can still get the content.",
+      "locked": "Locked. Request an unlock and wait before viewing.",
+      "request": "Request unlock",
+      "prompt-title": "A note to your future self",
+      "confirm-instruction": "Type the sentence below exactly (pasting is disabled)",
+      "submit-request": "Submit request",
+      "pending": "Requested; viewable after {{time}}",
+      "cancel-request": "Cancel request",
+      "ready": "Viewable until {{time}}; viewing lasts {{minutes}} minutes once started",
+      "open": "Viewing window open until {{time}}",
+      "view": "Start viewing",
+      "viewing-until": "Closes at {{time}}",
+      "hold-to-reveal": "Hold a segment to show it; release to hide",
+      "segment": "Segment {{n}}",
+      "close": "Close",
+      "emergency": "Emergency unlock",
+      "emergency-remaining": "{{count}} emergency unlock(s) left this period; each one is recorded",
+      "emergency-next": "Emergency unlock used up; available again {{time}}",
+      "emergency-statement": "Type the emergency statement exactly (pasting is disabled)",
+      "emergency-reason": "Why can this not wait until tomorrow? (at least {{count}} characters; it stays visible here)",
+      "emergency-submit": "Unlock now",
+      "last-emergency": "Last emergency unlock: {{time}}, reason: {{reason}}",
+      "replace": "Replace content",
+      "replace-hint": "Writes new content without showing the old.",
+      "replace-save": "Save new content",
+      "settings": "Restriction settings",
+      "settings-wait": "Any change to a restricted block, including lifting it, waits as long as an unlock request.",
+      "save-settings": "Submit change",
+      "lift": "Lift restriction",
+      "pending-change-update": "New rules take effect {{time}}",
+      "pending-change-lift": "Restriction lifts {{time}}",
+      "cancel-change": "Withdraw change",
+      "error": {
+        "request-failed": "Request failed.",
+        "view-failed": "Could not open.",
+        "update-failed": "Change failed."
+      }
+    }
   },
   "drawio": {
     "edit": "Edit in draw.io",

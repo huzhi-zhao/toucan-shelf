@@ -209,3 +209,84 @@ func TestSecretBlockStoreSurvivesReferencingMemoDeletion(t *testing.T) {
 	require.NotNil(t, got, "deleting a document must never destroy the secrets it referenced")
 	require.Equal(t, created.Ciphertext, got.Ciphertext)
 }
+
+func TestSecretBlockRestrictionStore(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	ts := NewTestingStore(ctx, t)
+	user, err := createTestingHostUser(ctx, ts)
+	require.NoError(t, err)
+
+	block := newTestingSecretBlock("sb-restricted", user.ID)
+	block.Policy = `{"preset":"low_impact"}`
+	created, err := ts.CreateSecretBlock(ctx, block)
+	require.NoError(t, err)
+	uid := created.UID
+	got, err := ts.GetSecretBlock(ctx, &store.FindSecretBlock{UID: &uid})
+	require.NoError(t, err)
+	require.Equal(t, `{"preset":"low_impact"}`, got.Policy)
+
+	// Replacing the envelope never touches the policy columns.
+	require.NoError(t, ts.UpdateSecretBlockPolicy(ctx, &store.UpdateSecretBlockPolicy{
+		ID: created.ID, Policy: got.Policy, PendingPolicy: "", PendingPolicyEffectiveTs: 4242,
+	}))
+	_, err = ts.UpdateSecretBlock(ctx, &store.UpdateSecretBlock{
+		UID: uid, CreatorID: user.ID, KDF: "master-v1", Cipher: "aes-256-gcm",
+		Salt: "s", Nonce: "n", Verifier: "v", Ciphertext: "replaced",
+	})
+	require.NoError(t, err)
+	got, err = ts.GetSecretBlock(ctx, &store.FindSecretBlock{UID: &uid})
+	require.NoError(t, err)
+	require.Equal(t, `{"preset":"low_impact"}`, got.Policy)
+	require.Equal(t, int64(4242), got.PendingPolicyEffectiveTs)
+
+	summaries, err := ts.ListSecretBlockSummaries(ctx, &store.FindSecretBlock{CreatorID: &user.ID})
+	require.NoError(t, err)
+	require.Len(t, summaries, 1)
+	require.Equal(t, created.ID, summaries[0].ID)
+	require.Equal(t, int64(4242), summaries[0].PendingPolicyEffectiveTs)
+
+	first, err := ts.CreateSecretBlockUnlock(ctx, &store.SecretBlockUnlock{
+		SecretBlockID: created.ID, Kind: store.SecretBlockUnlockNormal, RequestedTs: 100, AvailableTs: 200,
+	})
+	require.NoError(t, err)
+	second, err := ts.CreateSecretBlockUnlock(ctx, &store.SecretBlockUnlock{
+		SecretBlockID: created.ID, Kind: store.SecretBlockUnlockEmergency, Reason: "why", RequestedTs: 300, AvailableTs: 300,
+	})
+	require.NoError(t, err)
+
+	list, err := ts.ListSecretBlockUnlocks(ctx, &store.FindSecretBlockUnlock{SecretBlockID: created.ID, Limit: 1})
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	require.Equal(t, second.ID, list[0].ID, "newest first")
+
+	kind := store.SecretBlockUnlockEmergency
+	after := int64(250)
+	list, err = ts.ListSecretBlockUnlocks(ctx, &store.FindSecretBlockUnlock{SecretBlockID: created.ID, Kind: &kind, RequestedAfterTs: &after})
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	require.Equal(t, "why", list[0].Reason)
+
+	// Opening is first-come: a second open does not restart the window.
+	ok, err := ts.OpenSecretBlockUnlock(ctx, second.ID, 310, 910)
+	require.NoError(t, err)
+	require.True(t, ok)
+	ok, err = ts.OpenSecretBlockUnlock(ctx, second.ID, 500, 1100)
+	require.NoError(t, err)
+	require.False(t, ok)
+	list, err = ts.ListSecretBlockUnlocks(ctx, &store.FindSecretBlockUnlock{SecretBlockID: created.ID, Limit: 1})
+	require.NoError(t, err)
+	require.Equal(t, int64(910), list[0].ExpiresTs)
+
+	// A canceled request cannot be opened.
+	require.NoError(t, ts.CancelSecretBlockUnlock(ctx, first.ID, 150))
+	ok, err = ts.OpenSecretBlockUnlock(ctx, first.ID, 400, 1000)
+	require.NoError(t, err)
+	require.False(t, ok)
+
+	// Deleting the block takes its unlock history with it.
+	require.NoError(t, ts.DeleteSecretBlock(ctx, &store.DeleteSecretBlock{UID: uid, CreatorID: user.ID}))
+	list, err = ts.ListSecretBlockUnlocks(ctx, &store.FindSecretBlockUnlock{SecretBlockID: created.ID})
+	require.NoError(t, err)
+	require.Empty(t, list)
+}

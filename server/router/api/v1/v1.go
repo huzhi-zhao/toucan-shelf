@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -40,6 +41,10 @@ type APIV1Service struct {
 	MarkdownService         markdown.Service
 	SSEHub                  *SSEHub
 	NotificationEmailSender notification.EmailSender
+
+	// Clock reports the current time for time-gated features (restricted secret
+	// blocks). Nil means time.Now; tests set it to move time deterministically.
+	Clock func() time.Time
 
 	// thumbnailSemaphore limits concurrent thumbnail generation to prevent memory exhaustion
 	thumbnailSemaphore       *semaphore.Weighted
