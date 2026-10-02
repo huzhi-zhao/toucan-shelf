@@ -211,20 +211,15 @@ describe("restricted secret block", () => {
 
   // Replacing never shows the old content, so it needs no unlock and never
   // fetches the envelope.
-  it("replaces content without fetching the old envelope", async () => {
+  // A restricted block is one-shot: replacing it blind would destroy the only
+  // copy of what it held, so the card offers no way to change it at all.
+  it("offers no way to replace or reconfigure a restricted block", async () => {
     client.getSecretBlockSummary.mockResolvedValue(restrictedSummary(SecretBlockRestriction_UnlockState.LOCKED));
-    client.updateSecretBlock.mockImplementation(async ({ secretBlock }) => ({
-      ...secretBlock,
-      restriction: restrictedSummary(SecretBlockRestriction_UnlockState.LOCKED).restriction,
-    }));
     renderBlock("v: 1\nid: abc123");
-    await waitFor(() => screen.getByRole("button", { name: "secret-block.restricted.replace" }));
-    fireEvent.click(screen.getByRole("button", { name: "secret-block.restricted.replace" }));
-    fireEvent.change(screen.getByPlaceholderText("secret-block.restricted.content-placeholder"), { target: { value: "new-password" } });
-    fireEvent.click(screen.getByRole("button", { name: "secret-block.restricted.replace-save" }));
-
-    await waitFor(() => expect(client.updateSecretBlock).toHaveBeenCalledTimes(1));
-    expect(client.getSecretBlock).not.toHaveBeenCalled();
+    await waitFor(() => screen.getByRole("button", { name: "secret-block.restricted.request" }));
+    expect(screen.queryByRole("button", { name: /replace/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /settings/ })).not.toBeInTheDocument();
+    expect(client.updateSecretBlock).not.toHaveBeenCalled();
   });
 
   // If the reader clicks Unlock before the summary has arrived, the ordinary card

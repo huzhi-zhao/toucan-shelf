@@ -243,22 +243,25 @@ func TestRestrictedSecretBlockPolicyChangesWait(t *testing.T) {
 	_, err = f.ts.Service.DeleteSecretBlock(f.ctx, &v1pb.DeleteSecretBlockRequest{Name: f.name})
 	requireCode(t, err, codes.FailedPrecondition)
 
-	// Replacing the content is allowed and leaves the policy alone.
-	updated, err := f.ts.Service.UpdateSecretBlock(f.ctx, &v1pb.UpdateSecretBlockRequest{
+	// Nor is replacing the content: a restricted block is one-shot, since a
+	// blind replacement would destroy the only copy of what it held.
+	_, err = f.ts.Service.UpdateSecretBlock(f.ctx, &v1pb.UpdateSecretBlockRequest{
 		SecretBlock: &v1pb.SecretBlock{Name: f.name, Hint: "Mac admin", Envelope: testEnvelope("second")},
 	})
-	require.NoError(t, err)
-	require.NotNil(t, updated.Restriction)
-	require.Equal(t, "second", updated.Envelope.Ciphertext, "echoes the caller's own new envelope")
-	_, err = f.get()
 	requireCode(t, err, codes.FailedPrecondition)
 
-	// At 08:00 the change applies: unrestricted, served, deletable.
+	// At 08:00 the change applies: unrestricted, served with the original
+	// content, and from then on an ordinary block that can be edited and deleted.
 	f.at(3, 8, 0)
 	got, err := f.get()
 	require.NoError(t, err)
 	require.Nil(t, got.Restriction)
-	require.Equal(t, "second", got.Envelope.Ciphertext)
+	require.Equal(t, "first", got.Envelope.Ciphertext)
+	updated, err := f.ts.Service.UpdateSecretBlock(f.ctx, &v1pb.UpdateSecretBlockRequest{
+		SecretBlock: &v1pb.SecretBlock{Name: f.name, Hint: "Mac admin", Envelope: testEnvelope("second")},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "second", updated.Envelope.Ciphertext)
 	_, err = f.ts.Service.DeleteSecretBlock(f.ctx, &v1pb.DeleteSecretBlockRequest{Name: f.name})
 	require.NoError(t, err)
 }
