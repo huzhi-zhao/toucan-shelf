@@ -133,3 +133,5 @@ state；不触发草稿 autosave、不写 localStorage、不进任何 memo 保�
 - 自动 GC 孤儿密文（永不自动删，后续可加手动管理页）。
 - 把加密块分享给其他用户（需要非对称方案）。
 - memogit 相关改动（密文本来就不在 md 里）。
+
+需要"防止自己太轻易拿到"的密码另见 [受限密钥块](restricted-secret-block.md)：在本块基础上加服务端时间闸门。
