@@ -293,19 +293,19 @@ func (s *APIV1Service) CreateSecretBlock(ctx context.Context, request *v1pb.Crea
 }
 
 func (s *APIV1Service) UpdateSecretBlock(ctx context.Context, request *v1pb.UpdateSecretBlockRequest) (*v1pb.SecretBlock, error) {
-	user, err := s.fetchCurrentUser(ctx)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
-	}
-	if user == nil {
-		return nil, status.Errorf(codes.Unauthenticated, "authentication required")
-	}
 	if request.SecretBlock == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "secret_block is required")
 	}
-	uid, err := extractSecretBlockUID(request.SecretBlock.Name)
+	sb, gate, err := s.loadOwnedSecretBlock(ctx, request.SecretBlock.Name)
 	if err != nil {
 		return nil, err
+	}
+	// A restricted block is one-shot. Its content is written blind (the reader
+	// cannot see what they are replacing) and there is no copy of the old
+	// envelope, so a mistyped replacement would destroy the only credential it
+	// held. To change one, create a new block and drop the old reference.
+	if gate.Policy != "" {
+		return nil, status.Errorf(codes.FailedPrecondition, "a restricted secret block cannot be changed; create a new one instead")
 	}
 	if err := validateSecretHint(request.SecretBlock.Hint); err != nil {
 		return nil, err
@@ -318,8 +318,8 @@ func (s *APIV1Service) UpdateSecretBlock(ctx context.Context, request *v1pb.Upda
 	// Whole-envelope replacement, no field mask: a partially updated envelope
 	// would be permanently undecryptable.
 	updated, err := s.Store.UpdateSecretBlock(ctx, &store.UpdateSecretBlock{
-		UID:           uid,
-		CreatorID:     user.ID,
+		UID:           sb.UID,
+		CreatorID:     sb.CreatorID,
 		Hint:          request.SecretBlock.Hint,
 		KDF:           envelope.Kdf,
 		KDFIterations: envelope.KdfIterations,
@@ -335,9 +335,6 @@ func (s *APIV1Service) UpdateSecretBlock(ctx context.Context, request *v1pb.Upda
 	if updated == nil {
 		return nil, status.Errorf(codes.NotFound, "secret block not found")
 	}
-	// Replacing a restricted block's content is allowed at any time: it writes a
-	// new envelope and reveals nothing. The response echoes the caller's own new
-	// envelope, never the one it replaced. The policy columns are untouched here.
 	return s.secretBlockResponse(ctx, updated, &secretBlockGate{
 		ID:                       updated.ID,
 		Policy:                   updated.Policy,

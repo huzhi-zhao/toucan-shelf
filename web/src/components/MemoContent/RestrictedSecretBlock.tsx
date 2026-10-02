@@ -22,7 +22,7 @@ import {
 } from "@/types/proto/api/v1/secret_block_service_pb";
 import type { Translations } from "@/utils/i18n";
 import { useTranslate } from "@/utils/i18n";
-import { decryptWithMasterKey, encryptWithMasterKey, isMasterEnvelope, type SecretEnvelope } from "@/utils/secret-crypto";
+import { decryptWithMasterKey, isMasterEnvelope, type SecretEnvelope } from "@/utils/secret-crypto";
 import {
   browserTimeZone,
   emergencyReasonLongEnough,
@@ -44,7 +44,7 @@ interface RestrictedSecretBlockProps {
   className?: string;
 }
 
-type Panel = "none" | "request" | "emergency" | "replace";
+type Panel = "none" | "request" | "emergency";
 
 const toDate = (ts: Timestamp | undefined): Date | undefined => (ts ? timestampDate(ts) : undefined);
 const formatTime = (date: Date | undefined) => (date ? dayjs(date).format("MM-DD HH:mm") : "");
@@ -277,10 +277,6 @@ export const RestrictedSecretBlock = ({ summary, title, className }: RestrictedS
               {t("secret-block.restricted.emergency")}
             </Button>
           )}
-          <div className="flex-1" />
-          <Button variant="ghost" size="sm" disabled={busy} onClick={() => setPanel(panel === "replace" ? "none" : "replace")}>
-            {t("secret-block.restricted.replace")}
-          </Button>
         </div>
 
         {canEmergency && (
@@ -344,25 +340,6 @@ export const RestrictedSecretBlock = ({ summary, title, className }: RestrictedS
                 );
                 setPanel("none");
               }, "secret-block.restricted.error.request-failed")
-            }
-          />
-        )}
-
-        {panel === "replace" && (
-          <ReplaceForm
-            busy={busy}
-            passphraseField={passphraseField}
-            needsPassphrase={!masterKeyState.unlocked && passphrase === ""}
-            t={t}
-            onSubmit={(content) =>
-              void run(async () => {
-                const key = await ensureMasterKey();
-                const updated = await secretBlockServiceClient.updateSecretBlock({
-                  secretBlock: { name: summary.name, hint: summary.hint, envelope: await encryptWithMasterKey(content, key) },
-                });
-                if (updated.restriction) setSummary({ ...summary, restriction: updated.restriction });
-                setPanel("none");
-              }, "secret-block.error.save-failed")
             }
           />
         )}
@@ -482,47 +459,6 @@ const RequestForm = ({ policy, emergency, emergencyStatement, busy, t, onSubmit 
         <Button type="submit" size="sm" variant={emergency ? "destructive" : "default"} disabled={busy || !confirmOk || !emergencyOk}>
           {busy && <LoaderCircleIcon className="w-4 h-4 animate-spin" />}
           {emergency ? t("secret-block.restricted.emergency-submit") : t("secret-block.restricted.submit-request")}
-        </Button>
-      </div>
-    </form>
-  );
-};
-
-interface ReplaceFormProps {
-  busy: boolean;
-  passphraseField: ReactNode;
-  needsPassphrase: boolean;
-  t: T;
-  onSubmit: (content: string) => void;
-}
-
-// Replacing writes a new secret without ever showing the old one, so it is
-// allowed at any time.
-const ReplaceForm = ({ busy, passphraseField, needsPassphrase, t, onSubmit }: ReplaceFormProps) => {
-  const [content, setContent] = useState("");
-  return (
-    <form
-      className="flex flex-col gap-2 rounded-md border border-border bg-background p-3"
-      onSubmit={(event) => {
-        event.preventDefault();
-        onSubmit(content);
-      }}
-    >
-      <span className="text-xs text-muted-foreground">{t("secret-block.restricted.replace-hint")}</span>
-      <Textarea
-        rows={3}
-        autoComplete="off"
-        spellCheck={false}
-        className="font-mono text-sm"
-        placeholder={t("secret-block.restricted.content-placeholder")}
-        value={content}
-        onChange={(event) => setContent(event.target.value)}
-        disabled={busy}
-      />
-      <div className="flex flex-wrap items-center gap-2">
-        {passphraseField}
-        <Button type="submit" size="sm" disabled={busy || needsPassphrase}>
-          {t("secret-block.restricted.replace-save")}
         </Button>
       </div>
     </form>
