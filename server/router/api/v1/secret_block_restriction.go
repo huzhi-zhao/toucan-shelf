@@ -34,6 +34,14 @@ const (
 	secretMinEmergencyReasonRunes  = 10
 )
 
+// secretEmergencyUnlockEnabled switches the emergency path on. It is off for now:
+// with it off, new high-impact policies get no quota and stored quotas read as
+// zero, so RequestSecretBlockUnlock refuses every emergency and the UI hides the
+// entry. The rest of the mechanism (unlock kinds, quota accounting, statements)
+// stays in place so turning it back on is this one line; the end-to-end test it
+// had is TestRestrictedSecretBlockEmergency in git history.
+const secretEmergencyUnlockEnabled = false
+
 // secretEmergencyStatements are the fixed sentences an emergency unlock must be
 // typed with, one per UI language. Mirrored in web/src/utils/secret-restriction.ts.
 var secretEmergencyStatements = []string{
@@ -76,12 +84,14 @@ func newSecretBlockPolicy(preset, timeZone, prompt, confirmText string) (*secret
 		// Always wait for the next morning; no way around it.
 	case secretPresetHighImpact:
 		// Losing this key can stop work, so working hours get a short wait and
-		// there is a rate-limited emergency path for the rest of the day.
+		// (when enabled) a rate-limited emergency path for the rest of the day.
 		p.WorkStartMinute = 8 * 60
 		p.WorkEndMinute = 18 * 60
 		p.WorkDelaySeconds = 30 * 60
-		p.EmergencyQuota = 1
-		p.EmergencyWindowDays = 30
+		if secretEmergencyUnlockEnabled {
+			p.EmergencyQuota = 1
+			p.EmergencyWindowDays = 30
+		}
 	default:
 		return nil, errors.Errorf("unknown preset %q", preset)
 	}
@@ -130,6 +140,10 @@ func parseSecretBlockPolicy(raw string) (*secretBlockPolicy, error) {
 	p := &secretBlockPolicy{}
 	if err := json.Unmarshal([]byte(raw), p); err != nil {
 		return nil, errors.Wrap(err, "parse secret block policy")
+	}
+	if !secretEmergencyUnlockEnabled {
+		// Blocks created while the path was on still carry a stored quota.
+		p.EmergencyQuota = 0
 	}
 	return p, nil
 }
