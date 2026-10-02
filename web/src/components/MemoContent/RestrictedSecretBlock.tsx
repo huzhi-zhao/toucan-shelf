@@ -44,7 +44,7 @@ interface RestrictedSecretBlockProps {
   className?: string;
 }
 
-type Panel = "none" | "request" | "emergency" | "replace" | "settings";
+type Panel = "none" | "request" | "emergency" | "replace";
 
 const toDate = (ts: Timestamp | undefined): Date | undefined => (ts ? timestampDate(ts) : undefined);
 const formatTime = (date: Date | undefined) => (date ? dayjs(date).format("MM-DD HH:mm") : "");
@@ -281,9 +281,6 @@ export const RestrictedSecretBlock = ({ summary, title, className }: RestrictedS
           <Button variant="ghost" size="sm" disabled={busy} onClick={() => setPanel(panel === "replace" ? "none" : "replace")}>
             {t("secret-block.restricted.replace")}
           </Button>
-          <Button variant="ghost" size="sm" disabled={busy} onClick={() => setPanel(panel === "settings" ? "none" : "settings")}>
-            {t("secret-block.restricted.settings")}
-          </Button>
         </div>
 
         {canEmergency && (
@@ -366,28 +363,6 @@ export const RestrictedSecretBlock = ({ summary, title, className }: RestrictedS
                 if (updated.restriction) setSummary({ ...summary, restriction: updated.restriction });
                 setPanel("none");
               }, "secret-block.error.save-failed")
-            }
-          />
-        )}
-
-        {panel === "settings" && policy && (
-          <PolicyForm
-            initial={policy}
-            busy={busy}
-            t={t}
-            submitLabel={t("secret-block.restricted.save-settings")}
-            note={t("secret-block.restricted.settings-wait")}
-            onLift={() =>
-              void run(async () => {
-                setSummary(await secretBlockServiceClient.updateSecretBlockPolicy({ name: summary.name }));
-                setPanel("none");
-              }, "secret-block.restricted.error.update-failed")
-            }
-            onSubmit={(next) =>
-              void run(async () => {
-                setSummary(await secretBlockServiceClient.updateSecretBlockPolicy({ name: summary.name, policy: next }));
-                setPanel("none");
-              }, "secret-block.restricted.error.update-failed")
             }
           />
         )}
@@ -609,38 +584,3 @@ export const policyFromDraft = (draft: PolicyDraft) => ({
   prompt: draft.prompt.trim(),
   confirmText: draft.confirmText.trim(),
 });
-
-interface PolicyFormProps {
-  initial: SecretBlockPolicy;
-  busy: boolean;
-  t: T;
-  submitLabel: string;
-  note: string;
-  onSubmit: (policy: ReturnType<typeof policyFromDraft>) => void;
-  onLift: () => void;
-}
-
-const PolicyForm = ({ initial, busy, t, submitLabel, note, onSubmit, onLift }: PolicyFormProps) => {
-  const [draft, setDraft] = useState<PolicyDraft>({ preset: initial.preset, prompt: initial.prompt, confirmText: initial.confirmText });
-  return (
-    <form
-      className="flex flex-col gap-2 rounded-md border border-border bg-background p-3"
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (draft.confirmText.trim() === "") return;
-        onSubmit(policyFromDraft(draft));
-      }}
-    >
-      <span className="text-xs text-muted-foreground">{note}</span>
-      <PolicyFields draft={draft} onChange={setDraft} busy={busy} t={t} />
-      <div className="flex flex-wrap items-center gap-2">
-        <Button type="submit" size="sm" disabled={busy || draft.confirmText.trim() === ""}>
-          {submitLabel}
-        </Button>
-        <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={onLift}>
-          {t("secret-block.restricted.lift")}
-        </Button>
-      </div>
-    </form>
-  );
-};

@@ -89,8 +89,8 @@ func TestNewSecretBlockPolicyPresets(t *testing.T) {
 	require.Equal(t, 8*60, high.WorkStartMinute)
 	require.Equal(t, 18*60, high.WorkEndMinute)
 	require.Equal(t, int64(30*60), high.WorkDelaySeconds)
-	require.Equal(t, 1, high.EmergencyQuota)
-	require.Equal(t, 30, high.EmergencyWindowDays)
+	// The emergency path is switched off (secretEmergencyUnlockEnabled).
+	require.Zero(t, high.EmergencyQuota)
 
 	low := mustPolicy(t, secretPresetLowImpact, "UTC")
 	require.Zero(t, low.WorkDelaySeconds)
@@ -114,7 +114,7 @@ func TestSecretBlockPolicyFromRequest(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "我已想清楚， 明早再处理", p.ConfirmText)
 	require.Equal(t, int64(30*60), p.WorkDelaySeconds)
-	require.Equal(t, 1, p.EmergencyQuota)
+	require.Zero(t, p.EmergencyQuota)
 
 	for name, in := range map[string]*v1pb.SecretBlockPolicy{
 		"no preset":     {TimeZone: "UTC", ConfirmText: "ok"},

@@ -206,45 +206,23 @@ func TestRestrictedSecretBlockCancel(t *testing.T) {
 	requireCode(t, err, codes.FailedPrecondition)
 }
 
-func TestRestrictedSecretBlockEmergency(t *testing.T) {
+// The emergency path is switched off for now (secretEmergencyUnlockEnabled in
+// secret_block_restriction.go): even a high-impact block, typed correctly at
+// night, must wait for the morning, and the summary offers no emergency.
+func TestRestrictedSecretBlockEmergencyDisabled(t *testing.T) {
 	f := newRestrictedFixture(t, v1pb.SecretBlockPolicy_HIGH_IMPACT, 23, 40)
+	require.Zero(t, f.summary().Restriction.EmergencyRemaining)
 
-	// A pending request may be overtaken by an emergency.
-	_, err := f.request()
-	require.NoError(t, err)
+	_, err := f.emergency("线上服务挂了需要管理员权限重启")
+	requireCode(t, err, codes.FailedPrecondition)
 
-	_, err = f.ts.Service.RequestSecretBlockUnlock(f.ctx, &v1pb.RequestSecretBlockUnlockRequest{
-		Name: f.name, ConfirmText: "我已想清楚", Emergency: true, EmergencyText: "随便打的", EmergencyReason: "服务器挂了需要马上登录处理",
-	})
-	requireCode(t, err, codes.InvalidArgument)
-	_, err = f.emergency("太急了")
-	requireCode(t, err, codes.InvalidArgument)
-
-	s, err := f.emergency("线上服务挂了需要管理员权限重启")
-	require.NoError(t, err)
-	require.Equal(t, v1pb.SecretBlockRestriction_READY, s.Restriction.UnlockState)
-	require.True(t, s.Restriction.Emergency)
-	require.Zero(t, s.Restriction.EmergencyRemaining)
-	require.Equal(t, "线上服务挂了需要管理员权限重启", s.Restriction.LastEmergencyReason)
-	require.Equal(t, f.now.Unix(), s.Restriction.LastEmergencyTime.AsTime().Unix())
-	firstEmergency := f.now
-
+	// Nothing was recorded and no wait was skipped.
+	s := f.summary()
+	require.Equal(t, v1pb.SecretBlockRestriction_LOCKED, s.Restriction.UnlockState)
+	require.Nil(t, s.Restriction.LastEmergencyTime)
+	require.Nil(t, s.Restriction.NextEmergencyTime)
 	_, err = f.get()
-	require.NoError(t, err)
-
-	// Quota used up for 30 days: the next night has no emergency path.
-	f.at(3, 23, 0)
-	_, err = f.emergency("又一次紧急情况需要立刻处理")
-	requireCode(t, err, codes.ResourceExhausted)
-	s = f.summary()
-	require.Equal(t, firstEmergency.Add(30*24*time.Hour).Unix(), s.Restriction.NextEmergencyTime.AsTime().Unix())
-	// The emergency stays on record the morning after.
-	require.Equal(t, "线上服务挂了需要管理员权限重启", s.Restriction.LastEmergencyReason)
-
-	// After the window rolls over the quota is back.
-	f.now = firstEmergency.Add(30*24*time.Hour + time.Second)
-	_, err = f.emergency("又一次紧急情况需要立刻处理")
-	require.NoError(t, err)
+	requireCode(t, err, codes.FailedPrecondition)
 }
 
 func TestRestrictedSecretBlockPolicyChangesWait(t *testing.T) {
