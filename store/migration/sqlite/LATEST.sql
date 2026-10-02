@@ -261,10 +261,28 @@ CREATE TABLE secret_block (
   verifier       TEXT    NOT NULL,
   ciphertext     TEXT    NOT NULL,
   created_ts     BIGINT  NOT NULL DEFAULT (strftime('%s', 'now')),
-  updated_ts     BIGINT  NOT NULL DEFAULT (strftime('%s', 'now'))
+  updated_ts     BIGINT  NOT NULL DEFAULT (strftime('%s', 'now')),
+  policy         TEXT    NOT NULL DEFAULT '',
+  pending_policy TEXT    NOT NULL DEFAULT '',
+  pending_policy_effective_ts BIGINT NOT NULL DEFAULT 0
 );
 
 CREATE INDEX idx_secret_block_creator_id ON secret_block(creator_id);
+
+-- secret_block_unlock
+CREATE TABLE secret_block_unlock (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  secret_block_id INTEGER NOT NULL,
+  kind            TEXT    NOT NULL,
+  reason          TEXT    NOT NULL DEFAULT '',
+  requested_ts    BIGINT  NOT NULL,
+  available_ts    BIGINT  NOT NULL,
+  opened_ts       BIGINT  NOT NULL DEFAULT 0,
+  expires_ts      BIGINT  NOT NULL DEFAULT 0,
+  canceled_ts     BIGINT  NOT NULL DEFAULT 0
+);
+
+CREATE INDEX idx_secret_block_unlock_block_id ON secret_block_unlock(secret_block_id, requested_ts);
 
 -- memo_link
 CREATE TABLE memo_link (

@@ -691,6 +691,46 @@ func (s *ConnectServiceHandler) DeleteSecretBlock(ctx context.Context, req *conn
 	return connect.NewResponse(resp), nil
 }
 
+func (s *ConnectServiceHandler) GetSecretBlockSummary(ctx context.Context, req *connect.Request[v1pb.GetSecretBlockSummaryRequest]) (*connect.Response[v1pb.SecretBlockSummary], error) {
+	resp, err := s.APIV1Service.GetSecretBlockSummary(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) RequestSecretBlockUnlock(ctx context.Context, req *connect.Request[v1pb.RequestSecretBlockUnlockRequest]) (*connect.Response[v1pb.SecretBlockSummary], error) {
+	resp, err := s.APIV1Service.RequestSecretBlockUnlock(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) CancelSecretBlockUnlock(ctx context.Context, req *connect.Request[v1pb.CancelSecretBlockUnlockRequest]) (*connect.Response[v1pb.SecretBlockSummary], error) {
+	resp, err := s.APIV1Service.CancelSecretBlockUnlock(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) UpdateSecretBlockPolicy(ctx context.Context, req *connect.Request[v1pb.UpdateSecretBlockPolicyRequest]) (*connect.Response[v1pb.SecretBlockSummary], error) {
+	resp, err := s.APIV1Service.UpdateSecretBlockPolicy(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) CancelSecretBlockPolicyChange(ctx context.Context, req *connect.Request[v1pb.CancelSecretBlockPolicyChangeRequest]) (*connect.Response[v1pb.SecretBlockSummary], error) {
+	resp, err := s.APIV1Service.CancelSecretBlockPolicyChange(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 // ShortcutService
 
 func (s *ConnectServiceHandler) ListShortcuts(ctx context.Context, req *connect.Request[v1pb.ListShortcutsRequest]) (*connect.Response[v1pb.ListShortcutsResponse], error) {

@@ -20,11 +20,16 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	SecretBlockService_ListSecretBlocks_FullMethodName  = "/memos.api.v1.SecretBlockService/ListSecretBlocks"
-	SecretBlockService_GetSecretBlock_FullMethodName    = "/memos.api.v1.SecretBlockService/GetSecretBlock"
-	SecretBlockService_CreateSecretBlock_FullMethodName = "/memos.api.v1.SecretBlockService/CreateSecretBlock"
-	SecretBlockService_UpdateSecretBlock_FullMethodName = "/memos.api.v1.SecretBlockService/UpdateSecretBlock"
-	SecretBlockService_DeleteSecretBlock_FullMethodName = "/memos.api.v1.SecretBlockService/DeleteSecretBlock"
+	SecretBlockService_ListSecretBlocks_FullMethodName              = "/memos.api.v1.SecretBlockService/ListSecretBlocks"
+	SecretBlockService_GetSecretBlock_FullMethodName                = "/memos.api.v1.SecretBlockService/GetSecretBlock"
+	SecretBlockService_CreateSecretBlock_FullMethodName             = "/memos.api.v1.SecretBlockService/CreateSecretBlock"
+	SecretBlockService_UpdateSecretBlock_FullMethodName             = "/memos.api.v1.SecretBlockService/UpdateSecretBlock"
+	SecretBlockService_DeleteSecretBlock_FullMethodName             = "/memos.api.v1.SecretBlockService/DeleteSecretBlock"
+	SecretBlockService_GetSecretBlockSummary_FullMethodName         = "/memos.api.v1.SecretBlockService/GetSecretBlockSummary"
+	SecretBlockService_RequestSecretBlockUnlock_FullMethodName      = "/memos.api.v1.SecretBlockService/RequestSecretBlockUnlock"
+	SecretBlockService_CancelSecretBlockUnlock_FullMethodName       = "/memos.api.v1.SecretBlockService/CancelSecretBlockUnlock"
+	SecretBlockService_UpdateSecretBlockPolicy_FullMethodName       = "/memos.api.v1.SecretBlockService/UpdateSecretBlockPolicy"
+	SecretBlockService_CancelSecretBlockPolicyChange_FullMethodName = "/memos.api.v1.SecretBlockService/CancelSecretBlockPolicyChange"
 )
 
 // SecretBlockServiceClient is the client API for SecretBlockService service.
@@ -63,7 +68,30 @@ type SecretBlockServiceClient interface {
 	// DeleteSecretBlock permanently destroys a record. There is no recovery, and no
 	// caller other than the user acting deliberately ever invokes this — deleting or
 	// duplicating a document leaves its referenced secrets untouched.
+	//
+	// A restricted block cannot be deleted directly: deleting it is the same as
+	// lifting its restriction, so the restriction has to be lifted first (which
+	// waits like any other policy change). Fails with FAILED_PRECONDITION otherwise.
 	DeleteSecretBlock(ctx context.Context, in *DeleteSecretBlockRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// GetSecretBlockSummary returns one block without its envelope. It is how a
+	// restricted block learns its unlock state without spending a viewing window:
+	// GetSecretBlock on a restricted block starts the window the first time it
+	// succeeds.
+	GetSecretBlockSummary(ctx context.Context, in *GetSecretBlockSummaryRequest, opts ...grpc.CallOption) (*SecretBlockSummary, error)
+	// RequestSecretBlockUnlock asks for a restricted block's envelope to become
+	// available. The server checks the typed confirmation text and computes when
+	// the block opens from the block's policy and the server clock — the client
+	// has no say in either. See docs/dev/requirements/editor/restricted-secret-block.md.
+	RequestSecretBlockUnlock(ctx context.Context, in *RequestSecretBlockUnlockRequest, opts ...grpc.CallOption) (*SecretBlockSummary, error)
+	// CancelSecretBlockUnlock withdraws a request that is still waiting.
+	CancelSecretBlockUnlock(ctx context.Context, in *CancelSecretBlockUnlockRequest, opts ...grpc.CallOption) (*SecretBlockSummary, error)
+	// UpdateSecretBlockPolicy restricts a block, changes its policy, or lifts the
+	// restriction (an unset policy). Restricting an unrestricted block applies
+	// immediately; every change to an already restricted block — tighter or looser —
+	// is scheduled and takes effect only after the block's normal unlock delay.
+	UpdateSecretBlockPolicy(ctx context.Context, in *UpdateSecretBlockPolicyRequest, opts ...grpc.CallOption) (*SecretBlockSummary, error)
+	// CancelSecretBlockPolicyChange withdraws a scheduled policy change.
+	CancelSecretBlockPolicyChange(ctx context.Context, in *CancelSecretBlockPolicyChangeRequest, opts ...grpc.CallOption) (*SecretBlockSummary, error)
 }
 
 type secretBlockServiceClient struct {
@@ -124,6 +152,56 @@ func (c *secretBlockServiceClient) DeleteSecretBlock(ctx context.Context, in *De
 	return out, nil
 }
 
+func (c *secretBlockServiceClient) GetSecretBlockSummary(ctx context.Context, in *GetSecretBlockSummaryRequest, opts ...grpc.CallOption) (*SecretBlockSummary, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SecretBlockSummary)
+	err := c.cc.Invoke(ctx, SecretBlockService_GetSecretBlockSummary_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *secretBlockServiceClient) RequestSecretBlockUnlock(ctx context.Context, in *RequestSecretBlockUnlockRequest, opts ...grpc.CallOption) (*SecretBlockSummary, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SecretBlockSummary)
+	err := c.cc.Invoke(ctx, SecretBlockService_RequestSecretBlockUnlock_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *secretBlockServiceClient) CancelSecretBlockUnlock(ctx context.Context, in *CancelSecretBlockUnlockRequest, opts ...grpc.CallOption) (*SecretBlockSummary, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SecretBlockSummary)
+	err := c.cc.Invoke(ctx, SecretBlockService_CancelSecretBlockUnlock_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *secretBlockServiceClient) UpdateSecretBlockPolicy(ctx context.Context, in *UpdateSecretBlockPolicyRequest, opts ...grpc.CallOption) (*SecretBlockSummary, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SecretBlockSummary)
+	err := c.cc.Invoke(ctx, SecretBlockService_UpdateSecretBlockPolicy_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *secretBlockServiceClient) CancelSecretBlockPolicyChange(ctx context.Context, in *CancelSecretBlockPolicyChangeRequest, opts ...grpc.CallOption) (*SecretBlockSummary, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SecretBlockSummary)
+	err := c.cc.Invoke(ctx, SecretBlockService_CancelSecretBlockPolicyChange_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SecretBlockServiceServer is the server API for SecretBlockService service.
 // All implementations must embed UnimplementedSecretBlockServiceServer
 // for forward compatibility.
@@ -160,7 +238,30 @@ type SecretBlockServiceServer interface {
 	// DeleteSecretBlock permanently destroys a record. There is no recovery, and no
 	// caller other than the user acting deliberately ever invokes this — deleting or
 	// duplicating a document leaves its referenced secrets untouched.
+	//
+	// A restricted block cannot be deleted directly: deleting it is the same as
+	// lifting its restriction, so the restriction has to be lifted first (which
+	// waits like any other policy change). Fails with FAILED_PRECONDITION otherwise.
 	DeleteSecretBlock(context.Context, *DeleteSecretBlockRequest) (*emptypb.Empty, error)
+	// GetSecretBlockSummary returns one block without its envelope. It is how a
+	// restricted block learns its unlock state without spending a viewing window:
+	// GetSecretBlock on a restricted block starts the window the first time it
+	// succeeds.
+	GetSecretBlockSummary(context.Context, *GetSecretBlockSummaryRequest) (*SecretBlockSummary, error)
+	// RequestSecretBlockUnlock asks for a restricted block's envelope to become
+	// available. The server checks the typed confirmation text and computes when
+	// the block opens from the block's policy and the server clock — the client
+	// has no say in either. See docs/dev/requirements/editor/restricted-secret-block.md.
+	RequestSecretBlockUnlock(context.Context, *RequestSecretBlockUnlockRequest) (*SecretBlockSummary, error)
+	// CancelSecretBlockUnlock withdraws a request that is still waiting.
+	CancelSecretBlockUnlock(context.Context, *CancelSecretBlockUnlockRequest) (*SecretBlockSummary, error)
+	// UpdateSecretBlockPolicy restricts a block, changes its policy, or lifts the
+	// restriction (an unset policy). Restricting an unrestricted block applies
+	// immediately; every change to an already restricted block — tighter or looser —
+	// is scheduled and takes effect only after the block's normal unlock delay.
+	UpdateSecretBlockPolicy(context.Context, *UpdateSecretBlockPolicyRequest) (*SecretBlockSummary, error)
+	// CancelSecretBlockPolicyChange withdraws a scheduled policy change.
+	CancelSecretBlockPolicyChange(context.Context, *CancelSecretBlockPolicyChangeRequest) (*SecretBlockSummary, error)
 	mustEmbedUnimplementedSecretBlockServiceServer()
 }
 
@@ -185,6 +286,21 @@ func (UnimplementedSecretBlockServiceServer) UpdateSecretBlock(context.Context, 
 }
 func (UnimplementedSecretBlockServiceServer) DeleteSecretBlock(context.Context, *DeleteSecretBlockRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteSecretBlock not implemented")
+}
+func (UnimplementedSecretBlockServiceServer) GetSecretBlockSummary(context.Context, *GetSecretBlockSummaryRequest) (*SecretBlockSummary, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetSecretBlockSummary not implemented")
+}
+func (UnimplementedSecretBlockServiceServer) RequestSecretBlockUnlock(context.Context, *RequestSecretBlockUnlockRequest) (*SecretBlockSummary, error) {
+	return nil, status.Error(codes.Unimplemented, "method RequestSecretBlockUnlock not implemented")
+}
+func (UnimplementedSecretBlockServiceServer) CancelSecretBlockUnlock(context.Context, *CancelSecretBlockUnlockRequest) (*SecretBlockSummary, error) {
+	return nil, status.Error(codes.Unimplemented, "method CancelSecretBlockUnlock not implemented")
+}
+func (UnimplementedSecretBlockServiceServer) UpdateSecretBlockPolicy(context.Context, *UpdateSecretBlockPolicyRequest) (*SecretBlockSummary, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateSecretBlockPolicy not implemented")
+}
+func (UnimplementedSecretBlockServiceServer) CancelSecretBlockPolicyChange(context.Context, *CancelSecretBlockPolicyChangeRequest) (*SecretBlockSummary, error) {
+	return nil, status.Error(codes.Unimplemented, "method CancelSecretBlockPolicyChange not implemented")
 }
 func (UnimplementedSecretBlockServiceServer) mustEmbedUnimplementedSecretBlockServiceServer() {}
 func (UnimplementedSecretBlockServiceServer) testEmbeddedByValue()                            {}
@@ -297,6 +413,96 @@ func _SecretBlockService_DeleteSecretBlock_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SecretBlockService_GetSecretBlockSummary_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSecretBlockSummaryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SecretBlockServiceServer).GetSecretBlockSummary(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SecretBlockService_GetSecretBlockSummary_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SecretBlockServiceServer).GetSecretBlockSummary(ctx, req.(*GetSecretBlockSummaryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SecretBlockService_RequestSecretBlockUnlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestSecretBlockUnlockRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SecretBlockServiceServer).RequestSecretBlockUnlock(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SecretBlockService_RequestSecretBlockUnlock_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SecretBlockServiceServer).RequestSecretBlockUnlock(ctx, req.(*RequestSecretBlockUnlockRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SecretBlockService_CancelSecretBlockUnlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CancelSecretBlockUnlockRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SecretBlockServiceServer).CancelSecretBlockUnlock(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SecretBlockService_CancelSecretBlockUnlock_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SecretBlockServiceServer).CancelSecretBlockUnlock(ctx, req.(*CancelSecretBlockUnlockRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SecretBlockService_UpdateSecretBlockPolicy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateSecretBlockPolicyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SecretBlockServiceServer).UpdateSecretBlockPolicy(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SecretBlockService_UpdateSecretBlockPolicy_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SecretBlockServiceServer).UpdateSecretBlockPolicy(ctx, req.(*UpdateSecretBlockPolicyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SecretBlockService_CancelSecretBlockPolicyChange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CancelSecretBlockPolicyChangeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SecretBlockServiceServer).CancelSecretBlockPolicyChange(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SecretBlockService_CancelSecretBlockPolicyChange_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SecretBlockServiceServer).CancelSecretBlockPolicyChange(ctx, req.(*CancelSecretBlockPolicyChangeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SecretBlockService_ServiceDesc is the grpc.ServiceDesc for SecretBlockService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -323,6 +529,26 @@ var SecretBlockService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteSecretBlock",
 			Handler:    _SecretBlockService_DeleteSecretBlock_Handler,
+		},
+		{
+			MethodName: "GetSecretBlockSummary",
+			Handler:    _SecretBlockService_GetSecretBlockSummary_Handler,
+		},
+		{
+			MethodName: "RequestSecretBlockUnlock",
+			Handler:    _SecretBlockService_RequestSecretBlockUnlock_Handler,
+		},
+		{
+			MethodName: "CancelSecretBlockUnlock",
+			Handler:    _SecretBlockService_CancelSecretBlockUnlock_Handler,
+		},
+		{
+			MethodName: "UpdateSecretBlockPolicy",
+			Handler:    _SecretBlockService_UpdateSecretBlockPolicy_Handler,
+		},
+		{
+			MethodName: "CancelSecretBlockPolicyChange",
+			Handler:    _SecretBlockService_CancelSecretBlockPolicyChange_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -147,4 +147,9 @@ type Driver interface {
 	ListSecretBlockSummaries(ctx context.Context, find *FindSecretBlock) ([]*SecretBlockSummary, error)
 	UpdateSecretBlock(ctx context.Context, update *UpdateSecretBlock) (*SecretBlock, error)
 	DeleteSecretBlock(ctx context.Context, delete *DeleteSecretBlock) error
+	UpdateSecretBlockPolicy(ctx context.Context, update *UpdateSecretBlockPolicy) error
+	CreateSecretBlockUnlock(ctx context.Context, create *SecretBlockUnlock) (*SecretBlockUnlock, error)
+	ListSecretBlockUnlocks(ctx context.Context, find *FindSecretBlockUnlock) ([]*SecretBlockUnlock, error)
+	OpenSecretBlockUnlock(ctx context.Context, id int32, openedTs, expiresTs int64) (bool, error)
+	CancelSecretBlockUnlock(ctx context.Context, id int32, canceledTs int64) error
 }

@@ -1995,6 +1995,86 @@ paths:
                 CreateSecretBlock stores a client-encrypted envelope and returns the record,
                  whose uid the client then writes into the document body.
             operationId: SecretBlockService_CreateSecretBlock
+            parameters:
+                - name: policy.preset
+                  in: query
+                  schema:
+                    enum:
+                        - PRESET_UNSPECIFIED
+                        - LOW_IMPACT
+                        - HIGH_IMPACT
+                    type: string
+                    format: enum
+                - name: policy.timeZone
+                  in: query
+                  description: |-
+                    IANA time zone the wall-clock times below are read in (e.g. "Asia/Shanghai").
+                     Stored with the policy rather than taken from the server process, whose zone
+                     is often UTC in a container.
+                  schema:
+                    type: string
+                - name: policy.prompt
+                  in: query
+                  description: 'Shown before every unlock request: a note from the owner to their future self.'
+                  schema:
+                    type: string
+                - name: policy.confirmText
+                  in: query
+                  description: |-
+                    Must be typed verbatim (modulo surrounding and repeated whitespace) to request
+                     an unlock. Not a secret.
+                  schema:
+                    type: string
+                - name: policy.workStartMinute
+                  in: query
+                  description: |-
+                    Working hours as minutes after local midnight, [start, end). Both zero when
+                     the preset has no working-hours fast path.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: policy.workEndMinute
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: policy.workDelaySeconds
+                  in: query
+                  description: Wait for a request made inside working hours.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: policy.releaseMinute
+                  in: query
+                  description: |-
+                    Local minute of day a request made outside working hours opens at: the first
+                     such time strictly after the request.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: policy.emergencyQuota
+                  in: query
+                  description: Emergency unlocks allowed per rolling window. Zero means no emergency path.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: policy.emergencyWindowDays
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: policy.viewSeconds
+                  in: query
+                  description: How long the envelope is served once first fetched.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: policy.readyTtlSeconds
+                  in: query
+                  description: How long an available but unviewed request stays available.
+                  schema:
+                    type: integer
+                    format: int32
             requestBody:
                 content:
                     application/json:
@@ -2050,6 +2130,10 @@ paths:
                 DeleteSecretBlock permanently destroys a record. There is no recovery, and no
                  caller other than the user acting deliberately ever invokes this — deleting or
                  duplicating a document leaves its referenced secrets untouched.
+
+                 A restricted block cannot be deleted directly: deleting it is the same as
+                 lifting its restriction, so the restriction has to be lifted first (which
+                 waits like any other policy change). Fails with FAILED_PRECONDITION otherwise.
             operationId: SecretBlockService_DeleteSecretBlock
             parameters:
                 - name: secretBlock
@@ -2097,6 +2181,172 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/SecretBlock'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/secretBlocks/{secretBlock}:cancelPolicyChange:
+        post:
+            tags:
+                - SecretBlockService
+            description: CancelSecretBlockPolicyChange withdraws a scheduled policy change.
+            operationId: SecretBlockService_CancelSecretBlockPolicyChange
+            parameters:
+                - name: secretBlock
+                  in: path
+                  description: The secretBlock id.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CancelSecretBlockPolicyChangeRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/SecretBlockSummary'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/secretBlocks/{secretBlock}:cancelUnlock:
+        post:
+            tags:
+                - SecretBlockService
+            description: CancelSecretBlockUnlock withdraws a request that is still waiting.
+            operationId: SecretBlockService_CancelSecretBlockUnlock
+            parameters:
+                - name: secretBlock
+                  in: path
+                  description: The secretBlock id.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CancelSecretBlockUnlockRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/SecretBlockSummary'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/secretBlocks/{secretBlock}:requestUnlock:
+        post:
+            tags:
+                - SecretBlockService
+            description: |-
+                RequestSecretBlockUnlock asks for a restricted block's envelope to become
+                 available. The server checks the typed confirmation text and computes when
+                 the block opens from the block's policy and the server clock — the client
+                 has no say in either. See docs/dev/requirements/editor/restricted-secret-block.md.
+            operationId: SecretBlockService_RequestSecretBlockUnlock
+            parameters:
+                - name: secretBlock
+                  in: path
+                  description: The secretBlock id.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/RequestSecretBlockUnlockRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/SecretBlockSummary'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/secretBlocks/{secretBlock}:summary:
+        get:
+            tags:
+                - SecretBlockService
+            description: |-
+                GetSecretBlockSummary returns one block without its envelope. It is how a
+                 restricted block learns its unlock state without spending a viewing window:
+                 GetSecretBlock on a restricted block starts the window the first time it
+                 succeeds.
+            operationId: SecretBlockService_GetSecretBlockSummary
+            parameters:
+                - name: secretBlock
+                  in: path
+                  description: The secretBlock id.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/SecretBlockSummary'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/secretBlocks/{secretBlock}:updatePolicy:
+        post:
+            tags:
+                - SecretBlockService
+            description: |-
+                UpdateSecretBlockPolicy restricts a block, changes its policy, or lifts the
+                 restriction (an unset policy). Restricting an unrestricted block applies
+                 immediately; every change to an already restricted block — tighter or looser —
+                 is scheduled and takes effect only after the block's normal unlock delay.
+            operationId: SecretBlockService_UpdateSecretBlockPolicy
+            parameters:
+                - name: secretBlock
+                  in: path
+                  description: The secretBlock id.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/UpdateSecretBlockPolicyRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/SecretBlockSummary'
                 default:
                     description: Default error response
                     content:
@@ -4200,6 +4450,22 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/WorkspaceTreeByTitle'
+        CancelSecretBlockPolicyChangeRequest:
+            required:
+                - name
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: 'Required. Format: secretBlocks/{secret_block}'
+        CancelSecretBlockUnlockRequest:
+            required:
+                - name
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: 'Required. Format: secretBlocks/{secret_block}'
         Color:
             type: object
             properties:
@@ -6145,6 +6411,29 @@ components:
                 newPath:
                     type: string
                     description: Required. The new folder path.
+        RequestSecretBlockUnlockRequest:
+            required:
+                - name
+                - confirmText
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: 'Required. Format: secretBlocks/{secret_block}'
+                confirmText:
+                    type: string
+                    description: Required. The policy's confirm_text, typed by hand.
+                emergency:
+                    type: boolean
+                    description: |-
+                        Skip the wait. Only for presets with an emergency quota, and only while the
+                         quota lasts. Requires emergency_text and emergency_reason.
+                emergencyText:
+                    type: string
+                    description: The fixed emergency statement, typed by hand.
+                emergencyReason:
+                    type: string
+                    description: Why this cannot wait. Kept and shown on the block afterwards.
         ResolvePublicDocResponse:
             type: object
             properties:
@@ -6280,6 +6569,145 @@ components:
                     readOnly: true
                     type: string
                     format: date-time
+                restriction:
+                    readOnly: true
+                    allOf:
+                        - $ref: '#/components/schemas/SecretBlockRestriction'
+                    description: Present only for a restricted block. See SecretBlockRestriction.
+        SecretBlockPendingPolicyChange:
+            type: object
+            properties:
+                policy:
+                    allOf:
+                        - $ref: '#/components/schemas/SecretBlockPolicy'
+                    description: The policy that will apply. Unset means the restriction will be lifted.
+                effectiveTime:
+                    type: string
+                    format: date-time
+        SecretBlockPolicy:
+            required:
+                - preset
+                - timeZone
+                - confirmText
+            type: object
+            properties:
+                preset:
+                    enum:
+                        - PRESET_UNSPECIFIED
+                        - LOW_IMPACT
+                        - HIGH_IMPACT
+                    type: string
+                    format: enum
+                timeZone:
+                    type: string
+                    description: |-
+                        IANA time zone the wall-clock times below are read in (e.g. "Asia/Shanghai").
+                         Stored with the policy rather than taken from the server process, whose zone
+                         is often UTC in a container.
+                prompt:
+                    type: string
+                    description: 'Shown before every unlock request: a note from the owner to their future self.'
+                confirmText:
+                    type: string
+                    description: |-
+                        Must be typed verbatim (modulo surrounding and repeated whitespace) to request
+                         an unlock. Not a secret.
+                workStartMinute:
+                    readOnly: true
+                    type: integer
+                    description: |-
+                        Working hours as minutes after local midnight, [start, end). Both zero when
+                         the preset has no working-hours fast path.
+                    format: int32
+                workEndMinute:
+                    readOnly: true
+                    type: integer
+                    format: int32
+                workDelaySeconds:
+                    readOnly: true
+                    type: integer
+                    description: Wait for a request made inside working hours.
+                    format: int32
+                releaseMinute:
+                    readOnly: true
+                    type: integer
+                    description: |-
+                        Local minute of day a request made outside working hours opens at: the first
+                         such time strictly after the request.
+                    format: int32
+                emergencyQuota:
+                    readOnly: true
+                    type: integer
+                    description: Emergency unlocks allowed per rolling window. Zero means no emergency path.
+                    format: int32
+                emergencyWindowDays:
+                    readOnly: true
+                    type: integer
+                    format: int32
+                viewSeconds:
+                    readOnly: true
+                    type: integer
+                    description: How long the envelope is served once first fetched.
+                    format: int32
+                readyTtlSeconds:
+                    readOnly: true
+                    type: integer
+                    description: How long an available but unviewed request stays available.
+                    format: int32
+            description: |-
+                SecretBlockPolicy is the time gate in front of a restricted block. It guards
+                 against the owner's own impulses (the 1 a.m. "I'll just unlock it now"), not
+                 against an attacker: the gate is enforced by the server so that skipping it
+                 costs more than waiting, but an administrator can always bypass it.
+
+                 Clients choose a preset and write the two texts; every number is filled in by
+                 the server from the preset and returned for display.
+        SecretBlockRestriction:
+            type: object
+            properties:
+                policy:
+                    $ref: '#/components/schemas/SecretBlockPolicy'
+                unlockState:
+                    enum:
+                        - UNLOCK_STATE_UNSPECIFIED
+                        - LOCKED
+                        - PENDING
+                        - READY
+                        - OPEN
+                    type: string
+                    format: enum
+                emergency:
+                    type: boolean
+                    description: Whether the live request (if any) came through the emergency path.
+                availableTime:
+                    type: string
+                    description: 'PENDING: when the block opens.'
+                    format: date-time
+                expireTime:
+                    type: string
+                    description: 'READY: when an unviewed request lapses. OPEN: when the viewing window ends.'
+                    format: date-time
+                emergencyRemaining:
+                    type: integer
+                    description: Emergency unlocks left in the current window.
+                    format: int32
+                nextEmergencyTime:
+                    type: string
+                    description: When the next emergency unlock frees up, if none remain.
+                    format: date-time
+                lastEmergencyTime:
+                    type: string
+                    description: The most recent emergency unlock, kept visible so it is seen the morning after.
+                    format: date-time
+                lastEmergencyReason:
+                    type: string
+                pendingChange:
+                    allOf:
+                        - $ref: '#/components/schemas/SecretBlockPendingPolicyChange'
+                    description: A scheduled policy change, if any.
+            description: |-
+                SecretBlockRestriction is a restricted block's policy and where it currently
+                 stands. All times come from the server clock.
         SecretBlockSummary:
             type: object
             properties:
@@ -6302,6 +6730,11 @@ components:
                     readOnly: true
                     type: string
                     format: date-time
+                restriction:
+                    readOnly: true
+                    allOf:
+                        - $ref: '#/components/schemas/SecretBlockRestriction'
+                    description: Present only for a restricted block.
             description: |-
                 SecretBlockSummary is SecretBlock without the envelope. It is a separate message
                  rather than a partially-populated SecretBlock so that no future edit to the list
@@ -6748,6 +7181,18 @@ components:
                         Published pages on this site that linked to the page just taken down. Their
                          snapshots keep the now-dead link until they are republished, which is the
                          price the snapshot model pays.
+        UpdateSecretBlockPolicyRequest:
+            required:
+                - name
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: 'Required. Format: secretBlocks/{secret_block}'
+                policy:
+                    allOf:
+                        - $ref: '#/components/schemas/SecretBlockPolicy'
+                    description: The new policy. Unset lifts the restriction.
         UpdateWorkspaceFolderSortRequest:
             required:
                 - parent
