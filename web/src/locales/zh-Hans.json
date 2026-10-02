@@ -183,7 +183,8 @@
       "popover": "悬浮提示"
     },
     "secret": {
-      "block": "密文块"
+      "block": "密文块",
+      "restricted": "受限密钥"
     },
     "view": {
       "trigger": "视图",
@@ -1458,7 +1459,58 @@
     "no-master-key": "请先设置主口令，然后才能创建加密块。",
     "unlock-first": "输入主口令解锁本次会话，然后创建此块。",
     "unlock-dialog-title": "解锁主口令",
-    "unlock-dialog-description": "解锁后即可查看本次会话中的加密内容和已锁定附件。"
+    "unlock-dialog-description": "解锁后即可查看本次会话中的加密内容和已锁定附件。",
+    "restricted": {
+      "badge-low": "受限 · 低影响",
+      "badge-high": "受限 · 高影响",
+      "mode-plain": "普通加密块",
+      "mode-restricted": "受限密钥（解锁需要申请并等待）",
+      "preset-label": "影响等级",
+      "preset-high": "高影响：8:00–18:00 申请等 30 分钟，其他时间等到下一个 8:00；每 30 天可紧急解锁 1 次",
+      "preset-low": "低影响：任何时间申请都等到下一个 8:00，没有紧急通道",
+      "prompt-placeholder": "给未来自己的话（每次申请前必读）",
+      "confirm-text-placeholder": "确认文本（申请时必须逐字手输）",
+      "content-placeholder": "要保护的密码或内容",
+      "offline-backup": "我已在 Toucan 之外保存了一份离线备份",
+      "offline-backup-hint": "Toucan 不可用时（服务宕机、忘记主口令），这里的密码会彻底拿不到。高影响密钥必须另有离线备份。",
+      "limitations": "限制由服务器执行，用来拦住冲动，不防管理员：直接读数据库、改服务器时钟、或在查看期间用开发者工具，仍然能拿到内容。",
+      "locked": "已锁定。查看前需要先申请，等待一段时间后才能打开。",
+      "request": "申请解锁",
+      "prompt-title": "给未来自己的话",
+      "confirm-instruction": "逐字手输下面这句话（不能粘贴）",
+      "submit-request": "提交申请",
+      "pending": "已申请，{{time}} 之后可以查看",
+      "cancel-request": "取消申请",
+      "ready": "已可查看，{{time}} 前有效；开始查看后有 {{minutes}} 分钟",
+      "open": "查看窗口进行中，{{time}} 结束",
+      "view": "开始查看",
+      "viewing-until": "{{time}} 自动关闭",
+      "hold-to-reveal": "按住一段显示，松开即隐藏",
+      "segment": "第 {{n}} 段",
+      "close": "关闭",
+      "emergency": "紧急解锁",
+      "emergency-remaining": "紧急解锁本周期剩余 {{count}} 次，使用后会留下记录",
+      "emergency-next": "紧急额度已用完，{{time}} 恢复",
+      "emergency-statement": "逐字手输紧急声明（不能粘贴）",
+      "emergency-reason": "为什么不能等到明天？（至少 {{count}} 个字，会一直显示在这里）",
+      "emergency-submit": "立即解锁",
+      "last-emergency": "上次紧急解锁：{{time}}，原因：{{reason}}",
+      "replace": "替换内容",
+      "replace-hint": "直接写入新内容，旧内容不会显示。",
+      "replace-save": "保存新内容",
+      "settings": "限制设置",
+      "settings-wait": "对受限块的任何修改（包括解除限制）都要等待，和申请解锁的等待时间一样。",
+      "save-settings": "提交修改",
+      "lift": "解除限制",
+      "pending-change-update": "新规则将于 {{time}} 生效",
+      "pending-change-lift": "限制将于 {{time}} 解除",
+      "cancel-change": "撤销修改",
+      "error": {
+        "request-failed": "申请失败。",
+        "view-failed": "无法打开。",
+        "update-failed": "修改失败。"
+      }
+    }
   },
   "drawio": {
     "edit": "在 draw.io 中编辑",

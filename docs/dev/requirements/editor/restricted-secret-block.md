@@ -25,7 +25,8 @@
   **只由服务端 `secret_block` 记录决定**，不写在 md 里——写在 md 里等于半夜改一下文档就解除了。
 - 加密方式完全复用主口令 + 主密钥那一套，服务端仍然不碰密码学。新增的只是一条**访问规则**：
   服务端决定"此刻是否下发密文"。
-- 编辑器 Secret 菜单在"Secret block"下新增"受限密钥"入口。
+- 编辑器 Secret 菜单在"Secret block"下新增"受限密钥"入口。它插入的占位 id 带 `local-r-` 前缀，
+  只用于让初始化卡片默认选中受限模式；初始化后 id 换成服务端 uid，前缀随之消失。
 
 ## 闸门必须在服务端
 
@@ -101,8 +102,11 @@
 
 如果改规则或删块能立刻生效，半夜把冷却改成 0 就绕过了。因此：
 
-- **改规则（含两段文字、预设档位、时区）、解除受限、删除块**都进入"待生效"状态，生效时间按
+- **改规则（含两段文字、预设档位、时区）、解除受限**都进入"待生效"状态，生效时间按
   **当前规则的普通申请**计算（不能走紧急通道）。待生效期间可撤销。
+- **受限块不能直接删除**：`DeleteSecretBlock` 对受限块返回 `FailedPrecondition`，必须先解除受限
+  （走上一条的等待），解除生效后再删。这样"删除"不需要一套自己的待生效逻辑，也不会出现
+  "删除排队中、内容还在"的中间态。
 - 不区分"收紧"和"放宽"，一律等待。这类修改很少，统一处理比判断哪个字段变松更不容易出漏洞。
 - 把普通加密块升级为受限块是立即生效的（只会让自己更难拿到）。
 - **替换密文内容**（`UpdateSecretBlock`）可以立即进行：它只写入新内容，不会读出旧明文。
@@ -131,10 +135,16 @@ Toucan 自身不可用时（NAS 断电、服务起不来、忘了主口令），
 - `secret_block` 增加规则字段和待生效修改字段；新增解锁申请记录表，每次申请（含紧急）一行，
   记录 `kind / reason / requested_at / available_at / opened_at / expires_at / canceled_at`。
   紧急额度和"上次紧急解锁"都从这张表算。迁移只写 `store/migration/sqlite/`，同步 `LATEST.sql`。
-- 新增 `RequestUnlock`、`CancelUnlock`、修改规则（进入待生效）、撤销待生效修改的接口；
-  删除受限块走待生效，不立即删除。
-- `ListSecretBlocks` 的摘要带上受限状态（档位、当前申请状态、`available_at`、待生效修改），
-  前端靠它决定渲染方式，仍然不返回密文。
+- 新增接口：`GetSecretBlockSummary`、`RequestSecretBlockUnlock`、`CancelSecretBlockUnlock`、
+  `UpdateSecretBlockPolicy`（不带 policy 即解除受限）、`CancelSecretBlockPolicyChange`。
+  `CreateSecretBlock` 可选带 policy，直接创建受限块。
+- `GetSecretBlockSummary` 和 `ListSecretBlocks` 带受限状态（规则、申请状态、`available_time` /
+  `expire_time`、紧急额度、上次紧急解锁、待生效修改），**不带密文**。前端渲染卡片只用摘要；
+  受限块的 `GetSecretBlock` 第一次成功就开始计查看窗口，所以只在读者点"开始查看"时调用。
+- 客户端只提交预设档位、时区和两段文字，所有数值（等待时长、工作时段、额度）由服务端按预设
+  填入**并随记录持久化**——以后调整预设不会悄悄放宽已存在的块。
+- 紧急声明是固定句子，中英各一句，服务端只认这两句（`secretEmergencyStatements`，前端
+  `EMERGENCY_STATEMENTS` 镜像），改动必须两边同步。
 - 待生效修改**在读取时惰性应用**，不依赖后台任务。
 - 所有新接口和普通加密块一样需要登录、只允许 `creator_id == 当前用户`，不进 `PublicMethods`。
 
