@@ -1,4 +1,4 @@
-import { PlusIcon } from "lucide-react";
+import { PlusIcon, XIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -24,6 +24,7 @@ interface CalendarDayDetailProps {
   onAddItems?: (date: string, rawInput: string) => void;
   onSetItemStatus?: (date: string, itemIndex: number, marker: string) => void;
   onToggleEvent?: (date: string, name: string, occurred: boolean) => void;
+  onSetEventComment?: (date: string, name: string, comment: string) => void;
 }
 
 export const CalendarDayDetail = ({
@@ -34,10 +35,13 @@ export const CalendarDayDetail = ({
   onAddItems,
   onSetItemStatus,
   onToggleEvent,
+  onSetEventComment,
 }: CalendarDayDetailProps) => {
   const t = useTranslate();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
+  // 下方输入框的写入目标：undefined 时添加待办；为 event 名称时编辑该 event 的评论。
+  const [commentTarget, setCommentTarget] = useState<string>();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   if (!selectedDate) {
@@ -46,11 +50,52 @@ export const CalendarDayDetail = ({
 
   // 拆分：event 打点 vs. 普通任务。任务保留其在 group.items 中的原始下标，
   // 以便与 onToggleItem 的索引口径（parseCalendarBlock 的 items 顺序）对齐。
-  const occurredEvents = new Set((group?.items ?? []).filter((i) => i.isEvent).map((i) => i.text));
+  const visibleEventItems = (group?.items ?? []).filter((i) => i.isEvent && !i.hidden);
+  const occurredEvents = new Set(visibleEventItems.map((i) => i.text));
+  const eventComments = new Map(visibleEventItems.filter((i) => i.comment).map((i) => [i.text, i.comment!]));
+  // 取消勾选时保留下来的评论，重新勾选会恢复，所以选中目标时也要能预填。
+  const keptComment = (name: string) =>
+    eventComments.get(name) ?? (group?.items ?? []).find((i) => i.isEvent && i.hidden && i.text === name)?.comment;
   const taskItems = (group?.items ?? []).map((item, index) => ({ item, index })).filter(({ item }) => !item.isEvent);
   const displayEvents = events.filter((name) => occurredEvents.has(name));
 
+  const resetCommentTarget = () => {
+    setCommentTarget(undefined);
+    setDraft("");
+  };
+
+  // 切到某个 event 的评论：有已存评论就预填，没有则保留已输入的文字。
+  const selectCommentTarget = (name: string) => {
+    if (!onSetEventComment) return;
+    setCommentTarget(name);
+    const comment = keptComment(name);
+    if (comment !== undefined) setDraft(comment);
+    textareaRef.current?.focus();
+  };
+
+  const handleToggleEvent = (name: string, occurred: boolean) => {
+    onToggleEvent?.(selectedDate, name, occurred);
+    if (occurred) {
+      selectCommentTarget(name);
+    } else if (name === commentTarget) {
+      resetCommentTarget();
+    }
+  };
+
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    // 评论草稿不跨次保留，免得下次打开时被当成待办提交。
+    if (!next && commentTarget) resetCommentTarget();
+  };
+
   const handleSave = () => {
+    if (commentTarget) {
+      if (draft.trim() !== (eventComments.get(commentTarget) ?? "")) {
+        onSetEventComment?.(selectedDate, commentTarget, draft);
+      }
+      handleOpenChange(false);
+      return;
+    }
     if (!draft.trim()) {
       setOpen(false);
       return;
@@ -95,7 +140,7 @@ export const CalendarDayDetail = ({
   const canToggleEvents = !readonly && Boolean(onToggleEvent) && events.length > 0;
 
   const addButton = canEdit && (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="size-6 mr-1 text-muted-foreground hover:text-foreground">
           <PlusIcon className="size-4" />
@@ -109,29 +154,69 @@ export const CalendarDayDetail = ({
                 <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   {t("markdown.calendar-block.events")}
                 </span>
-                {events.map((name) => (
-                  <label key={name} className="flex cursor-pointer items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={occurredEvents.has(name)}
-                      onCheckedChange={(checked) => onToggleEvent?.(selectedDate, name, checked === true)}
-                      className="shrink-0"
-                    />
-                    <span
-                      className="h-2 w-2 shrink-0 rounded-full"
-                      style={{ backgroundColor: getEventColorByName(name, events) }}
-                      aria-hidden="true"
-                    />
-                    <span>{name}</span>
-                  </label>
-                ))}
+                {events.map((name) => {
+                  const occurred = occurredEvents.has(name);
+                  return (
+                    <div
+                      key={name}
+                      className={cn("flex items-center gap-2 rounded-md px-1 -mx-1 text-sm", name === commentTarget && "bg-muted")}
+                    >
+                      <Checkbox
+                        checked={occurred}
+                        onCheckedChange={(checked) => handleToggleEvent(name, checked === true)}
+                        className="shrink-0"
+                        aria-label={name}
+                      />
+                      {/* 点名称：未勾选时等同勾选；已勾选时切到给它写评论 */}
+                      <button
+                        type="button"
+                        className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 py-0.5 text-left"
+                        onClick={() => (occurred ? selectCommentTarget(name) : handleToggleEvent(name, true))}
+                      >
+                        <span
+                          className="h-2 w-2 shrink-0 rounded-full"
+                          style={{ backgroundColor: getEventColorByName(name, events) }}
+                          aria-hidden="true"
+                        />
+                        <span className="shrink-0">{name}</span>
+                        {occurred && eventComments.has(name) && (
+                          <span className="truncate text-xs text-muted-foreground">{eventComments.get(name)}</span>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
               <div className="border-t border-border/40" />
             </>
           )}
+          {commentTarget && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="uppercase tracking-wide">{t("markdown.calendar-block.comment")}</span>
+              <span
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{ backgroundColor: getEventColorByName(commentTarget, events) }}
+                aria-hidden="true"
+              />
+              <span className="min-w-0 flex-1 truncate text-foreground">{commentTarget}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-5 text-muted-foreground hover:text-foreground"
+                onClick={resetCommentTarget}
+                aria-label={t("markdown.calendar-block.add-tasks-instead")}
+                title={t("markdown.calendar-block.add-tasks-instead")}
+              >
+                <XIcon className="size-3.5" />
+              </Button>
+            </div>
+          )}
           <Textarea
             ref={textareaRef}
             autoFocus
-            placeholder={"Buy milk\nRead a book"}
+            placeholder={
+              commentTarget ? t("markdown.calendar-block.comment-placeholder", { name: commentTarget }) : "Buy milk\nRead a book"
+            }
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -174,7 +259,8 @@ export const CalendarDayDetail = ({
                 style={{ backgroundColor: getEventColorByName(name, events) }}
                 aria-hidden="true"
               />
-              <span>{name}</span>
+              <span className="shrink-0">{name}</span>
+              {eventComments.has(name) && <span className="min-w-0 text-muted-foreground">{eventComments.get(name)}</span>}
             </li>
           ))}
         </ul>

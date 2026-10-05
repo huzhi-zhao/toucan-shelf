@@ -19,6 +19,11 @@ export const CalendarDayCell = ({ day, items, dayEvents, events, showTaskDot, on
   const hasTasks = taskItems.length > 0;
   const previewItems = taskItems.slice(0, MAX_PREVIEW_ITEMS);
   const hasEvents = dayEvents.length > 0;
+  // 悬停圆点时连同评论一起提示，如 "💪运动：跑步10分钟"。
+  const eventTitle = (name: string) => {
+    const comment = items.find((item) => item.isEvent && !item.hidden && item.text === name)?.comment;
+    return comment ? `${name}：${comment}` : name;
+  };
   // 上/下月的格子照常画日期与打点，但整体置灰、不可点击，只作为上下文参考。
   const isOutside = !day.isCurrentMonth;
   const isInteractive = Boolean(onClick) && !isOutside;
@@ -81,7 +86,7 @@ export const CalendarDayCell = ({ day, items, dayEvents, events, showTaskDot, on
                 <span
                   className="h-2 w-2 shrink-0 rounded-full"
                   style={{ backgroundColor: getEventColorByName(name, events) }}
-                  title={isOutside ? undefined : name}
+                  title={isOutside ? undefined : eventTitle(name)}
                 />
               )}
             </div>

@@ -5,6 +5,8 @@ export interface CalendarItem {
   checked?: boolean; // undefined = 无 checkbox 的纯文本条目
   marker?: string; // 扩展状态标记（" " | "x" | "/" | ...），undefined = 纯文本条目
   isEvent?: boolean; // true = 该条目是一次 event 打点（text 为 event 名称）
+  comment?: string; // event 打点附带的评论（`- @3 跑步10分钟`）
+  hidden?: boolean; // 已取消勾选但保留评论的 event（`- ~@3 跑步10分钟`），不算发生
 }
 
 export interface CalendarGroup {
@@ -25,7 +27,8 @@ const ALLOW_MAX_UPDATE_DAYS_RE = /^@?allowMaxUpdateDays:\s*(\d+)\s*$/i;
 const WEEK_START_DAY_RE = /^@?weekStartDay:\s*([1-7])\s*$/i;
 const SHOW_TASK_DOT_RE = /^@?showTaskDot:\s*(true|false)\s*$/i;
 const DATE_LINE_RE = /^-\s+(\d{4}-\d{2}-\d{2})\s*$/;
-const EVENT_ITEM_RE = /^-\s+@(.+)$/;
+// `~@` 表示该 event 已取消、只为保留评论而留下的行。
+const EVENT_ITEM_RE = /^-\s+(~?)@(.+)$/;
 // 方括号内接受任意扩展状态字符；未知字符按纯文本处理。
 const ITEM_LINE_RE = /^-\s+(?:\[(.)\]\s+)?(.+)$/;
 
@@ -48,6 +51,28 @@ export function resolveEventRef(ref: string, events: string[]): string {
   return ref;
 }
 
+/**
+ * 拆分 `- @` 之后的内容为 event 名称与评论。
+ * 下标引用以第一个空白分隔（`3 跑步10分钟`）；旧的名称引用取最长匹配的已声明名称作前缀，
+ * 其后为评论。都匹配不上时整段视为名称（兼容未声明的旧数据）。
+ */
+export function parseEventBody(body: string, events: string[]): { name: string; comment?: string } {
+  const trimmed = body.trim();
+  const numeric = /^(\d+)(?:\s+(.*))?$/.exec(trimmed);
+  if (numeric) {
+    return { name: resolveEventRef(numeric[1], events), comment: numeric[2]?.trim() || undefined };
+  }
+  let best: string | undefined;
+  for (const name of events) {
+    const fits = trimmed === name || (trimmed.startsWith(name) && /\s/.test(trimmed.charAt(name.length)));
+    if (fits && (!best || name.length > best.length)) best = name;
+  }
+  if (best) {
+    return { name: best, comment: trimmed.slice(best.length).trim() || undefined };
+  }
+  return { name: trimmed };
+}
+
 /** 写入时使用的引用形式：已预定义的 event 用 1 基下标，否则退回名称。 */
 export function eventRefFor(name: string, events: string[]): string {
   const index = events.indexOf(name);
@@ -63,7 +88,7 @@ export function parseCalendarBlock(raw: string): ParsedCalendar {
   let ungrouped: CalendarGroup | undefined;
   let current: CalendarGroup | undefined;
   // event 引用可能是下标，而 events: 行不保证出现在数据之前，故先记下待解析的条目。
-  const pendingEventItems: { item: CalendarItem; ref: string }[] = [];
+  const pendingEventItems: { item: CalendarItem; body: string }[] = [];
 
   for (const line of raw.split("\n")) {
     const daysMatch = ALLOW_MAX_UPDATE_DAYS_RE.exec(line.trim());
@@ -101,9 +126,9 @@ export function parseCalendarBlock(raw: string): ParsedCalendar {
 
     const eventMatch = EVENT_ITEM_RE.exec(line);
     if (eventMatch) {
-      const ref = eventMatch[1].trim();
-      const item: CalendarItem = { text: ref, isEvent: true };
-      pendingEventItems.push({ item, ref });
+      const body = eventMatch[2].trim();
+      const item: CalendarItem = { text: body, isEvent: true, hidden: eventMatch[1] === "~" || undefined };
+      pendingEventItems.push({ item, body });
       if (current) {
         current.items.push(item);
       } else {
@@ -135,8 +160,10 @@ export function parseCalendarBlock(raw: string): ParsedCalendar {
     }
   }
 
-  for (const { item, ref } of pendingEventItems) {
-    item.text = resolveEventRef(ref, events);
+  for (const { item, body } of pendingEventItems) {
+    const { name, comment } = parseEventBody(body, events);
+    item.text = name;
+    if (comment) item.comment = comment;
   }
 
   if (ungrouped) {
