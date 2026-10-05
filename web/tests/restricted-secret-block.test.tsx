@@ -209,6 +209,27 @@ describe("restricted secret block", () => {
     expect(copy.defaultPrevented).toBe(true);
   });
 
+  // With a ```mask block in the payload, only that part is the secret: the
+  // account name and notes render as ordinary text.
+  it("hides only the ```mask part of an opened secret", async () => {
+    const expire = timestampFromDate(new Date(Date.now() + 10 * 60 * 1000));
+    client.getSecretBlockSummary.mockResolvedValue(restrictedSummary(SecretBlockRestriction_UnlockState.READY, { expireTime: expire }));
+    client.getSecretBlock.mockResolvedValue({
+      name: "secretBlocks/abc123",
+      hint: "Mac admin",
+      envelope: await encryptWithMasterKey(`Mac 管理员账户：AAA 密码:\n\n\`\`\`mask\n${SECRET}\n\`\`\``, masterKey),
+      restriction: restrictedSummary(SecretBlockRestriction_UnlockState.OPEN, { expireTime: expire }).restriction,
+    });
+    const { container } = renderBlock("v: 1\nid: abc123");
+    await waitFor(() => screen.getByRole("button", { name: "secret-block.restricted.view" }));
+    fireEvent.click(screen.getByRole("button", { name: "secret-block.restricted.view" }));
+
+    await waitFor(() => expect(screen.getByText(/Mac 管理员账户：AAA/)).toBeInTheDocument());
+    expect(screen.getAllByRole("button", { name: "mask-block.segment" })).toHaveLength(3);
+    expect(container.textContent).not.toContain(SECRET);
+    expect(container.textContent).not.toContain("Zx9-");
+  });
+
   // Replacing never shows the old content, so it needs no unlock and never
   // fetches the envelope.
   // A restricted block is one-shot: replacing it blind would destroy the only

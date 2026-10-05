@@ -1,6 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { CheckIcon, CopyIcon, LoaderCircleIcon, LockIcon, LockOpenIcon, PencilIcon, TriangleAlertIcon } from "lucide-react";
-import { createContext, type FormEvent, useContext, useEffect, useRef, useState } from "react";
+import { type FormEvent, useContext, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,19 +29,13 @@ import { getSecretMasterKey } from "@/utils/secret-session";
 import { useBlockSource } from "./BlockSourceContext";
 import { MemoMarkdownRenderer } from "./MemoMarkdownRenderer";
 import { type PolicyDraft, PolicyFields, policyFromDraft, RestrictedSecretBlock } from "./RestrictedSecretBlock";
+import { InsideSecretBlock, NO_MENTIONS } from "./SecretBlockNesting";
 import { extractCodeContent } from "./utils";
 
 interface SecretBlockProps {
   children?: React.ReactNode;
   className?: string;
 }
-
-// A decrypted payload is rendered as markdown, so it could itself contain a
-// `toucan-secret` fence. This flag stops that from nesting unlock cards inside
-// unlock cards; nested fences fall through to a plain locked card with no form.
-const InsideSecretBlock = createContext(false);
-
-const NO_MENTIONS = new Set<string>();
 
 const SETTINGS_LINK = `${ROUTES.SETTING}#preference`;
 
@@ -521,7 +515,7 @@ export const SecretBlock = ({ children, className }: SecretBlockProps) => {
             <div className="flex w-full max-w-xl flex-col gap-2">
               <PolicyFields draft={restrictedDraft} onChange={setRestrictedDraft} busy={busy} t={t} />
               <Textarea
-                rows={3}
+                rows={7}
                 autoComplete="off"
                 spellCheck={false}
                 className="font-mono text-sm"

@@ -5,11 +5,13 @@ import { isValidElement, type ReactElement, type ReactNode, type SyntheticEvent,
 import { useAuth } from "@/contexts/AuthContext";
 import { markdownStyles } from "@/lib/markdownStyles";
 import { cn } from "@/lib/utils";
+import { MASK_BLOCK_LANGUAGE } from "@/utils/mask-block";
 import { SECRET_BLOCK_LANGUAGE } from "@/utils/secret-block";
 import { getThemeWithFallback, resolveTheme } from "@/utils/theme";
 import { CalendarBlock } from "./CalendarBlock";
 import { GridBlock } from "./GridBlock";
 import { KanbanBlock } from "./KanbanBlock";
+import { MaskBlock } from "./MaskBlock";
 import { MermaidBlock } from "./MermaidBlock";
 import type { ReactMarkdownProps } from "./markdown/types";
 import { SecretBlock } from "./SecretBlock";
@@ -122,6 +124,16 @@ export const CodeBlock = ({ children, className, node: _node, ...props }: CodeBl
         <SecretBlock className={cn(className)} {...props}>
           {children}
         </SecretBlock>
+      </div>
+    );
+  }
+
+  // A ```mask block: canvas segments revealed by holding, no DOM text. Usable in
+  // any document, and inside a secret block's payload to hide just one part.
+  if (language === MASK_BLOCK_LANGUAGE) {
+    return (
+      <div className={cn("relative", markdownStyles.blockWrapper)}>
+        <MaskBlock className={cn(className)}>{children}</MaskBlock>
       </div>
     );
   }
