@@ -22,6 +22,7 @@ import {
 } from "@/types/proto/api/v1/secret_block_service_pb";
 import type { Translations } from "@/utils/i18n";
 import { useTranslate } from "@/utils/i18n";
+import { containsMaskBlock } from "@/utils/mask-block";
 import { decryptWithMasterKey, isMasterEnvelope, type SecretEnvelope } from "@/utils/secret-crypto";
 import {
   browserTimeZone,
@@ -31,6 +32,8 @@ import {
   typedTextMatches,
 } from "@/utils/secret-restriction";
 import { getSecretMasterKey } from "@/utils/secret-session";
+import { MemoMarkdownRenderer } from "./MemoMarkdownRenderer";
+import { InsideSecretBlock, NO_MENTIONS } from "./SecretBlockNesting";
 import { blockCopyProps, blockPasteProps, CanvasText, SegmentedSecret } from "./SecretCanvas";
 
 // The time-gated form of a secret block. Every decision about *when* it opens is
@@ -192,7 +195,15 @@ export const RestrictedSecretBlock = ({ summary, title, className }: RestrictedS
           </p>
           {plaintext === "" ? (
             <p className="text-sm text-muted-foreground">{t("secret-block.empty")}</p>
+          ) : containsMaskBlock(plaintext) ? (
+            // The owner marked which part is the secret: everything else (account
+            // names, notes) renders as ordinary markdown, and only the ```mask
+            // parts are drawn as held-to-reveal canvas segments.
+            <InsideSecretBlock.Provider value={true}>
+              <MemoMarkdownRenderer content={plaintext} resolvedMentionUsernames={NO_MENTIONS} />
+            </InsideSecretBlock.Provider>
           ) : (
+            // Nothing marked: the whole payload is treated as the secret.
             <SegmentedSecret text={plaintext} segmentLabel={(n) => t("secret-block.restricted.segment", { n })} />
           )}
           <div>

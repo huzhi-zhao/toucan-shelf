@@ -282,7 +282,8 @@
     },
     "secret": {
       "block": "Secret block",
-      "restricted": "Restricted secret"
+      "restricted": "Restricted secret",
+      "mask": "Masked text"
     },
     "view": {
       "trigger": "View",
@@ -1571,7 +1572,7 @@
       "preset-low": "Low impact: every request waits until the next 08:00; no emergency unlock",
       "prompt-placeholder": "A note to your future self (shown before every request)",
       "confirm-text-placeholder": "Confirmation text (must be typed exactly to request)",
-      "content-placeholder": "The password or content to protect",
+      "content-placeholder": "Content to protect, Markdown supported. For example:\nMac admin account: AAA\nPassword:\n```mask\naaaaaaaa\n```\nOnly the ```mask part is masked; without one, everything is.",
       "offline-backup": "I have an offline copy of this outside Toucan",
       "offline-backup-hint": "If Toucan is unavailable (server down, master passphrase forgotten) this secret is unreachable. A high-impact key needs an offline copy.",
       "limitations": "The server enforces this to stop impulses, not administrators: reading the database, changing the server clock, or developer tools during viewing can still get the content.",
@@ -1647,5 +1648,10 @@
     "feature-storage-title": "Attachments",
     "feature-storage-body": "Files live in local storage or S3-compatible object storage, always served through the app with access checks.",
     "footer": "Self-hosted · single Go binary · SQLite"
+  },
+  "mask-block": {
+    "hold-to-reveal": "Masked: hold a segment to show it, release to hide",
+    "segment": "Segment {{n}}",
+    "empty": "(empty)"
   }
 }

@@ -184,7 +184,8 @@
     },
     "secret": {
       "block": "密文块",
-      "restricted": "受限密钥"
+      "restricted": "受限密钥",
+      "mask": "遮挡文本"
     },
     "view": {
       "trigger": "视图",
@@ -1470,7 +1471,7 @@
       "preset-low": "低影响：任何时间申请都等到下一个 8:00，没有紧急通道",
       "prompt-placeholder": "给未来自己的话（每次申请前必读）",
       "confirm-text-placeholder": "确认文本（申请时必须逐字手输）",
-      "content-placeholder": "要保护的密码或内容",
+      "content-placeholder": "要保护的内容，支持 Markdown。例如：\nMac 管理员账户：AAA\n密码：\n```mask\naaaaaaaa\n```\n只有 ```mask 里的部分会被遮挡；不写 ```mask 则整段遮挡。",
       "offline-backup": "我已在 Toucan 之外保存了一份离线备份",
       "offline-backup-hint": "Toucan 不可用时（服务宕机、忘记主口令），这里的密码会彻底拿不到。高影响密钥必须另有离线备份。",
       "limitations": "限制由服务器执行，用来拦住冲动，不防管理员：直接读数据库、改服务器时钟、或在查看期间用开发者工具，仍然能拿到内容。",
@@ -1546,5 +1547,10 @@
     "feature-storage-title": "附件",
     "feature-storage-body": "文件存放在本地或 S3 兼容对象存储，始终经由应用鉴权后提供访问。",
     "footer": "自托管 · 单个 Go 二进制 · SQLite"
+  },
+  "mask-block": {
+    "hold-to-reveal": "遮挡内容：按住一段显示，松开即隐藏",
+    "segment": "第 {{n}} 段",
+    "empty": "（空）"
   }
 }

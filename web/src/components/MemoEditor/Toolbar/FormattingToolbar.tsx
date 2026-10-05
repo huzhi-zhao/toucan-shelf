@@ -4,6 +4,7 @@ import {
   CheckIcon,
   CircleCheckIcon,
   CircleHelpIcon,
+  EyeOffIcon,
   FlameIcon,
   Heading1Icon,
   Heading2Icon,
@@ -368,6 +369,10 @@ export function FormattingToolbar({ controllerRef, onExit, className }: Formatti
           >
             <ShieldIcon className="w-4 h-4" />
             {t("editor.secret.restricted")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => controllerRef.current?.insertMarkdown("\n```mask\n\n```\n")}>
+            <EyeOffIcon className="w-4 h-4" />
+            {t("editor.secret.mask")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
