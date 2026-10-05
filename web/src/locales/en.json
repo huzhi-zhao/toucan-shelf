@@ -358,7 +358,10 @@
       "no-records": "No records for {{date}}",
       "ungrouped": "Ungrouped",
       "filter": "Filter",
-      "tasks": "Tasks"
+      "tasks": "Tasks",
+      "comment": "Comment",
+      "comment-placeholder": "Comment on {{name}}",
+      "add-tasks-instead": "Add tasks instead"
     },
     "checkbox": "Checkbox",
     "code-block": "Code block",

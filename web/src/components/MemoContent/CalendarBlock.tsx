@@ -8,7 +8,7 @@ import { CalendarMonthGrid } from "./calendar/CalendarMonthGrid";
 import { CalendarUngroupedSection } from "./calendar/CalendarUngroupedSection";
 import { defaultVisibleMonth, type VisibleMonth } from "./calendar/defaultVisibleMonth";
 import { type CalendarItem, parseCalendarBlock } from "./calendar/parseCalendarBlock";
-import { setCalendarItemStatus, toggleCalendarEvent, upsertCalendarItem } from "./calendar/upsertCalendarItem";
+import { setCalendarEventComment, setCalendarItemStatus, toggleCalendarEvent, upsertCalendarItem } from "./calendar/upsertCalendarItem";
 import { extractCodeContent } from "./utils";
 
 interface CalendarBlockProps {
@@ -55,10 +55,16 @@ export const CalendarBlock = ({ children }: CalendarBlockProps) => {
     blockSource.save(toggleCalendarEvent(blockSource.source, date, name, occurred, events));
   };
 
+  const handleSetEventComment = (date: string, name: string, comment: string) => {
+    if (!blockSource || !isDateEditable(date)) return;
+    blockSource.save(setCalendarEventComment(blockSource.source, date, name, comment, events));
+  };
+
   const itemCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const group of datedGroups) {
-      counts[group.date!] = group.items.length;
+      // 取消勾选后为保留评论而留下的 event 行不算记录。
+      counts[group.date!] = group.items.filter((item) => !item.hidden).length;
     }
     return counts;
   }, [datedGroups]);
@@ -77,7 +83,7 @@ export const CalendarBlock = ({ children }: CalendarBlockProps) => {
     for (const group of datedGroups) {
       const names: string[] = [];
       for (const item of group.items) {
-        if (item.isEvent && events.includes(item.text) && !names.includes(item.text)) {
+        if (item.isEvent && !item.hidden && events.includes(item.text) && !names.includes(item.text)) {
           names.push(item.text);
         }
       }
@@ -137,6 +143,7 @@ export const CalendarBlock = ({ children }: CalendarBlockProps) => {
             onAddItems={blockSource ? handleAddItems : undefined}
             onSetItemStatus={blockSource ? handleSetItemStatus : undefined}
             onToggleEvent={blockSource ? handleToggleEvent : undefined}
+            onSetEventComment={blockSource ? handleSetEventComment : undefined}
           />
         </div>
       </div>
