@@ -48,6 +48,12 @@ func escapeDestination(dest []byte) string {
 	return destinationEscaper.Replace(string(dest))
 }
 
+// EscapeDestination is escapeDestination for callers that write a destination
+// into source text themselves rather than through Render.
+func EscapeDestination(dest string) string {
+	return destinationEscaper.Replace(dest)
+}
+
 var destinationEscaper = strings.NewReplacer(
 	" ", "%20",
 	"\t", "%09",

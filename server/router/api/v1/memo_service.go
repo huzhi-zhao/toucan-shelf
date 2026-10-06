@@ -169,7 +169,11 @@ func (s *APIV1Service) CreateMemo(ctx context.Context, request *v1pb.CreateMemoR
 	if err != nil {
 		return nil, err
 	}
-	if subDocParent != nil {
+	if subDocParent == nil {
+		if err := checkUserFolderPath(create.FolderPath); err != nil {
+			return nil, err
+		}
+	} else {
 		// A sub-document is part of the document it hangs off, so it belongs to
 		// that document's knowledge base and is exactly as visible as it is.
 		// Without this it would land in the creator's *default* workspace (an
@@ -697,6 +701,8 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 	titleUpdated := false
 	var previousFolderPath string
 	folderPathUpdated := false
+	// Set when this update files an ordinary document under another one.
+	var attachParent *store.Memo
 	memoArchived := false
 	previousVisibility := memo.Visibility
 	previousRowStatus := memo.RowStatus
@@ -806,9 +812,27 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 			// location a user chose — moving it would either strand it outside
 			// the tree with no parent or silently re-parent it. Neither is a
 			// move; both are rejected. Promoting a sub-document to a real
-			// document is a create-and-delete, done deliberately.
-			if IsReservedFolderPath(memo.FolderPath) || IsReservedFolderPath(folderPath) {
+			// document is a create-and-delete, done deliberately. Restating the
+			// path it already has is not a move (memogit sends folder path and
+			// title together on a rename).
+			if IsReservedFolderPath(memo.FolderPath) {
+				if folderPath == memo.FolderPath {
+					continue
+				}
 				return nil, status.Errorf(codes.InvalidArgument, "a sub-document cannot be moved")
+			}
+			if IsReservedFolderPath(folderPath) {
+				// The other direction is allowed: an ordinary document filed
+				// under another one becomes its sub-document in place, keeping
+				// its uid, history and comments. The binding itself is written
+				// after the row update below.
+				parent, err := s.prepareSubDocAttach(ctx, user, memo, folderPath)
+				if err != nil {
+					return nil, err
+				}
+				attachParent = parent
+			} else if err := checkUserFolderPath(folderPath); err != nil {
+				return nil, err
 			}
 			folderPathUpdated = true
 			previousFolderPath = memo.FolderPath
@@ -848,6 +872,16 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 		}
 	}
 
+	if attachParent != nil {
+		if workspaceChanged {
+			return nil, status.Errorf(codes.InvalidArgument,
+				"cannot move a document to another knowledge base and make it a sub-document in one update")
+		}
+		// A sub-document is exactly as visible as the document it belongs to,
+		// whatever visibility the same request may have asked for.
+		update.Visibility = &attachParent.Visibility
+	}
+
 	// Record who authored what is now stored. The payload is the one loaded with
 	// the memo and mutated in place by the mask loop above, so this rides along
 	// with whatever else changed; it is assigned to update.Payload unconditionally
@@ -874,6 +908,29 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 			return nil, duplicateMemoPathError(err)
 		}
 		return nil, status.Errorf(codes.Internal, "failed to update memo")
+	}
+
+	// Bind an attached sub-document to its parent — the same COMMENT relation
+	// CreateMemo writes for a new one. Before the reload below, so the
+	// returned memo already carries its parent.
+	if attachParent != nil {
+		if _, err := s.Store.UpsertMemoRelation(ctx, &store.MemoRelation{
+			MemoID:        memo.ID,
+			RelatedMemoID: attachParent.ID,
+			Type:          store.MemoRelationComment,
+		}); err != nil {
+			// Without the relation the row sits under "_sub/<uid>" with no parent:
+			// out of the tree and reachable by nothing. Put it back where it was.
+			if restoreErr := s.Store.UpdateMemo(ctx, &store.UpdateMemo{
+				ID:         memo.ID,
+				FolderPath: &previousFolderPath,
+				Visibility: &previousVisibility,
+			}); restoreErr != nil {
+				slog.Warn("failed to restore document after a failed sub-document attach",
+					slog.Int("memoID", int(memo.ID)), slog.Any("err", restoreErr))
+			}
+			return nil, status.Errorf(codes.Internal, "failed to bind sub-document to its parent")
+		}
 	}
 
 	memo, err = s.Store.GetMemo(ctx, &store.FindMemo{

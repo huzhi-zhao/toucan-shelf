@@ -431,6 +431,9 @@ func (s *APIV1Service) CreateWorkspaceFolder(ctx context.Context, request *v1pb.
 		return nil, status.Errorf(codes.InvalidArgument, "folder path is required")
 	}
 	path := normalizeFolderPath(request.Folder.Path)
+	if err := checkUserFolderPath(path); err != nil {
+		return nil, err
+	}
 
 	folder, err := s.Store.CreateWorkspaceFolder(ctx, &store.WorkspaceFolder{
 		WorkspaceID: workspace.ID,
@@ -537,6 +540,9 @@ func (s *APIV1Service) RenameWorkspaceFolder(ctx context.Context, request *v1pb.
 	newPath := normalizeFolderPath(request.NewPath)
 	if oldPath == "" || newPath == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "old_path and new_path are required")
+	}
+	if err := checkUserFolderPath(newPath); err != nil {
+		return nil, err
 	}
 
 	if err := s.Store.RenameWorkspaceFolder(ctx, workspace.ID, oldPath, newPath); err != nil {
@@ -763,6 +769,9 @@ func (s *APIV1Service) MoveWorkspaceFolder(ctx context.Context, request *v1pb.Mo
 	}
 
 	newPath := movedFolderDestination(path, destinationParent)
+	if err := checkUserFolderPath(newPath); err != nil {
+		return nil, err
+	}
 
 	if source.ID == destination.ID {
 		// Same workspace: this is a rename, and the rename path already guards its

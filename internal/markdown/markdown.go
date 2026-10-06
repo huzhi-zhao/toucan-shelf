@@ -416,39 +416,25 @@ func (s *service) ExtractLinks(content []byte) ([]LinkRef, error) {
 }
 
 // RewriteMediaSources rewrites the source of every markdown image for which
-// decide returns true. As with RewriteLinks, a call that rewrites nothing
-// returns the original content byte-for-byte.
+// decide returns true. Only the source is edited in place (see splice.go); a
+// call that rewrites nothing returns the original content byte-for-byte.
 func (s *service) RewriteMediaSources(content []byte, decide func(src string) (string, bool)) (string, bool, error) {
-	root, err := s.parse(content)
-	if err != nil {
-		return "", false, err
-	}
-
-	changed := false
-	err = gast.Walk(root, func(n gast.Node, entering bool) (gast.WalkStatus, error) {
-		if !entering {
-			return gast.WalkContinue, nil
-		}
+	return s.spliceLinks(content, func(n gast.Node) []spliceEdit {
 		image, ok := n.(*gast.Image)
 		if !ok {
-			return gast.WalkContinue, nil
+			return nil
 		}
-		newSrc, rewrite := decide(string(image.Destination))
-		if rewrite && newSrc != string(image.Destination) {
-			image.Destination = []byte(newSrc)
-			changed = true
+		span, ok := locateLink(content, image, image.Destination, image.Reference)
+		if !ok {
+			return nil
 		}
-		return gast.WalkSkipChildren, nil
+		oldSrc := string(image.Destination)
+		newSrc, rewrite := decide(oldSrc)
+		if !rewrite {
+			return nil
+		}
+		return linkEdits(content, image, span, oldSrc, newSrc, "", "", image.Title, image.Reference)
 	})
-	if err != nil {
-		return "", false, err
-	}
-	if !changed {
-		return string(content), false, nil
-	}
-
-	mdRenderer := renderer.NewMarkdownRenderer()
-	return mdRenderer.Render(root, content), true, nil
 }
 
 // ExtractImages returns every markdown image found in content, in document
@@ -479,99 +465,79 @@ func (s *service) ExtractImages(content []byte) ([]LinkRef, error) {
 }
 
 // RewriteLinkAnchors walks all markdown links in content, replacing the
-// anchor text of any link for which decide returns true. The document is
-// re-rendered via the shared MarkdownRenderer only when at least one link
-// was rewritten, so a call that rewrites nothing returns the original
-// content byte-for-byte (changed == false), keeping repeated calls
-// idempotent.
+// anchor text of any link for which decide returns true. Only the anchor text
+// is edited in place (see splice.go), so a call that rewrites nothing returns
+// the original content byte-for-byte (changed == false), keeping repeated
+// calls idempotent.
 func (s *service) RewriteLinkAnchors(content []byte, decide func(href, text string) (string, bool)) (string, bool, error) {
-	root, err := s.parse(content)
-	if err != nil {
-		return "", false, err
-	}
-
-	changed := false
-	err = gast.Walk(root, func(n gast.Node, entering bool) (gast.WalkStatus, error) {
-		if !entering {
-			return gast.WalkContinue, nil
-		}
-		link, ok := n.(*gast.Link)
-		if !ok {
-			return gast.WalkContinue, nil
-		}
-
-		var buf strings.Builder
-		extractTextFromNode(link, content, &buf)
-		newText, rewrite := decide(string(link.Destination), buf.String())
-		if !rewrite {
-			return gast.WalkSkipChildren, nil
-		}
-
-		link.RemoveChildren(link)
-		link.AppendChild(link, gast.NewString([]byte(newText)))
-		changed = true
-		return gast.WalkSkipChildren, nil
+	return s.RewriteLinks(content, func(href, text string) (string, string, bool) {
+		newText, rewrite := decide(href, text)
+		return href, newText, rewrite
 	})
-	if err != nil {
-		return "", false, err
-	}
-	if !changed {
-		return string(content), false, nil
-	}
-
-	mdRenderer := renderer.NewMarkdownRenderer()
-	return mdRenderer.Render(root, content), true, nil
 }
 
 // RewriteLinks walks all markdown links in content, replacing the
 // destination and/or anchor text of any link for which decide returns true.
-// Mirrors RewriteLinkAnchors' idempotency guarantee: a call that rewrites
-// nothing returns content byte-for-byte.
+// Only those bytes are edited in place (see splice.go). Mirrors
+// RewriteLinkAnchors' idempotency guarantee: a call that rewrites nothing
+// returns content byte-for-byte.
+//
+// decide is not called for a link whose source span cannot be located (see
+// locateLink): such a link is left as written.
 func (s *service) RewriteLinks(content []byte, decide func(href, text string) (string, string, bool)) (string, bool, error) {
-	root, err := s.parse(content)
-	if err != nil {
-		return "", false, err
-	}
-
-	changed := false
-	err = gast.Walk(root, func(n gast.Node, entering bool) (gast.WalkStatus, error) {
-		if !entering {
-			return gast.WalkContinue, nil
-		}
+	return s.spliceLinks(content, func(n gast.Node) []spliceEdit {
 		link, ok := n.(*gast.Link)
 		if !ok {
-			return gast.WalkContinue, nil
+			return nil
 		}
-
+		span, ok := locateLink(content, link, link.Destination, link.Reference)
+		if !ok {
+			return nil
+		}
 		var buf strings.Builder
 		extractTextFromNode(link, content, &buf)
 		oldHref := string(link.Destination)
 		oldText := buf.String()
 		newHref, newText, rewrite := decide(oldHref, oldText)
 		if !rewrite {
+			return nil
+		}
+		return linkEdits(content, link, span, oldHref, newHref, oldText, newText, link.Title, link.Reference)
+	})
+}
+
+// spliceLinks walks every link and image in content, collects the in-place
+// edits visit returns for each, and applies them to the original bytes.
+func (s *service) spliceLinks(content []byte, visit func(n gast.Node) []spliceEdit) (string, bool, error) {
+	root, err := s.parse(content)
+	if err != nil {
+		return "", false, err
+	}
+
+	var edits []spliceEdit
+	err = gast.Walk(root, func(n gast.Node, entering bool) (gast.WalkStatus, error) {
+		if !entering {
+			return gast.WalkContinue, nil
+		}
+		switch n.(type) {
+		case *gast.Link:
+			edits = append(edits, visit(n)...)
+			// An image inside a link's label is still visited, for media
+			// rewrites; a link label cannot contain another link.
+			return gast.WalkContinue, nil
+		case *gast.Image:
+			edits = append(edits, visit(n)...)
 			return gast.WalkSkipChildren, nil
 		}
-
-		if newHref != oldHref {
-			link.Destination = []byte(newHref)
-			changed = true
-		}
-		if newText != oldText {
-			link.RemoveChildren(link)
-			link.AppendChild(link, gast.NewString([]byte(newText)))
-			changed = true
-		}
-		return gast.WalkSkipChildren, nil
+		return gast.WalkContinue, nil
 	})
 	if err != nil {
 		return "", false, err
 	}
-	if !changed {
+	if len(edits) == 0 {
 		return string(content), false, nil
 	}
-
-	mdRenderer := renderer.NewMarkdownRenderer()
-	return mdRenderer.Render(root, content), true, nil
+	return applySplices(content, edits), true, nil
 }
 
 // uniquePreserveCase returns unique strings from input while preserving case.
