@@ -5,6 +5,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # Version of the memogit published under /memogit/; deploy.sh sets it.
+        - MEMOGIT_VERSION=${MEMOGIT_VERSION:-}
     image: toucan-shelf:local
     container_name: toucan-shelf
     restart: unless-stopped

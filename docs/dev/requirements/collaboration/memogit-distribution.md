@@ -34,9 +34,10 @@ memogit 2026.10.05-14c6f2b35
 - **前半段**：commit 日期（UTC），用来一眼比出新旧。
 - **后半段**：commit 短哈希，用来 `git show` 查到底包含什么。
 - **`-dirty` 后缀**：构建时工作区有未提交改动，这个二进制的内容在任何 commit 里都查不到。**不得用它部署**。
-- **`unknown`**：不在 git 检出里构建，或者用了 `-buildvcs=false`。
+- **`unknown`**：不在 git 检出里构建（或者用了 `-buildvcs=false`），也没有从外面传入版本号。
 
 版本号不需要人维护。`go build` 在仓库里构建时会自动把 vcs 信息写进二进制，`-v` 直接读它（`cmd/memogit/version.go`），交叉编译同样会写入。
+在没有 `.git` 的地方构建（Docker 镜像里）时，由 `build-memogit.sh` 读环境变量 `MEMOGIT_VERSION`，再用 `-ldflags -X main.buildVersion=...` 写进去，格式与上面相同。
 本机跑不了的二进制可以用 `go version -m <二进制> | grep vcs` 查看。
 
 **版本不一致怎么发现**：
@@ -56,7 +57,10 @@ memogit 2026.10.05-14c6f2b35
 
 **部署规则：**
 
-1. **`--dist` 在宿主机上、`docker build` 之前执行**，和前端一样。Docker 构建上下文里没有 `.git`，在容器里编译就拿不到版本号。Dockerfile 会 `COPY memogit-dist`，忘了构建会直接报错。
+1. **生产镜像自己构建 dist。** 线上走 `deploy.sh` → `docker compose up -d --build` → 根目录 `Dockerfile`，其中的 `memogit` 阶段在镜像里跑 `build-memogit.sh --dist`，不需要事先在宿主机上构建。
+   - 构建上下文里没有 `.git`，所以版本号由 `deploy.sh` 在宿主机上算好，以 build arg `MEMOGIT_VERSION` 传进去（经 `docker-compose.yml`）。没有传时镜像构建直接报错，不会发布一个版本号是 `unknown` 的 memogit。
+   - 手动 `docker build` 根目录 Dockerfile 时，要自己带上 `--build-arg MEMOGIT_VERSION=...`，算法见 `deploy.sh`。
+   - `scripts/Dockerfile`（上游的发布镜像）仍然 `COPY memogit-dist`，用它构建前要先在宿主机上跑 `--dist`。
 2. **只从干净的、最新的 `main` 构建要部署的 dist。** 在功能分支或旧 worktree 里编出来的版本，会缺少之后合进 main 的功能（见 §5.1）。
 3. **服务器参数**：`--memogit-dist`（环境变量 `MEMOS_MEMOGIT_DIST`），镜像里默认是 `/usr/local/memos/memogit-dist`。不设就不提供 `/memogit/*`。
 4. **本机的 memogit 用 `memogit self-update` 升级**。给 agent 看的手册只在 clone 或 pull 时重写，所以升级后要 pull 一次。走 hook 的下游每次会话都会 pull，不用操心。
@@ -76,11 +80,10 @@ memogit 2026.10.05-14c6f2b35
 
 | 下游 | 现状（2026-10-06） |
 | --- | --- |
-| `jimmy-zhz/toucan-base` | 待迁移：仓库里提交了 `bin/memogit-linux-amd64`，用自己的 `scripts/toucan.py` 读 `conf.yml` |
-| `huzhi-zhao/huzhi-zhao.github.io` | 待迁移：本机用已装的 memogit，云端现场编译；用自己的 `scripts/toucan.py` 读 `scripts/toucan.json` |
+| `jimmy-zhz/toucan-base` | 迁移 PR 已开（jimmy-zhz/toucan-base#1）：删掉提交的二进制和 py 脚本，改用 `memogit.conf.yaml` + hook。云端环境变量已统一为 `TOUCANSHELF_PAT` / `TOUCANSHELF_SERVER` |
+| `huzhi-zhao/huzhi-zhao.github.io` | 迁移 PR 已开（huzhi-zhao/huzhi-zhao.github.io#8）：同上 |
 | 本机（Mac） | `/opt/homebrew/bin/memogit`。`/usr/local/bin/memogit` 是 root 所有的早期版本，PATH 里排在后面，平时用不到，但别拿它判断功能 |
 
-两个下游的配置字段和 `memogit.conf.yaml` 相同，改个文件名就能用。
 
 ## 5. 版本对不上时踩过的坑
 
@@ -109,6 +112,13 @@ memogit 2026.10.05-14c6f2b35
 - **修复**：PR #40（`fix/memogit-push-subdoc-alive`）已合进 main，抽出了 `withSubDocs`，让三处共用同一个判断。
 - **教训**：Stop hook 除了报冲突（`⚠`），还必须报出被跳过的文档（`!`）。现在 `memogit hook stop` 会把两类都交给 agent。
 
+### 5.4 分发上线后 `/memogit/version.json` 一直 404（2026-10）
+
+- **原因**：分发功能（PR #43）改的是 `scripts/Dockerfile`，但线上部署用的是根目录 `Dockerfile`。线上镜像里既没有 `memogit-dist/`，也没有设 `MEMOS_MEMOGIT_DIST`，`/memogit/*` 根本没有注册。
+- **后果**：下游的 SessionStart hook 读不到 version.json。本机还能退回已装的 memogit，没装过的新沙箱直接 ⛔。
+- **修复**：根目录 `Dockerfile` 增加 `memogit` 构建阶段，版本号由 `deploy.sh` 传入（§3 规则 1）。
+- **教训**：仓库里有两份 Dockerfile。改镜像内容前，先从 `deploy.sh` 确认线上用的是哪一份。
+
 ## 6. 下游接入时还要注意
 
 - **按名字找库不区分大小写**：配置里写 `life`，服务器上的标题是 `Life`，memogit 建的目录是 `Life/`。`memogit sync` 已经按这个规则处理。
@@ -116,4 +126,4 @@ memogit 2026.10.05-14c6f2b35
 - **云端连服务器返回 403 Forbidden，通常不是 token 的问题**：
   - token 错误返回的是 401。403 一般是沙箱的网络白名单没放行服务器域名。
   - 也可能是 Cloudflare 拦了机房 IP：响应头里带 `server: cloudflare` / `cf-ray` 就是这种情况。
-- **服务端已知问题**：移动文档时，服务端自动改写引用它的其他文档，会顺带把那些文档里的表格压成一行、删掉列表续行缩进。memogit 会把这报成冲突，不会静默覆盖，按冲突流程保留本地版本即可。这是服务端的 bug，用网页移动文档同样会触发，只是网页上没人提醒。
+- **表格被压成一行（已修复）**：PR #41 之前，移动文档时服务端自动改写引用它的其他文档，会顺带把那些文档里的表格压成一行、删掉列表续行缩进。现在改写只替换链接本身，其余原文不动。之前已被压平的文档不会自动恢复，要手动改回。

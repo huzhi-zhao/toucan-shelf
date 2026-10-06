@@ -5,15 +5,23 @@ import (
 	"time"
 )
 
+// buildVersion is the version stamped in with
+// `-ldflags "-X main.buildVersion=..."` for builds that have no git checkout
+// to read it from — the server image builds the published memogit inside
+// Docker, whose build context excludes .git. It is the same string version()
+// would compute from the checkout (scripts/build-memogit.sh derives it there).
+var buildVersion string
+
 // version describes which source this binary was built from. memogit has no
 // release numbers; the version is the commit date plus the commit hash,
 // e.g. "2026.10.05-14c6f2b35". `go build` inside the repo
 // already stamps it into the build info (vcs.revision / vcs.time /
-// vcs.modified), so no ldflags or build-script step is needed.
+// vcs.modified), so a normal build needs no ldflags; buildVersion covers the
+// builds that can't see the repo.
 func version() string {
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
-		return "unknown"
+		return fallbackVersion()
 	}
 	var revision, commitTime string
 	var modified bool
@@ -29,7 +37,7 @@ func version() string {
 	}
 	if revision == "" {
 		// Built outside a git checkout (or with -buildvcs=false).
-		return "unknown"
+		return fallbackVersion()
 	}
 	if len(revision) > 9 {
 		revision = revision[:9]
@@ -45,4 +53,11 @@ func version() string {
 		return t.UTC().Format("2006.01.02") + "-" + revision
 	}
 	return revision
+}
+
+func fallbackVersion() string {
+	if buildVersion != "" {
+		return buildVersion
+	}
+	return "unknown"
 }

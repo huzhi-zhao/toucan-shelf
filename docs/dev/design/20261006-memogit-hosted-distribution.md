@@ -109,6 +109,10 @@ knowledge_bases:
 - **服务器参数**：新增 `--memogit-dist`（环境变量 `MEMOS_MEMOGIT_DIST`），Docker 镜像里默认指向上面那个路径。不设就不提供 `/memogit/*`。
 - **镜像体积**：四个平台的二进制都去掉了调试信息，未压缩合计大约 70MB。
 
+> **2026-10-06 修订**：上面几条只落在了 `scripts/Dockerfile`，线上部署用的根目录 `Dockerfile` 没改，导致 `/memogit/*` 404。
+> 现在根目录 `Dockerfile` 在镜像里构建 dist，版本号由 `deploy.sh` 以 `MEMOGIT_VERSION` 传入。
+> 现行规则以[需求文档 §3](../requirements/collaboration/memogit-distribution.md#3-构建与部署) 为准。
+
 ## 四、memogit 这边要加的功能
 
 ### 1. 环境变量

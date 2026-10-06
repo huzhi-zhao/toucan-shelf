@@ -151,6 +151,8 @@ design doc 是给三个月后的人读的，下面这四类内容三个月后全
   未满 3 篇准入线暂平铺于此
 - [standalone-local-deploy.md](standalone-local-deploy.md) —— 单机本地部署：打包、S3 备份
   现状与已知问题、首启引导
+- [release-process.md](release-process.md) —— 发布流程：合入 main、发布前判断能否回退、
+  备份、`deploy.sh` 部署、部署后验证、回滚
 - [subdomain-boundaries.md](subdomain-boundaries.md) —— DDD 子域划分：核心域/支撑域的
   分类结果与判定顺序、依赖方向规则、边界的三种长相与当前偏离
 

@@ -75,6 +75,13 @@ cd "$TARGET_DIR"
 export MEMOS_INSTANCE_URL
 echo "=======> Instance URL: ${MEMOS_INSTANCE_URL:-<unset, private mode>}"
 
+# The image builds the memogit it publishes under /memogit/ but cannot see .git,
+# so the version comes from here: the same commit date + hash `memogit -v`
+# prints (cmd/memogit/version.go, scripts/build-memogit.sh).
+MEMOGIT_VERSION="$(TZ=UTC git log -1 --date=format-local:%Y.%m.%d --format='%cd')-$(git rev-parse --short=9 HEAD)"
+export MEMOGIT_VERSION
+echo "=======> memogit version: $MEMOGIT_VERSION"
+
 echo "=======> Building image and starting container"
 $COMPOSE up -d --build
 
