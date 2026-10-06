@@ -9,7 +9,9 @@ import (
 )
 
 // FindRoot walks up from dir looking for a .memogit directory and returns the
-// repo root. Used by pull/push/status which must run inside a cloned repo.
+// repo root. Used by pull/push/status which must run inside a cloned repo. A
+// downstream repo's memogit.conf.yaml on the way up also counts: it points at
+// the checkout root the repo keeps (kb/ by default).
 func FindRoot(dir string) (string, error) {
 	abs, err := filepath.Abs(dir)
 	if err != nil {
@@ -19,12 +21,26 @@ func FindRoot(dir string) (string, error) {
 		if fi, err := os.Stat(filepath.Join(abs, MetaDir)); err == nil && fi.IsDir() {
 			return abs, nil
 		}
+		// A downstream repo root: its memogit.conf.yaml says where the checkout
+		// lives, so commands work from the repo as well as from inside kb/.
+		if conf := filepath.Join(abs, RepoConfigFile); fileExists(conf) {
+			if rc, _, err := LoadRepoConfig(conf); err == nil {
+				if fi, err := os.Stat(filepath.Join(rc.Root(), MetaDir)); err == nil && fi.IsDir() {
+					return rc.Root(), nil
+				}
+			}
+		}
 		parent := filepath.Dir(abs)
 		if parent == abs {
 			return "", fmt.Errorf("not a memogit repo (no %s found in %s or any parent)", MetaDir, dir)
 		}
 		abs = parent
 	}
+}
+
+func fileExists(path string) bool {
+	fi, err := os.Stat(path)
+	return err == nil && fi.Mode().IsRegular()
 }
 
 // writeGitignore ensures the token-bearing config is never committed while the

@@ -46,3 +46,4 @@ web/coverage/
 # Vite / Vitest caches (accidentally committed once from the repo root).
 .vite/
 node_modules/
+memogit-dist/

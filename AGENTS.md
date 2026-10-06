@@ -53,7 +53,14 @@ cd proto && buf format -w          # Format proto files
 # Agent-facing docs
 ./scripts/sync-agent-skill-docs.sh # Mirror docs/skill/ into internal/memogit/assets/skill/ (go:embed source)
 ./scripts/build-memogit.sh         # Sync (above) + build the memogit CLI -> ./build/memogit
+./scripts/build-memogit.sh --linux-amd64  # Same, Linux x86-64 for Claude cloud sandboxes -> ./build/memogit-linux-amd64
+./scripts/build-memogit.sh --dist  # All platforms + version.json + install.sh + bootstrap.md -> ./memogit-dist/ (before `docker build`)
 ```
+
+Downstream repos install memogit from the server (`/memogit/`, served from `--memogit-dist`), so the server and its memogit
+always come from the same commit. Build the dist from a clean `main`. See
+`docs/dev/requirements/collaboration/memogit-distribution.md` and `docs/skill/bootstrap.md` (agent-facing, published as
+`/memogit/bootstrap.md`).
 
 ## Code Map
 

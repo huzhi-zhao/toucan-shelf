@@ -57,8 +57,14 @@ hashes) lives in .memogit/state/. The one exception is the identity marker at
 the end of each document -- never delete, edit, or hand-write it.`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
+		// Setting Version makes cobra add -v / --version to the root command.
+		Version: version(),
 	}
-	root.AddCommand(loginCmd(), cloneCmd(), workspacesCmd(), pullCmd(), pushCmd(), statusCmd(), rmCmd(), agentsCmd())
+	root.SetVersionTemplate("memogit {{.Version}}\n")
+	root.PersistentPostRun = func(cmd *cobra.Command, _ []string) {
+		noteVersionMismatch(cmd, cmd.ErrOrStderr())
+	}
+	root.AddCommand(loginCmd(), cloneCmd(), workspacesCmd(), pullCmd(), pushCmd(), statusCmd(), rmCmd(), agentsCmd(), selfUpdateCmd(), syncCmd(), hookCmd())
 	return root
 }
 

@@ -91,8 +91,11 @@ garden/notes/todo.subdocs/补充说明.md    ← 它的子文档
 | `memogit clone [库名]` | 首次检出某 workspace（本地一般已 clone 好） |
 | `memogit workspaces`（别名 `ws`） | 列出账号下的知识库及本地检出状态 |
 | `memogit agents` | 只重写代理简报文件，不联网 |
+| `memogit sync` | 按仓库根目录的 `memogit.conf.yaml`，没检出的库 clone、已有的 pull（下游仓库用，见 `bootstrap.md`） |
+| `memogit -v` / `memogit self-update` | 查看版本 / 换成服务器发布的、与服务器配套的版本 |
 
-不带库名时对检出里的**每个**知识库依次执行。
+不带库名时对检出里的**每个**知识库依次执行。在有 `memogit.conf.yaml` 的仓库里，从仓库根目录执行也能找到检出根。
+命令结束时如果提示"the server publishes memogit X"，说明本机版本和服务器不配套，告诉用户运行 `memogit self-update`。
 
 ### push 的行为（建议先 `push --dry-run` 看计划）
 

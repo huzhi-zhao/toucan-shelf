@@ -27,6 +27,7 @@ import (
 	"github.com/usememos/memos/server/router/fileserver"
 	"github.com/usememos/memos/server/router/frontend"
 	"github.com/usememos/memos/server/router/mcp"
+	"github.com/usememos/memos/server/router/memogitdist"
 	"github.com/usememos/memos/server/router/oauth"
 	"github.com/usememos/memos/server/router/rss"
 	"github.com/usememos/memos/store"
@@ -94,6 +95,9 @@ func NewServer(ctx context.Context, profile *profile.Profile, store *store.Store
 	// This uses native HTTP serving (http.ServeContent) instead of gRPC for video/audio files.
 	fileServerService := fileserver.NewFileServerService(s.Profile, s.Store, s.Secret)
 	fileServerService.RegisterRoutes(echoServer)
+
+	// Downloads of the memogit build that matches this server, for downstream repos.
+	memogitdist.RegisterRoutes(echoServer, s.Profile.MemogitDist)
 
 	// Create and register RSS routes (needs markdown service from apiV1Service).
 	rss.NewRSSService(s.Profile, s.Store, apiV1Service.MarkdownService).RegisterRoutes(rootGroup)
