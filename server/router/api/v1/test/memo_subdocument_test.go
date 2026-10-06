@@ -233,7 +233,7 @@ func TestSubDocumentCannotBeMoved(t *testing.T) {
 	ts := NewTestService(t)
 	defer ts.Cleanup()
 
-	userCtx, workspace, parent := subDocTestFixture(ctx, t, ts)
+	userCtx, _, parent := subDocTestFixture(ctx, t, ts)
 	parentUID := memoUIDFromName(t, parent.Name)
 
 	subDoc, err := ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
@@ -261,17 +261,18 @@ func TestSubDocumentCannotBeMoved(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, codes.InvalidArgument, status.Code(err))
 
-	// An ordinary document still cannot be moved into the reserved namespace.
-	ordinary, err := ts.Service.CreateMemo(userCtx, &apiv1.CreateMemoRequest{
-		Memo: &apiv1.Memo{Workspace: workspace.Name, Title: "Ordinary", Content: "x"},
+	// Restating the path it already has is not a move: memogit sends folder
+	// path and title together when it renames one.
+	renamed, err := ts.Service.UpdateMemo(userCtx, &apiv1.UpdateMemoRequest{
+		Memo:       &apiv1.Memo{Name: subDoc.Name, FolderPath: v1.SubDocFolderPath(parentUID), Title: "Appendix A"},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"folder_path", "title"}},
 	})
 	require.NoError(t, err)
-	_, err = ts.Service.UpdateMemo(userCtx, &apiv1.UpdateMemoRequest{
-		Memo:       &apiv1.Memo{Name: ordinary.Name, FolderPath: v1.SubDocFolderPath(parentUID)},
-		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"folder_path"}},
-	})
-	require.Error(t, err)
-	require.Equal(t, codes.InvalidArgument, status.Code(err))
+	require.Equal(t, "Appendix A", renamed.Title)
+	require.Equal(t, parent.Name, renamed.GetParent())
+
+	// The other direction — an ordinary document moved INTO the namespace — is
+	// an in-place attach; see TestSubDocumentAttachInPlace.
 
 	// Content edits are unaffected — modifying a sub-document heavily is the
 	// intended alternative to deleting one.

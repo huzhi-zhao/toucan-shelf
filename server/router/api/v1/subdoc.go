@@ -71,6 +71,73 @@ func IsReservedFolderPath(folderPath string) bool {
 	return folderPath == SubDocFolderPrefix || strings.HasPrefix(folderPath, SubDocFolderPrefix+"/")
 }
 
+// SubDocDirSuffix ends the name of the folder memogit puts a document's
+// sub-documents in, beside the document's own file ("Plan.md" ->
+// "Plan.subdocs/"). That folder name is a binding, not a location: a file
+// inside it IS a sub-document of the document next to it. A real folder with
+// such a name would therefore be read as something it is not — a document
+// pushed into it lands as an ordinary document that every mirror shows as a
+// sub-document — so no ordinary folder may carry the suffix.
+const SubDocDirSuffix = ".subdocs"
+
+// checkUserFolderPath rejects a folder path a user may not place an ordinary
+// document or folder at: the reserved sub-document namespace, or any segment
+// named like a sub-document folder.
+func checkUserFolderPath(folderPath string) error {
+	if IsReservedFolderPath(folderPath) {
+		return status.Errorf(codes.InvalidArgument,
+			"%q is reserved for sub-documents; a sub-document's folder path must be exactly %q", SubDocFolderPrefix, SubDocFolderPrefix+"/<parent document uid>")
+	}
+	for _, segment := range strings.Split(folderPath, "/") {
+		if strings.HasSuffix(strings.ToLower(strings.TrimSpace(segment)), SubDocDirSuffix) {
+			return status.Errorf(codes.InvalidArgument,
+				"folder name %q is reserved: a %q folder holds the sub-documents of the document beside it. "+
+					"To make a document a sub-document, set its folder path to %q", segment, SubDocDirSuffix, SubDocFolderPrefix+"/<parent document uid>")
+		}
+	}
+	return nil
+}
+
+// prepareSubDocAttach validates turning an existing ordinary document into a
+// sub-document of the document folderPath ("_sub/<uid>") names, in place.
+//
+// In place, rather than create-and-archive, so the document keeps its uid, its
+// version history and its comments: a document that already exists and is then
+// filed under another one is still the same document. Returns the parent.
+func (s *APIV1Service) prepareSubDocAttach(ctx context.Context, user *store.User, memo *store.Memo, folderPath string) (*store.Memo, error) {
+	parent, err := s.resolveSubDocParent(ctx, user, folderPath)
+	if err != nil {
+		return nil, err
+	}
+	if parent == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%q is not a sub-document folder path", folderPath)
+	}
+	if parent.ID == memo.ID {
+		return nil, status.Errorf(codes.InvalidArgument, "a document cannot be a sub-document of itself")
+	}
+	// Moving it into another knowledge base at the same time is a second,
+	// independent change with its own link repairs; do one thing at a time.
+	if parent.WorkspaceID != memo.WorkspaceID {
+		return nil, status.Errorf(codes.InvalidArgument,
+			"the parent document is in another knowledge base; move this document there first")
+	}
+	// A comment already hangs off some document through the same relation;
+	// re-parenting it would silently move a discussion into a document body.
+	if memo.ParentUID != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "a comment cannot become a sub-document")
+	}
+	// One level deep: a document with sub-documents of its own cannot become one.
+	subDocIDs, err := s.subDocIDsOf(ctx, memo)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list sub-documents: %v", err)
+	}
+	if len(subDocIDs) > 0 {
+		return nil, status.Errorf(codes.InvalidArgument,
+			"this document has sub-documents of its own, and a sub-document cannot have sub-documents")
+	}
+	return parent, nil
+}
+
 // resolveSubDocParent turns a folder path into the parent document it binds to.
 // It returns (nil, nil) when the path is not a sub-document path at all, so the
 // caller can carry on creating an ordinary document.
