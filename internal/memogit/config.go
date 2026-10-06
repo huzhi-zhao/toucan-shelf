@@ -30,7 +30,30 @@ const (
 	// EnvServer and EnvToken override the config file (useful for CI).
 	EnvServer = "MEMOGIT_SERVER"
 	EnvToken  = "MEMOGIT_TOKEN"
+	// EnvToucanServer and EnvToucanToken are the names downstream repos and
+	// cloud sandboxes standardize on; they win over EnvServer/EnvToken.
+	EnvToucanServer = "TOUCANSHELF_SERVER"
+	EnvToucanToken  = "TOUCANSHELF_PAT"
 )
+
+// ServerFromEnv returns the server URL set in the environment, if any.
+func ServerFromEnv() string {
+	return firstEnv(EnvToucanServer, EnvServer)
+}
+
+// TokenFromEnv returns the token set in the environment, if any.
+func TokenFromEnv() string {
+	return firstEnv(EnvToucanToken, EnvToken)
+}
+
+func firstEnv(names ...string) string {
+	for _, n := range names {
+		if v := os.Getenv(n); v != "" {
+			return v
+		}
+	}
+	return ""
+}
 
 // Config is the on-disk .memogit/config.yaml. One checkout root holds the
 // server credentials once and tracks any number of that account's knowledge
@@ -137,6 +160,13 @@ func (c *Config) Select(title string) ([]*WorkspaceConfig, error) {
 
 // LoadConfig reads .memogit/config.yaml under root, then applies env overrides.
 func LoadConfig(root string) (*Config, error) {
+	return LoadConfigWithServer(root, "")
+}
+
+// LoadConfigWithServer is LoadConfig with a last-resort server URL, used only
+// when neither the environment nor config.yaml names one (a downstream repo's
+// memogit.conf.yaml may carry it).
+func LoadConfigWithServer(root, fallbackServer string) (*Config, error) {
 	cfg := &Config{}
 	path := filepath.Join(root, MetaDir, ConfigFile)
 	data, err := os.ReadFile(path)
@@ -149,14 +179,17 @@ func LoadConfig(root string) (*Config, error) {
 		return nil, fmt.Errorf("parse config %s: %w", path, err)
 	}
 
-	if v := os.Getenv(EnvServer); v != "" {
+	if v := ServerFromEnv(); v != "" {
 		cfg.Server = v
 	}
-	if v := os.Getenv(EnvToken); v != "" {
+	if v := TokenFromEnv(); v != "" {
 		cfg.Token = v
 	}
+	if cfg.Server == "" {
+		cfg.Server = fallbackServer
+	}
 	if cfg.Server == "" || cfg.Token == "" {
-		return nil, fmt.Errorf("not configured: run `memogit login --server <url> --token <pat>` (or set %s/%s)", EnvServer, EnvToken)
+		return nil, fmt.Errorf("not configured: run `memogit login --server <url> --token <pat>` (or set %s/%s)", EnvToucanServer, EnvToucanToken)
 	}
 	return cfg, nil
 }

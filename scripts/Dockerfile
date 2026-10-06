@@ -39,6 +39,11 @@ RUN apk add --no-cache tzdata ca-certificates su-exec && \
 COPY --from=backend /backend-build/memos /usr/local/memos/memos
 COPY --from=backend --chmod=755 /backend-build/scripts/entrypoint.sh /usr/local/memos/entrypoint.sh
 
+# The memogit build matching this server, served under /memogit/ for downstream
+# repos. Build it on the host first, like the frontend:
+#   ./scripts/build-memogit.sh --dist
+COPY memogit-dist /usr/local/memos/memogit-dist
+
 # Run as root to fix permissions, entrypoint will drop to nonroot
 USER root
 
@@ -49,7 +54,8 @@ WORKDIR /var/opt/memos
 VOLUME /var/opt/memos
 
 ENV TZ="UTC" \
-    MEMOS_PORT="5230"
+    MEMOS_PORT="5230" \
+    MEMOS_MEMOGIT_DIST="/usr/local/memos/memogit-dist"
 
 EXPOSE 5230
 

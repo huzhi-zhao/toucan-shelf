@@ -34,6 +34,10 @@ type Profile struct {
 	Commit string
 	// InstanceURL is the url of your memos instance.
 	InstanceURL string
+	// MemogitDist is the directory built by `scripts/build-memogit.sh --dist`,
+	// served under /memogit/ so downstream repos can install the memogit that
+	// matches this server. Empty disables those routes.
+	MemogitDist string
 }
 
 // AllowAnonymous reports whether unauthenticated visitors may access the instance.
