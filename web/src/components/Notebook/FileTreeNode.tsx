@@ -2,15 +2,11 @@ import copy from "copy-to-clipboard";
 import dayjs from "dayjs";
 import {
   ChevronRightIcon,
-  CodeIcon,
   ExternalLinkIcon,
-  FileIcon,
   FileTextIcon,
   FolderIcon,
   FolderInputIcon,
   FolderOpenIcon,
-  GlobeIcon,
-  LayoutGridIcon,
   LinkIcon,
   MoreHorizontalIcon,
 } from "lucide-react";
@@ -29,8 +25,8 @@ import {
 import { cn } from "@/lib/utils";
 import type { WorkspaceTreeNode } from "@/types/proto/api/v1/workspace_service_pb";
 import { WorkspaceTreeNode_NodeType } from "@/types/proto/api/v1/workspace_service_pb";
-import { isLayoutDocTypeName } from "@/utils/docType";
 import { useTranslate } from "@/utils/i18n";
+import DocTypeIcon from "./DocTypeIcon";
 import type { FreshnessMap } from "./notebookFreshness";
 import { freshnessClass, freshnessKey } from "./notebookFreshness";
 import type { NotebookSortField, NotebookSortOrder } from "./notebookSort";
@@ -220,19 +216,8 @@ const FileTreeNode = ({
           ) : (
             <FolderIcon className="w-4 h-4 shrink-0 text-primary/80" />
           )
-        ) : node.docType === "HTML" ? (
-          <CodeIcon className="w-4 h-4 shrink-0 text-muted-foreground" />
-        ) : node.docType === "PDF" ? (
-          <FileIcon className="w-4 h-4 shrink-0 text-muted-foreground" />
-        ) : node.docType === "BLOGVIEW" ? (
-          // A site home page reads as a layout too, but it is the one document
-          // in the tree that faces outward — same icon as the outward-facing
-          // blocks it is made of, so it is not mistaken for a library view.
-          <GlobeIcon className="w-4 h-4 shrink-0 text-muted-foreground" />
-        ) : isLayoutDocTypeName(node.docType) ? (
-          <LayoutGridIcon className="w-4 h-4 shrink-0 text-muted-foreground" />
         ) : (
-          <FileTextIcon className="w-4 h-4 shrink-0 text-muted-foreground" />
+          <DocTypeIcon docType={node.docType} icon={node.icon} />
         )}
         <span className={cn("truncate flex-1", freshClass)} title={updatedTitle}>
           {node.name}

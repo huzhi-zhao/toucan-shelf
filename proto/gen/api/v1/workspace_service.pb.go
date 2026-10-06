@@ -379,7 +379,10 @@ type WorkspaceTreeNode struct {
 	// could not offer "back to inherited".
 	SortField string `protobuf:"bytes,10,opt,name=sort_field,json=sortField,proto3" json:"sort_field,omitempty"`
 	// Set only when type == FOLDER. Empty means inherit, as sort_field does.
-	SortOrder     string `protobuf:"bytes,11,opt,name=sort_order,json=sortOrder,proto3" json:"sort_order,omitempty"`
+	SortOrder string `protobuf:"bytes,11,opt,name=sort_order,json=sortOrder,proto3" json:"sort_order,omitempty"`
+	// Set only when type == DOCUMENT: the document's emoji icon, empty for the
+	// doc-type default.
+	Icon          string `protobuf:"bytes,12,opt,name=icon,proto3" json:"icon,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -487,6 +490,13 @@ func (x *WorkspaceTreeNode) GetSortField() string {
 func (x *WorkspaceTreeNode) GetSortOrder() string {
 	if x != nil {
 		return x.SortOrder
+	}
+	return ""
+}
+
+func (x *WorkspaceTreeNode) GetIcon() string {
+	if x != nil {
+		return x.Icon
 	}
 	return ""
 }
@@ -1793,7 +1803,7 @@ const file_api_v1_workspace_service_proto_rawDesc = "" +
 	"\n" +
 	"sort_field\x18\x03 \x01(\tR\tsortField\x12\x1d\n" +
 	"\n" +
-	"sort_order\x18\x04 \x01(\tR\tsortOrder\"\xfa\x03\n" +
+	"sort_order\x18\x04 \x01(\tR\tsortOrder\"\x8e\x04\n" +
 	"\x11WorkspaceTreeNode\x12<\n" +
 	"\x04type\x18\x01 \x01(\x0e2(.memos.api.v1.WorkspaceTreeNode.NodeTypeR\x04type\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
@@ -1810,7 +1820,8 @@ const file_api_v1_workspace_service_proto_rawDesc = "" +
 	"sort_field\x18\n" +
 	" \x01(\tR\tsortField\x12\x1d\n" +
 	"\n" +
-	"sort_order\x18\v \x01(\tR\tsortOrder\"?\n" +
+	"sort_order\x18\v \x01(\tR\tsortOrder\x12\x12\n" +
+	"\x04icon\x18\f \x01(\tR\x04icon\"?\n" +
 	"\bNodeType\x12\x19\n" +
 	"\x15NODE_TYPE_UNSPECIFIED\x10\x00\x12\n" +
 	"\n" +

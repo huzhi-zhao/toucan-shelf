@@ -68,8 +68,13 @@ type MemoPayload struct {
 	// is opened. Separate from agent_session_open so acknowledging does not
 	// change the baseline-snapshot rule. Cleared by the next authorship write.
 	AgentEditAcknowledged bool `protobuf:"varint,10,opt,name=agent_edit_acknowledged,json=agentEditAcknowledged,proto3" json:"agent_edit_acknowledged,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// The document's icon: a single system emoji, empty for the doc-type default.
+	// Lives here rather than in the title or frontmatter so it never leaks into
+	// link paths or exports, and setting it is a payload-only write (no revision,
+	// no updated_ts bump, no memogit diff).
+	Icon          string `protobuf:"bytes,11,opt,name=icon,proto3" json:"icon,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MemoPayload) Reset() {
@@ -170,6 +175,13 @@ func (x *MemoPayload) GetAgentEditAcknowledged() bool {
 		return x.AgentEditAcknowledged
 	}
 	return false
+}
+
+func (x *MemoPayload) GetIcon() string {
+	if x != nil {
+		return x.Icon
+	}
+	return ""
 }
 
 // The calculated properties from the memo content.
@@ -733,7 +745,7 @@ var File_store_memo_proto protoreflect.FileDescriptor
 
 const file_store_memo_proto_rawDesc = "" +
 	"\n" +
-	"\x10store/memo.proto\x12\vmemos.store\"\xf6\x0f\n" +
+	"\x10store/memo.proto\x12\vmemos.store\"\x8a\x10\n" +
 	"\vMemoPayload\x12=\n" +
 	"\bproperty\x18\x01 \x01(\v2!.memos.store.MemoPayload.PropertyR\bproperty\x12=\n" +
 	"\blocation\x18\x02 \x01(\v2!.memos.store.MemoPayload.LocationR\blocation\x12\x12\n" +
@@ -747,7 +759,8 @@ const file_store_memo_proto_rawDesc = "" +
 	"doc_config\x18\b \x01(\v2\".memos.store.MemoPayload.DocConfigR\tdocConfig\x12,\n" +
 	"\x12agent_session_open\x18\t \x01(\bR\x10agentSessionOpen\x126\n" +
 	"\x17agent_edit_acknowledged\x18\n" +
-	" \x01(\bR\x15agentEditAcknowledged\x1a?\n" +
+	" \x01(\bR\x15agentEditAcknowledged\x12\x12\n" +
+	"\x04icon\x18\v \x01(\tR\x04icon\x1a?\n" +
 	"\x11NodeOverlaysEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a\xac\x01\n" +

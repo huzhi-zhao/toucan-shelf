@@ -5759,6 +5759,12 @@ components:
                     description: |-
                         Output only. An MCP edit is waiting to be seen in the document editor.
                          Opening the editor acknowledges it without changing the document content.
+                icon:
+                    type: string
+                    description: |-
+                        Optional. The document's icon: a single system emoji. Empty means the
+                         doc-type default icon. Set with update_mask "icon"; clearing it restores
+                         the default.
         MemoHistory:
             type: object
             properties:
@@ -6476,6 +6482,9 @@ components:
                     items:
                         type: string
                     description: Substrings within the snippet that matched the query, for client-side highlighting.
+                icon:
+                    type: string
+                    description: The memo's emoji icon, empty for the doc-type default.
         SearchPublicPagesResponse:
             type: object
             properties:
@@ -7811,6 +7820,11 @@ components:
                 sortOrder:
                     type: string
                     description: Set only when type == FOLDER. Empty means inherit, as sort_field does.
+                icon:
+                    type: string
+                    description: |-
+                        Set only when type == DOCUMENT: the document's emoji icon, empty for the
+                         doc-type default.
             description: A single node (folder or document) in a workspace's hierarchy.
 tags:
     - name: AIService

@@ -1,6 +1,7 @@
 import copy from "copy-to-clipboard";
 import { FileTextIcon, LinkIcon } from "lucide-react";
 import toast from "react-hot-toast";
+import DocIcon from "@/components/DocIcon";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { extractMemoIdFromName } from "@/helpers/resource-names";
 import { cn } from "@/lib/utils";
@@ -46,7 +47,9 @@ export const SubDocCard = ({ memo, highlighted, parentMemoName }: Props) => {
       )}
     >
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted/50 text-muted-foreground">
-        <FileTextIcon className="h-4 w-4" />
+        <DocIcon icon={memo.icon}>
+          <FileTextIcon className="h-4 w-4" />
+        </DocIcon>
       </div>
       <div className="min-w-0">
         <div className="truncate text-sm font-medium leading-tight text-foreground" title={memo.title}>

@@ -84,6 +84,8 @@ message SearchHit {
   string snippet = 6;
   // Substrings within the snippet that matched the query, for client-side highlighting.
   repeated string highlights = 7;
+  // The memo's emoji icon, empty for the doc-type default.
+  string icon = 8;
 }
 
 message SearchResponse {

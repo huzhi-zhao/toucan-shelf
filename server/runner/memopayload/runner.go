@@ -84,7 +84,7 @@ func (r *Runner) RunOnce(ctx context.Context) {
 // every field this function does not set. That includes agent_session_open,
 // whose loss is silent and only shows up much later as an agent overwriting
 // human content without first saving the baseline version. Same for
-// doc_config, node_overlays, and the annotation anchors.
+// doc_config, icon, node_overlays, and the annotation anchors.
 func RebuildMemoPayload(_ context.Context, memo *store.Memo, markdownService markdown.Service) error {
 	if memo.Payload == nil {
 		memo.Payload = &storepb.MemoPayload{}

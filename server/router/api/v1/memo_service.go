@@ -798,6 +798,14 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 			payload := memo.Payload
 			payload.DocConfig = convertDocConfigToStore(request.Memo.DocConfig)
 			update.Payload = payload
+		} else if path == "icon" {
+			icon, err := normalizeMemoIcon(request.Memo.Icon)
+			if err != nil {
+				return nil, status.Errorf(codes.InvalidArgument, "invalid icon: %v", err)
+			}
+			payload := memo.Payload
+			payload.Icon = icon
+			update.Payload = payload
 		} else if path == "attachments" {
 			if err := s.setMemoAttachmentsInternal(ctx, user, memo, request.Memo.Attachments); err != nil {
 				return nil, errors.Wrap(err, "failed to set memo attachments")

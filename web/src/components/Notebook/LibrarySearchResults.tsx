@@ -1,4 +1,5 @@
 import { FileTextIcon, InfoIcon } from "lucide-react";
+import DocIcon from "@/components/DocIcon";
 import { cn } from "@/lib/utils";
 import type { SearchHit } from "@/types/proto/api/v1/rag_service_pb";
 import { useTranslate } from "@/utils/i18n";
@@ -47,7 +48,9 @@ const LibrarySearchResults = ({ query, hits, degradedToKeyword, loading, onSelec
                   )}
                 >
                   <div className="flex flex-row items-center gap-2">
-                    <FileTextIcon className="w-4 h-4 shrink-0 text-muted-foreground" />
+                    <DocIcon icon={hit.icon}>
+                      <FileTextIcon className="w-4 h-4 shrink-0 text-muted-foreground" />
+                    </DocIcon>
                     <span className="font-medium truncate">{hit.title || t("common.untitled")}</span>
                   </div>
                   {hit.folderPath && <p className="mt-0.5 text-xs text-muted-foreground truncate">{hit.folderPath}</p>}
