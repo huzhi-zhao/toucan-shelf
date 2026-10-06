@@ -28,7 +28,7 @@ import (
 //   - attachments / relations detach things the content refers to.
 //   - doc_type reinterprets the whole document.
 //   - doc_anchor / pdf_annotation / epub_annotation are comment anchors, and
-//     node_overlays / doc_config are app chrome. None of it is authoring.
+//     node_overlays / doc_config / icon are app chrome. None of it is authoring.
 //
 // The MCP tool set exposes MemoService_UpdateMemo as a whole (a tool is one
 // OpenAPI operation), so this check — not the tool list — is what actually

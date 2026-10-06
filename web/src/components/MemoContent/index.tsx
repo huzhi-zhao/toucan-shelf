@@ -22,6 +22,7 @@ const MemoContent = (props: MemoContentProps) => {
     isHtml,
     isPdf,
     pdfTitle,
+    pdfIcon,
     pdfUrl,
     pdfAttachment,
     pdfDetailView,
@@ -84,7 +85,7 @@ const MemoContent = (props: MemoContentProps) => {
           pdfDetailView && pdfUrl ? (
             <PdfViewer url={pdfUrl} />
           ) : (
-            <PdfDocCard title={pdfTitle || ""} memoName={props.memoName || ""} attachment={pdfAttachment} />
+            <PdfDocCard title={pdfTitle || ""} icon={pdfIcon} memoName={props.memoName || ""} attachment={pdfAttachment} />
           )
         ) : isHtml ? (
           <HtmlPreviewFrame content={content} onHeightChange={setHtmlPreviewHeight} />

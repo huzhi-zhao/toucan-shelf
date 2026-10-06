@@ -349,6 +349,11 @@ message Memo {
   // Opening the editor acknowledges it without changing the document content.
   bool agent_edit_pending = 28 [(google.api.field_behavior) = OUTPUT_ONLY];
 
+  // Optional. The document's icon: a single system emoji. Empty means the
+  // doc-type default icon. Set with update_mask "icon"; clearing it restores
+  // the default.
+  string icon = 29 [(google.api.field_behavior) = OPTIONAL];
+
   enum DocType {
     DOC_TYPE_UNSPECIFIED = 0;
     MARKDOWN = 1;

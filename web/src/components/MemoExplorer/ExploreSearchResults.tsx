@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { FileTextIcon, InfoIcon } from "lucide-react";
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import DocIcon from "@/components/DocIcon";
 import { ragServiceClient } from "@/connect";
 import { useWorkspaces } from "@/hooks/useWorkspaceQueries";
 import { cn } from "@/lib/utils";
@@ -89,7 +90,9 @@ const ExploreSearchResults = ({ query, filter }: Props) => {
                 )}
               >
                 <div className="flex flex-row items-center gap-2">
-                  <FileTextIcon className="w-4 h-4 shrink-0 text-muted-foreground" />
+                  <DocIcon icon={hit.icon}>
+                    <FileTextIcon className="w-4 h-4 shrink-0 text-muted-foreground" />
+                  </DocIcon>
                   <span className="font-medium truncate">{hit.title || t("common.untitled")}</span>
                 </div>
                 {hit.folderPath && <p className="mt-0.5 text-xs text-muted-foreground truncate">{hit.folderPath}</p>}

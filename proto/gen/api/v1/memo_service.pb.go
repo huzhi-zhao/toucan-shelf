@@ -479,8 +479,12 @@ type Memo struct {
 	// Output only. An MCP edit is waiting to be seen in the document editor.
 	// Opening the editor acknowledges it without changing the document content.
 	AgentEditPending bool `protobuf:"varint,28,opt,name=agent_edit_pending,json=agentEditPending,proto3" json:"agent_edit_pending,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Optional. The document's icon: a single system emoji. Empty means the
+	// doc-type default icon. Set with update_mask "icon"; clearing it restores
+	// the default.
+	Icon          string `protobuf:"bytes,29,opt,name=icon,proto3" json:"icon,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Memo) Reset() {
@@ -693,6 +697,13 @@ func (x *Memo) GetAgentEditPending() bool {
 		return x.AgentEditPending
 	}
 	return false
+}
+
+func (x *Memo) GetIcon() string {
+	if x != nil {
+		return x.Icon
+	}
+	return ""
 }
 
 type Location struct {
@@ -3507,7 +3518,7 @@ const file_api_v1_memo_service_proto_rawDesc = "" +
 	"\rreaction_type\x18\x04 \x01(\tB\x03\xe0A\x02R\freactionType\x12@\n" +
 	"\vcreate_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
 	"createTime:X\xeaAU\n" +
-	"\x15memos.api.v1/Reaction\x12!memos/{memo}/reactions/{reaction}\x1a\x04name*\treactions2\breaction\"\xe8\x0e\n" +
+	"\x15memos.api.v1/Reaction\x12!memos/{memo}/reactions/{reaction}\x1a\x04name*\treactions2\breaction\"\x81\x0f\n" +
 	"\x04Memo\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12.\n" +
 	"\x05state\x18\x02 \x01(\x0e2\x13.memos.api.v1.StateB\x03\xe0A\x02R\x05state\x123\n" +
@@ -3544,7 +3555,8 @@ const file_api_v1_memo_service_proto_rawDesc = "" +
 	"\rnode_overlays\x18\x19 \x03(\v2$.memos.api.v1.Memo.NodeOverlaysEntryB\x03\xe0A\x01R\fnodeOverlays\x12@\n" +
 	"\n" +
 	"doc_config\x18\x1b \x01(\v2\x17.memos.api.v1.DocConfigB\x03\xe0A\x01H\x05R\tdocConfig\x88\x01\x01\x121\n" +
-	"\x12agent_edit_pending\x18\x1c \x01(\bB\x03\xe0A\x03R\x10agentEditPending\x1a?\n" +
+	"\x12agent_edit_pending\x18\x1c \x01(\bB\x03\xe0A\x03R\x10agentEditPending\x12\x17\n" +
+	"\x04icon\x18\x1d \x01(\tB\x03\xe0A\x01R\x04icon\x1a?\n" +
 	"\x11NodeOverlaysEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a\xac\x01\n" +

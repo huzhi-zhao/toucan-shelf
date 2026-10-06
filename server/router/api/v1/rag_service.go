@@ -265,6 +265,7 @@ func (s *APIV1Service) convertSearchHits(ctx context.Context, hits []rag.Hit) ([
 			Score:      hit.Score,
 			Snippet:    hit.Snippet,
 			Highlights: hit.Highlights,
+			Icon:       memo.Payload.GetIcon(),
 		})
 	}
 	return result, nil

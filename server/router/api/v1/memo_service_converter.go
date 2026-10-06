@@ -66,6 +66,7 @@ func (s *APIV1Service) convertMemoFromStoreWithCreators(ctx context.Context, mem
 		memoMessage.EpubAnnotation = convertEpubAnnotationFromStore(memo.Payload.EpubAnnotation)
 		memoMessage.NodeOverlays = memo.Payload.NodeOverlays
 		memoMessage.DocConfig = convertDocConfigFromStore(memo.Payload.DocConfig)
+		memoMessage.Icon = memo.Payload.Icon
 	}
 
 	if memo.ParentUID != nil {

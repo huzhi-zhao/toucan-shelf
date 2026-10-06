@@ -1,6 +1,7 @@
 import { BookmarkIcon, FileTextIcon, PanelRightCloseIcon, PanelRightOpenIcon } from "lucide-react";
 import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
+import DocIcon from "@/components/DocIcon";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNewMemo } from "@/contexts/NewMemoContext";
@@ -60,6 +61,7 @@ const MemoHeader: React.FC<MemoHeaderProps> = ({ showCreator, showVisibility, sh
         {memo.title ? (
           <TitleDisplay
             title={memo.title}
+            icon={memo.icon}
             creator={showCreator ? creator : undefined}
             displayTime={displayTime}
             timeTooltip={timeTooltip}
@@ -128,16 +130,19 @@ const MemoHeader: React.FC<MemoHeaderProps> = ({ showCreator, showVisibility, sh
 
 interface TitleDisplayProps {
   title: string;
+  icon?: string;
   creator?: User;
   displayTime: React.ReactNode;
   timeTooltip: TimeTooltipContent;
   onGotoDetail: () => void;
 }
 
-const TitleDisplay: React.FC<TitleDisplayProps> = ({ title, creator, displayTime, timeTooltip, onGotoDetail }) => (
+const TitleDisplay: React.FC<TitleDisplayProps> = ({ title, icon, creator, displayTime, timeTooltip, onGotoDetail }) => (
   <div className="w-full flex flex-row justify-between items-center gap-2 min-w-0">
     <div className="flex flex-row items-center gap-1.5 min-w-0">
-      <FileTextIcon className="w-4 h-4 shrink-0 text-muted-foreground" />
+      <DocIcon icon={icon}>
+        <FileTextIcon className="w-4 h-4 shrink-0 text-muted-foreground" />
+      </DocIcon>
       <span className="font-medium truncate">{title}</span>
     </div>
     {creator && (

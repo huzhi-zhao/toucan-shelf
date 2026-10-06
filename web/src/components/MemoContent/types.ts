@@ -22,6 +22,8 @@ export interface MemoContentProps {
   isPdf?: boolean;
   /** Display title for the PDF card/viewer (memo.title). */
   pdfTitle?: string;
+  /** The PDF document's emoji icon (memo.icon), shown on the compact card in place of the default. */
+  pdfIcon?: string;
   /** File URL of the linked PDF attachment. */
   pdfUrl?: string;
   /** The linked PDF attachment, for file size/date metadata on the compact card. */

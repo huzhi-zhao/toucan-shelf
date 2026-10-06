@@ -2,6 +2,7 @@ import { FileTextIcon, GlobeIcon, LayoutGridIcon } from "lucide-react";
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { MARK_EXCLUDE_ATTR } from "@/components/DocComments/textAnchor";
+import DocIcon from "@/components/DocIcon";
 import MemoContent from "@/components/MemoContent";
 import { BlockSourceProvider, type BlockSourceValue } from "@/components/MemoContent/BlockSourceContext";
 import { PropertiesPanel } from "@/components/MemoContent/PropertiesPanel";
@@ -266,7 +267,9 @@ const ReferencedDocBlockView = ({
         onClick={() => openDoc(doc.name, doc)}
         className="self-start flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
       >
-        <FileTextIcon className="w-4 h-4 shrink-0" />
+        <DocIcon icon={doc.icon}>
+          <FileTextIcon className="w-4 h-4 shrink-0" />
+        </DocIcon>
         <span className="truncate">{doc.title || doc.name}</span>
       </button>
       <BlockSourceProvider value={source}>

@@ -76,6 +76,7 @@ import { attachmentUIDsOf, hashMemoState } from "@/utils/memoState";
 import { useReadingDensity } from "@/utils/readingDensity";
 import { getDocScrollPosition, restoreScrollTopWhenReady, saveDocScrollPosition } from "@/utils/scrollPositionCache";
 import { splitChildMemos } from "@/utils/subDoc";
+import DocIconPicker from "./DocIconPicker";
 import DocumentOutline, { ATTACHMENTS_ANCHOR_ID, REFERENCES_ANCHOR_ID } from "./DocumentOutline";
 
 // How long after a save a drift report is still treated as "caused by that save", and so
@@ -842,6 +843,7 @@ const DocumentView = ({
   return (
     <div className="w-full h-full flex flex-col min-w-0">
       <div className="shrink-0 flex items-center gap-2 border-b border-border px-4 py-1.5">
+        <DocIconPicker memo={memo} />
         <input
           className="flex-1 min-w-0 bg-transparent text-lg font-medium outline-0 truncate"
           value={titleDraft}

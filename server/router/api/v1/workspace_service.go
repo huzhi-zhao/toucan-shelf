@@ -1243,6 +1243,7 @@ func (d *treeDir) toNodes(prefix string) []*v1pb.WorkspaceTreeNode {
 			Memo:       MemoNamePrefix + m.UID,
 			Archived:   m.RowStatus == store.Archived,
 			DocType:    m.DocType,
+			Icon:       m.Payload.GetIcon(),
 			CreateTime: timestamppb.New(time.Unix(m.CreatedTs, 0)),
 			UpdateTime: timestamppb.New(time.Unix(m.UpdatedTs, 0)),
 		})

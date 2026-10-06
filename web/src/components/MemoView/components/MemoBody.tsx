@@ -46,6 +46,7 @@ const MemoBody: React.FC<MemoBodyProps> = ({ compact, autoFold }) => {
               softBreak={memo.docConfig?.softBreak}
               isPdf={isPdf}
               pdfTitle={memo.title}
+              pdfIcon={memo.icon}
               pdfUrl={pdfAttachment ? getAttachmentUrl(pdfAttachment) : undefined}
               pdfAttachment={pdfAttachment}
               pdfDetailView={isInMemoDetailPage}

@@ -235,6 +235,10 @@ message WorkspaceTreeNode {
 
   // Set only when type == FOLDER. Empty means inherit, as sort_field does.
   string sort_order = 11;
+
+  // Set only when type == DOCUMENT: the document's emoji icon, empty for the
+  // doc-type default.
+  string icon = 12;
 }
 
 message CreateWorkspaceRequest {

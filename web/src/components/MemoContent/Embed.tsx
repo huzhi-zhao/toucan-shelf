@@ -1,5 +1,6 @@
 import { FileTextIcon } from "lucide-react";
 import { useMemo as useReactMemo } from "react";
+import DocIcon from "@/components/DocIcon";
 import MemoContent from "@/components/MemoContent";
 import { useCrossWorkspaceTrees } from "@/hooks/useCrossWorkspaceTrees";
 import { useMemo as useMemoDetail } from "@/hooks/useMemoQueries";
@@ -86,7 +87,9 @@ const EmbedContent: React.FC<{
         onClick={() => documentLinkContext?.navigate(resolvedName, target)}
         className="mb-1 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
       >
-        <FileTextIcon className="w-4 h-4 shrink-0" />
+        <DocIcon icon={memo.icon}>
+          <FileTextIcon className="w-4 h-4 shrink-0" />
+        </DocIcon>
         <span className="truncate">{memo.title || resolvedName}</span>
       </button>
       <EmbedAncestryProvider ancestry={[...ancestry, resolvedName]}>
