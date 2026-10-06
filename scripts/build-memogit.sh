@@ -20,6 +20,10 @@
 #                                                   #   `docker build`, like the frontend)
 #   cp ./build/memogit /opt/homebrew/bin/memogit    # install locally
 #
+# Without a git checkout (the server image builds the dist inside Docker, whose
+# build context has no .git), pass the version in: MEMOGIT_VERSION=2026.10.06-a68e99be4.
+# deploy.sh computes it from the checkout it deploys.
+#
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -49,13 +53,31 @@ done
 ./scripts/sync-agent-skill-docs.sh
 
 # Same string `memogit -v` prints (cmd/memogit/version.go), computed from git
-# so it also works for a cross-compiled binary this machine can't run.
-VERSION="$(TZ=UTC git log -1 --date=format-local:%Y.%m.%d --format='%cd')-$(git rev-parse --short=9 HEAD)"
-if [ -n "$(git status --porcelain)" ]; then
-  VERSION="$VERSION-dirty"
+# so it also works for a cross-compiled binary this machine can't run. It is
+# also stamped in with -ldflags, which is what `memogit -v` falls back to when
+# the build could not see the repo.
+if [ -n "${MEMOGIT_VERSION:-}" ]; then
+  VERSION="$MEMOGIT_VERSION"
+  HAVE_GIT=0
+else
+  VERSION="$(TZ=UTC git log -1 --date=format-local:%Y.%m.%d --format='%cd')-$(git rev-parse --short=9 HEAD)"
+  if [ -n "$(git status --porcelain)" ]; then
+    VERSION="$VERSION-dirty"
+  fi
+  HAVE_GIT=1
 fi
+LDFLAGS="-X main.buildVersion=$VERSION"
+
+sha256() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | cut -d' ' -f1
+  else
+    shasum -a 256 "$1" | cut -d' ' -f1
+  fi
+}
 
 warn_unshippable() {
+  [ "$HAVE_GIT" = 1 ] || return 0
   if [[ "$VERSION" == *-dirty ]]; then
     echo "warning: built with uncommitted changes; do not ship this binary to other repos" >&2
   fi
@@ -79,8 +101,8 @@ if [ "$DIST" = 1 ]; then
     NAME="memogit-$PLATFORM"
     # Static, stripped binaries: sandboxes have no Go toolchain or libc guarantees.
     CGO_ENABLED=0 GOOS="${PLATFORM%-*}" GOARCH="${PLATFORM#*-}" \
-      go build -trimpath -ldflags "-s -w" -o "$OUTPUT/$NAME" ./cmd/memogit "$@"
-    SUM="$(shasum -a 256 "$OUTPUT/$NAME" | cut -d' ' -f1)"
+      go build -trimpath -ldflags "-s -w $LDFLAGS" -o "$OUTPUT/$NAME" ./cmd/memogit "$@"
+    SUM="$(sha256 "$OUTPUT/$NAME")"
     FILES="$FILES${FILES:+,}
     \"$PLATFORM\": {\"name\": \"$NAME\", \"sha256\": \"$SUM\"}"
   done
@@ -96,11 +118,11 @@ if [ "$LINUX_AMD64" = 1 ]; then
   OUTPUT="${OUTPUT:-./build/memogit-linux-amd64}"
   mkdir -p "$(dirname "$OUTPUT")"
   # Static, stripped binary: the sandbox has no Go toolchain or libc guarantees.
-  CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "-s -w" -o "$OUTPUT" ./cmd/memogit "$@"
+  CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "-s -w $LDFLAGS" -o "$OUTPUT" ./cmd/memogit "$@"
 else
   OUTPUT="${OUTPUT:-./build/memogit}"
   mkdir -p "$(dirname "$OUTPUT")"
-  go build -o "$OUTPUT" ./cmd/memogit "$@"
+  go build -ldflags "$LDFLAGS" -o "$OUTPUT" ./cmd/memogit "$@"
 fi
 
 echo "Built $OUTPUT ($(du -h "$OUTPUT" | cut -f1)), version $VERSION"

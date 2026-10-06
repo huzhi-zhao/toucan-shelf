@@ -10,4 +10,9 @@ memos
 .golangci.yaml
 .dockerignore
 docs/
+# docs/skill/ is the source of memogit's embedded manual and of bootstrap.md,
+# both part of the memogit dist the image builds.
+!docs/skill/
+# A dist built on the host; the image builds its own.
+memogit-dist/
 .DS_Store
