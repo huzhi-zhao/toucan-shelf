@@ -16,8 +16,9 @@
 #                                                   #   -> ./build/memogit-linux-amd64
 #   ./scripts/build-memogit.sh --dist               # what the server publishes under /memogit/:
 #                                                   #   every platform + version.json + install.sh
-#                                                   #   + bootstrap.md -> ./memogit-dist/ (run before
-#                                                   #   `docker build`, like the frontend)
+#                                                   #   + bootstrap.md -> ./memogit-dist/ (the root
+#                                                   #   Dockerfile runs this itself; scripts/Dockerfile
+#                                                   #   needs it run on the host first)
 #   cp ./build/memogit /opt/homebrew/bin/memogit    # install locally
 #
 # Without a git checkout (the server image builds the dist inside Docker, whose
