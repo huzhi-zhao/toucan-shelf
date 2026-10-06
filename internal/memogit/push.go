@@ -26,12 +26,30 @@ type PushResult struct {
 	// pushed for them; the user decides whether to restore the document or drop
 	// the file.
 	Orphaned []string
+	// Skipped holds paths push refused to send because the local layout asks
+	// for something the server cannot do (a sub-document with no parent to
+	// bind to, a sub-document moved out of its folder, ...). Each is explained
+	// by a "!" line; nothing about them changed on the server.
+	Skipped []string
 }
 
 // Quiet reports whether the push moved nothing: no memo created, updated,
 // relocated or archived, and nothing left needing the user's attention.
 func (r *PushResult) Quiet() bool {
-	return r.Created+r.Updated+r.Moved+r.Archived+len(r.Conflicts)+len(r.Orphaned) == 0
+	return r.Created+r.Updated+r.Moved+r.Archived+len(r.Conflicts)+len(r.Orphaned)+len(r.Skipped) == 0
+}
+
+// skip records a file push will not send and says why on a "!" line.
+func (r *PushResult) skip(out io.Writer, path, why string, args ...any) {
+	r.Skipped = append(r.Skipped, path)
+	fmt.Fprintf(out, "  ! %s: %s — skipped\n", path, fmt.Sprintf(why, args...))
+}
+
+// orphan records a tracked file whose document is no longer live on the server.
+func (r *PushResult) orphan(out io.Writer, path string) {
+	r.Orphaned = append(r.Orphaned, path)
+	fmt.Fprintf(out, "  ! %s: archived or deleted on the server — local file kept. "+
+		"Restore the document on the server, or delete this file and push to confirm the removal.\n", path)
 }
 
 // localDoc is one work-tree document file, resolved to the memo it belongs to.
@@ -71,14 +89,7 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 	}
 	client := NewClient(cfg)
 	contentRoot := ContentRoot(root, ws)
-	// Where each tracked document's file lives, both ways round: sub-documents
-	// are placed beside their parent's file, so pushing one means recognizing
-	// which document the neighbouring file is.
 	parents := newParentIndex(ws, state, nil)
-	uidByPath := make(map[string]string, len(state.Memos))
-	for uid, ms := range state.Memos {
-		uidByPath[filepath.ToSlash(ms.Path)] = uid
-	}
 
 	present, err := listDocFiles(contentRoot, state)
 	if err != nil {
@@ -90,10 +101,11 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 	}
 	resolveIdentities(docs, state)
 
-	alive, err := aliveMemoUIDs(ctx, client, ws)
+	live, err := liveMemos(ctx, client, ws)
 	if err != nil {
 		return nil, err
 	}
+	finder := newParentFinder(ws, docs, live)
 
 	res := &PushResult{}
 	fmt.Fprintf(out, "Pushing workspace %q ...\n", ws.Title)
@@ -102,19 +114,42 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 	}
 	warnUnmarked(docs, out)
 
-	// 1. New, moved, and modified local files (listDocFiles sorts, so the output
-	// order is stable).
-	for i := range docs {
+	// 1. New, moved, and modified local files. Files in ".subdocs" folders go
+	// after everything else, so a parent created or moved in this same run
+	// already has its identity when its sub-documents look for it
+	// (listDocFiles sorts, so the output order within each pass is stable).
+	for _, i := range pushOrder(docs) {
 		doc := docs[i]
+		if dir, nested := nestedUnderSubDocDir(doc.Path); nested {
+			res.skip(out, doc.Path, "%s/ holds sub-documents directly and nothing can sit deeper inside it "+
+				"(sub-documents are one level deep)", dir)
+			continue
+		}
+		if parentRel, isSubDoc := ParentRelFromSubDocPath(doc.Path); isSubDoc {
+			uid, err := pushSubDoc(ctx, client, ws, parents, finder, contentRoot, doc, parentRel, state, res, dryRun, out)
+			if err != nil {
+				return nil, err
+			}
+			if docs[i].UID == "" {
+				docs[i].UID = uid
+			}
+			continue
+		}
+
 		if doc.UID == "" {
-			uid, err := pushNewDoc(ctx, client, ws, parents, uidByPath, contentRoot, doc, state, res, dryRun, out)
+			folderPath, _, _ := deriveMemoFromPath(doc.Path)
+			created, err := pushNewDoc(ctx, client, ws, parents, contentRoot, doc, ws.ServerFolderPath(folderPath), state, res, dryRun, out)
 			if err != nil {
 				return nil, err
 			}
 			// Record the identity the server just handed out: the archive pass below
 			// works off claimed identities, and a document created moments ago must
-			// not look like one whose file went missing.
-			docs[i].UID = uid
+			// not look like one whose file went missing. Its sub-documents, later
+			// in this run, look it up the same way.
+			if created != nil {
+				docs[i].UID = uidFromName(created.GetName())
+				finder.live[docs[i].UID] = created
+			}
 			continue
 		}
 
@@ -122,15 +157,21 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 		// check an unchanged file never touches the network, so a document archived
 		// on the web reads as "in sync" forever: the user keeps pushing, keeps
 		// seeing "unchanged", and never learns their document is not published.
-		if !alive[doc.UID] {
-			res.Orphaned = append(res.Orphaned, doc.Path)
-			fmt.Fprintf(out, "  ! %s: archived or deleted on the server — local file kept. "+
-				"Restore the document on the server, or delete this file and push to confirm the removal.\n", doc.Path)
+		current := live[doc.UID]
+		if current == nil {
+			res.orphan(out, doc.Path)
 			continue
 		}
 
 		prev := state.Memos[doc.UID]
 		if prev.Path != doc.Path {
+			if _, isSubDoc := ParentUIDFromSubDocFolder(current.GetFolderPath()); isSubDoc {
+				// The server would refuse the move anyway; saying why here beats an
+				// RPC error, and leaves the rest of the push to go through.
+				res.skip(out, doc.Path, "is a sub-document and cannot leave its parent's %s folder; "+
+					"move it back to %s", SubDocDirSuffix, prev.Path)
+				continue
+			}
 			// The file moved or was renamed locally. Relocate the memo in place so
 			// its history, comments and inbound links follow the document, then fall
 			// through to the content comparison below — a move and an edit in the
@@ -168,7 +209,7 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 			continue
 		}
 		prev := state.Memos[uid]
-		if !alive[uid] {
+		if live[uid] == nil {
 			// Gone locally and gone on the server: nothing to archive, just stop
 			// tracking it rather than spending a call to re-archive an archived memo.
 			fmt.Fprintf(out, "  - %s (already gone on the server, untracked)\n", prev.Path)
@@ -193,6 +234,7 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 		fmt.Fprintf(out, "Dry run: %d to create, %d to update, %d to move, %d to archive, %d unchanged, %d conflicts.\n",
 			res.Created, res.Updated, res.Moved, res.Archived, res.Unchanged, len(res.Conflicts))
 		reportOrphans(out, res)
+		reportSkipped(out, res)
 		return res, nil
 	}
 
@@ -215,6 +257,7 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 		fmt.Fprintf(out, "Conflicts left for manual resolution: %v\n", res.Conflicts)
 	}
 	reportOrphans(out, res)
+	reportSkipped(out, res)
 	return res, nil
 }
 
@@ -229,54 +272,45 @@ func reportOrphans(out io.Writer, res *PushResult) {
 	fmt.Fprintf(out, "Not on the server (archived or deleted there), kept locally: %v\n", res.Orphaned)
 }
 
-// pushNewDoc creates a memo for a work-tree file that belongs to no known memo,
-// then stamps the file with the uid the server assigned so the next move of this
-// file is recognised as a move. Returns that uid ("" for a dry run, or for a PDF
-// stub, which is generated output and never becomes a document).
-func pushNewDoc(ctx context.Context, client *Client, ws *WorkspaceConfig, parents parentIndex, uidByPath map[string]string, contentRoot string,
-	doc localDoc, state *State, res *PushResult, dryRun bool, out io.Writer) (string, error) {
+// reportSkipped lists the files push refused to send, each already explained
+// by its own "!" line. Like orphans, they are easy to miss in a run that
+// otherwise looks successful.
+func reportSkipped(out io.Writer, res *PushResult) {
+	if len(res.Skipped) == 0 {
+		return
+	}
+	fmt.Fprintf(out, "Not pushed (see ! lines above): %v\n", res.Skipped)
+}
+
+// pushNewDoc creates a memo at folderPath for a work-tree file that belongs to
+// no known memo, then stamps the file with the uid the server assigned so the
+// next move of this file is recognised as a move. Returns the created memo (nil
+// for a dry run, or for a PDF stub, which is generated output and never
+// becomes a document).
+func pushNewDoc(ctx context.Context, client *Client, ws *WorkspaceConfig, parents parentIndex, contentRoot string,
+	doc localDoc, folderPath string, state *State, res *PushResult, dryRun bool, out io.Writer) (*v1pb.Memo, error) {
 	// PDF stubs are generated, not editable content — never push them.
 	if doc.DocType == "PDF" {
-		return "", nil
+		return nil, nil
 	}
-	folderPath, title, docType := deriveMemoFromPath(doc.Path)
-	if parentRel, isSubDoc := ParentRelFromSubDocPath(doc.Path); isSubDoc {
-		// A file in a ".subdocs" folder belongs to the document whose file sits
-		// beside that folder. Its server folder path is the reserved one, which
-		// is what binds it to that parent — so it must NOT go through the sparse
-		// mapping, which would prepend a checkout prefix to a path the server
-		// parses rather than stores as a location.
-		parentUID, known := uidByPath[filepath.ToSlash(parentRel)]
-		if !known {
-			// The parent has never been pushed, so there is nothing to bind to
-			// yet. Skipping is the safe half: pushing it as an ordinary document
-			// would create a real document named after the folder.
-			fmt.Fprintf(out, "  ! %s: parent document %s is not synced yet, skipped\n", doc.Path, parentRel)
-			return "", nil
-		}
-		folderPath = SubDocFolderPath(parentUID)
-	} else {
-		// Sparse checkout: recover the server folder_path from the local path (see
-		// ServerFolderPath for the two mapping modes).
-		folderPath = ws.ServerFolderPath(folderPath)
-	}
+	_, title, docType := deriveMemoFromPath(doc.Path)
 	fmt.Fprintf(out, "  + %s (new)\n", doc.Path)
 	if dryRun {
 		res.Created++
-		return "", nil
+		return nil, nil
 	}
 	created, err := client.CreateMemo(ctx, ws.Workspace, folderPath, title, docType, doc.Content)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	uid := uidFromName(created.GetName())
 	// Keep the local mapping even if the server normalized the title.
 	state.Memos[uid] = rebaseState(ws, parents, created, doc.Path, MemoState{})
 	if err := writeFile(contentRoot, doc.Path, InjectLocalID(doc.Content, uid, docType)); err != nil {
-		return "", err
+		return nil, err
 	}
 	res.Created++
-	return uid, nil
+	return created, nil
 }
 
 // moveDoc relocates a memo to match its file's new path. The target folder/title
@@ -490,11 +524,13 @@ func resolveIdentities(docs []localDoc, state *State) {
 	}
 }
 
-// aliveMemoUIDs returns the uids of every memo currently live in the workspace's
-// checkout scope. Push needs it to tell "nothing to do" apart from "this
-// document is not on the server any more", which the hash comparison alone can
-// never distinguish — an unchanged file is never looked up remotely.
-func aliveMemoUIDs(ctx context.Context, client *Client, ws *WorkspaceConfig) (map[string]bool, error) {
+// liveMemos returns every memo currently live in the workspace's checkout
+// scope, sub-documents included, by uid. Push needs it to tell "nothing to do"
+// apart from "this document is not on the server any more", which the hash
+// comparison alone can never distinguish — an unchanged file is never looked
+// up remotely — and to see where each document actually sits on the server,
+// which is what decides whether a file in a ".subdocs" folder is bound yet.
+func liveMemos(ctx context.Context, client *Client, ws *WorkspaceConfig) (map[string]*v1pb.Memo, error) {
 	scope, err := currentScope(ctx, client)
 	if err != nil {
 		return nil, err
@@ -503,15 +539,15 @@ func aliveMemoUIDs(ctx context.Context, client *Client, ws *WorkspaceConfig) (ma
 	if err != nil {
 		return nil, err
 	}
-	live, err := withSubDocs(ctx, client, inScopeMemos(ws, current))
+	memos, err := withSubDocs(ctx, client, inScopeMemos(ws, current))
 	if err != nil {
 		return nil, err
 	}
-	alive := make(map[string]bool, len(live))
-	for _, m := range live {
-		alive[uidFromName(m.GetName())] = true
+	live := make(map[string]*v1pb.Memo, len(memos))
+	for _, m := range memos {
+		live[uidFromName(m.GetName())] = m
 	}
-	return alive, nil
+	return live, nil
 }
 
 // claimedUIDs is the set of memos some work-tree file is responsible for. Push

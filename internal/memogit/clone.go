@@ -78,7 +78,13 @@ func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter
 		return err
 	}
 
-	memos = inScopeMemos(wsCfg, memos)
+	// The listing never contains sub-documents (they are child memos), so they
+	// are fetched from their parents — or a fresh checkout would lack every one
+	// of them until its first full pull.
+	memos, err = withSubDocs(ctx, client, inScopeMemos(wsCfg, memos))
+	if err != nil {
+		return err
+	}
 
 	state := NewState(cfg.Server)
 	if err := checkPathCollisions(wsCfg, memos, out); err != nil {

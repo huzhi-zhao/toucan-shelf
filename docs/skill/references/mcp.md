@@ -54,6 +54,10 @@ folder_path、title、`memos/uid`）。有它就直接 `memo_get_memo`，不用�
 
 没有专门的工具，也不需要你写 relation——**路径就是绑定**。
 
+**已有的文档**要变成子文档，不用删了重建：用 `memo_update_memo` 把它的 `folder_path`
+改成 `_sub/<父文档uid>`，就地挂上，uid、版本历史、评论都保留（同一知识库内，
+且它自己没有子文档）。以 `.subdocs` 结尾的文件夹名是保留的，别建也别往里放东西。
+
 **`rag_search` 搜不到子文档**，搜不到不等于不存在：要发现它们，读父文档
 （`memo_get_memo`）的 relations，或看父文档正文里的脚注引用
 （`/_sub/<uid>/<标题>.md`）。完整规则见 `hierarchy-and-doc-types.md` §3.5。

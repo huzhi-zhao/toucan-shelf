@@ -91,6 +91,11 @@ Sub-documents:
   the footnote references in its body, written /_sub/{uid}/{title}.md.
 - A sub-document cannot be moved and follows its parent when archived. Rewrite
   it freely instead of trying to remove it.
+- An existing document becomes a sub-document in place by updating its
+  folder_path to "_sub/{parent uid}" (same knowledge base; it must have no
+  sub-documents itself). Its uid, history and comments are kept.
+- Folder names ending in ".subdocs" are reserved (memogit's local name for a
+  document's sub-documents); never create or move anything into one.
 
 Updating:
 - memo_update_memo replaces the whole content field; it is not an incremental
