@@ -265,12 +265,12 @@ func reconcileFullListing(ctx context.Context, client *Client, ws *WorkspaceConf
 	// the incremental pass: everything tracked but absent from it is treated as
 	// deleted on the server and removed locally. Leaving them out would delete
 	// every sub-document from the checkout on the first reconcile.
-	subDocs, err := fetchSubDocs(ctx, client, inScope)
+	live, err := withSubDocs(ctx, client, inScope)
 	if err != nil {
 		return err
 	}
 	parents := newParentIndex(ws, state, inScope)
-	return reconcileAgainst(ctx, client, ws, parents, contentRoot, append(inScope, subDocs...), state, res, out, warn)
+	return reconcileAgainst(ctx, client, ws, parents, contentRoot, live, state, res, out, warn)
 }
 
 // reconcileAgainst is reconcileFullListing's logic over an already-fetched

@@ -55,7 +55,10 @@ func Status(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, 
 	if err != nil {
 		return nil, err
 	}
-	current = inScopeMemos(ws, current)
+	current, err = withSubDocs(ctx, client, inScopeMemos(ws, current))
+	if err != nil {
+		return nil, err
+	}
 	serverByUID := make(map[string]string, len(current)) // uid -> canonical server hash
 	alive := make(map[string]bool, len(current))
 	for _, m := range current {

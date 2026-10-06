@@ -123,6 +123,19 @@ func localRelPathOf(ws *WorkspaceConfig, parents parentIndex, m *v1pb.Memo) stri
 	return ws.LocalRelPath(m.GetFolderPath(), m.GetTitle(), docTypeString(m))
 }
 
+// withSubDocs returns the given documents followed by all their sub-documents:
+// the full set of live memos a checkout mirrors. Anything that decides "is this
+// tracked document still on the server?" must use it — the plain listing never
+// contains sub-documents, so checking against it alone reads every one of them
+// as deleted (pull would remove them, push would skip them as orphans).
+func withSubDocs(ctx context.Context, client *Client, docs []*v1pb.Memo) ([]*v1pb.Memo, error) {
+	subDocs, err := fetchSubDocs(ctx, client, docs)
+	if err != nil {
+		return nil, err
+	}
+	return append(append([]*v1pb.Memo(nil), docs...), subDocs...), nil
+}
+
 // fetchSubDocs returns the sub-documents of every given parent.
 //
 // They cannot come from the memo listing: sub-documents are child memos, and

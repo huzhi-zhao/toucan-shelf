@@ -503,8 +503,12 @@ func aliveMemoUIDs(ctx context.Context, client *Client, ws *WorkspaceConfig) (ma
 	if err != nil {
 		return nil, err
 	}
-	alive := make(map[string]bool, len(current))
-	for _, m := range inScopeMemos(ws, current) {
+	live, err := withSubDocs(ctx, client, inScopeMemos(ws, current))
+	if err != nil {
+		return nil, err
+	}
+	alive := make(map[string]bool, len(live))
+	for _, m := range live {
 		alive[uidFromName(m.GetName())] = true
 	}
 	return alive, nil
