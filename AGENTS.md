@@ -62,6 +62,8 @@ always come from the same commit. Build the dist from a clean `main`. See
 `docs/dev/requirements/collaboration/memogit-distribution.md` and `docs/skill/bootstrap.md` (agent-facing, published as
 `/memogit/bootstrap.md`).
 
+Releasing to production (merge to `main`, backup, `./deploy.sh`, verify, rollback): `docs/dev/release-process.md`.
+
 ## Code Map
 
 | Path | Purpose |

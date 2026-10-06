@@ -80,7 +80,7 @@ memogit 2026.10.05-14c6f2b35
 
 | 下游 | 现状（2026-10-06） |
 | --- | --- |
-| `jimmy-zhz/toucan-base` | 迁移 PR 已开（jimmy-zhz/toucan-base#1）：删掉提交的二进制和 py 脚本，改用 `memogit.conf.yaml` + hook。云端环境变量要从 `TOUCAN_TOKEN` 改成 `TOUCANSHELF_PAT`，并加上 `TOUCANSHELF_SERVER` |
+| `jimmy-zhz/toucan-base` | 迁移 PR 已开（jimmy-zhz/toucan-base#1）：删掉提交的二进制和 py 脚本，改用 `memogit.conf.yaml` + hook。云端环境变量已统一为 `TOUCANSHELF_PAT` / `TOUCANSHELF_SERVER` |
 | `huzhi-zhao/huzhi-zhao.github.io` | 迁移 PR 已开（huzhi-zhao/huzhi-zhao.github.io#8）：同上 |
 | 本机（Mac） | `/opt/homebrew/bin/memogit`。`/usr/local/bin/memogit` 是 root 所有的早期版本，PATH 里排在后面，平时用不到，但别拿它判断功能 |
 
