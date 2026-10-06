@@ -1205,6 +1205,7 @@
     "move-document": "移动文档",
     "move": "移动",
     "copy-path": "复制路径",
+    "copy-full-path": "复制完整路径",
     "copy-info": "复制信息",
     "destination-workspace": "目标知识库",
     "destination-folder": "目标文件夹",

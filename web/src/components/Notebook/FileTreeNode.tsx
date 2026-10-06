@@ -71,6 +71,23 @@ interface Props {
 // Everything before the last segment of a workspace-relative path; "" for a top-level node.
 const parentFolderPath = (path: string): string => (path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "");
 
+// The file extension memogit gives each doc type in a local checkout. Mirrors extForDocType in
+// internal/memogit/naming.go.
+const memogitExt = (docType: string): string => {
+  switch (docType) {
+    case "HTML":
+      return ".html";
+    case "PDF":
+      return ".pdf.md";
+    case "VIEW":
+      return ".view.json";
+    case "BLOGVIEW":
+      return ".blogview.json";
+    default:
+      return ".md";
+  }
+};
+
 const containsSelectedMemo = (node: WorkspaceTreeNode, selectedMemo: string): boolean => {
   if (node.type !== WorkspaceTreeNode_NodeType.FOLDER) {
     return node.memo === selectedMemo;
@@ -138,6 +155,18 @@ const FileTreeNode = ({
     copy(folderPath ? `/${folderPath}/${node.name}` : `/${node.name}`);
     toast.success(t("message.succeed-copy-path"));
   }, [node.path, node.name, t]);
+  // The workspace-qualified form ("@KB/folder/doc.md", the cross-KB link syntax) plus one English
+  // sentence spelling out what it means, so an agent pasted this cold — typically while
+  // collaborating on a memogit checkout, whose content dir is named after the KB title — knows
+  // "@KB" is the knowledge base and can find the file locally without guessing.
+  const handleCopyFullPath = useCallback(() => {
+    const kb = workspaceTitle ?? "";
+    const folderPath = parentFolderPath(node.path);
+    const rel = isFolder ? `${node.path}/` : `${folderPath ? `${folderPath}/` : ""}${node.name}${memogitExt(node.docType)}`;
+    const kind = isFolder ? "folder" : "document";
+    copy(`@${kb}/${rel} (${kind} "/${rel}" in knowledge base "${kb}"; in a memogit checkout it is ${kb}/${rel})`);
+    toast.success(t("message.succeed-copy-path"));
+  }, [workspaceTitle, isFolder, node.path, node.name, node.docType, t]);
   // Where this node lives, in the exact vocabulary the ToucanShelf MCP addresses documents with
   // (workspace resource name, folder_path, title, memo resource name) so an agent handed this
   // block can go straight to get_memo/update_memo instead of re-walking list_workspaces + tree.
@@ -248,6 +277,7 @@ const FileTreeNode = ({
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem onClick={handleCopyDocumentPath}>{t("notebook.copy-path")}</DropdownMenuItem>
+                  {workspaceTitle && <DropdownMenuItem onClick={handleCopyFullPath}>{t("notebook.copy-full-path")}</DropdownMenuItem>}
                   <DropdownMenuItem onClick={handleCopyInfo}>{t("notebook.copy-info")}</DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
@@ -312,6 +342,7 @@ const FileTreeNode = ({
                 <DropdownMenuSubTrigger>{t("common.copy")}</DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
                   <DropdownMenuItem onClick={handleCopyFolderPath}>{t("notebook.copy-path")}</DropdownMenuItem>
+                  {workspaceTitle && <DropdownMenuItem onClick={handleCopyFullPath}>{t("notebook.copy-full-path")}</DropdownMenuItem>}
                   <DropdownMenuItem onClick={handleCopyInfo}>{t("notebook.copy-info")}</DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
