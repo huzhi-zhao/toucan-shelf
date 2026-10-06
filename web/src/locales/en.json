@@ -1289,6 +1289,7 @@
     "move-document": "Move document",
     "move": "Move",
     "copy-path": "Copy path",
+    "copy-full-path": "Copy full path",
     "copy-info": "Copy info",
     "destination-workspace": "Destination workspace",
     "destination-folder": "Destination folder",
