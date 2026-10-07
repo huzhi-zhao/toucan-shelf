@@ -232,14 +232,15 @@ func pruneEmptyDirs(root, dir string) {
 }
 
 // inScopeMemos returns only the memos that belong to the workspace's checkout:
-// for a sparse checkout, those under the mapped folder (the server has no
-// folder_path filter, so scoping happens client-side after ListAllMemos), and in
+// for a sparse or folder-scoped checkout, those under its folders (the server
+// has no folder_path filter, so scoping happens client-side after
+// ListAllMemos), and in
 // every case only those that land on a path the work-tree scanner can actually
 // see.
 func inScopeMemos(ws *WorkspaceConfig, memos []*v1pb.Memo) []*v1pb.Memo {
 	out := memos[:0:0]
 	for _, m := range memos {
-		if ws.Sparse != "" && !ws.inScope(m.GetFolderPath()) {
+		if !ws.inScope(m.GetFolderPath()) {
 			continue
 		}
 		if isHiddenPath(ws.LocalRelPath(m.GetFolderPath(), m.GetTitle(), docTypeString(m))) {

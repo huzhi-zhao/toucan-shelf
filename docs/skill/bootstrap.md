@@ -26,10 +26,21 @@ knowledge_bases:
   - name: SideProjects
     desc: 个人项目的设计与开发记录
     attachments: false        # 只拉文字，快很多；clone 时固定
+    folders:                  # 可选：只检出这些目录（含子目录），不写就是整库
+      - CMOP                  #   → kb/SideProjects/CMOP/...
+      - Infra/Deploy          #   → kb/SideProjects/Infra/Deploy/...
     # filter: '"work" in tags'  可选：CEL 过滤
     # enabled: false            可选：暂时不拉，不用删掉这一项
 # dir: kb                     可选：检出根的位置，默认 kb
 ```
+
+用户只要某个库里的一部分目录时，用 `folders`：
+
+- 目录名要和服务器上的写法**完全一致，区分大小写**。名字写错不会报错，只会在检出时提示"没匹配到任何文档"。
+- 本地路径和服务器一致，只是只拉列出的目录；其余目录不在本地，指向它们的链接在本地打不开。
+- 新文档只能建在这些目录里。建在别处，push 会跳过并说明原因。
+- 改 `folders` 不用重新检出：下次同步时自动补拉新加的目录、删掉去掉的目录（有没推送的修改的文件会保留）。
+- 不要写 `sparse`，这里不支持，会直接报错。
 
 **`.claude/settings.json`**：两个 hook。文件已存在时，把这两项合并进去，不要覆盖别的设置：
 
@@ -97,6 +108,7 @@ knowledge_bases:
 | 401 / Unauthenticated | token 无效或过期 | 请用户在网页上重新生成 token |
 | 403 / Forbidden | 请求被拦截 | 云端：网络白名单没放行服务器域名。响应头里有 `cf-ray`：Cloudflare 拦了机房 IP，需要用户在 Cloudflare 后台放行 |
 | 404（`version.json`） | 服务器还没部署 memogit 分发 | 已装过 memogit 的话，会继续用旧版并给出提示；没装过就告诉用户 |
+| 库后面写着"只检出了 …" | 这个库配了 `folders`，只有这些目录在本地 | 只在这些目录里读写；要别的目录，请用户加进 `folders` |
 | 有 N 篇冲突，见 `*.remote` | 服务器和本地都改了 | 按手册的冲突流程合并：改好本地文件，删掉 `.remote`，下一轮会自动推送 |
 | Stop 时报"跳过"某个文件 | 服务器上这篇已归档或删除 | 问用户是恢复服务器上的文档，还是删掉本地文件 |
 

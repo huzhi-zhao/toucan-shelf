@@ -44,8 +44,14 @@ type RepoKnowledgeBase struct {
 	Desc string `yaml:"desc"`
 	// Attachments false checks out text only. Fixed at clone time. Default true.
 	Attachments *bool `yaml:"attachments"`
-	// Sparse checks out only this server folder.
+	// Sparse is rejected by `memogit sync` (it would map one folder onto the
+	// shared checkout root); kept only so that error can point at Folders.
 	Sparse string `yaml:"sparse"`
+	// Folders checks out only these server folders (each with its subfolders),
+	// still under the knowledge base's own subfolder, e.g. kb/SideProjects/CMOP.
+	// Empty checks out the whole knowledge base. Re-read on every sync, so the
+	// list can grow or shrink without a re-clone.
+	Folders []string `yaml:"folders"`
 	// Filter is a CEL clause, e.g. `"work" in tags`.
 	Filter string `yaml:"filter"`
 	// Enabled false skips the entry without deleting it. Default true.

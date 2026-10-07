@@ -147,6 +147,12 @@ func hookSessionStart(cmd *cobra.Command, out io.Writer) {
 		if r.KB.Desc != "" {
 			desc = "：" + r.KB.Desc
 		}
+		if len(r.KB.Folders) > 0 {
+			// The agent must know the rest of the knowledge base is not here:
+			// links into other folders dangle locally, and new documents only
+			// push from inside these folders.
+			desc += "（只检出了 " + strings.Join(r.KB.Folders, "、") + "，其余目录不在本地）"
+		}
 		switch {
 		case r.Err != nil:
 			fmt.Fprintf(out, "- %s%s（失败：%v%s）\n", r.KB.Name, desc, r.Err, withHint(r.Err))

@@ -138,7 +138,7 @@ func cloneCmd() *cobra.Command {
 			if len(args) == 1 {
 				workspaceTitle = args[0]
 			}
-			return memogit.Clone(cmd.Context(), root, cfg, workspaceTitle, filter, sparse, sparseSubdir, noAttachments, cmd.OutOrStdout())
+			return memogit.Clone(cmd.Context(), root, cfg, workspaceTitle, filter, sparse, sparseSubdir, noAttachments, nil, cmd.OutOrStdout())
 		},
 	}
 	cmd.Flags().BoolVar(&noAttachments, "no-attachments", false, "never download attachment bytes for this knowledge base (recorded in config; pull keeps honoring it)")

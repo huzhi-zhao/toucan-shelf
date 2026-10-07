@@ -43,6 +43,8 @@ func ListWorkspaces(ctx context.Context, cfg *Config, out io.Writer) error {
 				fmt.Fprintf(out, "  ✓ %-24s → ./%s/ (sparse, subdir kept)\n", w.GetTitle(), ws.Sparse)
 			} else if ws.Sparse != "" {
 				fmt.Fprintf(out, "  ✓ %-24s → ./ (sparse: folder %q)\n", w.GetTitle(), ws.Sparse)
+			} else if len(ws.Folders) > 0 {
+				fmt.Fprintf(out, "  ✓ %-24s → %s/ (only %s)\n", w.GetTitle(), ws.Dir, ws.scopeLabel())
 			} else {
 				fmt.Fprintf(out, "  ✓ %-24s → %s/\n", w.GetTitle(), ws.Dir)
 			}
