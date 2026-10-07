@@ -50,7 +50,8 @@ d=$PWD; while [ "$d" != / ] && [ ! -d "$d/.memogit" ]; do d=$(dirname "$d"); don
    两条通道下它长这样：
    - *仅 memogit*：每篇文档末尾有一行 `<!-- memogit-id: memos/<uid> -->`
      （`.view.json` 则是顶层 `"memogit-id"` 键），**这一行不能动**。移动/重命名
-     **直接 `mv`**，标记随文件走。新建文档不要自己编 ID，留空，push 后 memogit 自己写入。
+     **直接 `mv`**，标记随文件走——但**只限同一知识库内**；`mv` 到另一个知识库的目录会变成
+     "归档 + 新建"，跨库移动一律走 MCP 改 `workspace`。新建文档不要自己编 ID，留空，push 后 memogit 自己写入。
      详见 `references/memogit.md`。
    - *仅 MCP*：改标题 / 换文件夹 / 换知识库，就用 `memo_update_memo` 更新
      `title` / `folder_path` / `workspace` 字段；**绝不要 `memo_create_memo` 建新的、
@@ -90,7 +91,7 @@ d=$PWD; while [ "$d" != / ] && [ ! -d "$d/.memogit" ]; do d=$(dirname "$d"); don
 | 两者 | VIEW 文档（`*.view.json` / `content` 里的 JSON） | ✅ 谨慎 | 结构化配置，必须保持合法 JSON，见 `references/blocks-and-views.md` |
 | 两者 | ` ```toucan-secret ` 块 | ❌ 只读 | 只有 `hint`（明文标题）在用户明确要求时可改，`id` 一个字符都别动 |
 | 两者 | PDF 文档 | ❌ | 只读预览，正文是引用桩 |
-| 仅 memogit | 文件路径/文件名 | ✅ | = 移动/重命名文档，直接 `mv` |
+| 仅 memogit | 文件路径/文件名 | ✅ | = 移动/重命名文档，直接 `mv`；**仅限同一知识库内**，跨库走 MCP 的 `workspace` 字段 |
 | 仅 memogit | `*.pdf.md` | ❌ | 生成的引用桩，push 会忽略 |
 | 仅 memogit | `_attachments/**` | ❌ 只读 | 可以阅读内容，不能编辑/删除；push 从不上传附件 |
 | 仅 memogit | 末尾 `memogit-id` 行 | ❌ | 见铁律 1 |
