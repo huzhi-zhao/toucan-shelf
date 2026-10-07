@@ -295,7 +295,7 @@ func reconcileAgainst(ctx context.Context, client *Client, ws *WorkspaceConfig, 
 		if data, readErr := os.ReadFile(full); readErr == nil && prev.DocType != "PDF" &&
 			localHash(data) != prev.ContentHash {
 			res.Orphaned = append(res.Orphaned, prev.Path)
-			fmt.Fprintf(out, "  ⚠ %s: deleted on server but modified locally, kept\n", prev.Path)
+			fmt.Fprintf(out, "  ⚠ %s: %s but modified locally, kept\n", prev.Path, goneReason(ws))
 			continue
 		}
 
@@ -306,7 +306,7 @@ func reconcileAgainst(ctx context.Context, client *Client, ws *WorkspaceConfig, 
 		removeMemoAttachments(contentRoot, prev.Attachments)
 		delete(state.Memos, uid)
 		res.Removed++
-		fmt.Fprintf(out, "  - %s: removed (deleted/archived on server)\n", prev.Path)
+		fmt.Fprintf(out, "  - %s: removed (%s)\n", prev.Path, goneReason(ws))
 	}
 
 	// Adopt anything alive but untracked. current is ordered create_time asc, so
@@ -395,4 +395,15 @@ func reconcileDrifted(ctx context.Context, client *Client, ws *WorkspaceConfig, 
 
 func commitMessage(ws *WorkspaceConfig, res *PullResult) string {
 	return fmt.Sprintf("memogit pull %s: %d added, %d updated", ws.Title, res.Added, res.Updated)
+}
+
+// goneReason says why a tracked document dropped out of the live listing. In a
+// scoped checkout it may still be alive on the server, just moved out of the
+// checkout's folders (or the folders were narrowed), and saying "deleted"
+// there would send the user looking for a deletion that never happened.
+func goneReason(ws *WorkspaceConfig) string {
+	if ws.Sparse == "" && len(ws.Folders) == 0 {
+		return "deleted/archived on server"
+	}
+	return "deleted/archived on server, or no longer under this checkout's " + ws.scopeLabel()
 }

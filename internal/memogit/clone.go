@@ -17,7 +17,18 @@ import (
 // check out; if empty, the user's default (first) workspace is used, but only
 // when they have exactly one — with several, the title must be given
 // explicitly so clone never guesses the wrong knowledge base.
-func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter, sparse string, sparseSubdir, noAttachments bool, out io.Writer) error {
+//
+// folders, when non-empty, limits the checkout to those server folders while
+// keeping the knowledge base in its own subfolder (see WorkspaceConfig.Folders);
+// it cannot be combined with sparse.
+func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter, sparse string, sparseSubdir, noAttachments bool, folders []string, out io.Writer) error {
+	folders, err := NormalizeFolders(folders)
+	if err != nil {
+		return err
+	}
+	if len(folders) > 0 && strings.TrimSpace(sparse) != "" {
+		return fmt.Errorf("folders and a sparse checkout cannot be combined")
+	}
 	client := NewClient(cfg)
 	user, err := client.CurrentUser(ctx)
 	if err != nil {
@@ -35,6 +46,7 @@ func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter
 		Dir:           workspaceDir(remote.GetTitle()),
 		Filter:        filter,
 		NoAttachments: noAttachments,
+		Folders:       folders,
 	}
 	// A sparse checkout maps one server folder to the checkout root itself: the
 	// content sits at the root (Dir "."), the folder prefix is stripped locally
@@ -64,6 +76,9 @@ func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter
 		if wsCfg.SparseSubdir {
 			fmt.Fprintf(out, "  (keeping %q as a subdirectory of the checkout root)\n", wsCfg.Sparse)
 		}
+	} else if len(wsCfg.Folders) > 0 {
+		fmt.Fprintf(out, "Authenticated as %q, fetching memos under %s of workspace %q (%s) on %s ...\n",
+			username, wsCfg.scopeLabel(), wsCfg.Title, wsCfg.Workspace, cfg.Server)
 	} else {
 		fmt.Fprintf(out, "Authenticated as %q, fetching memos from workspace %q (%s) on %s ...\n",
 			username, wsCfg.Title, wsCfg.Workspace, cfg.Server)
@@ -81,7 +96,9 @@ func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter
 	// The listing never contains sub-documents (they are child memos), so they
 	// are fetched from their parents — or a fresh checkout would lack every one
 	// of them until its first full pull.
-	memos, err = withSubDocs(ctx, client, inScopeMemos(wsCfg, memos))
+	inScope := inScopeMemos(wsCfg, memos)
+	warnEmptyFolders(wsCfg, inScope, out)
+	memos, err = withSubDocs(ctx, client, inScope)
 	if err != nil {
 		return err
 	}
@@ -168,5 +185,23 @@ func resolveCloneWorkspace(ctx context.Context, client *Client, title string) (*
 			titles = append(titles, w.GetTitle())
 		}
 		return nil, fmt.Errorf("multiple workspaces found, pass one explicitly: memogit clone <title> (have: %v)", titles)
+	}
+}
+
+// warnEmptyFolders names every configured folder that matched no document.
+// Folder names are case-sensitive and not checked against the server's tree,
+// so a typo would otherwise check out an empty folder without a word.
+func warnEmptyFolders(ws *WorkspaceConfig, memos []*v1pb.Memo, out io.Writer) {
+	for _, folder := range ws.Folders {
+		found := false
+		for _, m := range memos {
+			if underFolder(strings.Trim(m.GetFolderPath(), "/"), folder) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			fmt.Fprintf(out, "  ! folder %q matched no document in %q (names are case-sensitive; typo?)\n", folder, ws.Title)
+		}
 	}
 }

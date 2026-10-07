@@ -122,7 +122,9 @@ memogit 2026.10.05-14c6f2b35
 ## 6. 下游接入时还要注意
 
 - **按名字找库不区分大小写**：配置里写 `life`，服务器上的标题是 `Life`，memogit 建的目录是 `Life/`。`memogit sync` 已经按这个规则处理。
-- **`sparse` 不能用在共享检出根里**：sparse 检出的内容直接放在检出根本身，push 会把同一个根下其他库的文档当成它的新文档推上去。所以 `memogit sync` 遇到 `sparse` 会直接报错。需要 sparse 时，用 `memogit clone --sparse-checkout --dir` 建独立的检出根。
+- **只要一个库的部分目录，用 `folders`，不用 `sparse`**：
+  - `sparse` 检出的内容直接放在检出根本身，push 会把同一个根下其他库的文档当成它的新文档推上去，所以 `memogit sync` 遇到 `sparse` 会直接报错。
+  - `folders` 让库照常占用自己的子目录，只检出列出的目录（`kb/SideProjects/CMOP/...`），可以写多个，改了下次 sync 自动生效。方案见 [design/20261007-memogit-conf-folders.md](../../design/20261007-memogit-conf-folders.md)。
 - **云端连服务器返回 403 Forbidden，通常不是 token 的问题**：
   - token 错误返回的是 401。403 一般是沙箱的网络白名单没放行服务器域名。
   - 也可能是 Cloudflare 拦了机房 IP：响应头里带 `server: cloudflare` / `cf-ray` 就是这种情况。

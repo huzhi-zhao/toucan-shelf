@@ -137,6 +137,12 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 		}
 
 		if doc.UID == "" {
+			if folder, outside := ws.outOfScope(doc.Path); outside {
+				res.skip(out, doc.Path, "would be created in folder %q, outside this checkout's %s, and drop out of "+
+					"the checkout on the next pull; put it inside one of them, or add the folder to %s",
+					folder, ws.scopeLabel(), RepoConfigFile)
+				continue
+			}
 			folderPath, _, _ := deriveMemoFromPath(doc.Path)
 			created, err := pushNewDoc(ctx, client, ws, parents, contentRoot, doc, ws.ServerFolderPath(folderPath), state, res, dryRun, out)
 			if err != nil {
@@ -170,6 +176,14 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 				// RPC error, and leaves the rest of the push to go through.
 				res.skip(out, doc.Path, "is a sub-document and cannot leave its parent's %s folder; "+
 					"move it back to %s", SubDocDirSuffix, prev.Path)
+				continue
+			}
+			if folder, outside := ws.outOfScope(doc.Path); outside {
+				// Moving the document out of the checkout's folders is a real server
+				// move, but the next pull would then drop the file, so it looks like
+				// the document vanished. Leave that to the web UI, where it is seen.
+				res.skip(out, doc.Path, "would move the document to folder %q, outside this checkout's %s; "+
+					"move it back to %s, or move the document in the web UI", folder, ws.scopeLabel(), prev.Path)
 				continue
 			}
 			// The file moved or was renamed locally. Relocate the memo in place so

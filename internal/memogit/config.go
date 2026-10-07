@@ -102,6 +102,13 @@ type WorkspaceConfig struct {
 	// folder_path exactly, just scoped to that subtree. Meaningless when Sparse is
 	// empty. See LocalRelPath/ServerFolderPath for the two modes.
 	SparseSubdir bool `yaml:"sparse_subdir,omitempty"`
+	// Folders, when non-empty, limits the checkout to these server folders, each
+	// with everything beneath it. Unlike Sparse it keeps the knowledge base in its
+	// own Dir like a full checkout, and local paths mirror the server folder_path
+	// exactly, so it can share a checkout root with other knowledge bases. Kept in
+	// normalized form (see NormalizeFolders); `memogit sync` rewrites it from
+	// memogit.conf.yaml on every run, and pull reconciles the files to match.
+	Folders []string `yaml:"folders,omitempty"`
 	// Filter is an optional CEL clause applied on clone/pull for this workspace
 	// (in addition to the implicit "own memos only" scoping), e.g. `"work" in tags`.
 	Filter string `yaml:"filter,omitempty"`

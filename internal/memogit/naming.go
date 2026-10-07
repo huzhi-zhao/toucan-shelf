@@ -1,8 +1,11 @@
 package memogit
 
 import (
+	"fmt"
 	"path"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -81,14 +84,96 @@ func sanitizeFolderPath(folderPath string) string {
 }
 
 // inScope reports whether a memo at the given server folder_path belongs to this
-// checkout. A full checkout (Sparse == "") includes everything; a sparse checkout
-// includes only the mapped folder itself and anything beneath it.
+// checkout. A full checkout (no Sparse, no Folders) includes everything; a sparse
+// checkout includes only the mapped folder itself and anything beneath it, and a
+// folder-scoped one anything under one of its Folders.
 func (w *WorkspaceConfig) inScope(serverFolder string) bool {
-	if w.Sparse == "" {
+	if w.Sparse == "" && len(w.Folders) == 0 {
 		return true
 	}
 	serverFolder = strings.Trim(serverFolder, "/")
-	return serverFolder == w.Sparse || strings.HasPrefix(serverFolder, w.Sparse+"/")
+	if w.Sparse != "" {
+		return underFolder(serverFolder, w.Sparse)
+	}
+	for _, folder := range w.Folders {
+		if underFolder(serverFolder, folder) {
+			return true
+		}
+	}
+	return false
+}
+
+// underFolder reports whether folder is prefix itself or lies beneath it; a
+// name that merely starts with prefix ("HomeWork" vs "Home") does not count.
+func underFolder(folder, prefix string) bool {
+	return folder == prefix || strings.HasPrefix(folder, prefix+"/")
+}
+
+// outOfScope reports the server folder a work-tree file would be pushed to, and
+// whether that folder lies outside the checkout. Push refuses such files: the
+// document would be created (or moved) on the server, then dropped from the
+// checkout by the next pull, so the file would seem to vanish.
+func (w *WorkspaceConfig) outOfScope(relPath string) (string, bool) {
+	folder, _, _ := deriveMemoFromPath(relPath)
+	server := w.ServerFolderPath(folder)
+	return server, !w.inScope(server)
+}
+
+// scopeLabel describes what a scoped checkout covers, for messages.
+func (w *WorkspaceConfig) scopeLabel() string {
+	if w.Sparse != "" {
+		return fmt.Sprintf("folder %q", w.Sparse)
+	}
+	return fmt.Sprintf("folders %s", strings.Join(quoteAll(w.Folders), ", "))
+}
+
+func quoteAll(items []string) []string {
+	out := make([]string, len(items))
+	for i, s := range items {
+		out[i] = strconv.Quote(s)
+	}
+	return out
+}
+
+// NormalizeFolders turns the folder list of a memogit.conf.yaml entry into the
+// form WorkspaceConfig.Folders keeps: slashes trimmed, duplicates dropped, a
+// folder already covered by another one in the list dropped, sorted. Names are
+// matched against the server's folder_path as-is (case-sensitive) and are not
+// sanitized, since a sanitized name could stop matching the server's. A name
+// that cannot be a server folder — empty, "." or ".." segments, a hidden or
+// the reserved sub-document folder — is an error rather than silently skipped.
+func NormalizeFolders(folders []string) ([]string, error) {
+	var clean []string
+	for _, raw := range folders {
+		f := strings.Trim(strings.TrimSpace(raw), "/")
+		if f == "" {
+			return nil, fmt.Errorf("folders: empty folder name")
+		}
+		for _, seg := range strings.Split(f, "/") {
+			if seg == "" || seg == "." || seg == ".." || strings.HasPrefix(seg, ".") {
+				return nil, fmt.Errorf("folders: %q is not a folder path (no empty, \".\", \"..\" or hidden segments)", raw)
+			}
+		}
+		if f == SubDocFolderPrefix || strings.HasPrefix(f, SubDocFolderPrefix+"/") {
+			return nil, fmt.Errorf("folders: %q is the reserved sub-document folder; sub-documents follow their parent", raw)
+		}
+		clean = append(clean, f)
+	}
+	sort.Strings(clean)
+	var out []string
+	for _, f := range clean {
+		covered := false
+		for _, kept := range out {
+			if underFolder(f, kept) {
+				covered = true
+				break
+			}
+		}
+		if !covered {
+			out = append(out, f)
+		}
+	}
+	return out, nil
 }
 
 // LocalRelPath is the repo-relative file path for a memo. For a sparse checkout

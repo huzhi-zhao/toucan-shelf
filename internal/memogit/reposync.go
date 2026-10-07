@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 )
 
@@ -51,8 +52,16 @@ func SyncRepo(ctx context.Context, rc *RepoConfig, detail io.Writer) ([]RepoSync
 			continue
 		}
 		res := RepoSyncResult{KB: kb}
-		if ws := trackedWorkspace(root, cfg, kb.Name); ws != nil {
+		folders, err := NormalizeFolders(kb.Folders)
+		if err != nil {
+			res.Err = err
+		} else if ws := trackedWorkspace(root, cfg, kb.Name); ws != nil {
 			res.Dir = ws.Dir
+			if err := applyFolders(root, cfg, ws, folders, detail); err != nil {
+				res.Err = err
+				results = append(results, res)
+				continue
+			}
 			pulled, err := Pull(ctx, root, cfg, ws, detail)
 			if err != nil {
 				res.Err = err
@@ -63,9 +72,9 @@ func SyncRepo(ctx context.Context, rc *RepoConfig, detail io.Writer) ([]RepoSync
 		} else if kb.Sparse != "" {
 			// A sparse checkout puts its folder at the checkout root itself,
 			// which collides with the other knowledge bases sharing that root.
-			res.Err = errors.New("sparse is not supported in " + RepoConfigFile + "; check the whole knowledge base out, or use `memogit clone --sparse-checkout --dir` for a standalone root")
+			res.Err = errors.New("sparse is not supported in " + RepoConfigFile + "; list the folders to check out under `folders` instead")
 		} else {
-			res.Err = Clone(ctx, root, cfg, kb.Name, kb.Filter, "", false, !kb.WantsAttachments(), detail)
+			res.Err = Clone(ctx, root, cfg, kb.Name, kb.Filter, "", false, !kb.WantsAttachments(), folders, detail)
 			res.Cloned = res.Err == nil
 			if ws := trackedWorkspace(root, cfg, kb.Name); ws != nil {
 				res.Dir = ws.Dir
@@ -89,4 +98,23 @@ func trackedWorkspace(root string, cfg *Config, title string) *WorkspaceConfig {
 		}
 	}
 	return nil
+}
+
+// applyFolders makes a checked-out knowledge base's folder scope match
+// memogit.conf.yaml before it is pulled. Only the recorded scope changes here;
+// the pull that follows reconciles the files against it, adopting documents in
+// a newly listed folder and removing those in a dropped one (keeping any with
+// unpushed edits). A standalone sparse checkout never shares a root with
+// memogit.conf.yaml, so it is left alone.
+func applyFolders(root string, cfg *Config, ws *WorkspaceConfig, folders []string, out io.Writer) error {
+	if ws.Sparse != "" || slices.Equal(ws.Folders, folders) {
+		return nil
+	}
+	ws.Folders = folders
+	if len(folders) == 0 {
+		fmt.Fprintf(out, "Scope of %q changed: now the whole knowledge base.\n", ws.Title)
+	} else {
+		fmt.Fprintf(out, "Scope of %q changed: now only %s.\n", ws.Title, ws.scopeLabel())
+	}
+	return cfg.Save(root)
 }

@@ -66,6 +66,13 @@ my-kb/
 `pull`/`push`/`status` 不需要单独适配。方案取舍见
 [design/20260903-memogit-sparse-checkout-subdir.md](../../design/20260903-memogit-sparse-checkout-subdir.md)。
 
+sparse checkout 只能用在独立的检出根里。和其他知识库共用检出根时（下游仓库的
+`memogit.conf.yaml`），改用按文件夹检出：config 条目带 `folders` 列表，库仍然
+占自己的子目录（`Dir` 不变），只检出列出的文件夹及其子树，本地路径与服务端
+`folder_path` 一致。push 拒绝在这些文件夹之外新建或移动文档（`--sparse-subdir`
+模式同样适用）。方案见
+[design/20261007-memogit-conf-folders.md](../../design/20261007-memogit-conf-folders.md)。
+
 ## 4. `--dir`：把某个知识库检出到独立目录
 
 `memogit clone --dir <path> <workspace-title>` 会在 `<path>` 新建一个**独立的**
