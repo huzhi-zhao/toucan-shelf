@@ -33,7 +33,9 @@ export const EditorMetadata: FC<EditorMetadataProps> = ({ memoName, showReferenc
         memoName={memoName}
       />
 
-      {showReferences && memoName && <ReferenceListEditor memoName={memoName} />}
+      {showReferences && memoName && (
+        <ReferenceListEditor memoName={memoName} content={content} onContentChange={(next) => dispatch(actions.updateContent(next))} />
+      )}
 
       <RelationListEditor
         relations={relations}

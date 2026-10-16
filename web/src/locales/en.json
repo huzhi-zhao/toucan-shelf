@@ -1634,7 +1634,15 @@
     "duplicate-title": "This document already has a sub-document with that title",
     "open": "Open sub-document",
     "back-to-parent": "Back to the document",
-    "copy-reference": "Copy reference"
+    "copy-reference": "Copy reference",
+    "add-link": "Add link",
+    "edit-link": "Edit link",
+    "remove-link": "Remove link",
+    "link-url": "URL",
+    "link-note": "When to open it",
+    "link-note-placeholder": "e.g. Before changing any budget figure",
+    "invalid-url": "Enter an http(s) link",
+    "unreadable-links": "{{count}} line(s) under references can't be read. Fix them in the source; links can't be edited here until then."
   },
   "landing": {
     "eyebrow": "Self-hosted knowledge base",

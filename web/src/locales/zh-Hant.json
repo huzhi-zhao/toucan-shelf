@@ -786,6 +786,14 @@
     "duplicate-title": "這篇文件底下已經有同名子文件",
     "open": "開啟子文件",
     "back-to-parent": "返回主文件",
-    "copy-reference": "複製引用"
+    "copy-reference": "複製引用",
+    "add-link": "新增連結",
+    "edit-link": "編輯連結",
+    "remove-link": "刪除連結",
+    "link-url": "URL",
+    "link-note": "什麼時候該打開",
+    "link-note-placeholder": "例如：改動預算數字之前",
+    "invalid-url": "請輸入 http(s) 連結",
+    "unreadable-links": "references 下有 {{count}} 行無法辨識。請在原始碼中修正，修好之前這裡不能編輯連結。"
   }
 }

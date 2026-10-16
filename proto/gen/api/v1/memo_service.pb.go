@@ -3272,7 +3272,13 @@ type LinkMetadata struct {
 	// The link description.
 	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
 	// The link image URL.
-	Image         string `protobuf:"bytes,4,opt,name=image,proto3" json:"image,omitempty"`
+	Image string `protobuf:"bytes,4,opt,name=image,proto3" json:"image,omitempty"`
+	// The site icon URL. Always set for a well-formed http(s) link: the page's
+	// declared icon when the page could be read, otherwise the site's
+	// /favicon.ico (which may not exist; clients fall back on load error).
+	// Title, description and image are left empty when the page is a sign-in
+	// wall or an error, so a login page never shows up as the link's title.
+	Favicon       string `protobuf:"bytes,5,opt,name=favicon,proto3" json:"favicon,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3331,6 +3337,13 @@ func (x *LinkMetadata) GetDescription() string {
 func (x *LinkMetadata) GetImage() string {
 	if x != nil {
 		return x.Image
+	}
+	return ""
+}
+
+func (x *LinkMetadata) GetFavicon() string {
+	if x != nil {
+		return x.Favicon
 	}
 	return ""
 }
@@ -3831,12 +3844,13 @@ const file_api_v1_memo_service_proto_rawDesc = "" +
 	"\x1bBatchGetLinkMetadataRequest\x12\x17\n" +
 	"\x04urls\x18\x01 \x03(\tB\x03\xe0A\x02R\x04urls\"_\n" +
 	"\x1cBatchGetLinkMetadataResponse\x12?\n" +
-	"\rlink_metadata\x18\x01 \x03(\v2\x1a.memos.api.v1.LinkMetadataR\flinkMetadata\"n\n" +
+	"\rlink_metadata\x18\x01 \x03(\v2\x1a.memos.api.v1.LinkMetadataR\flinkMetadata\"\x88\x01\n" +
 	"\fLinkMetadata\x12\x10\n" +
 	"\x03url\x18\x01 \x01(\tR\x03url\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x14\n" +
-	"\x05image\x18\x04 \x01(\tR\x05image*P\n" +
+	"\x05image\x18\x04 \x01(\tR\x05image\x12\x18\n" +
+	"\afavicon\x18\x05 \x01(\tR\afavicon*P\n" +
 	"\n" +
 	"Visibility\x12\x1a\n" +
 	"\x16VISIBILITY_UNSPECIFIED\x10\x00\x12\v\n" +

@@ -76,6 +76,7 @@ import { attachmentUIDsOf, hashMemoState } from "@/utils/memoState";
 import { useReadingDensity } from "@/utils/readingDensity";
 import { getDocScrollPosition, restoreScrollTopWhenReady, saveDocScrollPosition } from "@/utils/scrollPositionCache";
 import { splitChildMemos } from "@/utils/subDoc";
+import { parseUrlReferences } from "@/utils/urlReferences";
 import DocIconPicker from "./DocIconPicker";
 import DocumentOutline, { ATTACHMENTS_ANCHOR_ID, REFERENCES_ANCHOR_ID } from "./DocumentOutline";
 
@@ -726,14 +727,21 @@ const DocumentView = ({
     [memo.name, subDocs, jumpToSubDoc],
   );
 
+  // External links live in the frontmatter, which only markdown and VIEW documents carry.
+  const urlReferences = useMemo(
+    () => (isHtml || isPdf ? { references: [], invalidCount: 0 } : parseUrlReferences(memo.content)),
+    [isHtml, isPdf, memo.content],
+  );
+
   // Sub-documents sit above the attachment list, in the same shape: attachments are
   // the part of a document's metadata that actually gets used, so that is where
   // content-belonging-to-this-document goes too.
   // Read-only in the preview: creating a sub-document is an edit, so those
   // controls live in the editor's own References block. With nothing to list the
   // whole section is absent — no empty header for a reader to wonder about, and
-  // the outline's entry is gated on the same emptiness.
-  const hasReferences = supportsComments && subDocs.length > 0;
+  // the outline's entry is gated on the same emptiness. External links count as
+  // much as sub-documents here.
+  const hasReferences = (supportsComments && subDocs.length > 0) || urlReferences.references.length > 0 || urlReferences.invalidCount > 0;
   const hasAttachments = remainingAttachments.length > 0;
 
   // References and attachments are one block of "what else is attached to this
@@ -750,6 +758,8 @@ const DocumentView = ({
             subDocs={subDocs}
             parentMemoName={memo.name}
             highlightedMemoName={highlightedSubDoc}
+            urlReferences={urlReferences.references}
+            unreadableUrlReferences={urlReferences.invalidCount}
           />
         </div>
       )}

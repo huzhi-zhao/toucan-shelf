@@ -40,7 +40,10 @@ export const SELECT_PROPERTY_OPTIONS: Record<string, readonly string[]> = {
 // Keys the app itself consumes (gallery cover image, sidebar/gallery ordering) rather than
 // content the reader cares about. They stay in the frontmatter and keep driving behaviour —
 // they're simply never drawn as property rows.
-export const HIDDEN_PROPERTY_KEYS: ReadonlySet<string> = new Set(["cover", "order"]);
+//
+// `references` is the document's URL references (see utils/urlReferences.ts): drawn as cards in the
+// References section, so a property row would only repeat them as raw text.
+export const HIDDEN_PROPERTY_KEYS: ReadonlySet<string> = new Set(["cover", "order", "references"]);
 
 /** Whether a frontmatter key is app plumbing that the properties panel must not display. */
 export function isHiddenProperty(key: string): boolean {
@@ -70,7 +73,7 @@ const NUMBER_RE = /^-?\d+(\.\d+)?$/;
 
 // Strip matching surrounding quotes from a scalar and unescape the minimal set a
 // double-quoted YAML scalar cares about. Unquoted input is returned unchanged.
-function unquote(raw: string): string {
+export function unquote(raw: string): string {
   if (raw.length >= 2 && raw[0] === '"' && raw[raw.length - 1] === '"') {
     return raw.slice(1, -1).replace(/\\"/g, '"').replace(/\\n/g, "\n").replace(/\\t/g, "\t").replace(/\\\\/g, "\\");
   }
@@ -128,10 +131,16 @@ function classifyScalar(key: string, raw: string): MemoProperty {
   return { key, type: "text", value };
 }
 
-const KEY_LINE_RE = /^([^:\s][^:]*):(.*)$/;
+export const KEY_LINE_RE = /^([^:\s][^:]*):(.*)$/;
 
-// True for a line that belongs to the block *under* a key: blank, or indented.
-const isChildLine = (line: string): boolean => line.trim() === "" || /^[ \t]/.test(line);
+// A `- item` line written flush left. YAML allows a block list under a key without indenting
+// it, so such a line still belongs to the key above it — and it must never be read as a key of
+// its own: an item holding a URL contains a colon, which would otherwise make
+// `- "[x](https` a property name.
+const isFlushListItem = (line: string): boolean => /^-(\s|$)/.test(line);
+
+// True for a line that belongs to the block *under* a key: blank, indented, or a flush-left list item.
+export const isChildLine = (line: string): boolean => line.trim() === "" || /^[ \t]/.test(line) || isFlushListItem(line);
 
 /**
  * Parse a memo's raw markdown, splitting off any leading Obsidian-style
@@ -157,8 +166,8 @@ export function parseFrontmatter(content: string): ParsedContent {
     const line = lines[i];
     const trimmed = line.trim();
 
-    // Skip blanks, comments, and stray indented lines with no parent key.
-    if (trimmed === "" || trimmed.startsWith("#") || /^[ \t]/.test(line)) {
+    // Skip blanks, comments, and stray indented lines or list items with no parent key.
+    if (trimmed === "" || trimmed.startsWith("#") || /^[ \t]/.test(line) || isFlushListItem(line)) {
       i++;
       continue;
     }
@@ -208,7 +217,7 @@ export function parseFrontmatter(content: string): ParsedContent {
     const listItems: string[] = [];
     let isList = true;
     for (const child of children) {
-      const itemMatch = /^[ \t]+-[ \t]*(.*)$/.exec(child);
+      const itemMatch = /^[ \t]*-[ \t]*(.*)$/.exec(child);
       if (!itemMatch) {
         isList = false;
         break;
@@ -289,14 +298,14 @@ export function setFrontmatterProperty(content: string, key: string, value: Memo
   let i = 0;
   while (i < lines.length) {
     const line = lines[i];
-    const keyMatch = /^[ \t]/.test(line) ? null : KEY_LINE_RE.exec(line);
+    const keyMatch = isChildLine(line) ? null : KEY_LINE_RE.exec(line);
     if (!replaced && keyMatch && keyMatch[1].trim() === key) {
       out.push(newLine);
       replaced = true;
       i++;
       // Drop whatever block was indented under the old key (e.g. a `- item` list), since the
       // replacement carries the whole value inline.
-      while (i < lines.length && /^[ \t]/.test(lines[i])) i++;
+      while (i < lines.length && lines[i].trim() !== "" && isChildLine(lines[i])) i++;
       continue;
     }
     out.push(line);

@@ -5338,6 +5338,14 @@ components:
                 image:
                     type: string
                     description: The link image URL.
+                favicon:
+                    type: string
+                    description: |-
+                        The site icon URL. Always set for a well-formed http(s) link: the page's
+                         declared icon when the page could be read, otherwise the site's
+                         /favicon.ico (which may not exist; clients fall back on load error).
+                         Title, description and image are left empty when the page is a sign-in
+                         wall or an error, so a login page never shows up as the link's title.
         LinkedIdentity:
             type: object
             properties:

@@ -1,4 +1,4 @@
-import { FilePlusIcon, UploadIcon } from "lucide-react";
+import { FilePlusIcon, LinkIcon, UploadIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import toast from "react-hot-toast";
 import PromptDialog from "@/components/Notebook/PromptDialog";
@@ -11,13 +11,18 @@ interface Props {
   parentMemoName: string;
   /** Called with the new sub-document's resource name once it exists. */
   onCreated?: (memoName: string) => void;
+  /** Opens the add-link dialog. Omitted, the button is not offered. */
+  onAddLink?: () => void;
+  /** Set while the document's `references` holds lines the editor can't read: writing the list back would overwrite them. */
+  addLinkDisabled?: boolean;
 }
 
 /** Markdown only. Anything else dropped here belongs in the attachment list, as bytes. */
 const ACCEPTED = ".md,.markdown,text/markdown";
 
 /**
- * The two ways a sub-document comes into being, in the section's header.
+ * The section's header controls: the two ways a sub-document comes into being,
+ * and adding an external link.
  *
  * Uploading a `.md` here converts it into a sub-document rather than storing the
  * bytes, which is the one place in the app where that happens: everywhere else a
@@ -25,7 +30,7 @@ const ACCEPTED = ".md,.markdown,text/markdown";
  * is what it becomes" — deciding by file type instead would turn a markdown file
  * dragged into the body into a sub-document too, which nobody means.
  */
-export const ReferenceActions = ({ parentMemoName, onCreated }: Props) => {
+export const ReferenceActions = ({ parentMemoName, onCreated, onAddLink, addLinkDisabled }: Props) => {
   const t = useTranslate();
   const { createSubDoc, createSubDocFromFile } = useSubDocuments(parentMemoName);
   const [promptOpen, setPromptOpen] = useState(false);
@@ -61,6 +66,19 @@ export const ReferenceActions = ({ parentMemoName, onCreated }: Props) => {
         </TooltipTrigger>
         <TooltipContent>{t("subdoc.upload-markdown")}</TooltipContent>
       </Tooltip>
+      {onAddLink && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {/* Wrapped so the tooltip still explains a disabled button. */}
+            <span>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={addLinkDisabled} onClick={onAddLink}>
+                <LinkIcon className="h-3.5 w-3.5" />
+              </Button>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>{t("subdoc.add-link")}</TooltipContent>
+        </Tooltip>
+      )}
       <input
         ref={fileInputRef}
         type="file"

@@ -78,9 +78,15 @@ Writing:
   ![](...) is media only and never a document reference. Do not hand-write
   /memos/{uid} links.
 
+A document is its body plus its References: the section listing its
+sub-documents and its external links. Both are content, not appendices.
+
 Sub-documents:
-- A document's long-form asides live as sub-documents of it rather than in its
-  body. Create one with memo_create_memo and folder_path "_sub/{parent uid}",
+- Sub-documents are parts of their parent: long-form asides, or a large
+  document split by function (parent "Learning DP-700", sub-documents "Study
+  plan" and "Study materials"). Work on one part happens in that part's
+  sub-document; new content for a part goes there, not into the parent body.
+  Create one with memo_create_memo and folder_path "_sub/{parent uid}",
   leaving workspace empty: that reserved path IS the binding, so the server
   attaches it to that document and gives it the parent's knowledge base and
   visibility. No relation write, no extra tool.
@@ -96,6 +102,18 @@ Sub-documents:
   sub-documents itself). Its uid, history and comments are kept.
 - Folder names ending in ".subdocs" are reserved (memogit's local name for a
   document's sub-documents); never create or move anything into one.
+
+External links (References):
+- Listed in the frontmatter key "references", one item per link. They hold the
+  evidence behind the body's conclusions, knowledge moved out to keep the body
+  short, and Google Docs/Sheets/Slides that may matter more than the body.
+- Each item's note says WHEN to open the link. If your task falls in that
+  scope, you must open and read it; do not conclude from the body alone.
+- Write items exactly like this - two-space indent, each item double-quoted,
+  no nested keys, no " [ ] inside the note:
+    references:
+      - "[Open before changing any budget figure](https://docs.google.com/document/d/abc)"
+      - "https://example.com/rfc-123"
 
 Updating:
 - memo_update_memo replaces the whole content field; it is not an incremental

@@ -184,6 +184,11 @@ func TestMCPInitializeReturnsServerInstructions(t *testing.T) {
 	require.Contains(t, instructions, "resolve it to workspaces/{uid}")
 	require.Contains(t, instructions, "NO file extension")
 
+	// References: external links live in the frontmatter, and their note says
+	// when an agent must open them.
+	require.Contains(t, instructions, `frontmatter key "references"`)
+	require.Contains(t, instructions, "WHEN to open the link")
+
 	// There is deliberately NO length assertion here any more (the old ceiling
 	// was 1600, then 2000).
 	//

@@ -644,6 +644,7 @@ func getLinkMetadata(inputURL string) (*v1pb.LinkMetadata, error) {
 		Title:       htmlMeta.Title,
 		Description: htmlMeta.Description,
 		Image:       htmlMeta.Image,
+		Favicon:     htmlMeta.Favicon,
 	}, nil
 }
 
