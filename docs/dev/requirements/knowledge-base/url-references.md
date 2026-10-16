@@ -39,7 +39,7 @@ References 区块原先只放子文档（[sub-documents.md](sub-documents.md)）
 ---
 references:
   - "[改动任何预算数字之前打开](https://docs.google.com/document/d/abc)"
-  - https://example.com/rfc-123
+  - "https://example.com/rfc-123"
 ---
 ```
 
@@ -136,9 +136,11 @@ frontmatter 是 YAML，缩进和引号都敏感。实测过当时的解析器（
   `apple-touch-icon`，都没有就用该站点的 `/favicon.ico`。前端图片加载失败时兜底一个地球图标。
 - **需要登录的链接给默认显示。** 未登录打开 Google Doc 会被跳转到 `accounts.google.com`
   的登录页，抓回来的标题是「Sign in」。规则：
-  - 响应不是 2xx，或者最终落在登录页（跳转到了别的域名，且落点是
-    `accounts.` / `login.` / `signin.` / `auth.` / `sso.` 开头的域名，或路径里有
-    login / signin / sso / oauth 等字样），**丢弃**标题、描述、图片；
+  - 响应不是 2xx，或者请求**被跳转**到了登录页（落点域名以
+    `accounts.` / `login.` / `signin.` / `auth.` / `sso.` 开头，或路径里有
+    login / signin / ServiceLogin / sso / oauth 等段），**丢弃**标题、描述、图片。
+    只看跳转：链接本身就指向登录页，那是作者的选择；普通跳转（如 `example.com` →
+    `www.example.com`）照常取元数据；
   - 这时网站图标用**原始链接所在站点**的 `/favicon.ico`。Google Docs 的就是文档图标，
     正好是想要的效果。
 - 抓取整个失败（超时、不是 HTML）时，前端同样显示域名 + 原始站点的 `/favicon.ico`。

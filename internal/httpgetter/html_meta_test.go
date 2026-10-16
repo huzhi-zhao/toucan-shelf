@@ -52,6 +52,7 @@ func TestGetHTMLMeta(t *testing.T) {
 		Title:       "Open Graph title",
 		Description: "Open Graph description",
 		Image:       "https://example.com/cover.png",
+		Favicon:     "http://93.184.216.34/favicon.ico",
 	}, *metadata)
 }
 
@@ -86,6 +87,7 @@ func TestGetHTMLMetaWithNameOnly(t *testing.T) {
 		Title:       "Sample Page",
 		Description: "This description should appear in the link preview.",
 		Image:       "",
+		Favicon:     "http://93.184.216.34/favicon.ico",
 	}, *metadata)
 }
 
@@ -120,7 +122,122 @@ func TestGetHTMLMetaWithNameCaseInsensitive(t *testing.T) {
 		Title:       "Sample Page",
 		Description: "Case insensitive description match.",
 		Image:       "",
+		Favicon:     "http://93.184.216.34/favicon.ico",
 	}, *metadata)
+}
+
+// fakeSite serves the given pages by URL; a page with a location is a 302.
+type fakePage struct {
+	status   int
+	location string
+	body     string
+}
+
+func useFakeSite(t *testing.T, pages map[string]fakePage) {
+	t.Helper()
+	originalHTTPClient := httpClient
+	t.Cleanup(func() {
+		httpClient = originalHTTPClient
+	})
+	httpClient = &http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			page, ok := pages[req.URL.String()]
+			if !ok {
+				t.Fatalf("unexpected request to %s", req.URL)
+			}
+			header := http.Header{"Content-Type": []string{"text/html; charset=utf-8"}}
+			if page.location != "" {
+				header.Set("Location", page.location)
+			}
+			return &http.Response{
+				StatusCode: page.status,
+				Header:     header,
+				Body:       io.NopCloser(strings.NewReader(page.body)),
+				Request:    req,
+			}, nil
+		}),
+	}
+}
+
+func TestGetHTMLMetaResolvesDeclaredIcon(t *testing.T) {
+	useFakeSite(t, map[string]fakePage{
+		"https://93.184.216.34/docs/page": {status: http.StatusOK, body: `<html><head>
+  <link rel="apple-touch-icon" href="/touch.png">
+  <link rel="shortcut icon" href="../static/icon.svg">
+  <title>Docs</title>
+</head><body></body></html>`},
+	})
+
+	metadata, err := GetHTMLMeta("https://93.184.216.34/docs/page")
+	require.NoError(t, err)
+	require.Equal(t, "Docs", metadata.Title)
+	require.Equal(t, "https://93.184.216.34/static/icon.svg", metadata.Favicon)
+}
+
+func TestGetHTMLMetaFallsBackToTouchIcon(t *testing.T) {
+	useFakeSite(t, map[string]fakePage{
+		"https://93.184.216.34/": {status: http.StatusOK, body: `<html><head><link rel="apple-touch-icon" href="https://cdn.example.com/t.png"></head></html>`},
+	})
+
+	metadata, err := GetHTMLMeta("https://93.184.216.34/")
+	require.NoError(t, err)
+	require.Equal(t, "https://cdn.example.com/t.png", metadata.Favicon)
+}
+
+func TestGetHTMLMetaIgnoresSignInRedirect(t *testing.T) {
+	useFakeSite(t, map[string]fakePage{
+		"https://docs.google.com/document/d/abc/edit": {
+			status:   http.StatusFound,
+			location: "https://accounts.google.com/v3/signin/identifier?continue=x",
+		},
+		"https://accounts.google.com/v3/signin/identifier?continue=x": {
+			status: http.StatusOK,
+			body:   `<html><head><title>Sign in - Google Accounts</title><link rel="icon" href="/g.ico"></head></html>`,
+		},
+	})
+
+	metadata, err := GetHTMLMeta("https://docs.google.com/document/d/abc/edit")
+	require.NoError(t, err)
+	require.Equal(t, HTMLMeta{Favicon: "https://docs.google.com/favicon.ico"}, *metadata)
+}
+
+func TestGetHTMLMetaIgnoresSameHostLoginRedirect(t *testing.T) {
+	useFakeSite(t, map[string]fakePage{
+		"https://wiki.example.com/pages/42": {status: http.StatusFound, location: "/login.action?dest=42"},
+		"https://wiki.example.com/login.action?dest=42": {
+			status: http.StatusOK,
+			body:   `<html><head><title>Log in</title></head></html>`,
+		},
+	})
+
+	metadata, err := GetHTMLMeta("https://wiki.example.com/pages/42")
+	require.NoError(t, err)
+	require.Equal(t, HTMLMeta{Favicon: "https://wiki.example.com/favicon.ico"}, *metadata)
+}
+
+func TestGetHTMLMetaKeepsOrdinaryRedirect(t *testing.T) {
+	useFakeSite(t, map[string]fakePage{
+		"https://example.com/a": {status: http.StatusMovedPermanently, location: "https://www.example.com/a"},
+		"https://www.example.com/a": {
+			status: http.StatusOK,
+			body:   `<html><head><title>Article</title></head></html>`,
+		},
+	})
+
+	metadata, err := GetHTMLMeta("https://example.com/a")
+	require.NoError(t, err)
+	require.Equal(t, "Article", metadata.Title)
+	require.Equal(t, "https://www.example.com/favicon.ico", metadata.Favicon)
+}
+
+func TestGetHTMLMetaIgnoresErrorPages(t *testing.T) {
+	useFakeSite(t, map[string]fakePage{
+		"https://example.com/private": {status: http.StatusForbidden, body: `<html><head><title>403 Forbidden</title></head></html>`},
+	})
+
+	metadata, err := GetHTMLMeta("https://example.com/private")
+	require.NoError(t, err)
+	require.Equal(t, HTMLMeta{Favicon: "https://example.com/favicon.ico"}, *metadata)
 }
 
 func TestGetHTMLMetaForInternal(t *testing.T) {
