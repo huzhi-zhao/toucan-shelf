@@ -1,6 +1,5 @@
 import {
   CalendarIcon,
-  CheckIcon,
   CircleDotIcon,
   ClockIcon,
   HashIcon,
@@ -12,7 +11,7 @@ import {
   TypeIcon,
   XIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -234,15 +233,39 @@ interface PropertiesPanelProps {
   visible?: boolean;
 }
 
+// Popups a control opens (a select's option list) are portalled out of the panel; a click inside
+// one is still part of editing the panel, not a click away from it.
+const PANEL_POPUP_SELECTOR = "[data-radix-popper-content-wrapper], [role='listbox']";
+
 /**
  * A memo's frontmatter properties, shown above the body. Read-only by default; when `onChange`
- * is supplied, a toggle at the end of the rows swaps the values for type-appropriate form
+ * is supplied, a pencil at the end of the rows swaps the values for type-appropriate form
  * controls (dropdown, switch, date picker, tag box, text field) so the header can be edited
  * without opening the raw markdown editor.
+ *
+ * Every control saves on its own (blur, Enter, picking an option), so there is no final
+ * "done" step: clicking anywhere outside the panel, or Escape, simply leaves edit mode. A
+ * confirm button there only made people think their edits weren't saved until they pressed it.
  */
 export const PropertiesPanel = ({ properties, onChange, visible }: PropertiesPanelProps) => {
   const t = useTranslate();
   const [editing, setEditing] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // Listening for `click` rather than `mousedown` matters: focus leaves a text field on
+  // mousedown, so by the time the click lands the field's blur has already committed its value.
+  // Leaving on mousedown would unmount the field first and drop what was typed.
+  useEffect(() => {
+    if (!editing) return;
+    const leaveOnOutsideClick = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element) || !target.isConnected) return;
+      if (panelRef.current?.contains(target) || target.closest(PANEL_POPUP_SELECTOR)) return;
+      setEditing(false);
+    };
+    document.addEventListener("click", leaveOnOutsideClick, true);
+    return () => document.removeEventListener("click", leaveOnOutsideClick, true);
+  }, [editing]);
   // `cover`/`order` configure the app, not the document — hidden in both the read and edit states,
   // so the panel never offers to edit a row it doesn't show.
   const visibleProperties = properties.filter((property) => !isHiddenProperty(property.key));
@@ -253,7 +276,15 @@ export const PropertiesPanel = ({ properties, onChange, visible }: PropertiesPan
   const isEditing = editing && Boolean(onChange);
 
   return (
-    <div className="relative w-full mb-3 pb-2 border-b border-border flex flex-col gap-0.5" data-memo-properties>
+    <div
+      ref={panelRef}
+      className="relative w-full mb-3 pb-2 border-b border-border flex flex-col gap-0.5"
+      data-memo-properties
+      onKeyDown={(event) => {
+        // A control that handles Escape itself (closing an open option list) marks it handled.
+        if (isEditing && event.key === "Escape" && !event.defaultPrevented) setEditing(false);
+      }}
+    >
       {visibleProperties.map((property) => {
         const Icon = TYPE_ICONS[property.type];
         return (
@@ -276,16 +307,16 @@ export const PropertiesPanel = ({ properties, onChange, visible }: PropertiesPan
       })}
       {/* Icon only, floated over the top-right corner of the rows: the toggle is an affordance on
           the panel, not a property of its own, so it must not claim a row. */}
-      {onChange && (
+      {onChange && !isEditing && (
         <Button
           variant="ghost"
           size="icon"
           className="absolute top-0 right-0 h-6 w-6 text-muted-foreground hover:text-foreground"
-          onClick={() => setEditing((previous) => !previous)}
-          title={t(editing ? "memo.properties.done" : "memo.properties.edit")}
+          onClick={() => setEditing(true)}
+          title={t("memo.properties.edit")}
         >
-          <span className="sr-only">{t(editing ? "memo.properties.done" : "memo.properties.edit")}</span>
-          {editing ? <CheckIcon className="w-3.5 h-3.5" /> : <PencilIcon className="w-3.5 h-3.5" />}
+          <span className="sr-only">{t("memo.properties.edit")}</span>
+          <PencilIcon className="w-3.5 h-3.5" />
         </Button>
       )}
     </div>
