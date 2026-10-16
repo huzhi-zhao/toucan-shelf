@@ -32,6 +32,8 @@ reviewed: false
 - **嵌套 map、对象数组、畸形行会被静默忽略**——不报错、不渲染。所以**别写嵌套 YAML**，
   写了看起来没事，实际上那部分数据在 app 里根本不存在。
 - key 不存在 = "未设置"，走默认行为。
+- **`references` 是保留 key**：文档的外链列表，显示在 References 区块里。它有固定格式
+  （两格缩进、每项双引号包住的 `[什么时候该打开](URL)`），见 `hierarchy-and-doc-types.md` §3.6。
 - **改属性有涟漪**：frontmatter 会喂给 **画廊视图的 scope / sort / cover / badge**
   和看板分组。跨文档批量改 `status`/`tags`/自定义属性之前，扫一眼有没有 `.view.json`
   在消费它。

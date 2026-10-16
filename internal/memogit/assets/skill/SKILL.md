@@ -36,7 +36,7 @@ d=$PWD; while [ "$d" != / ] && [ ! -d "$d/.memogit" ]; do d=$(dirname "$d"); don
 
 **确认通道后，本文件下面的 §1 §2 只读适用于你那一栏的行**（每行都标了
 `两者` / `仅 memogit` / `仅 MCP`），标着另一条通道的直接跳过。
-§3 §4 两个通道都适用。
+§3 §4 §5 两个通道都适用。
 
 两个通道**不要混用**：MCP 写入没有并发检查，memogit 有 `.remote` 冲突流程。
 同一篇文档在一个会话里只走一个通道。
@@ -109,7 +109,23 @@ d=$PWD; while [ "$d" != / ] && [ ! -d "$d/.memogit" ]; do d=$(dirname "$d"); don
 
 ---
 
-## 3. 看不见的东西（改动前必须知道）
+## 3. 一篇文档 = 正文 + References
+
+文档底部的 **References 区块**和正文一样是这篇文档的内容，不是附录。它列两种东西：
+
+- **子文档**——这篇文档的组成部分。常见用法是把一篇超大的文档按功能拆开：主文档
+  「学习 DP-700」下挂「学习计划」「学习资料」。任务落在哪一块，就去读、去改对应的子文档；
+  属于某一块的新内容写进那篇子文档，别堆回主文档正文。
+- **外链**——frontmatter 里的 `references` 列表：支撑正文结论的依据、为控制篇幅移出正文的
+  知识点补充、格式比 Markdown 更丰富的 Google 文档。外链承载的内容可能比正文更重要，
+  正文只是补充或配合。每条外链的备注写的是**什么时候该打开它**：当前任务一旦落进这个范围，
+  **必须打开读**，不能只凭正文下结论。
+
+找子文档、读写 `references` 的格式，见 `references/hierarchy-and-doc-types.md` §3.5 §3.6。
+
+---
+
+## 4. 看不见的东西（改动前必须知道）
 
 以下内容存在于服务器上，但**两条通道都看不到**（memogit 不导出，MCP 不暴露）：
 
@@ -122,11 +138,11 @@ d=$PWD; while [ "$d" != / ] && [ ! -d "$d/.memogit" ]; do d=$(dirname "$d"); don
 
 ---
 
-## 4. 需要更多细节时，按模块读
+## 5. 需要更多细节时，按模块读
 
 | 通道 | 主题 | 文件 |
 |------|------|------|
-| 两者 | workspace / folder_path / 4 种 doc_type / 路径映射 / 唯一性约束 / **子文档**（`_sub/<父uid>`） | `references/hierarchy-and-doc-types.md` |
+| 两者 | workspace / folder_path / 4 种 doc_type / 路径映射 / 唯一性约束 / **子文档**（`_sub/<父uid>`）/ **References 外链**（frontmatter `references`） | `references/hierarchy-and-doc-types.md` |
 | 两者 | frontmatter（可写）、装饰语法（callout / 着色 / 计数器，只读不写）、标题锚点、批注机制、`toucan-secret` 密文块、内联媒体 | `references/markdown-syntax.md` |
 | 两者 | 文档之间的引用：四种路径形式（库根相对 / 文档相对 / 跨库库限定 / UID）、`[]()` 与 `![[]]` 的边界、移动时的自动固化 | `references/document-links.md` |
 | 两者 | ` ```kanban ` / ` ```sheets ` / ` ```grid ` / ` ```calendar ` 四种交互块，以及画廊视图 | `references/blocks-and-views.md` |
