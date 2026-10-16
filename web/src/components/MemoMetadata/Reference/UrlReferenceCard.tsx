@@ -25,12 +25,17 @@ function siteOf(url: string): { hostname: string; favicon: string } {
  * One external link in the References section. It sits next to the sub-document
  * cards because it matters as much, but it is a different thing — a page outside
  * this system — so it looks different: the site's icon and host instead of a
- * document icon, and the author's note on when to open it instead of a body
- * preview.
+ * document icon, and the page's own title and host under the heading instead of
+ * a body preview.
+ *
+ * The heading is the author's note, not the page title: the note is what was
+ * written for this document (when to open the link), while the page title only
+ * repeats what the link already says. Without a note the page title takes the
+ * heading.
  *
  * Many of these links are private (a Google Doc the server is not signed in to),
- * so the metadata fetch often yields no title. The card still renders, titled by
- * the host and marked by the site's own favicon: a link that matters this much
+ * so the metadata fetch often yields no title. The card still renders, falling
+ * back to the host and the site's own favicon: a link that matters this much
  * must never degrade into a bare URL.
  */
 export const UrlReferenceCard = ({ reference, onEdit, onRemove }: Props) => {
@@ -41,7 +46,10 @@ export const UrlReferenceCard = ({ reference, onEdit, onRemove }: Props) => {
   const [faviconFailed, setFaviconFailed] = useState(false);
   useEffect(() => setFaviconFailed(false), [favicon]);
 
-  const title = metadata?.title.trim() || site.hostname;
+  const pageTitle = metadata?.title.trim() ?? "";
+  const heading = reference.note || pageTitle || site.hostname;
+  // Under the heading: whatever the heading did not already say, ending with the host.
+  const subtitle = [reference.note ? pageTitle : "", heading === site.hostname ? "" : site.hostname].filter(Boolean).join(" · ");
 
   // The card itself is a link; its buttons must not also open it.
   const act = (action: () => void) => (event: MouseEvent) => {
@@ -65,15 +73,12 @@ export const UrlReferenceCard = ({ reference, onEdit, onRemove }: Props) => {
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 items-baseline gap-2">
-          <span className="truncate text-sm font-medium leading-tight text-foreground" title={title}>
-            {title}
-          </span>
-          {title !== site.hostname && <span className="shrink-0 truncate text-xs text-muted-foreground">{site.hostname}</span>}
+        <div className="line-clamp-2 text-sm font-medium leading-tight text-foreground" title={heading}>
+          {heading}
         </div>
-        {reference.note && (
-          <div className="mt-1 line-clamp-2 text-xs text-muted-foreground" title={reference.note}>
-            {reference.note}
+        {subtitle && (
+          <div className="mt-1 truncate text-xs text-muted-foreground" title={subtitle}>
+            {subtitle}
           </div>
         )}
       </div>
