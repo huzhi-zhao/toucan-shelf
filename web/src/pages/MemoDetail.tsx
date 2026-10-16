@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 import { resolveHeadingTarget } from "@/utils/heading-anchor";
 import { splitChildMemos } from "@/utils/subDoc";
+import { parseUrlReferences } from "@/utils/urlReferences";
 
 const MemoDetail = () => {
   const md = useMediaQuery("md");
@@ -92,6 +93,8 @@ const MemoDetail = () => {
   // and must not be rendered as comment cards — see utils/subDoc.ts. They are
   // reachable from the document's References section instead.
   const { comments, subDocs } = useReactMemo(() => splitChildMemos(children), [children]);
+  // External links from the document's frontmatter, listed in the same section.
+  const urlReferences = useReactMemo(() => parseUrlReferences(memo?.content ?? ""), [memo?.content]);
 
   // Scroll to the hash target once it's in the DOM. The effect re-runs as the memo loads (footnote
   // anchors) and as comments arrive (comment anchors), since the target may render in either; the
@@ -188,7 +191,13 @@ const MemoDetail = () => {
             </DocumentLinkProvider>
             {/* The document's sub-documents, above its comments — the same order
                 the Notebook preview puts them in, so the two surfaces read alike. */}
-            <ReferenceListView className="mt-4" subDocs={subDocs} parentMemoName={displayMemo.name} />
+            <ReferenceListView
+              className="mt-4"
+              subDocs={subDocs}
+              parentMemoName={displayMemo.name}
+              urlReferences={urlReferences.references}
+              unreadableUrlReferences={urlReferences.invalidCount}
+            />
             <MemoCommentSection
               memo={displayMemo}
               comments={comments}

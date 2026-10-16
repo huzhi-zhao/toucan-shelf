@@ -1533,7 +1533,15 @@
     "duplicate-title": "这篇文档下已经有同名子文档",
     "open": "打开子文档",
     "back-to-parent": "返回主文档",
-    "copy-reference": "复制引用"
+    "copy-reference": "复制引用",
+    "add-link": "添加链接",
+    "edit-link": "编辑链接",
+    "remove-link": "删除链接",
+    "link-url": "URL",
+    "link-note": "什么时候该打开",
+    "link-note-placeholder": "例如：改动预算数字之前",
+    "invalid-url": "请输入 http(s) 链接",
+    "unreadable-links": "references 下有 {{count}} 行无法识别。请在源码中修正，修好之前这里不能编辑链接。"
   },
   "landing": {
     "eyebrow": "自托管知识库",
