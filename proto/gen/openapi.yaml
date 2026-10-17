@@ -2008,6 +2008,41 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/v1/planner/{planner}/*:postpone:
+        post:
+            tags:
+                - PlannerService
+            description: |-
+                PostponeTodo moves an active, dated todo to a later date. Unlike changing
+                 the date through UpdateTodo (which corrects it), this keeps the original
+                 date and counts the postponement.
+            operationId: PlannerService_PostponeTodo
+            parameters:
+                - name: planner
+                  in: path
+                  description: The planner id.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/PostponeTodoRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Todo'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/planner:import:
         post:
             tags:
@@ -6624,6 +6659,24 @@ components:
                 text:
                     type: string
                     description: The rewritten text.
+        PostponeTodoRequest:
+            required:
+                - name
+                - date
+                - localDate
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: 'Format: planner/todos/{todo}'
+                date:
+                    type: string
+                    description: |-
+                        The new date, YYYY-MM-DD. Must differ from the current one and not be
+                         before local_date.
+                localDate:
+                    type: string
+                    description: The caller's local date, YYYY-MM-DD.
         PreviewPublishRequest:
             required:
                 - parent
@@ -7688,6 +7741,17 @@ components:
                     readOnly: true
                     type: string
                     format: date-time
+                originalDate:
+                    readOnly: true
+                    type: string
+                    description: |-
+                        The date before the todo's first postponement, or empty if it was never
+                         postponed. Set by PostponeTodo.
+                postponeCount:
+                    readOnly: true
+                    type: integer
+                    description: How many times the todo has been postponed. Set by PostponeTodo.
+                    format: int32
         TranscribeRequest:
             required:
                 - audio

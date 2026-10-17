@@ -63,6 +63,9 @@ const (
 	// PlannerServiceUpdateTodoProcedure is the fully-qualified name of the PlannerService's UpdateTodo
 	// RPC.
 	PlannerServiceUpdateTodoProcedure = "/memos.api.v1.PlannerService/UpdateTodo"
+	// PlannerServicePostponeTodoProcedure is the fully-qualified name of the PlannerService's
+	// PostponeTodo RPC.
+	PlannerServicePostponeTodoProcedure = "/memos.api.v1.PlannerService/PostponeTodo"
 	// PlannerServiceDeleteTodoProcedure is the fully-qualified name of the PlannerService's DeleteTodo
 	// RPC.
 	PlannerServiceDeleteTodoProcedure = "/memos.api.v1.PlannerService/DeleteTodo"
@@ -109,6 +112,10 @@ type PlannerServiceClient interface {
 	// already overdue (which needs local_date); cancelling needs a cancel_reason;
 	// reopening clears all three.
 	UpdateTodo(context.Context, *connect.Request[v1.UpdateTodoRequest]) (*connect.Response[v1.Todo], error)
+	// PostponeTodo moves an active, dated todo to a later date. Unlike changing
+	// the date through UpdateTodo (which corrects it), this keeps the original
+	// date and counts the postponement.
+	PostponeTodo(context.Context, *connect.Request[v1.PostponeTodoRequest]) (*connect.Response[v1.Todo], error)
 	// DeleteTodo deletes a todo.
 	DeleteTodo(context.Context, *connect.Request[v1.DeleteTodoRequest]) (*connect.Response[emptypb.Empty], error)
 	// CreatePlannerNote adds a note to a day.
@@ -194,6 +201,12 @@ func NewPlannerServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(plannerServiceMethods.ByName("UpdateTodo")),
 			connect.WithClientOptions(opts...),
 		),
+		postponeTodo: connect.NewClient[v1.PostponeTodoRequest, v1.Todo](
+			httpClient,
+			baseURL+PlannerServicePostponeTodoProcedure,
+			connect.WithSchema(plannerServiceMethods.ByName("PostponeTodo")),
+			connect.WithClientOptions(opts...),
+		),
 		deleteTodo: connect.NewClient[v1.DeleteTodoRequest, emptypb.Empty](
 			httpClient,
 			baseURL+PlannerServiceDeleteTodoProcedure,
@@ -239,6 +252,7 @@ type plannerServiceClient struct {
 	getTodo            *connect.Client[v1.GetTodoRequest, v1.Todo]
 	createTodo         *connect.Client[v1.CreateTodoRequest, v1.Todo]
 	updateTodo         *connect.Client[v1.UpdateTodoRequest, v1.Todo]
+	postponeTodo       *connect.Client[v1.PostponeTodoRequest, v1.Todo]
 	deleteTodo         *connect.Client[v1.DeleteTodoRequest, emptypb.Empty]
 	createPlannerNote  *connect.Client[v1.CreatePlannerNoteRequest, v1.PlannerNote]
 	updatePlannerNote  *connect.Client[v1.UpdatePlannerNoteRequest, v1.PlannerNote]
@@ -296,6 +310,11 @@ func (c *plannerServiceClient) UpdateTodo(ctx context.Context, req *connect.Requ
 	return c.updateTodo.CallUnary(ctx, req)
 }
 
+// PostponeTodo calls memos.api.v1.PlannerService.PostponeTodo.
+func (c *plannerServiceClient) PostponeTodo(ctx context.Context, req *connect.Request[v1.PostponeTodoRequest]) (*connect.Response[v1.Todo], error) {
+	return c.postponeTodo.CallUnary(ctx, req)
+}
+
 // DeleteTodo calls memos.api.v1.PlannerService.DeleteTodo.
 func (c *plannerServiceClient) DeleteTodo(ctx context.Context, req *connect.Request[v1.DeleteTodoRequest]) (*connect.Response[emptypb.Empty], error) {
 	return c.deleteTodo.CallUnary(ctx, req)
@@ -350,6 +369,10 @@ type PlannerServiceHandler interface {
 	// already overdue (which needs local_date); cancelling needs a cancel_reason;
 	// reopening clears all three.
 	UpdateTodo(context.Context, *connect.Request[v1.UpdateTodoRequest]) (*connect.Response[v1.Todo], error)
+	// PostponeTodo moves an active, dated todo to a later date. Unlike changing
+	// the date through UpdateTodo (which corrects it), this keeps the original
+	// date and counts the postponement.
+	PostponeTodo(context.Context, *connect.Request[v1.PostponeTodoRequest]) (*connect.Response[v1.Todo], error)
 	// DeleteTodo deletes a todo.
 	DeleteTodo(context.Context, *connect.Request[v1.DeleteTodoRequest]) (*connect.Response[emptypb.Empty], error)
 	// CreatePlannerNote adds a note to a day.
@@ -431,6 +454,12 @@ func NewPlannerServiceHandler(svc PlannerServiceHandler, opts ...connect.Handler
 		connect.WithSchema(plannerServiceMethods.ByName("UpdateTodo")),
 		connect.WithHandlerOptions(opts...),
 	)
+	plannerServicePostponeTodoHandler := connect.NewUnaryHandler(
+		PlannerServicePostponeTodoProcedure,
+		svc.PostponeTodo,
+		connect.WithSchema(plannerServiceMethods.ByName("PostponeTodo")),
+		connect.WithHandlerOptions(opts...),
+	)
 	plannerServiceDeleteTodoHandler := connect.NewUnaryHandler(
 		PlannerServiceDeleteTodoProcedure,
 		svc.DeleteTodo,
@@ -483,6 +512,8 @@ func NewPlannerServiceHandler(svc PlannerServiceHandler, opts ...connect.Handler
 			plannerServiceCreateTodoHandler.ServeHTTP(w, r)
 		case PlannerServiceUpdateTodoProcedure:
 			plannerServiceUpdateTodoHandler.ServeHTTP(w, r)
+		case PlannerServicePostponeTodoProcedure:
+			plannerServicePostponeTodoHandler.ServeHTTP(w, r)
 		case PlannerServiceDeleteTodoProcedure:
 			plannerServiceDeleteTodoHandler.ServeHTTP(w, r)
 		case PlannerServiceCreatePlannerNoteProcedure:
@@ -540,6 +571,10 @@ func (UnimplementedPlannerServiceHandler) CreateTodo(context.Context, *connect.R
 
 func (UnimplementedPlannerServiceHandler) UpdateTodo(context.Context, *connect.Request[v1.UpdateTodoRequest]) (*connect.Response[v1.Todo], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.UpdateTodo is not implemented"))
+}
+
+func (UnimplementedPlannerServiceHandler) PostponeTodo(context.Context, *connect.Request[v1.PostponeTodoRequest]) (*connect.Response[v1.Todo], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.PostponeTodo is not implemented"))
 }
 
 func (UnimplementedPlannerServiceHandler) DeleteTodo(context.Context, *connect.Request[v1.DeleteTodoRequest]) (*connect.Response[emptypb.Empty], error) {

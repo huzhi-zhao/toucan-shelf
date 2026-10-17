@@ -1159,6 +1159,14 @@ func (s *ConnectServiceHandler) UpdateTodo(ctx context.Context, req *connect.Req
 	return connect.NewResponse(resp), nil
 }
 
+func (s *ConnectServiceHandler) PostponeTodo(ctx context.Context, req *connect.Request[v1pb.PostponeTodoRequest]) (*connect.Response[v1pb.Todo], error) {
+	resp, err := s.APIV1Service.PostponeTodo(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (s *ConnectServiceHandler) DeleteTodo(ctx context.Context, req *connect.Request[v1pb.DeleteTodoRequest]) (*connect.Response[emptypb.Empty], error) {
 	resp, err := s.APIV1Service.DeleteTodo(ctx, req.Msg)
 	if err != nil {

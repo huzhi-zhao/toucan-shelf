@@ -79,6 +79,16 @@ func TestPlannerTodosAndNotes(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, ranged, 2)
 
+	// Postponing keeps the original date and counts.
+	require.Empty(t, later.OriginalDate)
+	require.Zero(t, later.PostponeCount)
+	newDate, originalDate, count := "2026-10-25", "2026-10-20", int32(1)
+	postponed, err := ts.UpdatePlannerTodo(ctx, &store.UpdatePlannerTodo{ID: later.ID, Date: &newDate, OriginalDate: &originalDate, PostponeCount: &count})
+	require.NoError(t, err)
+	require.Equal(t, "2026-10-25", postponed.Date)
+	require.Equal(t, "2026-10-20", postponed.OriginalDate)
+	require.Equal(t, int32(1), postponed.PostponeCount)
+
 	cancelled, reason, overdue, closedTs := store.PlannerTodoCancelled, "不做了", true, int64(1760000000)
 	updated, err := ts.UpdatePlannerTodo(ctx, &store.UpdatePlannerTodo{
 		ID: later.ID, Status: &cancelled, CancelReason: &reason, ClosedOverdue: &overdue, ClosedTs: &closedTs,

@@ -95,10 +95,13 @@ type PlannerTodo struct {
 	Note         string
 	// MemoName is "memos/{uid}" of a linked document, or "". A plain reference:
 	// deleting the document leaves it dangling rather than touching the todo.
-	MemoName  string
-	URL       string
-	CreatedTs int64
-	UpdatedTs int64
+	MemoName string
+	URL      string
+	// OriginalDate is the date before the todo's first postponement, or "" if it was never postponed.
+	OriginalDate  string
+	PostponeCount int32
+	CreatedTs     int64
+	UpdatedTs     int64
 }
 
 // FindPlannerTodo filters todos. A date bound only matches todos that have a
@@ -128,6 +131,8 @@ type UpdatePlannerTodo struct {
 	Note          *string
 	MemoName      *string
 	URL           *string
+	OriginalDate  *string
+	PostponeCount *int32
 }
 
 // PlannerNote is a plain record of what happened on a day.

@@ -457,6 +457,8 @@ CREATE INDEX idx_planner_check_in_creator_date ON planner_check_in(creator_id, d
 -- closed_overdue  1 when the todo was closed after its date had passed.
 -- closed_ts       when it was closed; 0 while active or when unknown (imported).
 -- memo_name       'memos/{uid}' of a linked document, or ''. A plain reference.
+-- original_date   the date before its first postponement, or '' if never postponed.
+-- postpone_count  how many times it has been postponed.
 CREATE TABLE planner_todo (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,
   uid            TEXT    NOT NULL UNIQUE,
@@ -473,7 +475,9 @@ CREATE TABLE planner_todo (
   memo_name      TEXT    NOT NULL DEFAULT '',
   url            TEXT    NOT NULL DEFAULT '',
   created_ts     BIGINT  NOT NULL DEFAULT (strftime('%s', 'now')),
-  updated_ts     BIGINT  NOT NULL DEFAULT (strftime('%s', 'now'))
+  updated_ts     BIGINT  NOT NULL DEFAULT (strftime('%s', 'now')),
+  original_date  TEXT    NOT NULL DEFAULT '',
+  postpone_count INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX idx_planner_todo_creator_status ON planner_todo(creator_id, status);

@@ -128,6 +128,12 @@ export function useUpdateTodo() {
   );
 }
 
+export function usePostponeTodo() {
+  return usePlannerMutation(({ name, date, localDate }: { name: string; date: string; localDate: string }) =>
+    plannerServiceClient.postponeTodo({ name, date, localDate }),
+  );
+}
+
 export function useDeleteTodo() {
   return usePlannerMutation((name: string) => plannerServiceClient.deleteTodo({ name }));
 }

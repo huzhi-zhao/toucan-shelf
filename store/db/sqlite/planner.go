@@ -156,13 +156,13 @@ func (d *DB) DeletePlannerCheckIn(ctx context.Context, habitID int32, date strin
 // Todos.
 
 const plannerTodoColumns = "`id`, `uid`, `creator_id`, `title`, `date`, `status`, `closed_overdue`, `closed_ts`, `cancel_reason`, " +
-	"`important`, `tag`, `note`, `memo_name`, `url`, `created_ts`, `updated_ts`"
+	"`important`, `tag`, `note`, `memo_name`, `url`, `original_date`, `postpone_count`, `created_ts`, `updated_ts`"
 
 func scanPlannerTodo(row interface{ Scan(...any) error }) (*store.PlannerTodo, error) {
 	t := &store.PlannerTodo{}
 	if err := row.Scan(
 		&t.ID, &t.UID, &t.CreatorID, &t.Title, &t.Date, &t.Status, &t.ClosedOverdue, &t.ClosedTs, &t.CancelReason,
-		&t.Important, &t.Tag, &t.Note, &t.MemoName, &t.URL, &t.CreatedTs, &t.UpdatedTs,
+		&t.Important, &t.Tag, &t.Note, &t.MemoName, &t.URL, &t.OriginalDate, &t.PostponeCount, &t.CreatedTs, &t.UpdatedTs,
 	); err != nil {
 		return nil, err
 	}
@@ -236,6 +236,8 @@ func (d *DB) UpdatePlannerTodo(ctx context.Context, update *store.UpdatePlannerT
 		{"note", update.Note, update.Note != nil},
 		{"memo_name", update.MemoName, update.MemoName != nil},
 		{"url", update.URL, update.URL != nil},
+		{"original_date", update.OriginalDate, update.OriginalDate != nil},
+		{"postpone_count", update.PostponeCount, update.PostponeCount != nil},
 	}
 	for _, f := range fields {
 		if f.ok {
@@ -255,6 +257,8 @@ func derefPlannerValue(v any) any {
 	case *bool:
 		return *p
 	case *int64:
+		return *p
+	case *int32:
 		return *p
 	default:
 		return v

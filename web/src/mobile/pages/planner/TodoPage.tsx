@@ -6,14 +6,14 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { ragServiceClient } from "@/connect";
 import { useMemo as useMemoQuery } from "@/hooks/useMemoQueries";
-import { useDeleteTodo, useTodo, useUpdateTodo } from "@/hooks/usePlannerQueries";
+import { useDeleteTodo, usePostponeTodo, useTodo, useUpdateTodo } from "@/hooks/usePlannerQueries";
 import { cn } from "@/lib/utils";
 import { type Todo, Todo_Status } from "@/types/proto/api/v1/planner_service_pb";
 import { SearchMode } from "@/types/proto/api/v1/rag_service_pb";
 import SectionTitle from "../../components/SectionTitle";
 import { COPY } from "../../copy";
 import { useBack, useBackLabel, useGo } from "../../lib/nav";
-import { isOverdue, localToday } from "../../lib/planner";
+import { isOverdue, localToday, postponeChoices } from "../../lib/planner";
 import { docRoute, MOBILE_ROUTES, todoNameFromUid } from "../../routes";
 
 const EDITABLE_FIELDS = ["title", "tag", "note", "url"] as const;
@@ -24,7 +24,8 @@ const isWebLink = (value: string) => /^https?:\/\/\S+$/i.test(value.trim());
 /**
  * One todo (requirement §2.2): title, day, importance, tag, note, a linked document
  * and an external link. Text fields save when they lose focus; the rest at once.
- * Closing happens here too — cancelling asks for the reason first.
+ * Closing happens here too — cancelling asks for the reason first — and so does postponing,
+ * which moves the date but keeps the original one and counts (requirement §2.3).
  */
 export default function TodoPage() {
   const { uid = "" } = useParams();
@@ -57,6 +58,14 @@ export default function TodoPage() {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [postponeOpen, setPostponeOpen] = useState(false);
+  const postponeTodo = usePostponeTodo();
+
+  const postpone = (date: string) => {
+    setPostponeOpen(false);
+    if (!todo || !date || date === todo.date || date < today) return;
+    postponeTodo.mutate({ name, date, localDate: today }, { onError: () => flash(COPY.planner.failed) });
+  };
 
   const save = (
     changes: Partial<Pick<Todo, "title" | "date" | "status" | "cancelReason" | "important" | "tag" | "note" | "memo" | "url">>,
@@ -234,12 +243,18 @@ export default function TodoPage() {
         </div>
       )}
       {closedOn && <div className="mx-4 mb-2 text-[13px] text-black/40 dark:text-white/40">{closedOn}</div>}
+      {todo.postponeCount > 0 && (
+        <div className="mx-4 mb-2 text-[13px] text-black/50 dark:text-white/50">
+          {COPY.todo.postponed(dayjs(todo.originalDate).format("M/D"), todo.postponeCount)}
+        </div>
+      )}
       <List strongIos insetIos dividersIos className="!my-0">
         {closed ? (
           <ListButton onClick={() => save({ status: Todo_Status.ACTIVE })}>{COPY.todo.reopen}</ListButton>
         ) : (
           <>
             <ListButton onClick={() => save({ status: Todo_Status.DONE })}>{COPY.todo.complete}</ListButton>
+            {todo.date && <ListButton onClick={() => setPostponeOpen(true)}>{COPY.todo.postpone}</ListButton>}
             <ListButton
               className="text-red-500"
               onClick={() => {
@@ -284,6 +299,35 @@ export default function TodoPage() {
             </button>
           </div>
         </div>
+      </Sheet>
+
+      <Sheet className="pb-safe w-full rounded-t-2xl" opened={postponeOpen} onBackdropClick={() => setPostponeOpen(false)}>
+        <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-black/15 dark:bg-white/20" />
+        <div className="px-4 pt-3 text-[15px] font-semibold">{COPY.todo.postponeTo}</div>
+        <List strongIos insetIos dividersIos className="!my-3">
+          {postponeChoices(today, todo.date).map(({ choice, date }) => (
+            <ListItem
+              key={choice}
+              link
+              chevron={false}
+              title={COPY.todo[choice]}
+              after={`${dayjs(date).format("M/D")} ${COPY.planner.weekdays[dayjs(date).day()]}`}
+              onClick={() => postpone(date)}
+            />
+          ))}
+          <ListItem
+            title={COPY.todo.pickDate}
+            after={
+              <input
+                type="date"
+                min={today}
+                value=""
+                onChange={(event) => postpone(event.target.value)}
+                className="bg-transparent text-right outline-none"
+              />
+            }
+          />
+        </List>
       </Sheet>
 
       <DocPickerSheet

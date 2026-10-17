@@ -158,6 +158,8 @@ func convertTodoFromStore(t *store.PlannerTodo) *v1pb.Todo {
 		Note:          t.Note,
 		Memo:          t.MemoName,
 		Url:           t.URL,
+		OriginalDate:  t.OriginalDate,
+		PostponeCount: t.PostponeCount,
 		CreateTime:    plannerTimestamp(t.CreatedTs),
 		UpdateTime:    plannerTimestamp(t.UpdatedTs),
 	}
@@ -625,6 +627,44 @@ func (s *APIV1Service) applyTodoStatus(update *store.UpdatePlannerTodo, todo *st
 	}
 	update.ClosedTs, update.ClosedOverdue, update.CancelReason = &closedTs, &overdue, &reason
 	return nil
+}
+
+func (s *APIV1Service) PostponeTodo(ctx context.Context, request *v1pb.PostponeTodoRequest) (*v1pb.Todo, error) {
+	user, err := s.plannerUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	todo, err := s.getOwnTodo(ctx, user, request.Name)
+	if err != nil {
+		return nil, err
+	}
+	date, err := parsePlannerDate(request.Date, "date", false)
+	if err != nil {
+		return nil, err
+	}
+	local, err := parsePlannerDate(request.LocalDate, "local_date", false)
+	if err != nil {
+		return nil, err
+	}
+	if todo.Status != store.PlannerTodoActive || todo.Date == "" {
+		return nil, status.Errorf(codes.FailedPrecondition, "only an active todo with a date can be postponed")
+	}
+	if date == todo.Date || date < local {
+		return nil, status.Errorf(codes.InvalidArgument, "date must differ from the current one and not be before local_date")
+	}
+
+	originalDate := todo.OriginalDate
+	if originalDate == "" {
+		originalDate = todo.Date
+	}
+	count := todo.PostponeCount + 1
+	updated, err := s.Store.UpdatePlannerTodo(ctx, &store.UpdatePlannerTodo{
+		ID: todo.ID, Date: &date, OriginalDate: &originalDate, PostponeCount: &count,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to postpone todo: %v", err)
+	}
+	return convertTodoFromStore(updated), nil
 }
 
 func (s *APIV1Service) DeleteTodo(ctx context.Context, request *v1pb.DeleteTodoRequest) (*emptypb.Empty, error) {
