@@ -1,0 +1,392 @@
+syntax = "proto3";
+
+package memos.api.v1;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/field_behavior.proto";
+import "google/api/resource.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "gen/api/v1";
+
+// PlannerService keeps the caller's habits, daily check-ins, todos and notes.
+//
+// Planner data is personal: every RPC reads and writes the authenticated user's
+// own records only, and none of it belongs to a knowledge base. See
+// docs/dev/requirements/planner-and-check-in.md.
+//
+// Dates are "YYYY-MM-DD" strings in the user's phone-local calendar. The server
+// stores them as given and never converts time zones; where it needs "today" it
+// takes the caller's local date from the request.
+service PlannerService {
+  // ListHabits returns the caller's habits, archived ones included, by position.
+  rpc ListHabits(ListHabitsRequest) returns (ListHabitsResponse) {
+    option (google.api.http) = {get: "/api/v1/planner/habits"};
+  }
+
+  // CreateHabit adds a habit after the existing ones.
+  rpc CreateHabit(CreateHabitRequest) returns (Habit) {
+    option (google.api.http) = {
+      post: "/api/v1/planner/habits"
+      body: "habit"
+    };
+    option (google.api.method_signature) = "habit";
+  }
+
+  // UpdateHabit renames, reorders, archives or restores a habit.
+  rpc UpdateHabit(UpdateHabitRequest) returns (Habit) {
+    option (google.api.http) = {
+      patch: "/api/v1/{habit.name=planner/habits/*}"
+      body: "habit"
+    };
+    option (google.api.method_signature) = "habit,update_mask";
+  }
+
+  // ListPlannerEntries returns everything dated within an inclusive range:
+  // check-ins, todos of any status, and notes. Undated todos are not included.
+  rpc ListPlannerEntries(ListPlannerEntriesRequest) returns (ListPlannerEntriesResponse) {
+    option (google.api.http) = {get: "/api/v1/planner/entries"};
+  }
+
+  // ListOpenTodos returns every active todo, dated or not, ordered by date with
+  // undated ones last.
+  rpc ListOpenTodos(ListOpenTodosRequest) returns (ListOpenTodosResponse) {
+    option (google.api.http) = {get: "/api/v1/planner/openTodos"};
+  }
+
+  // SetCheckIn records a check-in, or replaces the note of an existing one.
+  // An archived habit takes no new check-ins.
+  rpc SetCheckIn(SetCheckInRequest) returns (CheckIn) {
+    option (google.api.http) = {
+      post: "/api/v1/planner/checkIns"
+      body: "check_in"
+    };
+    option (google.api.method_signature) = "check_in";
+  }
+
+  // DeleteCheckIn removes a habit's check-in on a day. Removing one that does not
+  // exist succeeds.
+  rpc DeleteCheckIn(DeleteCheckInRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {delete: "/api/v1/planner/checkIns"};
+  }
+
+  // GetTodo returns one todo.
+  rpc GetTodo(GetTodoRequest) returns (Todo) {
+    option (google.api.http) = {get: "/api/v1/{name=planner/todos/*}"};
+    option (google.api.method_signature) = "name";
+  }
+
+  // CreateTodo adds an active todo.
+  rpc CreateTodo(CreateTodoRequest) returns (Todo) {
+    option (google.api.http) = {
+      post: "/api/v1/planner/todos"
+      body: "todo"
+    };
+    option (google.api.method_signature) = "todo";
+  }
+
+  // UpdateTodo changes the fields named in update_mask. Changing `status` follows
+  // the todo rules: closing records the close time and whether the todo was
+  // already overdue (which needs local_date); cancelling needs a cancel_reason;
+  // reopening clears all three.
+  rpc UpdateTodo(UpdateTodoRequest) returns (Todo) {
+    option (google.api.http) = {
+      patch: "/api/v1/{todo.name=planner/todos/*}"
+      body: "todo"
+    };
+    option (google.api.method_signature) = "todo,update_mask";
+  }
+
+  // DeleteTodo deletes a todo.
+  rpc DeleteTodo(DeleteTodoRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {delete: "/api/v1/{name=planner/todos/*}"};
+    option (google.api.method_signature) = "name";
+  }
+
+  // CreatePlannerNote adds a note to a day.
+  rpc CreatePlannerNote(CreatePlannerNoteRequest) returns (PlannerNote) {
+    option (google.api.http) = {
+      post: "/api/v1/planner/notes"
+      body: "note"
+    };
+    option (google.api.method_signature) = "note";
+  }
+
+  // UpdatePlannerNote changes the fields named in update_mask.
+  rpc UpdatePlannerNote(UpdatePlannerNoteRequest) returns (PlannerNote) {
+    option (google.api.http) = {
+      patch: "/api/v1/{note.name=planner/notes/*}"
+      body: "note"
+    };
+    option (google.api.method_signature) = "note,update_mask";
+  }
+
+  // DeletePlannerNote deletes a note.
+  rpc DeletePlannerNote(DeletePlannerNoteRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {delete: "/api/v1/{name=planner/notes/*}"};
+    option (google.api.method_signature) = "name";
+  }
+
+  // ImportPlanner writes a whole planner in one transaction: the one-time backfill
+  // from calendar blocks. It only runs into an empty planner and fails with
+  // FAILED_PRECONDITION when the caller already has any planner data.
+  rpc ImportPlanner(ImportPlannerRequest) returns (ImportPlannerResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/planner:import"
+      body: "*"
+    };
+  }
+}
+
+message Habit {
+  option (google.api.resource) = {
+    type: "memos.api.v1/Habit"
+    pattern: "planner/habits/{habit}"
+    singular: "habit"
+    plural: "habits"
+  };
+
+  // Format: planner/habits/{habit}
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // What the habit is, e.g. "💪运动".
+  string title = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // Order among the caller's habits, ascending. It also picks the habit's colour
+  // on the calendar.
+  int32 position = 3 [(google.api.field_behavior) = OPTIONAL];
+
+  // An archived habit takes no new check-ins; its history stays.
+  bool archived = 4 [(google.api.field_behavior) = OPTIONAL];
+
+  google.protobuf.Timestamp create_time = 5 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  google.protobuf.Timestamp update_time = 6 [(google.api.field_behavior) = OUTPUT_ONLY];
+}
+
+// CheckIn records that a habit was kept on a day. There is at most one per
+// habit per day, so it is addressed by the pair rather than by its own name.
+message CheckIn {
+  // The habit. Format: planner/habits/{habit}
+  string habit = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Format: YYYY-MM-DD.
+  string date = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // A short remark, e.g. how far one ran.
+  string note = 3 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message Todo {
+  option (google.api.resource) = {
+    type: "memos.api.v1/Todo"
+    pattern: "planner/todos/{todo}"
+    singular: "todo"
+    plural: "todos"
+  };
+
+  // There is no "overdue" status: an active todo whose date is before the
+  // user's local today is overdue, and only the client knows that date.
+  enum Status {
+    STATUS_UNSPECIFIED = 0;
+    ACTIVE = 1;
+    DONE = 2;
+    CANCELLED = 3;
+  }
+
+  // Format: planner/todos/{todo}
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  string title = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The day the todo is planned for, YYYY-MM-DD, or empty for none.
+  string date = 3 [(google.api.field_behavior) = OPTIONAL];
+
+  Status status = 4 [(google.api.field_behavior) = OPTIONAL];
+
+  // Whether the todo was closed after its date had passed.
+  bool closed_overdue = 5 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // When the todo was closed. Unset while active, and for imported todos.
+  google.protobuf.Timestamp close_time = 6 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Why the todo was cancelled. Required to cancel.
+  string cancel_reason = 7 [(google.api.field_behavior) = OPTIONAL];
+
+  bool important = 8 [(google.api.field_behavior) = OPTIONAL];
+
+  // A free-form tag.
+  string tag = 9 [(google.api.field_behavior) = OPTIONAL];
+
+  string note = 10 [(google.api.field_behavior) = OPTIONAL];
+
+  // A linked document. Format: memos/{memo}
+  string memo = 11 [(google.api.field_behavior) = OPTIONAL];
+
+  // A linked external page.
+  string url = 12 [(google.api.field_behavior) = OPTIONAL];
+
+  google.protobuf.Timestamp create_time = 13 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  google.protobuf.Timestamp update_time = 14 [(google.api.field_behavior) = OUTPUT_ONLY];
+}
+
+// PlannerNote is a plain record of what happened on a day.
+message PlannerNote {
+  option (google.api.resource) = {
+    type: "memos.api.v1/PlannerNote"
+    pattern: "planner/notes/{note}"
+    singular: "plannerNote"
+    plural: "plannerNotes"
+  };
+
+  // Format: planner/notes/{note}
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // Format: YYYY-MM-DD.
+  string date = 2 [(google.api.field_behavior) = REQUIRED];
+
+  string content = 3 [(google.api.field_behavior) = REQUIRED];
+
+  google.protobuf.Timestamp create_time = 4 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  google.protobuf.Timestamp update_time = 5 [(google.api.field_behavior) = OUTPUT_ONLY];
+}
+
+message ListHabitsRequest {}
+
+message ListHabitsResponse {
+  repeated Habit habits = 1;
+}
+
+message CreateHabitRequest {
+  Habit habit = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UpdateHabitRequest {
+  Habit habit = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Supported paths: title, position, archived.
+  google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListPlannerEntriesRequest {
+  // First day of the range, inclusive. Format: YYYY-MM-DD.
+  string start_date = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Last day of the range, inclusive. Format: YYYY-MM-DD.
+  string end_date = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListPlannerEntriesResponse {
+  repeated CheckIn check_ins = 1;
+
+  repeated Todo todos = 2;
+
+  repeated PlannerNote notes = 3;
+}
+
+message ListOpenTodosRequest {}
+
+message ListOpenTodosResponse {
+  repeated Todo todos = 1;
+}
+
+message SetCheckInRequest {
+  CheckIn check_in = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteCheckInRequest {
+  // Format: planner/habits/{habit}
+  string habit = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Format: YYYY-MM-DD.
+  string date = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetTodoRequest {
+  // Format: planner/todos/{todo}
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message CreateTodoRequest {
+  Todo todo = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UpdateTodoRequest {
+  Todo todo = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Supported paths: title, date, status, cancel_reason, important, tag, note,
+  // memo, url.
+  google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The caller's local date, YYYY-MM-DD. Required when closing a todo: whether
+  // it was closed overdue depends on the user's day, not the server's.
+  string local_date = 3 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message DeleteTodoRequest {
+  // Format: planner/todos/{todo}
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message CreatePlannerNoteRequest {
+  PlannerNote note = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UpdatePlannerNoteRequest {
+  PlannerNote note = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Supported paths: date, content.
+  google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeletePlannerNoteRequest {
+  // Format: planner/notes/{note}
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ImportPlannerRequest {
+  // Habits in calendar order. Their names are ignored; new ones are assigned.
+  repeated Habit habits = 1;
+
+  // Check-ins naming their habit by index into `habits`.
+  repeated ImportCheckIn check_ins = 2;
+
+  // Todos with their final status. Names are ignored. A closed todo may set
+  // closed_overdue, which is otherwise output only.
+  repeated ImportTodo todos = 3;
+
+  // Notes. Names are ignored.
+  repeated PlannerNote notes = 4;
+}
+
+message ImportCheckIn {
+  // Index into ImportPlannerRequest.habits.
+  int32 habit_index = 1;
+
+  // Format: YYYY-MM-DD.
+  string date = 2;
+
+  string note = 3;
+}
+
+message ImportTodo {
+  Todo todo = 1;
+
+  // Whether the todo was closed after its date had passed.
+  bool closed_overdue = 2;
+}
+
+message ImportPlannerResponse {
+  int32 habit_count = 1;
+
+  int32 check_in_count = 2;
+
+  int32 todo_count = 3;
+
+  int32 note_count = 4;
+}

@@ -1076,3 +1076,125 @@ func (s *ConnectServiceHandler) SearchPublicPages(ctx context.Context, req *conn
 	}
 	return connect.NewResponse(resp), nil
 }
+
+// PlannerService
+
+func (s *ConnectServiceHandler) ListHabits(ctx context.Context, req *connect.Request[v1pb.ListHabitsRequest]) (*connect.Response[v1pb.ListHabitsResponse], error) {
+	resp, err := s.APIV1Service.ListHabits(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) CreateHabit(ctx context.Context, req *connect.Request[v1pb.CreateHabitRequest]) (*connect.Response[v1pb.Habit], error) {
+	resp, err := s.APIV1Service.CreateHabit(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) UpdateHabit(ctx context.Context, req *connect.Request[v1pb.UpdateHabitRequest]) (*connect.Response[v1pb.Habit], error) {
+	resp, err := s.APIV1Service.UpdateHabit(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) ListPlannerEntries(ctx context.Context, req *connect.Request[v1pb.ListPlannerEntriesRequest]) (*connect.Response[v1pb.ListPlannerEntriesResponse], error) {
+	resp, err := s.APIV1Service.ListPlannerEntries(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) ListOpenTodos(ctx context.Context, req *connect.Request[v1pb.ListOpenTodosRequest]) (*connect.Response[v1pb.ListOpenTodosResponse], error) {
+	resp, err := s.APIV1Service.ListOpenTodos(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) SetCheckIn(ctx context.Context, req *connect.Request[v1pb.SetCheckInRequest]) (*connect.Response[v1pb.CheckIn], error) {
+	resp, err := s.APIV1Service.SetCheckIn(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) DeleteCheckIn(ctx context.Context, req *connect.Request[v1pb.DeleteCheckInRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := s.APIV1Service.DeleteCheckIn(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) GetTodo(ctx context.Context, req *connect.Request[v1pb.GetTodoRequest]) (*connect.Response[v1pb.Todo], error) {
+	resp, err := s.APIV1Service.GetTodo(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) CreateTodo(ctx context.Context, req *connect.Request[v1pb.CreateTodoRequest]) (*connect.Response[v1pb.Todo], error) {
+	resp, err := s.APIV1Service.CreateTodo(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) UpdateTodo(ctx context.Context, req *connect.Request[v1pb.UpdateTodoRequest]) (*connect.Response[v1pb.Todo], error) {
+	resp, err := s.APIV1Service.UpdateTodo(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) DeleteTodo(ctx context.Context, req *connect.Request[v1pb.DeleteTodoRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := s.APIV1Service.DeleteTodo(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) CreatePlannerNote(ctx context.Context, req *connect.Request[v1pb.CreatePlannerNoteRequest]) (*connect.Response[v1pb.PlannerNote], error) {
+	resp, err := s.APIV1Service.CreatePlannerNote(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) UpdatePlannerNote(ctx context.Context, req *connect.Request[v1pb.UpdatePlannerNoteRequest]) (*connect.Response[v1pb.PlannerNote], error) {
+	resp, err := s.APIV1Service.UpdatePlannerNote(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) DeletePlannerNote(ctx context.Context, req *connect.Request[v1pb.DeletePlannerNoteRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := s.APIV1Service.DeletePlannerNote(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) ImportPlanner(ctx context.Context, req *connect.Request[v1pb.ImportPlannerRequest]) (*connect.Response[v1pb.ImportPlannerResponse], error) {
+	resp, err := s.APIV1Service.ImportPlanner(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
