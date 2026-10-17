@@ -1,0 +1,78 @@
+/**
+ * Interface copy for the mobile reader. Phase one ships Chinese only, kept in
+ * one place the way `components/BlogSite/copy.ts` does for the public site, so a
+ * later move to i18n keys is a mechanical change.
+ */
+export const COPY = {
+  appName: "ToucanShelf",
+  tagline: "随时随地翻阅你的知识库",
+  tabs: { shelf: "书架", search: "搜索", me: "我的" },
+  login: {
+    username: "用户名",
+    password: "密码",
+    submit: "登录",
+    submitting: "登录中…",
+    failed: "登录失败，请检查用户名和密码",
+    passwordDisabled: "当前实例已关闭密码登录，手机端暂不支持其他登录方式，请在电脑端登录。",
+  },
+  shelf: {
+    title: "书架",
+    recent: "最近阅读",
+    mine: "知识库",
+    cover: "封面",
+    list: "列表",
+    empty: "还没有可以阅读的知识库",
+  },
+  folder: {
+    empty: "这里还没有文档",
+    notFound: "这个文件夹不存在了",
+    updatedAt: (date: string) => `更新于 ${date}`,
+  },
+  search: {
+    title: "搜索",
+    placeholder: "搜索全部知识库",
+    history: "最近搜索",
+    clearHistory: "清除",
+    results: (n: number) => `${n} 个结果`,
+    empty: (q: string) => `没有找到与"${q}"相关的文档`,
+    failed: "搜索失败，请稍后再试",
+  },
+  reader: {
+    outline: "目录",
+    settings: "阅读设置",
+    fontSize: "字号",
+    lineHeight: "行距",
+    leading: { compact: "紧凑", normal: "标准", loose: "宽松" },
+    updatedAt: (date: string) => `更新于 ${date}`,
+    belongsTo: "属于",
+    references: "References",
+    subDocs: "子文档",
+    links: "外部链接",
+    notFound: "文档不存在，或者你没有权限查看",
+    back: "返回",
+    unsupportedTitle: (kind: string) => kind,
+    unsupportedBody: "手机端暂不支持显示这类内容，请在电脑端查看。",
+    copyDesktopLink: "复制电脑端链接",
+    copied: "已复制电脑端链接",
+    viewDocument: "视图文档",
+    pdfOpen: "打开 PDF",
+  },
+  me: {
+    title: "我的",
+    reading: "阅读",
+    fontSize: "正文字号",
+    darkMode: "深色模式",
+    followSystem: "跟随系统",
+    readingHint: "在文档页右上角的“Aa”里调整字号和行距。",
+    homeScreen: "添加到主屏幕",
+    homeScreenHint: "在 Safari 里点分享按钮，选择“添加到主屏幕”。从主屏幕打开没有地址栏，体验接近 App。首次打开需要重新登录一次。",
+    signOut: "退出登录",
+  },
+  blocks: {
+    kanban: "看板",
+    sheets: "表格",
+    calendar: "日历",
+    grid: "卡片网格",
+    secret: "加密内容",
+  } as Record<string, string>,
+} as const;

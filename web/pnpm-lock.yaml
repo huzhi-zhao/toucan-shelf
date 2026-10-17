@@ -113,6 +113,9 @@ importers:
       katex:
         specifier: ^0.16.45
         version: 0.16.45
+      konsta:
+        specifier: ^5.5.0
+        version: 5.5.0
       leaflet:
         specifier: ^1.9.4
         version: 1.9.4
@@ -2420,6 +2423,10 @@ packages:
 
   khroma@2.1.0:
     resolution: {integrity: sha512-Ls993zuzfayK269Svk9hzpeGUKob/sIgZzyHYdjQoAdQetRKpOLj+k/QQQ/6Qi0Yz65mlROrfd+Ev+1+7dz9Kw==}
+
+  konsta@5.5.0:
+    resolution: {integrity: sha512-YMhVJeDLgGZS+34eeiiRD0Xc8zoKRyvgStYbFBUYBWGhafB9U5Q8Q9JYTZF17oe7N6znE1zAuQypLCJ5moFa6Q==}
+    engines: {node: '>= 4.7.0'}
 
   langium@4.2.2:
     resolution: {integrity: sha512-JUshTRAfHI4/MF9dH2WupvjSXyn8JBuUEWazB8ZVJUtXutT0doDlAv1XKbZ1Pb5sMexa8FF4CFBc0iiul7gbUQ==}
@@ -5696,6 +5703,10 @@ snapshots:
       commander: 8.3.0
 
   khroma@2.1.0: {}
+
+  konsta@5.5.0:
+    dependencies:
+      tailwind-merge: 3.5.0
 
   langium@4.2.2:
     dependencies:

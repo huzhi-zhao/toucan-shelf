@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { MASK_BLOCK_LANGUAGE } from "@/utils/mask-block";
 import { SECRET_BLOCK_LANGUAGE } from "@/utils/secret-block";
 import { getThemeWithFallback, resolveTheme } from "@/utils/theme";
+import { useBlockPlaceholder } from "./BlockPlaceholderContext";
 import { CalendarBlock } from "./CalendarBlock";
 import { GridBlock } from "./GridBlock";
 import { KanbanBlock } from "./KanbanBlock";
@@ -100,6 +101,12 @@ export const CodeBlock = ({ children, className, node: _node, ...props }: CodeBl
       textContent: codeContent,
     }).innerHTML;
   }, [language, codeContent]);
+
+  // A surface may replace some special blocks with a placeholder (the mobile reader).
+  const placeholder = useBlockPlaceholder(language);
+  if (placeholder !== undefined) {
+    return <div className={cn("relative", markdownStyles.blockWrapper)}>{placeholder}</div>;
+  }
 
   // If it's a mermaid block, render with MermaidBlock component
   if (language === "mermaid") {

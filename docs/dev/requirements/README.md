@@ -114,3 +114,6 @@
 - [public-site-front-end.md](public-site-front-end.md)
   —— 对外站点的门面：外壳/编排/皮肤三层、导航树、首页块、主题与站点语言
   （同上，`publishing` 域）
+- [mobile-reader.md](mobile-reader.md)
+  —— 手机端阅读：手机 Safari 只读端、独立子域名同源转发、书架/目录/搜索/阅读、
+  复杂块占位、与 web 共用渲染器

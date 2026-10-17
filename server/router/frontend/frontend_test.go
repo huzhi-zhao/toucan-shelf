@@ -122,6 +122,22 @@ func TestFrontendService_StaticCacheHeaders(t *testing.T) {
 	}
 }
 
+func TestShouldServeFrontendHTML(t *testing.T) {
+	// Every built entry document counts as HTML, so none of them is cached past
+	// a deploy; the mobile reader's mobile.html is reached through an nginx rewrite.
+	for path, want := range map[string]bool{
+		"/":                  true,
+		"/index.html":        true,
+		"/mobile.html":       true,
+		"/doc/abc":           true,
+		"/assets/index-1.js": false,
+		"/logo.svg":          false,
+		"/site.webmanifest":  false,
+	} {
+		require.Equal(t, want, shouldServeFrontendHTML(path), path)
+	}
+}
+
 func TestFrontendService_MissingAssetDoesNotFallbackToIndex(t *testing.T) {
 	ctx := context.Background()
 	testStore := teststore.NewTestingStore(ctx, t)
