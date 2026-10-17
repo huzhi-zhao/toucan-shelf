@@ -116,4 +116,7 @@
   （同上，`publishing` 域）
 - [mobile-reader.md](mobile-reader.md)
   —— 手机端阅读：手机 Safari 只读端、独立子域名同源转发、书架/目录/搜索/阅读、
-  复杂块占位、与 web 共用渲染器
+  复杂块占位、与 web 共用渲染器；§11 记二期候选（最近编辑着色、常用视图只读预览）
+- [planner-and-check-in.md](planner-and-check-in.md)
+  —— 计划与打卡工具（头脑风暴，未排期）：提醒 + 任务清单 + 日历打卡 + 每日计划，
+  app 为主、web 兼容，数据用独立表结构而不是 Markdown；项目成败的关键指标

@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useInstance } from "@/contexts/InstanceContext";
 import { AUTH_REDIRECT_PARAM, getSafeRedirectPath } from "@/utils/redirect-safety";
 import { COPY } from "../copy";
+import { navigateWithTransition } from "../lib/nav";
 import { MOBILE_ROUTES } from "../routes";
 
 /** Username and password only (requirement §3). SSO is not offered on the phone. */
@@ -37,7 +38,7 @@ export default function LoginPage() {
         setAccessToken(response.accessToken, response.accessTokenExpiresAt ? timestampDate(response.accessTokenExpiresAt) : undefined);
       }
       await initialize();
-      navigate(redirect, { replace: true, viewTransition: true });
+      navigateWithTransition(() => navigate(redirect, { replace: true, flushSync: true }), "forward");
     } catch {
       setError(COPY.login.failed);
       setSubmitting(false);

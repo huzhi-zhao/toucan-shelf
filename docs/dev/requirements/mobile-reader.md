@@ -174,3 +174,21 @@
 7. 占位卡片的清单，以及 Mermaid 和嵌入先尝试直接渲染（§7）。
 8. 阅读设置与 web 端独立（§7）。
 9. 首屏 300 KB 的目标，以及浏览器支持范围（§8）。
+
+## 11. 二期候选（头脑风暴，未排期、未实现）
+
+2026-10-17 整理。只记方向，细节以后再定。
+
+1. **目录里给最近编辑的文档着色**：沿用 web 侧栏的新鲜度规则
+   （`components/Notebook/notebookFreshness.ts`：1 小时内、1 天内、3 天内各一种颜色，
+   文件夹取子树里最新的一档），手机目录页的文件夹和文档行用同样的颜色标出来。
+   书架上的知识库卡片要不要也标，待定。
+2. **常用视图在阅读页里只读预览**：目前这些块都显示占位卡片（§7），二期要能看：
+   - calendar 块（[editor/calendar-block.md](editor/calendar-block.md)）：月历网格加当天详情。
+   - gallery view（[views/gallery-view.md](views/gallery-view.md)）：相册卡片。
+   - 日历布局（gallery view 里的 `CalendarLayoutBlock`）：按日期把文档铺到月历上。
+   - 只读：手机端不打卡、不改任务状态、不改配置。这些写操作交给第 3 条的独立工具。
+   - 待定：web 端组件是按桌面宽度设计的。要逐个判断是加手机布局，
+     还是像渲染器一样通过 Context 注入换成手机组件。
+3. **计划与打卡工具**：这是做 app 端的初衷，也是项目成败的关键指标。
+   它不属于"阅读"，单独成篇：[planner-and-check-in.md](planner-and-check-in.md)。

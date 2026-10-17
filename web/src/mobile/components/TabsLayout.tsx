@@ -1,6 +1,6 @@
-import { Tabbar, TabbarLink } from "konsta/react";
 import { LibraryBigIcon, SearchIcon, UserRoundIcon } from "lucide-react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import { COPY } from "../copy";
 import { MOBILE_ROUTES } from "../routes";
 
@@ -10,31 +10,44 @@ const TABS = [
   { path: MOBILE_ROUTES.ME, label: COPY.tabs.me, Icon: UserRoundIcon },
 ];
 
-/** The three top-level pages share one bottom tab bar. Switching tabs replaces history rather than stacking it. */
+/**
+ * The three top-level pages share one bottom tab bar. Switching tabs replaces
+ * history rather than stacking it.
+ *
+ * Drawn by hand rather than with Konsta's Tabbar: that one is the floating iOS 26
+ * style, which pads the safe area with an extra 16px above and below and came out
+ * far too tall — worst on the home-screen app, where the bottom inset is nonzero.
+ * This is the classic 49pt bar; the home-indicator inset sits below it in the same
+ * background, as in a native app.
+ */
 export default function TabsLayout() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   return (
     <>
       <Outlet />
-      {/* An opaque, blurred bar instead of Konsta's see-through fade: page text sliding under
-          the tab labels was hard to read. */}
-      <Tabbar
-        labels
-        icons
-        className="mobile-tabbar left-0 bottom-0 fixed"
-        colors={{ bgIos: "bg-[#f7f7f8]/92 dark:bg-[#161618]/92 backdrop-blur-xl border-t border-black/10 dark:border-white/10" }}
-      >
-        {TABS.map(({ path, label, Icon }) => (
-          <TabbarLink
-            key={path}
-            active={pathname === path}
-            onClick={() => pathname !== path && navigate(path, { replace: true })}
-            icon={<Icon className="w-6 h-6" strokeWidth={1.8} />}
-            label={label}
-          />
-        ))}
-      </Tabbar>
+      <nav className="mobile-tabbar fixed inset-x-0 bottom-0 z-30 pb-[env(safe-area-inset-bottom)] bg-[#f9f9f9]/95 dark:bg-[#121214]/95 backdrop-blur-xl border-t border-black/10 dark:border-white/10">
+        <div className="flex h-[49px] items-stretch">
+          {TABS.map(({ path, label, Icon }) => {
+            const active = pathname === path;
+            return (
+              <button
+                key={path}
+                type="button"
+                aria-current={active ? "page" : undefined}
+                onClick={() => !active && navigate(path, { replace: true })}
+                className={cn(
+                  "flex-1 flex flex-col items-center justify-center gap-0.5 pt-1",
+                  active ? "text-primary" : "text-black/55 dark:text-white/55",
+                )}
+              >
+                <Icon className="w-6 h-6" strokeWidth={active ? 2.1 : 1.8} />
+                <span className="text-[10px] font-medium leading-none">{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
     </>
   );
 }
