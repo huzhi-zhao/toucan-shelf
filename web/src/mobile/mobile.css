@@ -85,7 +85,7 @@ html[data-nav="back"]::view-transition-new(root) {
   --md-leading: var(--mobile-leading, 1.75);
 }
 
-/* Room for the bottom tab bar plus the home indicator. */
+/* Room for the 49px tab bar, the home indicator below it, and a little air. */
 .pb-tabbar {
-  padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  padding-bottom: calc(49px + env(safe-area-inset-bottom) + 16px);
 }
