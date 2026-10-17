@@ -126,8 +126,12 @@ func setFrontendCacheHeaders(c *echo.Context, requestPath string) {
 	c.Response().Header().Set(echo.HeaderCacheControl, cacheControl)
 }
 
+// shouldServeFrontendHTML reports whether a path is an HTML entry point: a SPA
+// route, or one of the built entry documents (index.html for the web app,
+// mobile.html for the mobile reader). Entry documents must never be cached, since
+// they name the hashed assets of the current build.
 func shouldServeFrontendHTML(requestPath string) bool {
-	return requestPath == "/" || requestPath == "/index.html" || path.Ext(requestPath) == ""
+	return requestPath == "/" || path.Ext(requestPath) == "" || path.Ext(requestPath) == ".html"
 }
 
 func hasPathPrefix(requestPath, prefix string) bool {

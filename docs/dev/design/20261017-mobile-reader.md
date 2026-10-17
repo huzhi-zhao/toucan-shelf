@@ -46,6 +46,9 @@ location / { rewrite ^ /mobile.html break; proxy_pass http://127.0.0.1:5230; ...
 ```
 
 - `proxy_set_header Host $host` 必须保留，后端的 CORS 检查依赖它（需求 §2）。
+- 后端把所有 `.html` 入口文件都当作页面返回 `no-cache`（`server/router/frontend/frontend.go`
+  的 `shouldServeFrontendHTML`）。之前只认 `/index.html`，`mobile.html` 会被缓存一小时：
+  发布之后旧入口还指向已经不存在的旧资源，手机端会白屏。
 - 登录失效时，`connect.ts` 会跳转到 `/auth?redirect=…`。手机端把登录页也放在 `/auth`，
   这样跳转逻辑原样可用，不用改。
 - 上线需要先走正常发布（合并到 main → `deploy.sh`），再替换服务器上的 nginx 配置。
