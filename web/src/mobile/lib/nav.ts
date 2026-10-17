@@ -6,14 +6,71 @@ interface NavState {
 }
 
 /**
- * Forward navigation with the push transition (requirement §8). `backLabel` is
- * the title of the page being left: like iOS, the next page's back button
- * names where it returns to.
+ * Runs a route change under a page transition (requirement §8): `forward` slides
+ * the new page in from the right, `back` slides the current one off to the right.
+ *
+ * The transition is started here, never through React Router's `viewTransition`
+ * option. The router remembers every route pair it animated and replays a
+ * transition when the browser later pops between them; Safari's edge swipe has
+ * already animated that pop, and the replay (always the forward animation, as
+ * the router knows nothing of `data-nav`) made going back look like arriving at
+ * a new page.
+ */
+export function navigateWithTransition(change: () => void, direction: "forward" | "back") {
+  if (!document.startViewTransition) {
+    change();
+    return;
+  }
+  const root = document.documentElement;
+  if (direction === "back") root.dataset.nav = "back";
+  const before = window.location.href;
+  const transition = document.startViewTransition(
+    () =>
+      new Promise<void>((resolve) => {
+        change();
+        const started = performance.now();
+        // A pop arrives asynchronously: hold the "after" snapshot until the URL
+        // (and with it the rendered page) has actually changed.
+        const wait = () => {
+          if (window.location.href !== before || performance.now() - started > 300) {
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+          } else {
+            requestAnimationFrame(wait);
+          }
+        };
+        wait();
+      }),
+  );
+  transition.finished.finally(() => {
+    delete root.dataset.nav;
+  });
+}
+
+/**
+ * The router's record of animated route pairs lives in sessionStorage, so a tab
+ * opened before transitions moved out of the router would keep replaying them.
+ * Call before the router is created.
+ */
+export function forgetRouterTransitions() {
+  try {
+    sessionStorage.removeItem("remix-router-transitions");
+  } catch {
+    // Storage blocked: the router has nothing to restore either.
+  }
+}
+
+/**
+ * Forward navigation with the push transition. `backLabel` is the title of the
+ * page being left: like iOS, the next page's back button names where it returns to.
  */
 export function useGo(backLabel?: string) {
   const navigate = useNavigate();
   return useCallback(
-    (to: string) => navigate(to, { viewTransition: true, state: backLabel ? ({ backLabel } satisfies NavState) : undefined }),
+    (to: string) =>
+      navigateWithTransition(
+        () => navigate(to, { flushSync: true, state: backLabel ? ({ backLabel } satisfies NavState) : undefined }),
+        "forward",
+      ),
     [navigate, backLabel],
   );
 }
@@ -36,36 +93,10 @@ export function useBack(fallback: string) {
   return useCallback(() => {
     const index = (window.history.state as { idx?: number } | null)?.idx ?? 0;
     if (index === 0) {
-      navigate(fallback, { replace: true, viewTransition: true });
+      navigateWithTransition(() => navigate(fallback, { replace: true, flushSync: true }), "back");
       return;
     }
-    if (!document.startViewTransition) {
-      navigate(-1);
-      return;
-    }
-    const root = document.documentElement;
-    root.dataset.nav = "back";
-    const before = window.location.href;
-    const transition = document.startViewTransition(
-      () =>
-        new Promise<void>((resolve) => {
-          navigate(-1);
-          const started = performance.now();
-          // popstate is asynchronous: hold the "after" snapshot until the URL
-          // (and with it the rendered page) has actually changed.
-          const wait = () => {
-            if (window.location.href !== before || performance.now() - started > 300) {
-              requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-            } else {
-              requestAnimationFrame(wait);
-            }
-          };
-          wait();
-        }),
-    );
-    transition.finished.finally(() => {
-      delete root.dataset.nav;
-    });
+    navigateWithTransition(() => navigate(-1), "back");
   }, [navigate, fallback]);
 }
 

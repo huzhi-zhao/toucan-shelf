@@ -14,6 +14,7 @@ import { useTokenRefreshOnFocus } from "@/hooks/useTokenRefreshOnFocus";
 import { queryClient } from "@/lib/query-client";
 import { buildAuthRoute } from "@/utils/redirect-safety";
 import TabsLayout from "./components/TabsLayout";
+import { forgetRouterTransitions } from "./lib/nav";
 import { useSystemDarkMode } from "./lib/theme";
 import FolderPage from "./pages/FolderPage";
 import LoginPage from "./pages/LoginPage";
@@ -71,6 +72,8 @@ function MemoRedirect() {
   const { uid = "" } = useParams();
   return <Navigate to={docRoute(`memos/${uid}`)} replace />;
 }
+
+forgetRouterTransitions();
 
 const router = createBrowserRouter([
   {
