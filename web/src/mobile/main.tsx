@@ -14,6 +14,7 @@ import { useTokenRefreshOnFocus } from "@/hooks/useTokenRefreshOnFocus";
 import { queryClient } from "@/lib/query-client";
 import { buildAuthRoute } from "@/utils/redirect-safety";
 import TabsLayout from "./components/TabsLayout";
+import { useBlurTextFieldWhenHidden } from "./lib/keyboard";
 import { forgetRouterTransitions, useRouteCommitSignal } from "./lib/nav";
 import { useSystemDarkMode } from "./lib/theme";
 import FolderPage from "./pages/FolderPage";
@@ -55,6 +56,7 @@ function Bootstrap({ children }: { children: ReactNode }) {
 function Root() {
   const dark = useSystemDarkMode();
   useRouteCommitSignal();
+  useBlurTextFieldWhenHidden();
   return (
     <App theme="ios" dark={dark} safeAreas>
       <Outlet />

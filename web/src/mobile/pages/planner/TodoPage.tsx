@@ -12,6 +12,7 @@ import { type Todo, Todo_Status } from "@/types/proto/api/v1/planner_service_pb"
 import { SearchMode } from "@/types/proto/api/v1/rag_service_pb";
 import SectionTitle from "../../components/SectionTitle";
 import { COPY } from "../../copy";
+import { useBlurOnClose } from "../../lib/keyboard";
 import { useBack, useBackLabel, useGo } from "../../lib/nav";
 import { isOverdue, localToday, postponeChoices } from "../../lib/planner";
 import { docRoute, MOBILE_ROUTES, todoNameFromUid } from "../../routes";
@@ -60,6 +61,7 @@ export default function TodoPage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [postponeOpen, setPostponeOpen] = useState(false);
   const postponeTodo = usePostponeTodo();
+  useBlurOnClose(cancelOpen || postponeOpen || pickerOpen);
 
   const postpone = (date: string) => {
     setPostponeOpen(false);
