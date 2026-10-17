@@ -92,8 +92,10 @@ func Pull(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, ou
 		}
 
 		if serverHash == prev.ContentHash && newState.Path == prev.Path {
+			// Same content and path: an overlap re-fetch, or a change only to the
+			// attachments, which the full-listing reconcile below picks up.
 			res.Unchanged++
-			continue // server didn't really change (overlap re-fetch)
+			continue
 		}
 
 		localPath := filepath.Join(contentRoot, prev.Path)
@@ -329,7 +331,7 @@ func reconcileDrifted(ctx context.Context, client *Client, ws *WorkspaceConfig, 
 	movedOnServer := next.Path != prev.Path
 	changedOnServer := next.ContentHash != prev.ContentHash
 	if !movedOnServer && !changedOnServer {
-		return nil
+		return refreshAttachments(ctx, client, ws, contentRoot, uid, m, state, res, out, warn)
 	}
 
 	// PDF documents have no editable body — the local file is a generated stub,
@@ -375,6 +377,46 @@ func reconcileDrifted(ctx context.Context, client *Client, ws *WorkspaceConfig, 
 	} else {
 		fmt.Fprintf(out, "  ~ %s\n", ms.Path)
 	}
+	return nil
+}
+
+// refreshAttachments catches a document whose only change on the server is its
+// attachments. Adding or removing one in the web UI leaves content and path
+// alone, so every hash check passes it over and the new bytes never arrived.
+// It also retries attachments an earlier pull failed to download, which are
+// missing from the baseline refs.
+//
+// Only the attachment manifest in the file is rewritten; the body stays as it
+// is on disk, so unpushed local edits survive. A PDF stub has no body of its
+// own and is regenerated whole.
+func refreshAttachments(ctx context.Context, client *Client, ws *WorkspaceConfig, contentRoot, uid string, m *v1pb.Memo, state *State, res *PullResult, out io.Writer, warn *attachmentWarner) error {
+	prev := state.Memos[uid]
+	if ws.NoAttachments || attachmentSetKey(serverAttachmentRefs(m)) == attachmentSetKey(prev.Attachments) {
+		return nil
+	}
+	refs, nDown, err := fetchMemoAttachments(ctx, client, ws, contentRoot, prev.Path, m, prev.Attachments, warn)
+	if err != nil {
+		return err
+	}
+	res.Attachments += nDown
+	removeDroppedAttachments(contentRoot, prev.Attachments, m)
+	if attachmentSetKey(refs) == attachmentSetKey(prev.Attachments) {
+		return nil // nothing new landed: only retries, and they failed again
+	}
+
+	if data, readErr := os.ReadFile(filepath.Join(contentRoot, prev.Path)); readErr == nil {
+		content := FileContent(m, refs)
+		if prev.DocType != "PDF" {
+			content = injectMarkers(string(data), renderManifest(m, refs), uid, prev.DocType)
+		}
+		if err := writeFile(contentRoot, prev.Path, content); err != nil {
+			return err
+		}
+	}
+	prev.Attachments = refs
+	state.Memos[uid] = prev
+	res.Updated++
+	fmt.Fprintf(out, "  ~ %s (attachments)\n", prev.Path)
 	return nil
 }
 

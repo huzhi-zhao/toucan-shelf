@@ -190,6 +190,7 @@ func relocateMemo(ctx context.Context, client *Client, ws *WorkspaceConfig, pare
 	if err != nil {
 		return MemoState{}, 0, err
 	}
+	removeDroppedAttachments(contentRoot, prevRefs, m)
 	ms.Attachments = refs
 	if err := relocateAndWrite(contentRoot, oldRel, ms.Path, FileContent(m, refs)); err != nil {
 		return MemoState{}, 0, err

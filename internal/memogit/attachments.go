@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
@@ -110,6 +111,46 @@ func downloadMemoAttachments(ctx context.Context, client *Client, contentRoot, d
 		refs = append(refs, ref)
 	}
 	return refs, downloaded, nil
+}
+
+// serverAttachmentRefs is the refs a complete download of m's attachments
+// would record, for comparing against what the baseline actually holds.
+func serverAttachmentRefs(m *v1pb.Memo) []AttachmentRef {
+	refs := make([]AttachmentRef, 0, len(m.GetAttachments()))
+	for _, a := range m.GetAttachments() {
+		refs = append(refs, AttachmentRef{Name: a.GetName(), Filename: a.GetFilename(), Size: a.GetSize()})
+	}
+	return refs
+}
+
+// attachmentSetKey identifies a set of attachments by name, filename and size,
+// ignoring order — the same fields downloadMemoAttachments decides a re-download
+// on, plus the filename that decides where the bytes land.
+func attachmentSetKey(refs []AttachmentRef) string {
+	keys := make([]string, 0, len(refs))
+	for _, r := range refs {
+		keys = append(keys, fmt.Sprintf("%s\x00%s\x00%d", r.Name, r.Filename, r.Size))
+	}
+	sort.Strings(keys)
+	return strings.Join(keys, "\n")
+}
+
+// removeDroppedAttachments deletes the local bytes of previously downloaded
+// attachments that m no longer has at that path: removed from the document, or
+// renamed so the bytes now land elsewhere. An attachment still on the server
+// keeps its bytes even if this run failed to re-download it.
+func removeDroppedAttachments(contentRoot string, prev []AttachmentRef, m *v1pb.Memo) {
+	want := make(map[string]bool, len(m.GetAttachments()))
+	for _, a := range m.GetAttachments() {
+		want[attachmentRelPath(a.GetName(), a.GetFilename())] = true
+	}
+	var dropped []AttachmentRef
+	for _, r := range prev {
+		if !want[r.Path] {
+			dropped = append(dropped, r)
+		}
+	}
+	removeMemoAttachments(contentRoot, dropped)
 }
 
 // removeMemoAttachments deletes a memo's downloaded attachment files and their
