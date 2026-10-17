@@ -23,27 +23,41 @@ export function navigateWithTransition(change: () => void, direction: "forward" 
   }
   const root = document.documentElement;
   if (direction === "back") root.dataset.nav = "back";
-  const before = window.location.href;
   const transition = document.startViewTransition(
     () =>
+      // Hold the "after" snapshot until the new route has committed to the DOM
+      // (`useRouteCommitSignal`). Never wait on requestAnimationFrame here:
+      // rendering is paused while this callback is pending, WebKit runs no frame
+      // callbacks then, and the transition would hang until the browser's own
+      // timeout (about four seconds). The timer covers a change that commits nothing.
       new Promise<void>((resolve) => {
-        change();
-        const started = performance.now();
-        // A pop arrives asynchronously: hold the "after" snapshot until the URL
-        // (and with it the rendered page) has actually changed.
-        const wait = () => {
-          if (window.location.href !== before || performance.now() - started > 300) {
-            requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-          } else {
-            requestAnimationFrame(wait);
-          }
+        const finish = () => {
+          clearTimeout(timer);
+          if (pendingCommit === finish) pendingCommit = null;
+          resolve();
         };
-        wait();
+        const timer = setTimeout(finish, COMMIT_TIMEOUT_MS);
+        pendingCommit = finish;
+        change();
       }),
   );
   transition.finished.finally(() => {
     delete root.dataset.nav;
   });
+}
+
+const COMMIT_TIMEOUT_MS = 500;
+let pendingCommit: (() => void) | null = null;
+
+/**
+ * Tells a running page transition that the new route is in the DOM. Mount once,
+ * inside the router: a layout effect runs right after React commits, before paint.
+ */
+export function useRouteCommitSignal() {
+  const { key } = useLocation();
+  useLayoutEffect(() => {
+    pendingCommit?.();
+  }, [key]);
 }
 
 /**

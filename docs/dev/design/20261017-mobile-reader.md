@@ -138,6 +138,10 @@ M1–M6 已完成，代码在 `feat/mobile-reader` 分支，尚未合并、尚�
   在 Safari 里侧滑返回后，页面会再弹出一次进入动画，看起来像退了两次；点左上角返回则会叠两次动画。
   现在前进和返回都由 `lib/nav.ts` 的 `navigateWithTransition` 启动，浏览器自己的后退和前进不再加动画；
   启动时清掉路由留在 sessionStorage 里的记录。
+- **动画回调里不能等 `requestAnimationFrame`**：view transition 的回调没结束时页面暂停渲染，
+  WebKit 这时不执行帧回调，回调一直等到浏览器自己的超时（约 4 秒）才放行，
+  点开知识库、目录、文档都要卡 4 秒。现在由根组件在新路由提交到 DOM 后
+  （`useRouteCommitSignal` 的 layout effect）通知动画继续，另设 500ms 兜底。
 - **书架封面画成精装书**：左侧书脊和折痕、右下露出书页；封面图是居中的正方形图标，宽约封面的一半。
 - **返回按钮显示上一页的标题**：进入下一页时通过路由 state 传 `backLabel`；
   从深链接直接打开时，退回到"父文档 / 文件夹 / 知识库"的层级名称。
