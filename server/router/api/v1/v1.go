@@ -34,6 +34,7 @@ type APIV1Service struct {
 	v1pb.UnimplementedSecretBlockServiceServer
 	v1pb.UnimplementedSiteServiceServer
 	v1pb.UnimplementedPublicSiteServiceServer
+	v1pb.UnimplementedPlannerServiceServer
 
 	Secret                  string
 	Profile                 *profile.Profile
@@ -142,6 +143,9 @@ func (s *APIV1Service) RegisterGateway(ctx context.Context, echoServer *echo.Ech
 		return err
 	}
 	if err := v1pb.RegisterPublicSiteServiceHandlerServer(ctx, gwMux, s); err != nil {
+		return err
+	}
+	if err := v1pb.RegisterPlannerServiceHandlerServer(ctx, gwMux, s); err != nil {
 		return err
 	}
 	gwGroup := echoServer.Group("")

@@ -152,4 +152,21 @@ type Driver interface {
 	ListSecretBlockUnlocks(ctx context.Context, find *FindSecretBlockUnlock) ([]*SecretBlockUnlock, error)
 	OpenSecretBlockUnlock(ctx context.Context, id int32, openedTs, expiresTs int64) (bool, error)
 	CancelSecretBlockUnlock(ctx context.Context, id int32, canceledTs int64) error
+
+	// Planner model related methods.
+	CreatePlannerHabit(ctx context.Context, create *PlannerHabit) (*PlannerHabit, error)
+	ListPlannerHabits(ctx context.Context, find *FindPlannerHabit) ([]*PlannerHabit, error)
+	UpdatePlannerHabit(ctx context.Context, update *UpdatePlannerHabit) (*PlannerHabit, error)
+	UpsertPlannerCheckIn(ctx context.Context, upsert *PlannerCheckIn) (*PlannerCheckIn, error)
+	ListPlannerCheckIns(ctx context.Context, find *FindPlannerCheckIn) ([]*PlannerCheckIn, error)
+	DeletePlannerCheckIn(ctx context.Context, habitID int32, date string) error
+	CreatePlannerTodo(ctx context.Context, create *PlannerTodo) (*PlannerTodo, error)
+	ListPlannerTodos(ctx context.Context, find *FindPlannerTodo) ([]*PlannerTodo, error)
+	UpdatePlannerTodo(ctx context.Context, update *UpdatePlannerTodo) (*PlannerTodo, error)
+	DeletePlannerTodo(ctx context.Context, id int32) error
+	CreatePlannerNote(ctx context.Context, create *PlannerNote) (*PlannerNote, error)
+	ListPlannerNotes(ctx context.Context, find *FindPlannerNote) ([]*PlannerNote, error)
+	UpdatePlannerNote(ctx context.Context, update *UpdatePlannerNote) (*PlannerNote, error)
+	DeletePlannerNote(ctx context.Context, id int32) error
+	ImportPlanner(ctx context.Context, data *PlannerImport) error
 }

@@ -8,6 +8,9 @@ import { extractMemoIdFromName } from "@/helpers/resource-names";
  */
 export const MOBILE_ROUTES = {
   SHELF: "/",
+  PLAN: "/plan",
+  PLAN_SETTINGS: "/plan/settings",
+  PLAN_IMPORT: "/plan/import",
   SEARCH: "/search",
   ME: "/me",
   AUTH: "/auth",
@@ -33,3 +36,9 @@ export const desktopDocUrl = (memoName: string, origin = DESKTOP_ORIGIN): string
 
 /** Where the full web app lives. The mobile host is a separate origin, so links back must be absolute. */
 export const DESKTOP_ORIGIN = import.meta.env.VITE_DESKTOP_ORIGIN || "https://toucan.huzhi.dev";
+
+/** A todo's detail page, by its resource name (`planner/todos/{uid}`). */
+export const todoRoute = (todoName: string): string => `/plan/todo/${encodeURIComponent(todoName.replace(/^planner\/todos\//, ""))}`;
+
+/** `planner/todos/{uid}` from the detail page's `:uid`. */
+export const todoNameFromUid = (uid: string): string => `planner/todos/${uid}`;

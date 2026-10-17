@@ -1,0 +1,197 @@
+package test
+
+import (
+	"context"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/usememos/memos/store"
+)
+
+func TestPlannerHabitsAndCheckIns(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	ts := NewTestingStore(ctx, t)
+	user, err := createTestingHostUser(ctx, ts)
+	require.NoError(t, err)
+
+	run, err := ts.CreatePlannerHabit(ctx, &store.PlannerHabit{UID: "h-run", CreatorID: user.ID, Name: "跑步", Position: 1})
+	require.NoError(t, err)
+	_, err = ts.CreatePlannerHabit(ctx, &store.PlannerHabit{UID: "h-read", CreatorID: user.ID, Name: "阅读", Position: 0})
+	require.NoError(t, err)
+
+	habits, err := ts.ListPlannerHabits(ctx, &store.FindPlannerHabit{CreatorID: &user.ID})
+	require.NoError(t, err)
+	require.Len(t, habits, 2)
+	require.Equal(t, "阅读", habits[0].Name, "ordered by position")
+
+	archived := true
+	updated, err := ts.UpdatePlannerHabit(ctx, &store.UpdatePlannerHabit{ID: run.ID, Archived: &archived})
+	require.NoError(t, err)
+	require.True(t, updated.Archived)
+	require.Equal(t, "跑步", updated.Name)
+
+	// One check-in per habit per day: a second write replaces the note.
+	_, err = ts.UpsertPlannerCheckIn(ctx, &store.PlannerCheckIn{CreatorID: user.ID, HabitID: run.ID, Date: "2026-10-16", Note: "5km"})
+	require.NoError(t, err)
+	again, err := ts.UpsertPlannerCheckIn(ctx, &store.PlannerCheckIn{CreatorID: user.ID, HabitID: run.ID, Date: "2026-10-16", Note: "7km"})
+	require.NoError(t, err)
+	require.Equal(t, "7km", again.Note)
+	_, err = ts.UpsertPlannerCheckIn(ctx, &store.PlannerCheckIn{CreatorID: user.ID, HabitID: run.ID, Date: "2026-11-01"})
+	require.NoError(t, err)
+
+	october, err := ts.ListPlannerCheckIns(ctx, &store.FindPlannerCheckIn{CreatorID: user.ID, StartDate: "2026-10-01", EndDate: "2026-10-31"})
+	require.NoError(t, err)
+	require.Len(t, october, 1)
+	require.Equal(t, "7km", october[0].Note)
+
+	require.NoError(t, ts.DeletePlannerCheckIn(ctx, run.ID, "2026-10-16"))
+	october, err = ts.ListPlannerCheckIns(ctx, &store.FindPlannerCheckIn{CreatorID: user.ID, StartDate: "2026-10-01", EndDate: "2026-10-31"})
+	require.NoError(t, err)
+	require.Empty(t, october)
+}
+
+func TestPlannerTodosAndNotes(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	ts := NewTestingStore(ctx, t)
+	user, err := createTestingHostUser(ctx, ts)
+	require.NoError(t, err)
+
+	newTodo := func(uid, date string) *store.PlannerTodo {
+		todo, err := ts.CreatePlannerTodo(ctx, &store.PlannerTodo{UID: uid, CreatorID: user.ID, Title: uid, Date: date, Status: store.PlannerTodoActive})
+		require.NoError(t, err)
+		return todo
+	}
+	newTodo("undated", "")
+	later := newTodo("later", "2026-10-20")
+	newTodo("earlier", "2026-10-02")
+
+	// Dated todos first by date, undated last.
+	active := store.PlannerTodoActive
+	open, err := ts.ListPlannerTodos(ctx, &store.FindPlannerTodo{CreatorID: &user.ID, Status: &active})
+	require.NoError(t, err)
+	require.Equal(t, []string{"earlier", "later", "undated"}, []string{open[0].UID, open[1].UID, open[2].UID})
+
+	// A date range never matches an undated todo.
+	ranged, err := ts.ListPlannerTodos(ctx, &store.FindPlannerTodo{CreatorID: &user.ID, StartDate: "2026-10-01", EndDate: "2026-10-31"})
+	require.NoError(t, err)
+	require.Len(t, ranged, 2)
+
+	cancelled, reason, overdue, closedTs := store.PlannerTodoCancelled, "不做了", true, int64(1760000000)
+	updated, err := ts.UpdatePlannerTodo(ctx, &store.UpdatePlannerTodo{
+		ID: later.ID, Status: &cancelled, CancelReason: &reason, ClosedOverdue: &overdue, ClosedTs: &closedTs,
+	})
+	require.NoError(t, err)
+	require.Equal(t, store.PlannerTodoCancelled, updated.Status)
+	require.Equal(t, "不做了", updated.CancelReason)
+	require.True(t, updated.ClosedOverdue)
+	require.Equal(t, closedTs, updated.ClosedTs)
+	require.Equal(t, "later", updated.Title, "untouched fields stay")
+
+	open, err = ts.ListPlannerTodos(ctx, &store.FindPlannerTodo{CreatorID: &user.ID, Status: &active})
+	require.NoError(t, err)
+	require.Len(t, open, 2)
+
+	require.NoError(t, ts.DeletePlannerTodo(ctx, later.ID))
+	gone, err := ts.GetPlannerTodo(ctx, &store.FindPlannerTodo{ID: &later.ID})
+	require.NoError(t, err)
+	require.Nil(t, gone)
+
+	note, err := ts.CreatePlannerNote(ctx, &store.PlannerNote{UID: "n1", CreatorID: user.ID, Date: "2026-10-01", Content: "走路 7 公里"})
+	require.NoError(t, err)
+	content := "走路 8 公里"
+	note, err = ts.UpdatePlannerNote(ctx, &store.UpdatePlannerNote{ID: note.ID, Content: &content})
+	require.NoError(t, err)
+	require.Equal(t, "走路 8 公里", note.Content)
+	notes, err := ts.ListPlannerNotes(ctx, &store.FindPlannerNote{CreatorID: &user.ID, StartDate: "2026-10-01", EndDate: "2026-10-01"})
+	require.NoError(t, err)
+	require.Len(t, notes, 1)
+	require.NoError(t, ts.DeletePlannerNote(ctx, note.ID))
+}
+
+func TestPlannerImport(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	ts := NewTestingStore(ctx, t)
+	user, err := createTestingHostUser(ctx, ts)
+	require.NoError(t, err)
+
+	data := &store.PlannerImport{
+		CreatorID: user.ID,
+		Habits: []*store.PlannerHabit{
+			{UID: "h1", Name: "冥想", Position: 0},
+			{UID: "h2", Name: "运动", Position: 1},
+		},
+		CheckIns: []*store.PlannerImportCheckIn{
+			{HabitIndex: 0, Date: "2026-10-16", Note: "15"},
+			{HabitIndex: 1, Date: "2026-10-16"},
+		},
+		Todos: []*store.PlannerTodo{{UID: "t1", Title: "作业", Date: "2026-10-17", Status: store.PlannerTodoActive}},
+		Notes: []*store.PlannerNote{{UID: "n1", Date: "2026-10-02", Content: "记一笔"}},
+	}
+	require.NoError(t, ts.ImportPlanner(ctx, data))
+
+	checkIns, err := ts.ListPlannerCheckIns(ctx, &store.FindPlannerCheckIn{CreatorID: user.ID})
+	require.NoError(t, err)
+	require.Len(t, checkIns, 2)
+	habits, err := ts.ListPlannerHabits(ctx, &store.FindPlannerHabit{CreatorID: &user.ID})
+	require.NoError(t, err)
+	require.Equal(t, habits[0].ID, checkIns[0].HabitID)
+	require.Equal(t, "15", checkIns[0].Note)
+
+	// A second import is refused and writes nothing.
+	again := &store.PlannerImport{CreatorID: user.ID, Notes: []*store.PlannerNote{{UID: "n2", Date: "2026-10-03", Content: "x"}}}
+	require.ErrorIs(t, ts.ImportPlanner(ctx, again), store.ErrPlannerNotEmpty)
+	notes, err := ts.ListPlannerNotes(ctx, &store.FindPlannerNote{CreatorID: &user.ID})
+	require.NoError(t, err)
+	require.Len(t, notes, 1)
+
+	// A bad habit index rolls the whole import back.
+	other, err := createTestingUserWithRole(ctx, ts, "other-user", store.RoleUser)
+	require.NoError(t, err)
+	bad := &store.PlannerImport{
+		CreatorID: other.ID,
+		Habits:    []*store.PlannerHabit{{UID: "h3", Name: "x"}},
+		CheckIns:  []*store.PlannerImportCheckIn{{HabitIndex: 5, Date: "2026-10-01"}},
+	}
+	require.Error(t, ts.ImportPlanner(ctx, bad))
+	otherHabits, err := ts.ListPlannerHabits(ctx, &store.FindPlannerHabit{CreatorID: &other.ID})
+	require.NoError(t, err)
+	require.Empty(t, otherHabits)
+}
+
+func TestPlannerDataDeletedWithUser(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	ts := NewTestingStore(ctx, t)
+	_, err := createTestingHostUser(ctx, ts)
+	require.NoError(t, err)
+	member, err := createTestingUserWithRole(ctx, ts, "member", store.RoleUser)
+	require.NoError(t, err)
+
+	require.NoError(t, ts.ImportPlanner(ctx, &store.PlannerImport{
+		CreatorID: member.ID,
+		Habits:    []*store.PlannerHabit{{UID: "h1", Name: "冥想"}},
+		CheckIns:  []*store.PlannerImportCheckIn{{HabitIndex: 0, Date: "2026-10-16"}},
+		Todos:     []*store.PlannerTodo{{UID: "t1", Title: "作业", Status: store.PlannerTodoActive}},
+		Notes:     []*store.PlannerNote{{UID: "n1", Date: "2026-10-02", Content: "记一笔"}},
+	}))
+
+	_, err = ts.DeleteUser(ctx, &store.DeleteUser{ID: member.ID})
+	require.NoError(t, err)
+
+	habits, err := ts.ListPlannerHabits(ctx, &store.FindPlannerHabit{CreatorID: &member.ID})
+	require.NoError(t, err)
+	require.Empty(t, habits)
+	checkIns, err := ts.ListPlannerCheckIns(ctx, &store.FindPlannerCheckIn{CreatorID: member.ID})
+	require.NoError(t, err)
+	require.Empty(t, checkIns)
+	todos, err := ts.ListPlannerTodos(ctx, &store.FindPlannerTodo{CreatorID: &member.ID})
+	require.NoError(t, err)
+	require.Empty(t, todos)
+	notes, err := ts.ListPlannerNotes(ctx, &store.FindPlannerNote{CreatorID: &member.ID})
+	require.NoError(t, err)
+	require.Empty(t, notes)
+}

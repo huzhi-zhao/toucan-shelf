@@ -1,4 +1,4 @@
-import { LibraryBigIcon, SearchIcon, UserRoundIcon } from "lucide-react";
+import { CalendarCheckIcon, LibraryBigIcon, SearchIcon, UserRoundIcon } from "lucide-react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { COPY } from "../copy";
@@ -6,12 +6,13 @@ import { MOBILE_ROUTES } from "../routes";
 
 const TABS = [
   { path: MOBILE_ROUTES.SHELF, label: COPY.tabs.shelf, Icon: LibraryBigIcon },
+  { path: MOBILE_ROUTES.PLAN, label: COPY.tabs.plan, Icon: CalendarCheckIcon },
   { path: MOBILE_ROUTES.SEARCH, label: COPY.tabs.search, Icon: SearchIcon },
   { path: MOBILE_ROUTES.ME, label: COPY.tabs.me, Icon: UserRoundIcon },
 ];
 
 /**
- * The three top-level pages share one bottom tab bar. Switching tabs replaces
+ * The top-level pages share one bottom tab bar. Switching tabs replaces
  * history rather than stacking it.
  *
  * Drawn by hand rather than with Konsta's Tabbar: that one is the floating iOS 26

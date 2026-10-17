@@ -8,6 +8,7 @@ import { AuthService } from "./types/proto/api/v1/auth_service_pb";
 import { IdentityProviderService } from "./types/proto/api/v1/idp_service_pb";
 import { InstanceService } from "./types/proto/api/v1/instance_service_pb";
 import { MemoService } from "./types/proto/api/v1/memo_service_pb";
+import { PlannerService } from "./types/proto/api/v1/planner_service_pb";
 import { PublicSiteService } from "./types/proto/api/v1/public_site_service_pb";
 import { RagService } from "./types/proto/api/v1/rag_service_pb";
 import { SecretBlockService } from "./types/proto/api/v1/secret_block_service_pb";
@@ -213,6 +214,9 @@ export const ragServiceClient = createClient(RagService, transport);
 export const secretBlockServiceClient = createClient(SecretBlockService, transport);
 export const shortcutServiceClient = createClient(ShortcutService, transport);
 export const workspaceServiceClient = createClient(WorkspaceService, transport);
+
+// Personal planner: habits, check-ins, todos and notes. Unrelated to the knowledge base.
+export const plannerServiceClient = createClient(PlannerService, transport);
 
 // Publishing. SiteService is the authoring side and needs the session; the public
 // read path is anonymous by design, so it deliberately goes through a transport

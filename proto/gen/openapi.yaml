@@ -1722,6 +1722,320 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/v1/planner/checkIns:
+        post:
+            tags:
+                - PlannerService
+            description: |-
+                SetCheckIn records a check-in, or replaces the note of an existing one.
+                 An archived habit takes no new check-ins.
+            operationId: PlannerService_SetCheckIn
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CheckIn'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/CheckIn'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        delete:
+            tags:
+                - PlannerService
+            description: |-
+                DeleteCheckIn removes a habit's check-in on a day. Removing one that does not
+                 exist succeeds.
+            operationId: PlannerService_DeleteCheckIn
+            parameters:
+                - name: habit
+                  in: query
+                  description: 'Format: planner/habits/{habit}'
+                  schema:
+                    type: string
+                - name: date
+                  in: query
+                  description: 'Format: YYYY-MM-DD.'
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/planner/entries:
+        get:
+            tags:
+                - PlannerService
+            description: |-
+                ListPlannerEntries returns everything dated within an inclusive range:
+                 check-ins, todos of any status, and notes. Undated todos are not included.
+            operationId: PlannerService_ListPlannerEntries
+            parameters:
+                - name: startDate
+                  in: query
+                  description: 'First day of the range, inclusive. Format: YYYY-MM-DD.'
+                  schema:
+                    type: string
+                - name: endDate
+                  in: query
+                  description: 'Last day of the range, inclusive. Format: YYYY-MM-DD.'
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListPlannerEntriesResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/planner/habits:
+        get:
+            tags:
+                - PlannerService
+            description: ListHabits returns the caller's habits, archived ones included, by position.
+            operationId: PlannerService_ListHabits
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListHabitsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        post:
+            tags:
+                - PlannerService
+            description: CreateHabit adds a habit after the existing ones.
+            operationId: PlannerService_CreateHabit
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/Habit'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Habit'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/planner/notes:
+        post:
+            tags:
+                - PlannerService
+            description: CreatePlannerNote adds a note to a day.
+            operationId: PlannerService_CreatePlannerNote
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/PlannerNote'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PlannerNote'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/planner/openTodos:
+        get:
+            tags:
+                - PlannerService
+            description: |-
+                ListOpenTodos returns every active todo, dated or not, ordered by date with
+                 undated ones last.
+            operationId: PlannerService_ListOpenTodos
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListOpenTodosResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/planner/todos:
+        post:
+            tags:
+                - PlannerService
+            description: CreateTodo adds an active todo.
+            operationId: PlannerService_CreateTodo
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/Todo'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Todo'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/planner/{planner}/*:
+        get:
+            tags:
+                - PlannerService
+            description: GetTodo returns one todo.
+            operationId: PlannerService_GetTodo
+            parameters:
+                - name: planner
+                  in: path
+                  description: The planner id.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Todo'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        delete:
+            tags:
+                - PlannerService
+            description: DeletePlannerNote deletes a note.
+            operationId: PlannerService_DeletePlannerNote
+            parameters:
+                - name: planner
+                  in: path
+                  description: The planner id.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        patch:
+            tags:
+                - PlannerService
+            description: UpdatePlannerNote changes the fields named in update_mask.
+            operationId: PlannerService_UpdatePlannerNote
+            parameters:
+                - name: planner
+                  in: path
+                  description: The planner id.
+                  required: true
+                  schema:
+                    type: string
+                - name: updateMask
+                  in: query
+                  description: 'Supported paths: date, content.'
+                  schema:
+                    type: string
+                    format: field-mask
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/PlannerNote'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PlannerNote'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/planner:import:
+        post:
+            tags:
+                - PlannerService
+            description: |-
+                ImportPlanner writes a whole planner in one transaction: the one-time backfill
+                 from calendar blocks. It only runs into an empty planner and fails with
+                 FAILED_PRECONDITION when the caller already has any planner data.
+            operationId: PlannerService_ImportPlanner
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/ImportPlannerRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ImportPlannerResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/public/docs/{docId}:
         get:
             tags:
@@ -4474,6 +4788,24 @@ components:
                 name:
                     type: string
                     description: 'Required. Format: secretBlocks/{secret_block}'
+        CheckIn:
+            required:
+                - habit
+                - date
+            type: object
+            properties:
+                habit:
+                    type: string
+                    description: 'The habit. Format: planner/habits/{habit}'
+                date:
+                    type: string
+                    description: 'Format: YYYY-MM-DD.'
+                note:
+                    type: string
+                    description: A short remark, e.g. how far one ran.
+            description: |-
+                CheckIn records that a habit was kept on a day. There is at most one per
+                 habit per day, so it is addressed by the pair rather than by its own name.
         Color:
             type: object
             properties:
@@ -4955,6 +5287,34 @@ components:
                     description: The type of the serialized message.
             additionalProperties: true
             description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+        Habit:
+            required:
+                - title
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: 'Format: planner/habits/{habit}'
+                title:
+                    type: string
+                    description: "What the habit is, e.g. \"\U0001F4AA运动\"."
+                position:
+                    type: integer
+                    description: |-
+                        Order among the caller's habits, ascending. It also picks the habit's colour
+                         on the calendar.
+                    format: int32
+                archived:
+                    type: boolean
+                    description: An archived habit takes no new check-ins; its history stays.
+                createTime:
+                    readOnly: true
+                    type: string
+                    format: date-time
+                updateTime:
+                    readOnly: true
+                    type: string
+                    format: date-time
         IdentityProvider:
             required:
                 - type
@@ -4989,6 +5349,66 @@ components:
             properties:
                 oauth2Config:
                     $ref: '#/components/schemas/OAuth2Config'
+        ImportCheckIn:
+            type: object
+            properties:
+                habitIndex:
+                    type: integer
+                    description: Index into ImportPlannerRequest.habits.
+                    format: int32
+                date:
+                    type: string
+                    description: 'Format: YYYY-MM-DD.'
+                note:
+                    type: string
+        ImportPlannerRequest:
+            type: object
+            properties:
+                habits:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Habit'
+                    description: Habits in calendar order. Their names are ignored; new ones are assigned.
+                checkIns:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/ImportCheckIn'
+                    description: Check-ins naming their habit by index into `habits`.
+                todos:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/ImportTodo'
+                    description: |-
+                        Todos with their final status. Names are ignored. A closed todo may set
+                         closed_overdue, which is otherwise output only.
+                notes:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/PlannerNote'
+                    description: Notes. Names are ignored.
+        ImportPlannerResponse:
+            type: object
+            properties:
+                habitCount:
+                    type: integer
+                    format: int32
+                checkInCount:
+                    type: integer
+                    format: int32
+                todoCount:
+                    type: integer
+                    format: int32
+                noteCount:
+                    type: integer
+                    format: int32
+        ImportTodo:
+            type: object
+            properties:
+                todo:
+                    $ref: '#/components/schemas/Todo'
+                closedOverdue:
+                    type: boolean
+                    description: Whether the todo was closed after its date had passed.
         InstanceProfile:
             type: object
             properties:
@@ -5386,6 +5806,13 @@ components:
                     description: |-
                         A token that can be sent as `page_token` to retrieve the next page.
                          If this field is omitted, there are no subsequent pages.
+        ListHabitsResponse:
+            type: object
+            properties:
+                habits:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Habit'
         ListIdentityProvidersResponse:
             type: object
             properties:
@@ -5497,6 +5924,13 @@ components:
                     description: |-
                         True when `include_sub_docs` was honoured. A server that predates the field
                          leaves it false, so a client can tell "no sub-documents" from "not asked".
+        ListOpenTodosResponse:
+            type: object
+            properties:
+                todos:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Todo'
         ListPersonalAccessTokensResponse:
             type: object
             properties:
@@ -5508,6 +5942,21 @@ components:
                 nextPageToken:
                     type: string
                     description: A token for the next page of results.
+        ListPlannerEntriesResponse:
+            type: object
+            properties:
+                checkIns:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/CheckIn'
+                todos:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Todo'
+                notes:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/PlannerNote'
         ListPublicPagesResponse:
             type: object
             properties:
@@ -6127,6 +6576,29 @@ components:
             description: |-
                 PersonalAccessToken represents a long-lived token for API/script access.
                  PATs are distinct from short-lived JWT access tokens used for session authentication.
+        PlannerNote:
+            required:
+                - date
+                - content
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: 'Format: planner/notes/{note}'
+                date:
+                    type: string
+                    description: 'Format: YYYY-MM-DD.'
+                content:
+                    type: string
+                createTime:
+                    readOnly: true
+                    type: string
+                    format: date-time
+                updateTime:
+                    readOnly: true
+                    type: string
+                    format: date-time
+            description: PlannerNote is a plain record of what happened on a day.
         PolishTextRequest:
             required:
                 - text
@@ -7162,6 +7634,60 @@ components:
                     type: string
                     description: Optional. Recipient email address. If omitted, the current user's email address is used.
             description: Request message for TestInstanceEmailSetting method.
+        Todo:
+            required:
+                - title
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: 'Format: planner/todos/{todo}'
+                title:
+                    type: string
+                date:
+                    type: string
+                    description: The day the todo is planned for, YYYY-MM-DD, or empty for none.
+                status:
+                    enum:
+                        - STATUS_UNSPECIFIED
+                        - ACTIVE
+                        - DONE
+                        - CANCELLED
+                    type: string
+                    format: enum
+                closedOverdue:
+                    readOnly: true
+                    type: boolean
+                    description: Whether the todo was closed after its date had passed.
+                closeTime:
+                    readOnly: true
+                    type: string
+                    description: When the todo was closed. Unset while active, and for imported todos.
+                    format: date-time
+                cancelReason:
+                    type: string
+                    description: Why the todo was cancelled. Required to cancel.
+                important:
+                    type: boolean
+                tag:
+                    type: string
+                    description: A free-form tag.
+                note:
+                    type: string
+                memo:
+                    type: string
+                    description: 'A linked document. Format: memos/{memo}'
+                url:
+                    type: string
+                    description: A linked external page.
+                createTime:
+                    readOnly: true
+                    type: string
+                    format: date-time
+                updateTime:
+                    readOnly: true
+                    type: string
+                    format: date-time
         TranscribeRequest:
             required:
                 - audio
@@ -7859,6 +8385,17 @@ tags:
     - name: IdentityProviderService
     - name: InstanceService
     - name: MemoService
+    - name: PlannerService
+      description: |-
+        PlannerService keeps the caller's habits, daily check-ins, todos and notes.
+
+         Planner data is personal: every RPC reads and writes the authenticated user's
+         own records only, and none of it belongs to a knowledge base. See
+         docs/dev/requirements/planner-and-check-in.md.
+
+         Dates are "YYYY-MM-DD" strings in the user's phone-local calendar. The server
+         stores them as given and never converts time zones; where it needs "today" it
+         takes the caller's local date from the request.
     - name: PublicSiteService
       description: |-
         PublicSiteService is the anonymous read path for published sites.
