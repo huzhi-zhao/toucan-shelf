@@ -1,0 +1,91 @@
+/* The web app's global styles first: Tailwind, theme variables and the markdown
+   rhythm tokens the shared renderer is built on. Konsta comes after, so its
+   `--color-primary` (iOS blue) wins on this host — links and accents in the
+   renderer follow it on purpose. */
+@import "../index.css";
+@import "konsta/react/theme.css";
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #f2f2f7;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior-y: none;
+}
+
+html.dark body {
+  background: #000;
+}
+
+/* Page transitions (requirement §8). They only run for in-app navigation; Safari's
+   edge-swipe back animates itself and never reaches these rules. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.36s;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+}
+html:not([data-nav="back"])::view-transition-old(root) {
+  animation-name: mobile-out-left;
+}
+html:not([data-nav="back"])::view-transition-new(root) {
+  animation-name: mobile-in-right;
+  box-shadow: -8px 0 24px rgb(0 0 0 / 0.12);
+}
+html[data-nav="back"]::view-transition-old(root) {
+  animation-name: mobile-out-right;
+  z-index: 2;
+  box-shadow: -8px 0 24px rgb(0 0 0 / 0.12);
+}
+html[data-nav="back"]::view-transition-new(root) {
+  animation-name: mobile-in-left;
+}
+@keyframes mobile-in-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes mobile-out-left {
+  to {
+    transform: translateX(-30%);
+    filter: brightness(0.92);
+  }
+}
+@keyframes mobile-out-right {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes mobile-in-left {
+  from {
+    transform: translateX(-30%);
+    filter: brightness(0.92);
+  }
+}
+/* The tab bar stays put while the page under it slides. */
+.mobile-tabbar {
+  view-transition-name: mobile-tabbar;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}
+
+/* Reading settings: line height is applied through the renderer's own rhythm
+   token. It has to target the content element itself, which declares the
+   token for its density preset. */
+.mobile-reader [data-memo-content].md-density-reading {
+  --md-leading: var(--mobile-leading, 1.75);
+}
+
+/* Room for the bottom tab bar plus the home indicator. */
+.pb-tabbar {
+  padding-bottom: calc(64px + env(safe-area-inset-bottom));
+}
