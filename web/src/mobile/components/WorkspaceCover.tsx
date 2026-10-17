@@ -54,13 +54,7 @@ export default function WorkspaceCover({ workspace, onClick }: Props) {
           </div>
           <div className="flex-1 flex items-center justify-center min-h-0">
             {/* Two thirds of the padded content box is about half the cover's width. */}
-            {workspace.coverImage && (
-              <img
-                src={workspace.coverImage}
-                alt=""
-                className="w-2/3 aspect-square object-cover rounded-xl ring-1 ring-black/10 shadow-[0_2px_6px_rgb(0_0_0/0.25)]"
-              />
-            )}
+            {workspace.coverImage && <img src={workspace.coverImage} alt="" className="w-2/3 aspect-square object-contain" />}
           </div>
           {/* A thin foil rule near the foot, like a hardcover's stamped band. */}
           <div className="h-px bg-white/30 mx-1" />
