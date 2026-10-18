@@ -102,17 +102,28 @@ export default function MeItemPage() {
     );
   }
 
-  const inputClass = "w-full bg-transparent outline-none text-[17px] py-0.5 placeholder:text-black/25 dark:placeholder:text-white/25";
+  // The row's own title takes its natural width; the field fills the rest, its text on the right.
+  const rowInputClass =
+    "w-full min-w-0 bg-transparent text-right text-[17px] text-black dark:text-white outline-none placeholder:text-black/25 dark:placeholder:text-white/25";
 
   return (
     <Page className="pb-safe">
       {header}
 
-      <div className="mx-4 mt-4">
-        <MeItemStrip item={create(UserSetting_MeItemSchema, { ...draft, title: draft.title || COPY.me.itemTitle })} />
-      </div>
-
-      <List strongIos insetIos dividersIos className="mt-6 mb-0">
+      {/* Title and icon as labelled rows, the field on the right of each, like iOS Settings. */}
+      <List strongIos insetIos dividersIos className="mt-4 mb-0">
+        <ListItem
+          title={COPY.me.itemTitle}
+          after={
+            <input
+              value={draft.title}
+              onChange={(event) => set({ title: event.target.value })}
+              placeholder={COPY.me.titlePlaceholder}
+              aria-label={COPY.me.itemTitle}
+              className={rowInputClass}
+            />
+          }
+        />
         <ListItem
           title={COPY.me.icon}
           after={
@@ -121,18 +132,7 @@ export default function MeItemPage() {
               onChange={(event) => set({ icon: event.target.value })}
               placeholder={COPY.me.iconPlaceholder}
               aria-label={COPY.me.icon}
-              className="w-44 bg-transparent text-right outline-none placeholder:text-black/25 dark:placeholder:text-white/25"
-            />
-          }
-        />
-        <ListItem
-          title={
-            <input
-              value={draft.title}
-              onChange={(event) => set({ title: event.target.value })}
-              placeholder={COPY.me.titlePlaceholder}
-              aria-label={COPY.me.itemTitle}
-              className={inputClass}
+              className={rowInputClass}
             />
           }
         />
@@ -168,6 +168,12 @@ export default function MeItemPage() {
         </Segmented>
       </div>
       <Hint>{COPY.me.styleHint}</Hint>
+
+      {/* How it will look on the "Me" page, with the style chosen above. */}
+      <SectionTitle>{COPY.me.preview}</SectionTitle>
+      <div className="mx-4">
+        <MeItemStrip item={create(UserSetting_MeItemSchema, { ...draft, title: draft.title || COPY.me.previewTitle, memo: draft.memo })} />
+      </div>
 
       <SectionTitle>{COPY.me.doc}</SectionTitle>
       <List strongIos insetIos dividersIos className="!my-0">
