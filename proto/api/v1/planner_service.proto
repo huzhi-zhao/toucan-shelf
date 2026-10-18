@@ -57,6 +57,12 @@ service PlannerService {
     option (google.api.http) = {get: "/api/v1/planner/openTodos"};
   }
 
+  // ListTodoTags returns the tags used on the caller's todos, most recently
+  // used first, to pick from when tagging a todo.
+  rpc ListTodoTags(ListTodoTagsRequest) returns (ListTodoTagsResponse) {
+    option (google.api.http) = {get: "/api/v1/planner/todoTags"};
+  }
+
   // SetCheckIn records a check-in, or replaces the note of an existing one.
   // An archived habit takes no new check-ins.
   rpc SetCheckIn(SetCheckInRequest) returns (CheckIn) {
@@ -311,6 +317,13 @@ message ListOpenTodosRequest {}
 
 message ListOpenTodosResponse {
   repeated Todo todos = 1;
+}
+
+message ListTodoTagsRequest {}
+
+message ListTodoTagsResponse {
+  // Most recently used first; at most 50.
+  repeated string tags = 1;
 }
 
 message SetCheckInRequest {

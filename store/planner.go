@@ -248,6 +248,11 @@ func (s *Store) DeletePlannerTodo(ctx context.Context, id int32) error {
 	return s.driver.DeletePlannerTodo(ctx, id)
 }
 
+// ListPlannerTodoTags returns the distinct tags on a user's todos, most recently used first.
+func (s *Store) ListPlannerTodoTags(ctx context.Context, creatorID int32) ([]string, error) {
+	return s.driver.ListPlannerTodoTags(ctx, creatorID)
+}
+
 // CreatePlannerNote creates a note.
 func (s *Store) CreatePlannerNote(ctx context.Context, create *PlannerNote) (*PlannerNote, error) {
 	return s.driver.CreatePlannerNote(ctx, create)

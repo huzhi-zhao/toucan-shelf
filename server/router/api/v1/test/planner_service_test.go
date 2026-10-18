@@ -336,6 +336,32 @@ func TestPlannerImport(t *testing.T) {
 	requireCode(t, err, codes.FailedPrecondition)
 }
 
+func TestPlannerTodoTags(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestService(t)
+	defer ts.Cleanup()
+	user, err := ts.CreateRegularUser(ctx, "planner")
+	require.NoError(t, err)
+	other, err := ts.CreateRegularUser(ctx, "other")
+	require.NoError(t, err)
+	userCtx, otherCtx := ts.CreateUserContext(ctx, user.ID), ts.CreateUserContext(ctx, other.ID)
+
+	_, err = ts.Service.ListTodoTags(ctx, &v1pb.ListTodoTagsRequest{})
+	requireCode(t, err, codes.Unauthenticated)
+
+	for _, tag := range []string{"学业", "工作", "学业", ""} {
+		_, err := ts.Service.CreateTodo(userCtx, &v1pb.CreateTodoRequest{Todo: &v1pb.Todo{Title: "x", Tag: tag}})
+		require.NoError(t, err)
+	}
+	tags, err := ts.Service.ListTodoTags(userCtx, &v1pb.ListTodoTagsRequest{})
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"学业", "工作"}, tags.Tags)
+
+	tags, err = ts.Service.ListTodoTags(otherCtx, &v1pb.ListTodoTagsRequest{})
+	require.NoError(t, err)
+	require.Empty(t, tags.Tags)
+}
+
 func TestPlannerNoFutureCheckIns(t *testing.T) {
 	ctx := context.Background()
 	ts := NewTestService(t)
