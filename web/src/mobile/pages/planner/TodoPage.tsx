@@ -2,11 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { List, ListButton, ListItem, Navbar, NavbarBackLink, Page, Preloader, Searchbar, Sheet, Toast, Toggle } from "konsta/react";
 import { ExternalLinkIcon, FileTextIcon } from "lucide-react";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, type RefObject, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { ragServiceClient } from "@/connect";
 import { useMemo as useMemoQuery } from "@/hooks/useMemoQueries";
-import { useDeleteTodo, usePostponeTodo, useTodo, useUpdateTodo } from "@/hooks/usePlannerQueries";
+import { useDeleteTodo, usePostponeTodo, useTodo, useTodoTags, useUpdateTodo } from "@/hooks/usePlannerQueries";
 import { cn } from "@/lib/utils";
 import { type Todo, Todo_Status } from "@/types/proto/api/v1/planner_service_pb";
 import { SearchMode } from "@/types/proto/api/v1/rag_service_pb";
@@ -17,7 +17,7 @@ import { useBack, useBackLabel, useGo } from "../../lib/nav";
 import { isOverdue, localToday, postponeChoices } from "../../lib/planner";
 import { docRoute, MOBILE_ROUTES, todoNameFromUid } from "../../routes";
 
-const EDITABLE_FIELDS = ["title", "tag", "note", "url"] as const;
+const EDITABLE_FIELDS = ["title", "note", "url"] as const;
 type EditableField = (typeof EDITABLE_FIELDS)[number];
 
 const isWebLink = (value: string) => /^https?:\/\/\S+$/i.test(value.trim());
@@ -46,7 +46,7 @@ export default function TodoPage() {
 
   // Local drafts of the text fields. Every save refetches the todo, so only a field whose stored value
   // changed is reset; resetting all of them would wipe what is being typed in another field meanwhile.
-  const [drafts, setDrafts] = useState<Record<EditableField, string>>({ title: "", tag: "", note: "", url: "" });
+  const [drafts, setDrafts] = useState<Record<EditableField, string>>({ title: "", note: "", url: "" });
   const synced = useRef<Todo | undefined>(undefined);
   useEffect(() => {
     if (!todo) return;
@@ -59,9 +59,12 @@ export default function TodoPage() {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [tagOpen, setTagOpen] = useState(false);
+  const tagInputRef = useRef<HTMLInputElement>(null);
+  const { data: usedTags = [] } = useTodoTags();
   const [postponeOpen, setPostponeOpen] = useState(false);
   const postponeTodo = usePostponeTodo();
-  useBlurOnClose(cancelOpen || postponeOpen || pickerOpen);
+  useBlurOnClose(cancelOpen || postponeOpen || pickerOpen || tagOpen);
 
   const postpone = (date: string) => {
     setPostponeOpen(false);
@@ -166,15 +169,14 @@ export default function TodoPage() {
           after={<Toggle checked={todo.important} onChange={() => save({ important: !todo.important })} />}
         />
         <ListItem
+          link
           title={COPY.todo.tag}
-          after={
-            <input
-              value={drafts.tag}
-              onChange={(event) => setDrafts((d) => ({ ...d, tag: event.target.value }))}
-              onBlur={() => commitText("tag")}
-              className="bg-transparent text-right outline-none w-40"
-            />
-          }
+          after={todo.tag || <span className="text-black/30 dark:text-white/30">{COPY.todo.noTag}</span>}
+          onClick={() => {
+            setTagOpen(true);
+            // With nothing to pick from, go straight to typing (focus inside the tap so iOS shows the keyboard).
+            if (usedTags.length === 0) tagInputRef.current?.focus({ preventScroll: true });
+          }}
         />
       </List>
 
@@ -332,6 +334,18 @@ export default function TodoPage() {
         </List>
       </Sheet>
 
+      <TagSheet
+        opened={tagOpen}
+        current={todo.tag}
+        usedTags={usedTags}
+        inputRef={tagInputRef}
+        onClose={() => setTagOpen(false)}
+        onPick={(tag) => {
+          if (tag !== todo.tag) save({ tag });
+          setTagOpen(false);
+        }}
+      />
+
       <DocPickerSheet
         opened={pickerOpen}
         onClose={() => setPickerOpen(false)}
@@ -345,6 +359,98 @@ export default function TodoPage() {
         {toast}
       </Toast>
     </Page>
+  );
+}
+
+/**
+ * Sets the todo's tag: type a new one, or pick one already used on other todos (most recent first). Typing
+ * narrows the used tags to those containing the text.
+ */
+function TagSheet({
+  opened,
+  current,
+  usedTags,
+  inputRef,
+  onClose,
+  onPick,
+}: {
+  opened: boolean;
+  current: string;
+  usedTags: string[];
+  inputRef: RefObject<HTMLInputElement | null>;
+  onClose: () => void;
+  onPick: (tag: string) => void;
+}) {
+  const [draft, setDraft] = useState("");
+  useEffect(() => {
+    if (opened) setDraft("");
+  }, [opened]);
+  const typed = draft.trim();
+  const matches = usedTags.filter((tag) => tag.includes(typed));
+  const isNew = typed !== "" && !usedTags.includes(typed);
+
+  const onSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    if (typed) onPick(typed);
+  };
+
+  return (
+    <Sheet className="pb-safe w-full rounded-t-2xl" opened={opened} onBackdropClick={onClose}>
+      <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-black/15 dark:bg-white/20" />
+      <div className="px-4 pt-3">
+        <div className="text-[15px] font-semibold mb-2">{COPY.todo.tag}</div>
+        <form onSubmit={onSubmit}>
+          <input
+            ref={inputRef}
+            value={draft}
+            maxLength={100}
+            enterKeyHint="done"
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder={COPY.todo.tagPlaceholder}
+            className="w-full rounded-xl bg-black/5 dark:bg-white/10 px-3 py-2.5 text-[16px] outline-none"
+          />
+        </form>
+        {isNew && (
+          <button type="button" className="mt-2 text-[16px] text-primary" onClick={() => onPick(typed)}>
+            {COPY.todo.useTag(typed)}
+          </button>
+        )}
+        {matches.length > 0 && (
+          <>
+            <div className="mt-3 mb-2 text-[13px] text-black/45 dark:text-white/45">{COPY.todo.usedTags}</div>
+            <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto">
+              {matches.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => onPick(tag)}
+                  className={cn(
+                    "rounded-full px-3 py-1.5 text-[14px] border",
+                    tag === current
+                      ? "bg-primary text-white border-transparent"
+                      : "border-black/15 dark:border-white/20 bg-white dark:bg-[#1c1c1e]",
+                  )}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+        <div className="flex justify-between py-3">
+          {current ? (
+            <button type="button" className="text-[16px] text-red-500" onClick={() => onPick("")}>
+              {COPY.todo.clearTag}
+            </button>
+          ) : (
+            <span />
+          )}
+          <button type="button" className="text-[16px] text-black/50 dark:text-white/50" onClick={onClose}>
+            {COPY.planner.cancel}
+          </button>
+        </div>
+      </div>
+    </Sheet>
   );
 }
 

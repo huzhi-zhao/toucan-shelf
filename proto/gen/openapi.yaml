@@ -1898,6 +1898,27 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/v1/planner/todoTags:
+        get:
+            tags:
+                - PlannerService
+            description: |-
+                ListTodoTags returns the tags used on the caller's todos, most recently
+                 used first, to pick from when tagging a todo.
+            operationId: PlannerService_ListTodoTags
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListTodoTagsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/planner/todos:
         post:
             tags:
@@ -6031,6 +6052,14 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/Site'
+        ListTodoTagsResponse:
+            type: object
+            properties:
+                tags:
+                    type: array
+                    items:
+                        type: string
+                    description: Most recently used first; at most 50.
         ListUserNotificationsResponse:
             type: object
             properties:

@@ -25,6 +25,7 @@ const (
 	PlannerService_UpdateHabit_FullMethodName        = "/memos.api.v1.PlannerService/UpdateHabit"
 	PlannerService_ListPlannerEntries_FullMethodName = "/memos.api.v1.PlannerService/ListPlannerEntries"
 	PlannerService_ListOpenTodos_FullMethodName      = "/memos.api.v1.PlannerService/ListOpenTodos"
+	PlannerService_ListTodoTags_FullMethodName       = "/memos.api.v1.PlannerService/ListTodoTags"
 	PlannerService_SetCheckIn_FullMethodName         = "/memos.api.v1.PlannerService/SetCheckIn"
 	PlannerService_DeleteCheckIn_FullMethodName      = "/memos.api.v1.PlannerService/DeleteCheckIn"
 	PlannerService_GetTodo_FullMethodName            = "/memos.api.v1.PlannerService/GetTodo"
@@ -64,6 +65,9 @@ type PlannerServiceClient interface {
 	// ListOpenTodos returns every active todo, dated or not, ordered by date with
 	// undated ones last.
 	ListOpenTodos(ctx context.Context, in *ListOpenTodosRequest, opts ...grpc.CallOption) (*ListOpenTodosResponse, error)
+	// ListTodoTags returns the tags used on the caller's todos, most recently
+	// used first, to pick from when tagging a todo.
+	ListTodoTags(ctx context.Context, in *ListTodoTagsRequest, opts ...grpc.CallOption) (*ListTodoTagsResponse, error)
 	// SetCheckIn records a check-in, or replaces the note of an existing one.
 	// An archived habit takes no new check-ins.
 	SetCheckIn(ctx context.Context, in *SetCheckInRequest, opts ...grpc.CallOption) (*CheckIn, error)
@@ -149,6 +153,16 @@ func (c *plannerServiceClient) ListOpenTodos(ctx context.Context, in *ListOpenTo
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListOpenTodosResponse)
 	err := c.cc.Invoke(ctx, PlannerService_ListOpenTodos_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plannerServiceClient) ListTodoTags(ctx context.Context, in *ListTodoTagsRequest, opts ...grpc.CallOption) (*ListTodoTagsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListTodoTagsResponse)
+	err := c.cc.Invoke(ctx, PlannerService_ListTodoTags_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -291,6 +305,9 @@ type PlannerServiceServer interface {
 	// ListOpenTodos returns every active todo, dated or not, ordered by date with
 	// undated ones last.
 	ListOpenTodos(context.Context, *ListOpenTodosRequest) (*ListOpenTodosResponse, error)
+	// ListTodoTags returns the tags used on the caller's todos, most recently
+	// used first, to pick from when tagging a todo.
+	ListTodoTags(context.Context, *ListTodoTagsRequest) (*ListTodoTagsResponse, error)
 	// SetCheckIn records a check-in, or replaces the note of an existing one.
 	// An archived habit takes no new check-ins.
 	SetCheckIn(context.Context, *SetCheckInRequest) (*CheckIn, error)
@@ -346,6 +363,9 @@ func (UnimplementedPlannerServiceServer) ListPlannerEntries(context.Context, *Li
 }
 func (UnimplementedPlannerServiceServer) ListOpenTodos(context.Context, *ListOpenTodosRequest) (*ListOpenTodosResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListOpenTodos not implemented")
+}
+func (UnimplementedPlannerServiceServer) ListTodoTags(context.Context, *ListTodoTagsRequest) (*ListTodoTagsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListTodoTags not implemented")
 }
 func (UnimplementedPlannerServiceServer) SetCheckIn(context.Context, *SetCheckInRequest) (*CheckIn, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetCheckIn not implemented")
@@ -487,6 +507,24 @@ func _PlannerService_ListOpenTodos_Handler(srv interface{}, ctx context.Context,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PlannerServiceServer).ListOpenTodos(ctx, req.(*ListOpenTodosRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlannerService_ListTodoTags_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListTodoTagsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlannerServiceServer).ListTodoTags(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlannerService_ListTodoTags_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlannerServiceServer).ListTodoTags(ctx, req.(*ListTodoTagsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -715,6 +753,10 @@ var PlannerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListOpenTodos",
 			Handler:    _PlannerService_ListOpenTodos_Handler,
+		},
+		{
+			MethodName: "ListTodoTags",
+			Handler:    _PlannerService_ListTodoTags_Handler,
 		},
 		{
 			MethodName: "SetCheckIn",

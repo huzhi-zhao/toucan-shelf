@@ -382,6 +382,18 @@ func (s *APIV1Service) ListOpenTodos(ctx context.Context, _ *v1pb.ListOpenTodosR
 	return response, nil
 }
 
+func (s *APIV1Service) ListTodoTags(ctx context.Context, _ *v1pb.ListTodoTagsRequest) (*v1pb.ListTodoTagsResponse, error) {
+	user, err := s.plannerUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tags, err := s.Store.ListPlannerTodoTags(ctx, user.ID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list todo tags: %v", err)
+	}
+	return &v1pb.ListTodoTagsResponse{Tags: tags}, nil
+}
+
 // Check-ins.
 
 func (s *APIV1Service) SetCheckIn(ctx context.Context, request *v1pb.SetCheckInRequest) (*v1pb.CheckIn, error) {

@@ -270,6 +270,32 @@ func (d *DB) DeletePlannerTodo(ctx context.Context, id int32) error {
 	return err
 }
 
+// plannerTodoTagLimit caps the tag history: enough to choose from, small enough to show at once.
+const plannerTodoTagLimit = 50
+
+// ListPlannerTodoTags returns the distinct tags on a user's todos. "Most recently used" is the latest
+// update of any todo carrying the tag, close enough to when it was last set.
+func (d *DB) ListPlannerTodoTags(ctx context.Context, creatorID int32) ([]string, error) {
+	rows, err := d.db.QueryContext(ctx,
+		"SELECT `tag` FROM `planner_todo` WHERE `creator_id` = ? AND `tag` != '' GROUP BY `tag` ORDER BY MAX(`updated_ts`) DESC, `tag` LIMIT ?",
+		creatorID, plannerTodoTagLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	tags := []string{}
+	for rows.Next() {
+		var tag string
+		if err := rows.Scan(&tag); err != nil {
+			return nil, err
+		}
+		tags = append(tags, tag)
+	}
+	return tags, rows.Err()
+}
+
 // Notes.
 
 const plannerNoteColumns = "`id`, `uid`, `creator_id`, `date`, `content`, `created_ts`, `updated_ts`"

@@ -164,6 +164,7 @@ type Driver interface {
 	ListPlannerTodos(ctx context.Context, find *FindPlannerTodo) ([]*PlannerTodo, error)
 	UpdatePlannerTodo(ctx context.Context, update *UpdatePlannerTodo) (*PlannerTodo, error)
 	DeletePlannerTodo(ctx context.Context, id int32) error
+	ListPlannerTodoTags(ctx context.Context, creatorID int32) ([]string, error)
 	CreatePlannerNote(ctx context.Context, create *PlannerNote) (*PlannerNote, error)
 	ListPlannerNotes(ctx context.Context, find *FindPlannerNote) ([]*PlannerNote, error)
 	UpdatePlannerNote(ctx context.Context, update *UpdatePlannerNote) (*PlannerNote, error)
