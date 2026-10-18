@@ -275,7 +275,9 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
         titleClassName="max-w-[52vw] truncate"
         left={<NavbarBackLink text={backText} showText onClick={onBack} />}
         right={
-          <div className="flex items-center gap-1 pr-1">
+          // Konsta's icon links are squares as tall as their container. Filling the glass capsule's height makes
+          // each one a 44pt target with its icon centred, so the capsule has even room on both ends.
+          <div className="flex h-full items-center">
             {outline.length > 0 && (
               <Link iconOnly onClick={() => setOutlineOpen(true)} aria-label={COPY.reader.outline}>
                 <ListIcon className="w-6 h-6" />
