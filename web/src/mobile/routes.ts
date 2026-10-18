@@ -4,10 +4,12 @@ import { extractMemoIdFromName } from "@/helpers/resource-names";
  * The mobile reader's URLs. It owns its whole host (toucan-app.huzhi.dev), so
  * paths start at the root. The sign-in page sits at `/auth` on purpose: that is
  * where `redirectOnAuthFailure` in `@/connect` sends an expired session, so the
- * shared transport needs no mobile-specific branch.
+ * shared transport needs no mobile-specific branch. The planner is the home page:
+ * `/` (the home-screen app's start URL) goes there.
  */
 export const MOBILE_ROUTES = {
-  SHELF: "/",
+  HOME: "/",
+  SHELF: "/shelf",
   PLAN: "/plan",
   PLAN_SETTINGS: "/plan/settings",
   PLAN_IMPORT: "/plan/import",

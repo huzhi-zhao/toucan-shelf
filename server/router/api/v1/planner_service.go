@@ -403,6 +403,11 @@ func (s *APIV1Service) SetCheckIn(ctx context.Context, request *v1pb.SetCheckInR
 	if err != nil {
 		return nil, err
 	}
+	// A check-in records what has happened, so it cannot be for a day still ahead. The caller's day is
+	// unknown here; no time zone is past UTC+14, so a later date is in the future everywhere.
+	if latest := s.now().UTC().Add(14 * time.Hour).Format(time.DateOnly); date > latest {
+		return nil, status.Errorf(codes.InvalidArgument, "cannot check in for a future day: %s", date)
+	}
 	note, err := checkPlannerText(request.CheckIn.Note, "note", plannerMaxTitleLength, false)
 	if err != nil {
 		return nil, err

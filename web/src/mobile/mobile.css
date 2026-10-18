@@ -31,6 +31,31 @@ html.dark body {
   background: #000;
 }
 
+/* On a computer this same app is used as is: there is no web version of its features (requirement §2).
+   A phone-width column in the middle reads better than rows stretched across the screen. The tab bar and
+   sheets are fixed to the viewport, so they are pinned to the column too; navbars live inside the pages. */
+@media (min-width: 640px) {
+  body {
+    background: #d1d1d6;
+  }
+
+  html.dark body {
+    background: #1c1c1e;
+  }
+
+  #root {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .mobile-tabbar,
+  .k-sheet {
+    left: calc(50% - 300px);
+    right: auto;
+    width: 600px;
+  }
+}
+
 /* Like a native app, only content can be selected. The tab bar, buttons, list rows and labels are for
    tapping: a long press on them must not start a selection or open the copy menu. The document being
    read (`.mobile-selectable`) and form fields keep both. */
