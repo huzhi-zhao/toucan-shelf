@@ -90,10 +90,13 @@ export default function PlannerPage() {
   // Sheets.
   const [addKind, setAddKind] = useState<AddKind>();
   const [draft, setDraft] = useState("");
-  const [checkInTarget, setCheckInTarget] = useState<Habit>();
+  // The check-in sheet keeps what it shows while it slides away, so it does not flip to the other mode
+  // as the new check-in lands.
+  const [checkInSheet, setCheckInSheet] = useState<{ habit: Habit; confirming: boolean }>();
+  const [checkInOpen, setCheckInOpen] = useState(false);
   const [noteTarget, setNoteTarget] = useState<PlannerNote>();
   const addInputRef = useRef<HTMLTextAreaElement>(null);
-  useBlurOnClose(addKind !== undefined || checkInTarget !== undefined || noteTarget !== undefined);
+  useBlurOnClose(addKind !== undefined || checkInOpen || noteTarget !== undefined);
 
   const toggleTodo = (todo: Todo) => {
     const status = todo.status === Todo_Status.DONE ? Todo_Status.ACTIVE : Todo_Status.DONE;
@@ -101,14 +104,14 @@ export default function PlannerPage() {
   };
   const openTodo = (todo: Todo) => go(todoRoute(todo.name));
 
+  // Tapping a habit opens its sheet either way: one not checked in yet asks to confirm (a stray tap in the
+  // chip row must not record a check-in), with room for a note; one already checked in edits the note or
+  // takes the check-in back.
   const tapHabit = (habit: Habit) => {
     if (!editable) return;
-    if (checkInsOfDay.has(habit.name)) {
-      setDraft(checkInsOfDay.get(habit.name)?.note ?? "");
-      setCheckInTarget(habit);
-      return;
-    }
-    setCheckIn.mutate({ habit: habit.name, date: selectedDate, checked: true }, { onError: fail });
+    setDraft(checkInsOfDay.get(habit.name)?.note ?? "");
+    setCheckInSheet({ habit, confirming: !checkInsOfDay.has(habit.name) });
+    setCheckInOpen(true);
   };
 
   const openAdd = (kind: AddKind) => {
@@ -138,9 +141,9 @@ export default function PlannerPage() {
   };
 
   const saveCheckInNote = (checked: boolean) => {
-    if (!checkInTarget) return;
-    setCheckIn.mutate({ habit: checkInTarget.name, date: selectedDate, note: draft.trim(), checked }, { onError: fail });
-    setCheckInTarget(undefined);
+    if (!checkInSheet) return;
+    setCheckIn.mutate({ habit: checkInSheet.habit.name, date: selectedDate, note: draft.trim(), checked }, { onError: fail });
+    setCheckInOpen(false);
   };
 
   const saveNote = (remove: boolean) => {
@@ -347,16 +350,13 @@ export default function PlannerPage() {
         </div>
       </Sheet>
 
-      <Sheet
-        className="pb-safe w-full rounded-t-2xl"
-        opened={checkInTarget !== undefined}
-        onBackdropClick={() => setCheckInTarget(undefined)}
-      >
+      <Sheet className="pb-safe w-full rounded-t-2xl" opened={checkInOpen} onBackdropClick={() => setCheckInOpen(false)}>
         <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-black/15 dark:bg-white/20" />
         <div className="px-4 pt-3">
-          <div className="text-[15px] font-semibold mb-2">
-            {checkInTarget?.title} · {COPY.planner.checkInNote}
+          <div className="text-[15px] font-semibold">
+            {checkInSheet?.habit.title} · {checkInSheet?.confirming ? COPY.planner.checkIns : COPY.planner.checkInNote}
           </div>
+          <div className="text-[13px] text-black/45 dark:text-white/45 mt-0.5 mb-2">{dayTitle}</div>
           <input
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
@@ -364,11 +364,17 @@ export default function PlannerPage() {
             className="w-full rounded-xl bg-black/5 dark:bg-white/10 px-3 py-2.5 text-[16px] outline-none"
           />
           <div className="flex justify-between py-3">
-            <button type="button" className="text-[16px] text-red-500" onClick={() => saveCheckInNote(false)}>
-              {COPY.planner.uncheck}
-            </button>
+            {checkInSheet?.confirming ? (
+              <button type="button" className="text-[16px] text-black/50 dark:text-white/50" onClick={() => setCheckInOpen(false)}>
+                {COPY.planner.cancel}
+              </button>
+            ) : (
+              <button type="button" className="text-[16px] text-red-500" onClick={() => saveCheckInNote(false)}>
+                {COPY.planner.uncheck}
+              </button>
+            )}
             <button type="button" className="text-[16px] font-semibold text-primary" onClick={() => saveCheckInNote(true)}>
-              {COPY.planner.save}
+              {checkInSheet?.confirming ? COPY.planner.confirmCheckIn : COPY.planner.save}
             </button>
           </div>
         </div>
