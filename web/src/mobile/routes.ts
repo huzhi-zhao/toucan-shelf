@@ -10,11 +10,13 @@ import { extractMemoIdFromName } from "@/helpers/resource-names";
 export const MOBILE_ROUTES = {
   HOME: "/",
   SHELF: "/shelf",
+  FAVORITES: "/favorites",
   PLAN: "/plan",
   PLAN_SETTINGS: "/plan/settings",
   PLAN_IMPORT: "/plan/import",
   SEARCH: "/search",
   ME: "/me",
+  ME_SETTINGS: "/me/settings",
   AUTH: "/auth",
 } as const;
 
@@ -44,3 +46,9 @@ export const todoRoute = (todoName: string): string => `/plan/todo/${encodeURICo
 
 /** `planner/todos/{uid}` from the detail page's `:uid`. */
 export const todoNameFromUid = (uid: string): string => `planner/todos/${uid}`;
+
+/** A "Me" page item's edit page; `new` adds one. */
+export const meItemRoute = (id: string): string => `/me/item/${encodeURIComponent(id)}`;
+
+/** The id in `meItemRoute` for an item that does not exist yet. */
+export const NEW_ME_ITEM = "new";

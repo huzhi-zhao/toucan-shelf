@@ -1,0 +1,114 @@
+syntax = "proto3";
+
+package memos.api.v1;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/field_behavior.proto";
+import "google/api/resource.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "gen/api/v1";
+
+// FavoriteService keeps the caller's reading list: documents marked to read
+// later, from the web editor or the phone.
+//
+// Favorites are personal: every RPC reads and writes the authenticated user's
+// own list only. Unlike a document's `pinned`, which every reader shares, each
+// user has their own. See docs/dev/requirements/mobile-phase3.md §2.
+service FavoriteService {
+  // ListFavorites returns the caller's favorites, pinned first, then the most
+  // recently added first. Documents that were deleted, moved to the recycle bin
+  // or are no longer readable to the caller are left out.
+  rpc ListFavorites(ListFavoritesRequest) returns (ListFavoritesResponse) {
+    option (google.api.http) = {get: "/api/v1/favorites"};
+  }
+
+  // AddFavorite adds a document the caller can read. Adding one that is
+  // already a favorite leaves it as it was, pin and favorite time included.
+  rpc AddFavorite(AddFavoriteRequest) returns (Favorite) {
+    option (google.api.http) = {
+      post: "/api/v1/favorites"
+      body: "*"
+    };
+    option (google.api.method_signature) = "memo";
+  }
+
+  // UpdateFavorite pins or unpins a favorite.
+  rpc UpdateFavorite(UpdateFavoriteRequest) returns (Favorite) {
+    option (google.api.http) = {
+      patch: "/api/v1/{favorite.name=favorites/*}"
+      body: "favorite"
+    };
+    option (google.api.method_signature) = "favorite,update_mask";
+  }
+
+  // DeleteFavorite takes a document off the caller's favorites. Deleting one
+  // that is not a favorite succeeds.
+  rpc DeleteFavorite(DeleteFavoriteRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {delete: "/api/v1/{name=favorites/*}"};
+    option (google.api.method_signature) = "name";
+  }
+}
+
+message Favorite {
+  option (google.api.resource) = {
+    type: "memos.api.v1/Favorite"
+    pattern: "favorites/{favorite}"
+    singular: "favorite"
+    plural: "favorites"
+  };
+
+  // The resource name: the document's id under favorites/.
+  // Format: favorites/{memo}
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // The document. Format: memos/{memo}
+  string memo = 2 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // The document's title.
+  string title = 3 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // The document's emoji icon, if it has one.
+  string icon = 4 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // The document's type: "MARKDOWN", "HTML", "PDF", "VIEW" or "BLOGVIEW".
+  string doc_type = 5 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // The knowledge base the document is in. Format: workspaces/{workspace}
+  string workspace = 6 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // The knowledge base's title.
+  string workspace_title = 7 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Pinned favorites stay at the top of the list however old they are.
+  bool pinned = 8 [(google.api.field_behavior) = OPTIONAL];
+
+  // When the document was added to the favorites.
+  google.protobuf.Timestamp create_time = 9 [(google.api.field_behavior) = OUTPUT_ONLY];
+}
+
+message ListFavoritesRequest {}
+
+message ListFavoritesResponse {
+  repeated Favorite favorites = 1;
+}
+
+message AddFavoriteRequest {
+  // The document to add. Format: memos/{memo}
+  string memo = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UpdateFavoriteRequest {
+  Favorite favorite = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Only "pinned" can be updated.
+  google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteFavoriteRequest {
+  // Format: favorites/{memo}
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+}

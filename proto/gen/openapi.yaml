@@ -528,6 +528,116 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/v1/favorites:
+        get:
+            tags:
+                - FavoriteService
+            description: |-
+                ListFavorites returns the caller's favorites, pinned first, then the most
+                 recently added first. Documents that were deleted, moved to the recycle bin
+                 or are no longer readable to the caller are left out.
+            operationId: FavoriteService_ListFavorites
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListFavoritesResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        post:
+            tags:
+                - FavoriteService
+            description: |-
+                AddFavorite adds a document the caller can read. Adding one that is
+                 already a favorite leaves it as it was, pin and favorite time included.
+            operationId: FavoriteService_AddFavorite
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/AddFavoriteRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Favorite'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/favorites/{favorite}:
+        delete:
+            tags:
+                - FavoriteService
+            description: |-
+                DeleteFavorite takes a document off the caller's favorites. Deleting one
+                 that is not a favorite succeeds.
+            operationId: FavoriteService_DeleteFavorite
+            parameters:
+                - name: favorite
+                  in: path
+                  description: The favorite id.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        patch:
+            tags:
+                - FavoriteService
+            description: UpdateFavorite pins or unpins a favorite.
+            operationId: FavoriteService_UpdateFavorite
+            parameters:
+                - name: favorite
+                  in: path
+                  description: The favorite id.
+                  required: true
+                  schema:
+                    type: string
+                - name: updateMask
+                  in: query
+                  description: Only "pinned" can be updated.
+                  schema:
+                    type: string
+                    format: field-mask
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/Favorite'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Favorite'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/identity-providers:
         get:
             tags:
@@ -4656,6 +4766,14 @@ components:
                     description: |-
                         Required. The resource name of the memo.
                          Format: memos/{memo}
+        AddFavoriteRequest:
+            required:
+                - memo
+            type: object
+            properties:
+                memo:
+                    type: string
+                    description: 'The document to add. Format: memos/{memo}'
         Attachment:
             required:
                 - filename
@@ -5193,6 +5311,46 @@ components:
                 underline:
                     type: boolean
                     description: When true the mark renders as an underline in `color`; otherwise as a background highlight.
+        Favorite:
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: |-
+                        The resource name: the document's id under favorites/.
+                         Format: favorites/{memo}
+                memo:
+                    readOnly: true
+                    type: string
+                    description: 'The document. Format: memos/{memo}'
+                title:
+                    readOnly: true
+                    type: string
+                    description: The document's title.
+                icon:
+                    readOnly: true
+                    type: string
+                    description: The document's emoji icon, if it has one.
+                docType:
+                    readOnly: true
+                    type: string
+                    description: 'The document''s type: "MARKDOWN", "HTML", "PDF", "VIEW" or "BLOGVIEW".'
+                workspace:
+                    readOnly: true
+                    type: string
+                    description: 'The knowledge base the document is in. Format: workspaces/{workspace}'
+                workspaceTitle:
+                    readOnly: true
+                    type: string
+                    description: The knowledge base's title.
+                pinned:
+                    type: boolean
+                    description: Pinned favorites stay at the top of the list however old they are.
+                createTime:
+                    readOnly: true
+                    type: string
+                    description: When the document was added to the favorites.
+                    format: date-time
         FieldMapping:
             type: object
             properties:
@@ -5862,6 +6020,13 @@ components:
                     description: |-
                         A token that can be sent as `page_token` to retrieve the next page.
                          If this field is omitted, there are no subsequent pages.
+        ListFavoritesResponse:
+            type: object
+            properties:
+                favorites:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Favorite'
         ListHabitsResponse:
             type: object
             properties:
@@ -8046,6 +8211,8 @@ components:
                     $ref: '#/components/schemas/UserSetting_RagSearchSetting'
                 secretKeySetting:
                     $ref: '#/components/schemas/UserSetting_SecretKeySetting'
+                meItemsSetting:
+                    $ref: '#/components/schemas/UserSetting_MeItemsSetting'
             description: User settings message
         UserSetting_GeneralSetting:
             type: object
@@ -8085,7 +8252,44 @@ components:
                     additionalProperties:
                         type: string
                     description: Map of workspace resource name to the memo resource name last opened within it.
-            description: The last workspace/document the user had open in the Notebook home page.
+        UserSetting_MeItem:
+            required:
+                - id
+                - title
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: Client-generated, stable across edits and reordering.
+                icon:
+                    type: string
+                    description: Usually one emoji.
+                title:
+                    type: string
+                note:
+                    type: string
+                memo:
+                    type: string
+                    description: 'The linked document. Format: memos/{memo}. Empty for none.'
+                style:
+                    enum:
+                        - STYLE_UNSPECIFIED
+                        - MULTI_LINE
+                        - SINGLE_LINE
+                    type: string
+                    format: enum
+            description: 'One custom item: an icon, a title and a note, opening a linked document.'
+        UserSetting_MeItemsSetting:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/UserSetting_MeItem'
+            description: |-
+                The last workspace/document the user had open in the Notebook home page.
+                 The custom items on the mobile app's "Me" page, in display order. An update
+                 replaces the whole list.
         UserSetting_RagSearchSetting:
             type: object
             properties:
@@ -8475,6 +8679,14 @@ tags:
     - name: AIService
     - name: AttachmentService
     - name: AuthService
+    - name: FavoriteService
+      description: |-
+        FavoriteService keeps the caller's reading list: documents marked to read
+         later, from the web editor or the phone.
+
+         Favorites are personal: every RPC reads and writes the authenticated user's
+         own list only. Unlike a document's `pinned`, which every reader shares, each
+         user has their own. See docs/dev/requirements/mobile-phase3.md §2.
     - name: IdentityProviderService
     - name: InstanceService
     - name: MemoService

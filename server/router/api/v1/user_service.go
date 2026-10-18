@@ -745,6 +745,20 @@ func (s *APIV1Service) UpdateUserSetting(ctx context.Context, request *v1pb.Upda
 				LastOpenedSetting: incomingLastOpened,
 			},
 		}
+	case storepb.UserSetting_ME_ITEMS:
+		incomingMeItems := request.Setting.GetMeItemsSetting()
+		if incomingMeItems == nil {
+			return nil, status.Errorf(codes.InvalidArgument, "me_items setting is required")
+		}
+		if err := validateMeItemsSetting(incomingMeItems); err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "invalid me items setting: %v", err)
+		}
+		updatedSetting = &v1pb.UserSetting{
+			Name: request.Setting.Name,
+			Value: &v1pb.UserSetting_MeItemsSetting_{
+				MeItemsSetting: incomingMeItems,
+			},
+		}
 	case storepb.UserSetting_RAG_SEARCH:
 		incomingRagSearch := request.Setting.GetRagSearchSetting()
 		if incomingRagSearch == nil {
@@ -1543,6 +1557,8 @@ func convertSettingKeyToStore(key string) (storepb.UserSetting_Key, error) {
 		return storepb.UserSetting_RAG_SEARCH, nil
 	case v1pb.UserSetting_Key_name[int32(v1pb.UserSetting_SECRET_KEY)]:
 		return storepb.UserSetting_SECRET_KEY, nil
+	case v1pb.UserSetting_Key_name[int32(v1pb.UserSetting_ME_ITEMS)]:
+		return storepb.UserSetting_ME_ITEMS, nil
 	default:
 		return storepb.UserSetting_KEY_UNSPECIFIED, errors.Errorf("unknown setting key: %s", key)
 	}
@@ -1593,6 +1609,8 @@ func convertSettingKeyFromStore(key storepb.UserSetting_Key) string {
 		return v1pb.UserSetting_Key_name[int32(v1pb.UserSetting_RAG_SEARCH)]
 	case storepb.UserSetting_SECRET_KEY:
 		return v1pb.UserSetting_Key_name[int32(v1pb.UserSetting_SECRET_KEY)]
+	case storepb.UserSetting_ME_ITEMS:
+		return v1pb.UserSetting_Key_name[int32(v1pb.UserSetting_ME_ITEMS)]
 	default:
 		return "unknown"
 	}
@@ -1666,6 +1684,10 @@ func convertUserSettingFromStore(storeSetting *storepb.UserSetting, user *store.
 			setting.Value = &v1pb.UserSetting_RagSearchSetting_{
 				RagSearchSetting: &v1pb.UserSetting_RagSearchSetting{Mode: "MIXED"},
 			}
+		case storepb.UserSetting_ME_ITEMS:
+			setting.Value = &v1pb.UserSetting_MeItemsSetting_{
+				MeItemsSetting: &v1pb.UserSetting_MeItemsSetting{},
+			}
 		case storepb.UserSetting_SECRET_KEY:
 			// An empty wrapper is how "no master passphrase set yet" is expressed.
 			// The client reads it as a prompt to set one, not as an error.
@@ -1731,6 +1753,10 @@ func convertUserSettingFromStore(storeSetting *storepb.UserSetting, user *store.
 				Memo:           lastOpened.GetMemo(),
 				WorkspaceMemos: lastOpened.GetWorkspaceMemos(),
 			},
+		}
+	case storepb.UserSetting_ME_ITEMS:
+		setting.Value = &v1pb.UserSetting_MeItemsSetting_{
+			MeItemsSetting: convertMeItemsSettingFromStore(storeSetting.GetMeItems()),
 		}
 	case storepb.UserSetting_RAG_SEARCH:
 		ragSearch := storeSetting.GetRagSearch()
@@ -1820,6 +1846,14 @@ func convertUserSettingToStore(apiSetting *v1pb.UserSetting, userID int32, key s
 			}
 		} else {
 			return nil, errors.Errorf("last_opened setting is required")
+		}
+	case storepb.UserSetting_ME_ITEMS:
+		if meItems := apiSetting.GetMeItemsSetting(); meItems != nil {
+			storeSetting.Value = &storepb.UserSetting_MeItems{
+				MeItems: convertMeItemsSettingToStore(meItems),
+			}
+		} else {
+			return nil, errors.Errorf("me_items setting is required")
 		}
 	case storepb.UserSetting_RAG_SEARCH:
 		if ragSearch := apiSetting.GetRagSearchSetting(); ragSearch != nil {
