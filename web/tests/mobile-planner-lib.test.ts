@@ -9,8 +9,11 @@ import {
   isOverdue,
   localToday,
   monthRange,
+  readCalendarView,
+  saveCalendarView,
   postponeChoices,
   todosForDay,
+  todosNotShown,
 } from "@/mobile/lib/planner";
 import { todoNameFromUid, todoRoute } from "@/mobile/routes";
 import {
@@ -75,6 +78,14 @@ describe("todo lists", () => {
     const open = [todo("late", "2026-10-01"), ...dated];
     expect(todosForDay("2026-10-17", "2026-10-17", dated, open).map((t) => t.title)).toEqual(["late", "past", "now"]);
     expect(todosForDay("2026-10-10", "2026-10-17", dated, open).map((t) => t.title)).toEqual(["past"]);
+  });
+
+  it("leaves out of the list what the selected day already shows", () => {
+    const open = [todo("late", "2026-10-01"), todo("now", "2026-10-17"), todo("soon", "2026-10-20")];
+    const shownToday = todosForDay("2026-10-17", "2026-10-17", [open[1]], open);
+    expect(todosNotShown(open, shownToday).map((t) => t.title)).toEqual(["soon"]);
+    const shownLater = todosForDay("2026-10-20", "2026-10-17", [open[2]], open);
+    expect(todosNotShown(open, shownLater).map((t) => t.title)).toEqual(["late", "now"]);
   });
 
   it("round-trips a todo's detail route", () => {
@@ -160,5 +171,14 @@ describe("calendar block import", () => {
     const { summary } = convertCalendarBlock("events: a\n- [ ] 没有日期\n- 2026-10-01\n- [ ] 有日期");
     expect(summary.skipped).toBe(1);
     expect(summary.activeTodos).toBe(1);
+  });
+});
+
+describe("calendar view memory", () => {
+  it("keeps the day and month for the rest of the day, and starts over on a new one", () => {
+    const view = { month: { year: 2026, month: 8 }, selectedDate: "2026-09-12", weekStartOverride: 7 };
+    saveCalendarView(view, "2026-10-17");
+    expect(readCalendarView("2026-10-17")).toMatchObject(view);
+    expect(readCalendarView("2026-10-18")).toBeUndefined();
   });
 });

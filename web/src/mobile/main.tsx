@@ -97,8 +97,8 @@ const router = createBrowserRouter([
           {
             element: <TabsLayout />,
             children: [
-              { path: MOBILE_ROUTES.SHELF, element: <ShelfPage /> },
               { path: MOBILE_ROUTES.PLAN, element: lazyPage(<PlannerPage />) },
+              { path: MOBILE_ROUTES.SHELF, element: <ShelfPage /> },
               { path: MOBILE_ROUTES.SEARCH, element: <SearchPage /> },
               { path: MOBILE_ROUTES.ME, element: <MePage /> },
             ],
@@ -118,7 +118,8 @@ const router = createBrowserRouter([
           { path: "/memos/:uid", element: <MemoRedirect /> },
         ],
       },
-      { path: "*", element: <Navigate to={MOBILE_ROUTES.SHELF} replace /> },
+      { path: MOBILE_ROUTES.HOME, element: <Navigate to={MOBILE_ROUTES.PLAN} replace /> },
+      { path: "*", element: <Navigate to={MOBILE_ROUTES.PLAN} replace /> },
     ],
   },
 ]);

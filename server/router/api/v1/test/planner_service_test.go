@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -359,4 +360,25 @@ func TestPlannerTodoTags(t *testing.T) {
 	tags, err = ts.Service.ListTodoTags(otherCtx, &v1pb.ListTodoTagsRequest{})
 	require.NoError(t, err)
 	require.Empty(t, tags.Tags)
+}
+
+func TestPlannerNoFutureCheckIns(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestService(t)
+	defer ts.Cleanup()
+	user, err := ts.CreateRegularUser(ctx, "planner")
+	require.NoError(t, err)
+	userCtx := ts.CreateUserContext(ctx, user.ID)
+	habit, err := ts.Service.CreateHabit(userCtx, &v1pb.CreateHabitRequest{Habit: &v1pb.Habit{Title: "冥想"}})
+	require.NoError(t, err)
+
+	// Noon UTC on the 17th: UTC+14 is already on the 18th, nowhere has reached the 19th.
+	ts.Service.Clock = func() time.Time { return time.Date(2026, 10, 17, 12, 0, 0, 0, time.UTC) }
+	checkIn := func(date string) error {
+		_, err := ts.Service.SetCheckIn(userCtx, &v1pb.SetCheckInRequest{CheckIn: &v1pb.CheckIn{Habit: habit.Name, Date: date}})
+		return err
+	}
+	require.NoError(t, checkIn("2026-10-17"))
+	require.NoError(t, checkIn("2026-10-18"))
+	requireCode(t, checkIn("2026-10-19"), codes.InvalidArgument)
 }
