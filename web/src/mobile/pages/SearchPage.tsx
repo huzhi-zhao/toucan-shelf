@@ -17,7 +17,10 @@ import { docRoute } from "../routes";
 const HISTORY_KEY = "search-history";
 const KB_TODOS_PAGE_SIZE = 1000;
 
-/** Every readable document that still has an empty `[ ]`. The store keeps that flag, so this is not a scan. */
+/**
+ * Every readable document that still has an empty `[ ]`; `groupKbTodos` keeps the root TODO ones. The store
+ * keeps that flag, so this is not a scan, and listing does not offer a title or folder filter to narrow it.
+ */
 async function listDocsWithOpenTodos() {
   const memos = [];
   let pageToken = "";
@@ -61,8 +64,8 @@ export default function SearchPage() {
   const [history, setHistory] = usePref<string[]>(HISTORY_KEY, []);
   const formRef = useRef<HTMLFormElement>(null);
   const { data: workspaces = [] } = useWorkspaces(false);
-  // Recent searches show while typing; the rest of the time the space under the box lists the knowledge
-  // bases' open todos (phase 3 §3). They are read fresh on every visit, so a box ticked on the computer is
+  // Recent searches show while typing; the rest of the time the space under the box lists the open todos in
+  // each knowledge base's root TODO document (phase 3 §3). They are read fresh on every visit, so a box ticked on the computer is
   // gone here at once.
   const [focused, setFocused] = useState(false);
   const kbTodos = useQuery({
@@ -171,33 +174,28 @@ export default function SearchPage() {
             <div className="text-center text-black/40 dark:text-white/40 py-10">{COPY.search.kbTodosEmpty}</div>
           ) : (
             <>
-              {todoGroups.map((group) => (
-                <div key={group.workspace} className="mb-5">
-                  <div className="px-8 pb-1.5 text-[13px] text-black/45 dark:text-white/45">{group.title}</div>
-                  <List strongIos insetIos dividersIos className="!my-0">
-                    {group.docs.map((doc) => (
-                      <ListItem
-                        key={doc.memo}
-                        link
-                        media={<DocGlyph icon={doc.icon} docType={doc.docType} size={22} />}
-                        title={doc.title}
-                        text={
-                          <ul className="mt-0.5 space-y-0.5 whitespace-normal">
-                            {doc.todos.map((todo, i) => (
-                              <li key={i} className="flex gap-2 leading-snug">
-                                <span className="mt-[3px] h-3.5 w-3.5 shrink-0 rounded-full border border-current opacity-50" />
-                                <span>{todo}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        }
-                        onClick={() => go(docRoute(doc.memo))}
-                      />
-                    ))}
-                  </List>
-                </div>
-              ))}
-              <p className="px-8 text-[13px] leading-snug text-black/45 dark:text-white/45">{COPY.search.kbTodosHint}</p>
+              <List strongIos insetIos dividersIos className="!my-0">
+                {todoGroups.map((group) => (
+                  <ListItem
+                    key={group.workspace}
+                    link
+                    title={group.title}
+                    after={`${group.todos.length}`}
+                    text={
+                      <ul className="mt-0.5 space-y-0.5 whitespace-normal">
+                        {group.todos.map((todo, i) => (
+                          <li key={i} className="flex gap-2 leading-snug">
+                            <span className="mt-[3px] h-3.5 w-3.5 shrink-0 rounded-full border border-current opacity-50" />
+                            <span>{todo}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    }
+                    onClick={() => go(docRoute(group.memo))}
+                  />
+                ))}
+              </List>
+              <p className="px-8 mt-2 text-[13px] leading-snug text-black/45 dark:text-white/45">{COPY.search.kbTodosHint}</p>
             </>
           )}
         </>
