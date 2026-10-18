@@ -1,38 +1,28 @@
 package memogit
 
 import (
-	"embed"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/usememos/memos/docs/skill"
 )
 
 // GuideDir is the agent-facing manual directory dropped into the checkout
 // metadata dir, embedded so a checkout carries its own instructions without
-// needing the server repo. Its contents mirror docs/skill/ (SKILL.md, the
-// router, plus references/*.md, read on demand) — that is the source of
-// truth; assets/skill/ below is a generated copy kept in sync by
-// scripts/sync-agent-skill-docs.sh. Never hand-edit assets/skill/ directly.
+// needing the server repo. Its contents are docs/skill/ (SKILL.md, the router,
+// plus references/*.md, read on demand), embedded straight from there by the
+// docs/skill package.
 const GuideDir = "skill"
 
 // GuideEntryFile is the file inside GuideDir an agent reads first.
 const GuideEntryFile = "SKILL.md"
 
-//go:embed assets/skill
-var guideAssets embed.FS
-
-// guideRoot is guideAssets re-rooted at the embedded directory's own
-// contents, stripping the "assets/skill" prefix go:embed otherwise keeps.
-var guideRoot = func() fs.FS {
-	sub, err := fs.Sub(guideAssets, "assets/skill")
-	if err != nil {
-		panic(err) // programmer error: the go:embed path above must match
-	}
-	return sub
-}()
+// guideRoot is the embedded manual, rooted at docs/skill/ itself.
+var guideRoot fs.FS = skill.FS
 
 // Markers delimiting the block memogit owns inside AGENTS.md / CLAUDE.md, so a
 // user's own instructions in those files survive regeneration.
@@ -133,10 +123,9 @@ func WriteAgentDocs(root string, cfg *Config, out io.Writer) error {
 	return nil
 }
 
-// writeGuideTree copies the embedded skill manual (docs/skill/, mirrored at
-// build time into assets/skill/, see GuideDir) into dir, recreating its
-// directory structure so the references/*.md links inside SKILL.md keep
-// resolving as relative paths on disk.
+// writeGuideTree copies the embedded skill manual (docs/skill/, see GuideDir)
+// into dir, recreating its directory structure so the references/*.md links
+// inside SKILL.md keep resolving as relative paths on disk.
 func writeGuideTree(dir string) error {
 	return fs.WalkDir(guideRoot, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {

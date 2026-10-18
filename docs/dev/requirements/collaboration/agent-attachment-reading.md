@@ -92,8 +92,8 @@ mounted:
 只是之前没有指针、agent 走不到那一步，等于死条文。措辞要从"你应该读"改成
 "看到清单之后怎么判断值不值得打开"。
 
-按 [AGENTS.md](../../../../AGENTS.md) 的 Change Routing，改 `docs/skill/` 后要跑
-`scripts/sync-agent-skill-docs.sh`，并评估 `serverInstructions` 是否需要同步。
+按 [AGENTS.md](../../../../AGENTS.md) 的 Change Routing，改 `docs/skill/` 后要评估
+`serverInstructions` 是否需要同步（memogit 直接嵌入 `docs/skill/`，无需另行同步）。
 本篇的 memogit 规则属于"仅 memogit"，不进 MCP 的常驻上下文。
 
 ## 3. MCP：签发短期下载令牌，agent 自己取到本地
