@@ -55,6 +55,7 @@ func TestUserMeItemsSetting(t *testing.T) {
 	require.Equal(t, "a", items[1].Id)
 	require.Equal(t, "💰", items[1].Icon)
 	require.Equal(t, "memos/plan", items[1].Memo)
+	require.Equal(t, []string{"memos/plan"}, items[1].Memos, "the deprecated memo is read as the one linked document")
 	require.Equal(t, apiv1.UserSetting_MeItem_MULTI_LINE, items[1].Style)
 
 	// An update replaces the whole list.
@@ -70,6 +71,8 @@ func TestUserMeItemsSetting(t *testing.T) {
 		{{Id: "a", Title: "x"}, {Id: "a", Title: "y"}},
 		{{Id: "a", Title: "x", Memo: "workspaces/x"}},
 		{{Id: "a", Title: "x", Style: 9}},
+		{{Id: "a", Title: "x", Memos: []string{"memos/a", "workspaces/x"}}},
+		{{Id: "a", Title: "x", Group: "missing"}},
 	} {
 		_, err = update(userCtx, bad...)
 		requireCode(t, err, codes.InvalidArgument)
@@ -77,4 +80,48 @@ func TestUserMeItemsSetting(t *testing.T) {
 
 	_, err = update(ts.CreateUserContext(ctx, other.ID), finance)
 	requireCode(t, err, codes.PermissionDenied)
+}
+
+func TestUserMeItemsGroupsAndDocuments(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestService(t)
+	defer ts.Cleanup()
+
+	user, err := ts.CreateRegularUser(ctx, "me-user")
+	require.NoError(t, err)
+	userCtx := ts.CreateUserContext(ctx, user.ID)
+	const name = "users/me-user/settings/ME_ITEMS"
+	update := func(setting *apiv1.UserSetting_MeItemsSetting) error {
+		_, err := ts.Service.UpdateUserSetting(userCtx, &apiv1.UpdateUserSettingRequest{
+			Setting:    &apiv1.UserSetting{Name: name, Value: &apiv1.UserSetting_MeItemsSetting_{MeItemsSetting: setting}},
+			UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"me_items_setting"}},
+		})
+		return err
+	}
+
+	require.NoError(t, update(&apiv1.UserSetting_MeItemsSetting{
+		Groups: []*apiv1.UserSetting_MeGroup{{Id: "g2", Title: "理财"}, {Id: "g1", Title: "目标"}},
+		Items: []*apiv1.UserSetting_MeItem{
+			{Id: "a", Title: "年度理财计划", Group: "g2", Memos: []string{"memos/b", "memos/a", "memos/b"}},
+			{Id: "b", Title: "随手记"},
+		},
+	}))
+	got, err := ts.Service.GetUserSetting(userCtx, &apiv1.GetUserSettingRequest{Name: name})
+	require.NoError(t, err)
+	setting := got.GetMeItemsSetting()
+	require.Len(t, setting.Groups, 2)
+	require.Equal(t, "g2", setting.Groups[0].Id, "group order is the display order")
+	require.Equal(t, "理财", setting.Groups[0].Title)
+	require.Equal(t, "g2", setting.Items[0].Group)
+	require.Empty(t, setting.Items[1].Group)
+	require.Equal(t, []string{"memos/b", "memos/a"}, setting.Items[0].Memos, "order kept, repeats dropped")
+	require.Equal(t, "memos/b", setting.Items[0].Memo, "the deprecated field reads the first")
+
+	for _, bad := range []*apiv1.UserSetting_MeItemsSetting{
+		{Groups: []*apiv1.UserSetting_MeGroup{{Id: "g", Title: " "}}},
+		{Groups: []*apiv1.UserSetting_MeGroup{{Id: "g", Title: "x"}, {Id: "g", Title: "y"}}},
+		{Groups: []*apiv1.UserSetting_MeGroup{{Id: "", Title: "x"}}},
+	} {
+		requireCode(t, update(bad), codes.InvalidArgument)
+	}
 }

@@ -1,13 +1,13 @@
 import dayjs from "dayjs";
 import { List, ListButton, ListItem, Navbar, NavbarBackLink, Page, Preloader, Sheet, Toast, Toggle } from "konsta/react";
-import { ExternalLinkIcon, FileTextIcon } from "lucide-react";
+import { ExternalLinkIcon } from "lucide-react";
 import { type FormEvent, type RefObject, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { useMemo as useMemoQuery } from "@/hooks/useMemoQueries";
 import { useDeleteTodo, usePostponeTodo, useTodo, useTodoTags, useUpdateTodo } from "@/hooks/usePlannerQueries";
 import { cn } from "@/lib/utils";
 import { type Todo, Todo_Status } from "@/types/proto/api/v1/planner_service_pb";
 import DocPickerSheet from "../../components/DocPickerSheet";
+import { LinkedDocsList } from "../../components/LinkedDocs";
 import SectionTitle from "../../components/SectionTitle";
 import { COPY } from "../../copy";
 import { useBlurOnClose } from "../../lib/keyboard";
@@ -21,7 +21,7 @@ type EditableField = (typeof EDITABLE_FIELDS)[number];
 const isWebLink = (value: string) => /^https?:\/\/\S+$/i.test(value.trim());
 
 /**
- * One todo (requirement §2.2): title, day, importance, tag, note, a linked document
+ * One todo (requirement §2.2): title, day, importance, tag, note, linked documents
  * and an external link. Text fields save when they lose focus; the rest at once.
  * Closing happens here too — cancelling asks for the reason first — and so does postponing,
  * which moves the date but keeps the original one and counts (requirement §2.3).
@@ -71,7 +71,7 @@ export default function TodoPage() {
   };
 
   const save = (
-    changes: Partial<Pick<Todo, "title" | "date" | "status" | "cancelReason" | "important" | "tag" | "note" | "memo" | "url">>,
+    changes: Partial<Pick<Todo, "title" | "date" | "status" | "cancelReason" | "important" | "tag" | "note" | "memos" | "url">>,
   ) => updateTodo.mutate({ name, changes, localDate: today }, { onError: () => flash(COPY.planner.failed) });
 
   const commitText = (field: EditableField) => {
@@ -99,8 +99,6 @@ export default function TodoPage() {
     if (!window.confirm(COPY.todo.deleteConfirm)) return;
     deleteTodo.mutate(name, { onSuccess: back, onError: () => flash(COPY.planner.failed) });
   };
-
-  const linkedDoc = useMemoQuery(todo?.memo ?? "", { enabled: Boolean(todo?.memo) });
 
   const header = <Navbar title={COPY.todo.title} left={<NavbarBackLink text={backText} showText onClick={back} />} />;
   if (isPending) {
@@ -190,23 +188,12 @@ export default function TodoPage() {
       </div>
 
       <SectionTitle>{COPY.todo.doc}</SectionTitle>
-      <List strongIos insetIos dividersIos className="!my-0">
-        {todo.memo ? (
-          <>
-            <ListItem
-              link
-              media={<FileTextIcon className="w-5 h-5 text-black/45 dark:text-white/45" />}
-              title={linkedDoc.data?.title || todo.memo}
-              onClick={() => go(docRoute(todo.memo))}
-            />
-            <ListButton onClick={() => save({ memo: "" })} className="text-red-500">
-              {COPY.todo.removeDoc}
-            </ListButton>
-          </>
-        ) : (
-          <ListButton onClick={() => setPickerOpen(true)}>{COPY.todo.pickDoc}</ListButton>
-        )}
-      </List>
+      <LinkedDocsList
+        memos={todo.memos}
+        onOpen={(memo) => go(docRoute(memo))}
+        onRemove={(memo) => save({ memos: todo.memos.filter((m) => m !== memo) })}
+        onAdd={() => setPickerOpen(true)}
+      />
 
       <SectionTitle>{COPY.todo.url}</SectionTitle>
       <List strongIos insetIos dividersIos className="!my-0">
@@ -346,9 +333,10 @@ export default function TodoPage() {
 
       <DocPickerSheet
         opened={pickerOpen}
+        picked={todo.memos}
         onClose={() => setPickerOpen(false)}
         onPick={(memo) => {
-          save({ memo });
+          if (!todo.memos.includes(memo)) save({ memos: [...todo.memos, memo] });
           setPickerOpen(false);
         }}
       />

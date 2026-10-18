@@ -93,10 +93,10 @@ type PlannerTodo struct {
 	Important    bool
 	Tag          string
 	Note         string
-	// MemoName is "memos/{uid}" of a linked document, or "". A plain reference:
-	// deleting the document leaves it dangling rather than touching the todo.
-	MemoName string
-	URL      string
+	// MemoNames are "memos/{uid}" of the linked documents, in display order. Plain
+	// references: deleting a document leaves it dangling rather than touching the todo.
+	MemoNames []string
+	URL       string
 	// OriginalDate is the date before the todo's first postponement, or "" if it was never postponed.
 	OriginalDate  string
 	PostponeCount int32
@@ -129,7 +129,7 @@ type UpdatePlannerTodo struct {
 	Important     *bool
 	Tag           *string
 	Note          *string
-	MemoName      *string
+	MemoNames     *[]string
 	URL           *string
 	OriginalDate  *string
 	PostponeCount *int32

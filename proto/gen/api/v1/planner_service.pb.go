@@ -251,7 +251,10 @@ type Todo struct {
 	// A free-form tag.
 	Tag  string `protobuf:"bytes,9,opt,name=tag,proto3" json:"tag,omitempty"`
 	Note string `protobuf:"bytes,10,opt,name=note,proto3" json:"note,omitempty"`
-	// A linked document. Format: memos/{memo}
+	// Deprecated: use memos. Read as the first of memos; written (update mask path
+	// "memo") as the only linked document.
+	//
+	// Deprecated: Marked as deprecated in api/v1/planner_service.proto.
 	Memo string `protobuf:"bytes,11,opt,name=memo,proto3" json:"memo,omitempty"`
 	// A linked external page.
 	Url        string                 `protobuf:"bytes,12,opt,name=url,proto3" json:"url,omitempty"`
@@ -262,6 +265,8 @@ type Todo struct {
 	OriginalDate string `protobuf:"bytes,15,opt,name=original_date,json=originalDate,proto3" json:"original_date,omitempty"`
 	// How many times the todo has been postponed. Set by PostponeTodo.
 	PostponeCount int32 `protobuf:"varint,16,opt,name=postpone_count,json=postponeCount,proto3" json:"postpone_count,omitempty"`
+	// The linked documents, in display order. Format: memos/{memo}
+	Memos         []string `protobuf:"bytes,17,rep,name=memos,proto3" json:"memos,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -366,6 +371,7 @@ func (x *Todo) GetNote() string {
 	return ""
 }
 
+// Deprecated: Marked as deprecated in api/v1/planner_service.proto.
 func (x *Todo) GetMemo() string {
 	if x != nil {
 		return x.Memo
@@ -406,6 +412,13 @@ func (x *Todo) GetPostponeCount() int32 {
 		return x.PostponeCount
 	}
 	return 0
+}
+
+func (x *Todo) GetMemos() []string {
+	if x != nil {
+		return x.Memos
+	}
+	return nil
 }
 
 // PlannerNote is a plain record of what happened on a day.
@@ -1130,7 +1143,7 @@ type UpdateTodoRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Todo  *Todo                  `protobuf:"bytes,1,opt,name=todo,proto3" json:"todo,omitempty"`
 	// Supported paths: title, date, status, cancel_reason, important, tag, note,
-	// memo, url.
+	// memos, url, and the deprecated memo.
 	UpdateMask *fieldmaskpb.FieldMask `protobuf:"bytes,2,opt,name=update_mask,json=updateMask,proto3" json:"update_mask,omitempty"`
 	// The caller's local date, YYYY-MM-DD. Required when closing a todo: whether
 	// it was closed overdue depends on the user's day, not the server's.
@@ -1715,7 +1728,7 @@ const file_api_v1_planner_service_proto_rawDesc = "" +
 	"\aCheckIn\x12\x19\n" +
 	"\x05habit\x18\x01 \x01(\tB\x03\xe0A\x02R\x05habit\x12\x17\n" +
 	"\x04date\x18\x02 \x01(\tB\x03\xe0A\x02R\x04date\x12\x17\n" +
-	"\x04note\x18\x03 \x01(\tB\x03\xe0A\x01R\x04note\"\x80\x06\n" +
+	"\x04note\x18\x03 \x01(\tB\x03\xe0A\x01R\x04note\"\x9d\x06\n" +
 	"\x04Todo\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12\x19\n" +
 	"\x05title\x18\x02 \x01(\tB\x03\xe0A\x02R\x05title\x12\x17\n" +
@@ -1728,15 +1741,16 @@ const file_api_v1_planner_service_proto_rawDesc = "" +
 	"\timportant\x18\b \x01(\bB\x03\xe0A\x01R\timportant\x12\x15\n" +
 	"\x03tag\x18\t \x01(\tB\x03\xe0A\x01R\x03tag\x12\x17\n" +
 	"\x04note\x18\n" +
-	" \x01(\tB\x03\xe0A\x01R\x04note\x12\x17\n" +
-	"\x04memo\x18\v \x01(\tB\x03\xe0A\x01R\x04memo\x12\x15\n" +
+	" \x01(\tB\x03\xe0A\x01R\x04note\x12\x19\n" +
+	"\x04memo\x18\v \x01(\tB\x05\xe0A\x01\x18\x01R\x04memo\x12\x15\n" +
 	"\x03url\x18\f \x01(\tB\x03\xe0A\x01R\x03url\x12@\n" +
 	"\vcreate_time\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
 	"createTime\x12@\n" +
 	"\vupdate_time\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
 	"updateTime\x12(\n" +
 	"\roriginal_date\x18\x0f \x01(\tB\x03\xe0A\x03R\foriginalDate\x12*\n" +
-	"\x0epostpone_count\x18\x10 \x01(\x05B\x03\xe0A\x03R\rpostponeCount\"E\n" +
+	"\x0epostpone_count\x18\x10 \x01(\x05B\x03\xe0A\x03R\rpostponeCount\x12\x19\n" +
+	"\x05memos\x18\x11 \x03(\tB\x03\xe0A\x01R\x05memos\"E\n" +
 	"\x06Status\x12\x16\n" +
 	"\x12STATUS_UNSPECIFIED\x10\x00\x12\n" +
 	"\n" +

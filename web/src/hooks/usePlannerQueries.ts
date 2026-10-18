@@ -106,7 +106,7 @@ export function useCreateTodo() {
   );
 }
 
-type TodoField = "title" | "date" | "status" | "cancelReason" | "important" | "tag" | "note" | "memo" | "url";
+type TodoField = "title" | "date" | "status" | "cancelReason" | "important" | "tag" | "note" | "memos" | "url";
 
 const TODO_MASK_PATHS: Record<TodoField, string> = {
   title: "title",
@@ -116,7 +116,7 @@ const TODO_MASK_PATHS: Record<TodoField, string> = {
   important: "important",
   tag: "tag",
   note: "note",
-  memo: "memo",
+  memos: "memos",
   url: "url",
 };
 

@@ -7923,7 +7923,9 @@ components:
                     type: string
                 memo:
                     type: string
-                    description: 'A linked document. Format: memos/{memo}'
+                    description: |-
+                        Deprecated: use memos. Read as the first of memos; written (update mask path
+                         "memo") as the only linked document.
                 url:
                     type: string
                     description: A linked external page.
@@ -7946,6 +7948,11 @@ components:
                     type: integer
                     description: How many times the todo has been postponed. Set by PostponeTodo.
                     format: int32
+                memos:
+                    type: array
+                    items:
+                        type: string
+                    description: 'The linked documents, in display order. Format: memos/{memo}'
         TranscribeRequest:
             required:
                 - audio
@@ -8252,6 +8259,18 @@ components:
                     additionalProperties:
                         type: string
                     description: Map of workspace resource name to the memo resource name last opened within it.
+        UserSetting_MeGroup:
+            required:
+                - id
+                - title
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: Client-generated, stable across renames and reordering.
+                title:
+                    type: string
+            description: A titled block of items on the "Me" page.
         UserSetting_MeItem:
             required:
                 - id
@@ -8270,7 +8289,9 @@ components:
                     type: string
                 memo:
                     type: string
-                    description: 'The linked document. Format: memos/{memo}. Empty for none.'
+                    description: |-
+                        Deprecated: use memos. Read as the first of memos; written only by clients
+                         that do not know memos, and then taken as the one linked document.
                 style:
                     enum:
                         - STYLE_UNSPECIFIED
@@ -8278,6 +8299,14 @@ components:
                         - SINGLE_LINE
                     type: string
                     format: enum
+                memos:
+                    type: array
+                    items:
+                        type: string
+                    description: 'The linked documents, in display order. Format: memos/{memo}.'
+                group:
+                    type: string
+                    description: The id of the group the item is shown in, or empty for none.
             description: 'One custom item: an icon, a title and a note, opening a linked document.'
         UserSetting_MeItemsSetting:
             type: object
@@ -8286,6 +8315,13 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/UserSetting_MeItem'
+                groups:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/UserSetting_MeGroup'
+                    description: |-
+                        The groups the page shows items in, in display order. Items without a
+                         group come first, under no heading.
             description: |-
                 The last workspace/document the user had open in the Notebook home page.
                  The custom items on the mobile app's "Me" page, in display order. An update

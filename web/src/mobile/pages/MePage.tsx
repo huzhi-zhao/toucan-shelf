@@ -1,20 +1,37 @@
 import { Button, Link, Navbar, Page } from "konsta/react";
 import { SettingsIcon } from "lucide-react";
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useMeItems } from "@/hooks/useMeItems";
-import MeItemStrip from "../components/MeItemStrip";
+import { meSections, useMeItems } from "@/hooks/useMeItems";
+import type { UserSetting_MeItem } from "@/types/proto/api/v1/user_service_pb";
+import { LinkedDocsChooser } from "../components/LinkedDocs";
+import MeItemStrip, { MeCard } from "../components/MeItemStrip";
 import { COPY } from "../copy";
 import { useGo } from "../lib/nav";
 import { docRoute, MOBILE_ROUTES, meItemRoute, NEW_ME_ITEM } from "../routes";
 
 /**
- * The user's own items (requirement phase 3 §5): strips they set up in settings, each opening a linked
- * document. The app's settings live behind the button in the top right.
+ * The user's own items (requirement phase 3 §5), set up in settings: one card per group, the items outside
+ * every group first and under no heading. An item opens its linked document, or asks which one when it has
+ * several. The app's settings live behind the button in the top right.
  */
 export default function MePage() {
   const go = useGo(COPY.me.title);
   const { currentUser } = useAuth();
-  const { data: items = [], isLoading } = useMeItems(currentUser?.name);
+  const { data, isLoading } = useMeItems(currentUser?.name);
+  const sections = data ? meSections(data).filter((section) => section.items.length > 0) : [];
+  // The chooser keeps showing the last item while it slides away.
+  const [chooserOpen, setChooserOpen] = useState(false);
+  const [chosen, setChosen] = useState<UserSetting_MeItem>();
+
+  const open = (item: UserSetting_MeItem) => {
+    if (item.memos.length === 1) {
+      go(docRoute(item.memos[0]));
+      return;
+    }
+    setChosen(item);
+    setChooserOpen(true);
+  };
 
   return (
     <Page className="pb-tabbar">
@@ -29,10 +46,17 @@ export default function MePage() {
           </Link>
         }
       />
-      {items.length > 0 ? (
-        <div className="mx-4 mt-3 flex flex-col gap-2.5">
-          {items.map((item) => (
-            <MeItemStrip key={item.id} item={item} onOpen={item.memo ? () => go(docRoute(item.memo)) : undefined} />
+      {sections.length > 0 ? (
+        <div className="pt-3">
+          {sections.map((section) => (
+            <section key={section.group?.id ?? ""} className="mb-6">
+              {section.group && <h2 className="px-8 pb-1.5 text-[13px] text-black/45 dark:text-white/45">{section.group.title}</h2>}
+              <MeCard>
+                {section.items.map((item) => (
+                  <MeItemStrip key={item.id} item={item} onOpen={item.memos.length > 0 ? () => open(item) : undefined} />
+                ))}
+              </MeCard>
+            </section>
           ))}
         </div>
       ) : (
@@ -45,6 +69,16 @@ export default function MePage() {
           </div>
         )
       )}
+      <LinkedDocsChooser
+        title={chosen?.title ?? ""}
+        memos={chosen?.memos ?? []}
+        opened={chooserOpen}
+        onClose={() => setChooserOpen(false)}
+        onPick={(memo) => {
+          setChooserOpen(false);
+          go(docRoute(memo));
+        }}
+      />
     </Page>
   );
 }
