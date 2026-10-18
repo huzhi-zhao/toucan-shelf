@@ -8046,6 +8046,8 @@ components:
                     $ref: '#/components/schemas/UserSetting_RagSearchSetting'
                 secretKeySetting:
                     $ref: '#/components/schemas/UserSetting_SecretKeySetting'
+                meItemsSetting:
+                    $ref: '#/components/schemas/UserSetting_MeItemsSetting'
             description: User settings message
         UserSetting_GeneralSetting:
             type: object
@@ -8085,7 +8087,44 @@ components:
                     additionalProperties:
                         type: string
                     description: Map of workspace resource name to the memo resource name last opened within it.
-            description: The last workspace/document the user had open in the Notebook home page.
+        UserSetting_MeItem:
+            required:
+                - id
+                - title
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: Client-generated, stable across edits and reordering.
+                icon:
+                    type: string
+                    description: Usually one emoji.
+                title:
+                    type: string
+                note:
+                    type: string
+                memo:
+                    type: string
+                    description: 'The linked document. Format: memos/{memo}. Empty for none.'
+                style:
+                    enum:
+                        - STYLE_UNSPECIFIED
+                        - MULTI_LINE
+                        - SINGLE_LINE
+                    type: string
+                    format: enum
+            description: 'One custom item: an icon, a title and a note, opening a linked document.'
+        UserSetting_MeItemsSetting:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/UserSetting_MeItem'
+            description: |-
+                The last workspace/document the user had open in the Notebook home page.
+                 The custom items on the mobile app's "Me" page, in display order. An update
+                 replaces the whole list.
         UserSetting_RagSearchSetting:
             type: object
             properties:
