@@ -1214,3 +1214,37 @@ func (s *ConnectServiceHandler) ImportPlanner(ctx context.Context, req *connect.
 	}
 	return connect.NewResponse(resp), nil
 }
+
+// FavoriteService
+
+func (s *ConnectServiceHandler) ListFavorites(ctx context.Context, req *connect.Request[v1pb.ListFavoritesRequest]) (*connect.Response[v1pb.ListFavoritesResponse], error) {
+	resp, err := s.APIV1Service.ListFavorites(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) AddFavorite(ctx context.Context, req *connect.Request[v1pb.AddFavoriteRequest]) (*connect.Response[v1pb.Favorite], error) {
+	resp, err := s.APIV1Service.AddFavorite(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) UpdateFavorite(ctx context.Context, req *connect.Request[v1pb.UpdateFavoriteRequest]) (*connect.Response[v1pb.Favorite], error) {
+	resp, err := s.APIV1Service.UpdateFavorite(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) DeleteFavorite(ctx context.Context, req *connect.Request[v1pb.DeleteFavoriteRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := s.APIV1Service.DeleteFavorite(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
