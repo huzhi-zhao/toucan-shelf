@@ -11,6 +11,14 @@ body,
   height: 100%;
 }
 
+/* Konsta's App root is `min-h-screen` (min-height: 100vh). On iOS 100vh is the viewport with the toolbars
+   retracted, taller than what shows while Safari's toolbar (or a home-screen app's bottom strip) is there.
+   Pages are `absolute h-full` inside it, so their last stretch sat below the screen edge where no scrolling
+   could bring it up, and the document itself scrolled by the difference. Keep the root to the visible height. */
+.k-app {
+  min-height: 0;
+}
+
 body {
   margin: 0;
   background: #f2f2f7;
@@ -21,6 +29,24 @@ body {
 
 html.dark body {
   background: #000;
+}
+
+/* Like a native app, only content can be selected. The tab bar, buttons, list rows and labels are for
+   tapping: a long press on them must not start a selection or open the copy menu. The document being
+   read (`.mobile-selectable`) and form fields keep both. */
+body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.mobile-selectable,
+input,
+textarea,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
 }
 
 /* Page transitions (requirement §8). They only run for in-app navigation; Safari's
