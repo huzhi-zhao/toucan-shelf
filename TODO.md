@@ -82,9 +82,6 @@
 - [ ] **文档评论的 LLM 语义兜底（RelocateAnchor）** —— 锚点四级降级之外的最后一档，
       评估过，未实现。
 
-- [ ] **sheets 快照写入失败重试** —— 当前是静默覆盖。留待多人协作编辑时一并处理。
-      见 [sheets-block.md](docs/dev/requirements/editor/sheets-block.md)。
-
 - [ ] **无远程备份时的警告条** —— 允许无 S3 启动是既定决策，配套的"未配置远程备份"警告条
       与降级提示仍未实现，已核实前端无任何相关逻辑。
       见 [standalone-local-deploy.md](docs/dev/standalone-local-deploy.md)。

@@ -33,7 +33,6 @@ import { remarkEmbed, substituteEmbedSyntax } from "@/utils/remark-plugins/remar
 import { remarkHighlight } from "@/utils/remark-plugins/remark-highlight";
 import { remarkMention } from "@/utils/remark-plugins/remark-mention";
 import { remarkPreserveType } from "@/utils/remark-plugins/remark-preserve-type";
-import { remarkSheetsId } from "@/utils/remark-plugins/remark-sheets-id";
 import { remarkSplitMixedTaskLists } from "@/utils/remark-plugins/remark-split-mixed-task-lists";
 import { remarkTaskStatus } from "@/utils/remark-plugins/remark-task-status";
 import { CodeBlock } from "./CodeBlock";
@@ -138,7 +137,6 @@ export const MemoMarkdownRenderer = ({
       remarkCounter,
       remarkHighlight,
       remarkAlert,
-      remarkSheetsId,
       remarkCodeFold,
       remarkPreserveType,
     ],

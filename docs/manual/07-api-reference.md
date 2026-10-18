@@ -212,7 +212,7 @@ curl -s /api/v1/shares/<token>
 ## 7.6 SecretBlockService — encrypted blocks
 
 Storage for the ciphertext behind `toucan-secret` blocks (see
-[§6.5](./06-view-blocks.md)). The server is a dumb vault: it stores and returns
+[§6.4](./06-view-blocks.md)). The server is a dumb vault: it stores and returns
 opaque envelopes produced by the browser and holds neither plaintext nor passphrase.
 There is intentionally no RPC that could return plaintext.
 

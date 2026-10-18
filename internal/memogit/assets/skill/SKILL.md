@@ -1,6 +1,6 @@
 ---
 name: toucanshelf
-description: 在 ToucanShelf 知识库中读取、编辑、移动、创作文档时使用（memogit 检出的本地目录，或通过 MCP 在线协同）。ToucanShelf 是 memos 的 fork，一条 memo = 一篇文档，带有一批标准 Markdown 渲染器不认识的定制语法（frontmatter 属性、callout、kanban/sheets/grid/calendar 交互块、toucan-secret 密文块、.view.json 画廊视图）和一套同步契约（memogit-id 身份标记、删除即归档、附件只读）。踩到它们会静默丢数据或制造假冲突。
+description: 在 ToucanShelf 知识库中读取、编辑、移动、创作文档时使用（memogit 检出的本地目录，或通过 MCP 在线协同）。ToucanShelf 是 memos 的 fork，一条 memo = 一篇文档，带有一批标准 Markdown 渲染器不认识的定制语法（frontmatter 属性、callout、kanban/grid/calendar 交互块、toucan-secret 密文块、.view.json 画廊视图）和一套同步契约（memogit-id 身份标记、删除即归档、附件只读）。踩到它们会静默丢数据或制造假冲突。
 ---
 
 # ToucanShelf 操作手册（核心）
@@ -63,7 +63,7 @@ d=$PWD; while [ "$d" != / ] && [ ! -d "$d/.memogit" ]; do d=$(dirname "$d"); don
    `[!TAGS]` 系列）、`==背景着色==`、点击计数器 `- [1] `，这些纯粹是视觉效果，而你看不到
    渲染结果，判断不了该不该用——**用户明确要求也不写**，让他在 app 里加。遇到已有的
    **原样保留**（尤其别把 callout 当普通引用去重排）。要强调就用加粗或列表层级。
-   结构化的交互块（kanban / grid / sheets / calendar / `.view.json`）不受这条限制，
+   结构化的交互块（kanban / grid / calendar / `.view.json`）不受这条限制，
    但同样**不主动发起**，只在用户明确要求时写。详见 `references/markdown-syntax.md`。
 4. **【两者】别改写内联附件引用 `![](...)`**，即使看起来"链接坏了"。那个引用本来就是对的，
    改了只会真的弄坏它；在 memogit 下还会被误判成本地编辑，制造假冲突。
@@ -85,7 +85,7 @@ d=$PWD; while [ "$d" != / ] && [ ! -d "$d/.memogit" ]; do d=$(dirname "$d"); don
 | 通道 | 对象 | 能不能改 | 说明 |
 |------|------|---------|------|
 | 两者 | Markdown 正文、frontmatter | ✅ | 主要工作面；正文默认只用基本 Markdown |
-| 两者 | 交互块（kanban / grid / sheets / calendar） | ✅ 被要求时 | 结构化数据，用户明确要求才写，不主动发起，见 `references/blocks-and-views.md` |
+| 两者 | 交互块（kanban / grid / calendar） | ✅ 被要求时 | 结构化数据，用户明确要求才写，不主动发起，见 `references/blocks-and-views.md` |
 | 两者 | callout / `==着色==` / 点击计数器 | ❌ 只读 | 装饰语法：认得、原样保留，任何情况都不写（铁律 3） |
 | 两者 | HTML 文档 | ✅ | 直接改源码 |
 | 两者 | VIEW 文档（`*.view.json` / `content` 里的 JSON） | ✅ 谨慎 | 结构化配置，必须保持合法 JSON，见 `references/blocks-and-views.md` |
@@ -145,7 +145,7 @@ d=$PWD; while [ "$d" != / ] && [ ! -d "$d/.memogit" ]; do d=$(dirname "$d"); don
 | 两者 | workspace / folder_path / 4 种 doc_type / 路径映射 / 唯一性约束 / **子文档**（`_sub/<父uid>`）/ **References 外链**（frontmatter `references`） | `references/hierarchy-and-doc-types.md` |
 | 两者 | frontmatter（可写）、装饰语法（callout / 着色 / 计数器，只读不写）、标题锚点、批注机制、`toucan-secret` 密文块、内联媒体 | `references/markdown-syntax.md` |
 | 两者 | 文档之间的引用：四种路径形式（库根相对 / 文档相对 / 跨库库限定 / UID）、`[]()` 与 `![[]]` 的边界、移动时的自动固化 | `references/document-links.md` |
-| 两者 | ` ```kanban ` / ` ```sheets ` / ` ```grid ` / ` ```calendar ` 四种交互块，以及画廊视图 | `references/blocks-and-views.md` |
+| 两者 | ` ```kanban ` / ` ```grid ` / ` ```calendar ` 三种交互块，以及画廊视图 | `references/blocks-and-views.md` |
 | 两者 | 附件工作原理、该不该读某个附件怎么判断、PDF/EPUB 的边界 | `references/attachments.md` |
 | 仅 memogit | `memogit status/pull/push`、冲突 `.remote`、检出布局、排障 | `references/memogit.md` |
 | 仅 MCP | MCP 工具集、寻址方式、全量覆写语义、并发风险 | `references/mcp.md` |

@@ -1,7 +1,7 @@
 import { createContext, type ReactNode, useContext } from "react";
 
 /**
- * Lets a surface swap selected special code blocks (```kanban, ```sheets, …) for
+ * Lets a surface swap selected special code blocks (```kanban, ```calendar, …) for
  * a placeholder instead of rendering them. The mobile reader uses it for blocks a
  * phone cannot usefully show (docs/dev/requirements/mobile-reader.md §7).
  *

@@ -32,7 +32,7 @@ function renderCodeProps(md: string): Record<string, unknown> {
 }
 
 describe("code fence fold token → data-fold", () => {
-  // Same chain as remark-sheets-id: the fence's raw `meta` lives on the mdast
+  // The fence's raw `meta` lives on the mdast
   // node's `data`, which rehype-raw strips. The token only reaches CodeBlock
   // because the plugin promotes it to a real attribute AND SANITIZE_SCHEMA
   // whitelists it (as the camelCased hast properties `dataFold`/`dataFoldTitle`).

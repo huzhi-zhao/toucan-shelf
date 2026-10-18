@@ -1,7 +1,7 @@
 # 定制化 Markdown 语法
 
 这些是 `.md` 文件里会出现、但**标准 Markdown 渲染器不认识**的东西。读、写、搜索文档时
-都必须认得它们。（交互式围栏块 kanban / sheets / grid / calendar 见
+都必须认得它们。（交互式围栏块 kanban / grid / calendar 见
 `blocks-and-views.md`。）
 
 **你自己写文档时，默认只用基本 Markdown**：标题、列表、加粗、代码块、表格、引用。
@@ -56,7 +56,7 @@ reviewed: false
 
 要强调就用**加粗**、列表层级，或者干脆把句子重写清楚。
 
-> **交互围栏块不在这条禁令里。** ` ```kanban ` / ` ```grid ` / ` ```sheets ` /
+> **交互围栏块不在这条禁令里。** ` ```kanban ` / ` ```grid ` /
 > ` ```calendar ` 和 `.view.json` 画廊视图是结构化数据，不是排版装饰：用户明确要求时
 > 你可以写和改（但同样不主动发起），规则见 `blocks-and-views.md`。
 

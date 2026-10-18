@@ -1,11 +1,11 @@
 # View Blocks — Complete Demo
 
 A single copy‑paste playground exercising **every** documented syntax feature and
-edge case of the four view blocks: `calendar`, `kanban`, `grid`, and `sheets`.
+edge case of the three view blocks: `calendar`, `kanban`, and `grid`.
 Each section first shows a full‑coverage example, then a few deliberately tricky
 / degenerate cases so you can see how the parser behaves at the edges.
 
-> Interactions (drag, checkbox toggle, add task, cell editing) only work when you
+> Interactions (drag, checkbox toggle, add task) only work when you
 > open **your own** document in an editable context. In the Explore feed or
 > someone else's doc these render read‑only.
 
@@ -238,7 +238,7 @@ style: longbar
 - title: Yuque 式层级知识库
   subtitle: 目录树 + 富文档
 - title: Notion 式视图
-  subtitle: calendar / kanban / grid / sheets
+  subtitle: calendar / kanban / grid
 - title: cover 在 longbar 下被忽略
   subtitle: 只显示标题 + 副标题
   cover: https://picsum.photos/seed/ignored/400/300
@@ -259,77 +259,6 @@ columns: 2
 
 ---
 
-## 4. Sheets
-
-Syntax (`web/src/components/MemoContent/sheets/parseSheetsBlock.ts`). CSV‑based.
-
-- `sheet:<name>` starts a named tab (multiple → multiple tabs; no marker → one
-  unnamed sheet).
-- CSV rows parsed with papaparse; first row is the header. A cell starting with
-  `=` is a **formula**.
-- `view:` section: `lock: true|false`. Height is set by dragging the grid's
-  bottom handle and is persisted per block (node overlays), not in the source.
-
-**Formulas that work:** built‑ins `SUM AVERAGE MAX MIN IF AND OR CONCAT`, plus
-fallbacks `PRODUCT DIVIDE SUBTRACT COUNT COUNTA ABS INT SQRT ROUND LEN` …, and
-plain arithmetic on individual cells (`=B2*C2+B3*C3`). **Range/array math does
-NOT work** (`=SUMPRODUCT(...)`, `=SUM(B2:B3*C2:C3)`); unknown functions →
-`#N/A` (safe, no crash).
-
-### 4.1 Full coverage — multiple sheets + formulas
-
-```sheets
-sheet:销售数据
-name,price,qty,subtotal
-苹果,3.5,10,=B2*C2
-香蕉,2.1,20,=B3*C3
-橙子,4.0,15,=B4*C4
-,,,合计,=SUM(D2:D4)
-,,,均价,=AVERAGE(B2:B4)
-,,,最高价,=MAX(B2:B4)
-,,,笔数,=COUNT(B2:B4)
-
-sheet:公式演示
-表达式,结果
-逐格相乘再求和,=B2*1
-SUM,=SUM(1,2,3)
-IF 判断,=IF(1>0,"正","负")
-CONCAT,=CONCAT("Hello"," ","World")
-ROUND,=ROUND(3.14159,2)
-SQRT,=SQRT(16)
-LEN,=LEN("memos")
-未支持函数(→#N/A),=VLOOKUP(1,A1,1)
-
-view:
-  lock: false
-```
-
-### 4.2 Range arithmetic pitfall (documented as NOT working)
-
-Use explicit expansion `=B2*C2+B3*C3` instead of `SUMPRODUCT`:
-
-```sheets
-sheet:陷阱演示
-price,qty
-3.5,10
-2.1,20
-正确总价(展开),=A2*B2+A3*B3
-错误示范(SUMPRODUCT),=SUMPRODUCT(A2:A3,B2:B3)
-```
-
-### 4.3 Single unnamed sheet, locked & read‑only
-
-```sheets
-项目,状态,负责人
-知识库,进行中,赵华
-视图系统,已完成,团队
-
-view:
-  lock: true
-```
-
----
-
 ## Quick reference
 
 | Block | Trigger fence | Body format | Write‑back | Key limits |
@@ -337,4 +266,3 @@ view:
 | Calendar | ` ```calendar ` | `- DATE` + `- [ ] item` lines | checkbox toggle, add items | dates must be `YYYY-MM-DD` |
 | Kanban | ` ```kanban ` | YAML (`items`/`view`/`statusOrder`) | checkbox, drag, add task | drag/add only when `groupBy: status` |
 | Grid | ` ```grid ` | `key: value` config + `- title:` cards | none (display only) | cover = attachment/URL; `columns` 1–8 |
-| Sheets | ` ```sheets ` | `sheet:` + CSV + `view:` | cell edits (debounced) | 8 built‑in fns + fallbacks; no range math |

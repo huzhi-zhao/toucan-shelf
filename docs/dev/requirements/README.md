@@ -18,7 +18,7 @@
 |---|---|---|
 | [knowledge-base/](knowledge-base/) | 层级目录、workspace、知识库详情页与书架、文档版本历史、子文档、References 外链、文档图标 | 6（另有 1 篇同域文档暂平铺根下，见下） |
 | [views/](views/) | html/pdf/view 三类渲染型文档、gallery view | 2 |
-| [editor/](editor/) | calendar 块、sheets 块、secret 加密块、受限密钥块、受限内联样式渲染、draw.io 图、粘贴 HTML 转 Markdown | 7 |
+| [editor/](editor/) | calendar 块、sheets 块（已移除）、secret 加密块、受限密钥块、受限内联样式渲染、draw.io 图、粘贴 HTML 转 Markdown | 7 |
 | [attachments/](attachments/) | 上传与媒体内联、访问控制与私密附件 | 2 |
 | [collaboration/](collaboration/) | memogit 同步、memogit 文档身份、memogit 分发与版本、MCP 协作写作、团队成员与知识库授权、agent 操作手册统一、agent 读附件 | 7 |
 | [storage/](storage/) | 数据源、持久化边界、容量与迁移承诺、全站备份、附件对象迁移 | 3 |
@@ -59,7 +59,7 @@
 ### editor/
 
 - [calendar-block.md](editor/calendar-block.md) —— calendar 交互块
-- [sheets-block.md](editor/sheets-block.md) —— sheets 交互块
+- [sheets-block.md](editor/sheets-block.md) —— sheets 交互块（已移除，表格需求改用 Google Sheets）
 - [secret-block.md](editor/secret-block.md) —— 加密块
 - [restricted-secret-block.md](editor/restricted-secret-block.md)
   —— 受限密钥块：服务端时间闸门、延迟解锁与紧急通道、防复制显示

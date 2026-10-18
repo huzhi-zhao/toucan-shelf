@@ -169,7 +169,6 @@ export const COPY = {
   },
   blocks: {
     kanban: "看板",
-    sheets: "表格",
     calendar: "日历",
     grid: "卡片网格",
     secret: "加密内容",

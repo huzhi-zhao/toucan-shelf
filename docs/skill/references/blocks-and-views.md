@@ -3,7 +3,7 @@
 两类东西：
 
 - **交互式围栏块**——嵌在 Markdown 文档**内部**：` ```calendar ` / ` ```kanban ` /
-  ` ```grid ` / ` ```sheets `。
+  ` ```grid `。
 - **VIEW 文档**——第 4 种 doc_type，整篇文档就是一份画廊配置（`*.view.json`）。
 
 围栏块走同一套机制：代码块渲染器按**围栏语言**派发到专用组件。
@@ -12,12 +12,16 @@
 > ⚠️ **不主动发起，只在用户明确要求时写。（看板和GridView除外，这两者可根据需要使用）** 这些块是结构化数据（不是排版装饰，
 > 所以不受 `markdown-syntax.md` §2 那条"装饰语法一概不写"的限制）：用户说"做个看板"
 > "把这些排成画廊"时，你按下面的规则写或改；但**不要自己决定**把一篇普通文档改造成
-> Calendar/Sheets/.view.json，这三者只适用于特殊场景不适合AI使用除非有用户授权。
+> Calendar/.view.json，这两者只适用于特殊场景不适合AI使用除非有用户授权。
+
+> **没有表格块。** 用户要表格时，简单的用普通 Markdown 表格；需要公式、多 sheet、
+> 频繁编辑的，放进 Google Sheets，在文档的 References 里挂外链（见
+> `hierarchy-and-doc-types.md`）。旧的 ` ```sheets ` 块已移除，遇到时原样保留、别改。
 
 所有块都**优雅降级**：畸形输入渲染成空状态或原始源码，不会破坏整篇文档；
 剩余异常被 ErrorBoundary 兜在块内。
 
-> ⚠️ **写回契约（对你最重要的一条）**：calendar / kanban / sheets 在 app 里被用户
+> ⚠️ **写回契约（对你最重要的一条）**：calendar / kanban 在 app 里被用户
 > 直接操作时会**重写围栏内的内容并保存文档**。所以你手编这些块时**别依赖精巧的手工对齐**——
 > 第一次写回就会被规范化掉。注释和键顺序会保留，缩进和引号风格不保留。
 
@@ -82,45 +86,7 @@ statusOrder: ['需求', '开发', '测试', '发布']
 
 ---
 
-## 2. ` ```sheets `
-
-基于 CSV 的交互式表格（canvas 网格），支持公式和防抖写回（约 600ms）。
-
-````markdown
-```sheets
-sheet:销售数据
-name,price,qty
-苹果,3.5,10
-香蕉,2.1,20
-,,,总价,=B2*C2+B3*C3
-
-view:
-  lock: false
-```
-````
-
-- **`sheet:<名字>`** 开启一个命名 tab；多个 marker = 多个 tab；没有 marker = 一张无名表。
-- **CSV 行**用 papaparse 解析，第一行是表头。以 `=` 开头的单元格是**公式**。
-- **`view:`** 目前只有 `lock: true|false`。视口高度**不写在这里**——用户拖动网格底部
-  手柄调整的高度存在 memo 的 node overlays 里（与单元格样式一起），不进正文。
-
-### 公式：什么能用，什么不能用
-
-网格引擎只内置 **8 个函数**：`SUM AVERAGE MAX MIN IF AND OR CONCAT`。
-项目额外注册了一批兜底实现：`PRODUCT DIVIDE SUBTRACT COUNT COUNTA ABS INT SQRT
-ROUND LEN` 等。既非内置又未实现的（`VLOOKUP` / `SUMPRODUCT` / `COUNTIF`）
-回落成安全的 `#N/A`，不会抛异常。
-
-**不支持区间/数组运算。** 引擎把 `A1:A3` 展平成参数列表，没有逐元素数学，所以
-`=SUM(B2:B3*C2:C3)` 和 `=SUMPRODUCT(B2:B3,C2:C3)` **算不出**逐行的 price × qty。
-**必须展开成对单元格的普通算术**：`=B2*C2+B3*C3`。你替用户写公式时守住这条。
-
-> 主题限制：网格画在 `<canvas>` 上、引擎硬编码浅色且无运行时主题 API，
-> 所以这个块在暗色模式下刻意固定为浅色卡片。这是引擎限制，不是 bug，别去"修"。
-
----
-
-## 3. ` ```grid `
+## 2. ` ```grid `
 
 响应式封面卡片墙（或两行文字条）。**纯展示，没有写回。**
 
@@ -147,7 +113,7 @@ columns: 3
 
 ---
 
-## 4. ` ```calendar `
+## 3. ` ```calendar `
 
 月历网格 + 每日详情面板，由带日期的清单行驱动。
 
@@ -187,7 +153,7 @@ allowMaxUpdateDays: 30
 
 ---
 
-## 5. VIEW 文档（`*.view.json`）
+## 4. VIEW 文档（`*.view.json`）
 
 第 4 种 doc_type。`content` **只是一段结构化 JSON 配置**（视图类型 + scope + 排序/封面/
 卡片规则）加可选的 Markdown 前言。它**从不存储渲染后的 HTML**，每次打开都从当前数据
