@@ -5,8 +5,8 @@ import { COPY } from "../copy";
 import { MOBILE_ROUTES } from "../routes";
 
 const TABS = [
-  { path: MOBILE_ROUTES.SHELF, label: COPY.tabs.shelf, Icon: LibraryBigIcon },
   { path: MOBILE_ROUTES.PLAN, label: COPY.tabs.plan, Icon: CalendarCheckIcon },
+  { path: MOBILE_ROUTES.SHELF, label: COPY.tabs.shelf, Icon: LibraryBigIcon },
   { path: MOBILE_ROUTES.SEARCH, label: COPY.tabs.search, Icon: SearchIcon },
   { path: MOBILE_ROUTES.ME, label: COPY.tabs.me, Icon: UserRoundIcon },
 ];

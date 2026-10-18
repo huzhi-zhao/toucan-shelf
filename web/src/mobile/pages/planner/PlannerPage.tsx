@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import { Link, List, ListItem, Navbar, Page, Segmented, SegmentedButton, Sheet, Toast } from "konsta/react";
 import { PlusIcon, Settings2Icon } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarMonthGrid } from "@/components/MemoContent/calendar/CalendarMonthGrid";
 import { defaultVisibleMonth, type VisibleMonth } from "@/components/MemoContent/calendar/defaultVisibleMonth";
 import { getEventColorByName } from "@/components/MemoContent/calendar/eventColors";
@@ -33,7 +33,10 @@ import {
   PLANNER_MAX_UPDATE_DAYS_DEFAULT,
   PLANNER_MAX_UPDATE_DAYS_KEY,
   PLANNER_WEEK_START_KEY,
+  readCalendarView,
+  saveCalendarView,
   todosForDay,
+  todosNotShown,
 } from "../../lib/planner";
 import { usePref } from "../../lib/storage";
 import { MOBILE_ROUTES, todoRoute } from "../../routes";
@@ -56,18 +59,20 @@ export default function PlannerPage() {
   const [defaultWeekStart] = usePref(PLANNER_WEEK_START_KEY, 0);
   const [maxUpdateDays] = usePref(PLANNER_MAX_UPDATE_DAYS_KEY, PLANNER_MAX_UPDATE_DAYS_DEFAULT);
   const resolvedDefault = defaultWeekStart || weekStartFromOffset(generalSetting.weekStartDayOffset);
+  // Coming back from a todo's page keeps the day, month and week start the calendar was left on.
+  const [saved] = useState(() => readCalendarView(today));
   // The view toggle under the calendar overrides the default for this visit only.
-  const [weekStartOverride, setWeekStartOverride] = useState<number>();
+  const [weekStartOverride, setWeekStartOverride] = useState<number | undefined>(saved?.weekStartOverride);
   const weekStart = weekStartOverride ?? resolvedDefault;
 
-  const [month, setMonth] = useState<VisibleMonth>(() => defaultVisibleMonth());
-  const [selectedDate, setSelectedDate] = useState(today);
+  const [month, setMonth] = useState<VisibleMonth>(() => saved?.month ?? defaultVisibleMonth());
+  const [selectedDate, setSelectedDate] = useState(() => saved?.selectedDate ?? today);
+  useEffect(() => saveCalendarView({ month, selectedDate, weekStartOverride }, today), [month, selectedDate, weekStartOverride, today]);
   const range = monthRange(month);
   const { data: habits = [] } = useHabits();
   const { data: entries } = usePlannerEntries(range.startDate, range.endDate);
   const { data: openTodos = [] } = useOpenTodos();
   const calendar = useMemo(() => buildCalendarData(habits, entries), [habits, entries]);
-  const groups = useMemo(() => groupOpenTodos(openTodos, today), [openTodos, today]);
 
   const setCheckIn = useSetCheckIn();
   const createTodo = useCreateTodo();
@@ -82,8 +87,15 @@ export default function PlannerPage() {
   };
 
   const editable = isDateEditable(selectedDate, today, maxUpdateDays);
+  // A check-in records what has happened: none for a day still ahead (todos and notes are fine).
+  const isFuture = selectedDate > today;
+  const canCheckIn = editable && !isFuture;
   const checkInsOfDay = new Map((entries?.checkIns ?? []).filter((c) => c.date === selectedDate).map((c) => [c.habit, c]));
   const todosOfDay = todosForDay(selectedDate, today, entries?.todos ?? [], openTodos);
+  // The list below the calendar skips what the selected day shows: with today selected, today's and the
+  // overdue todos are already listed right above.
+  const listedTodos = todosNotShown(openTodos, todosOfDay);
+  const groups = groupOpenTodos(listedTodos, today);
   const notesOfDay = (entries?.notes ?? []).filter((note) => note.date === selectedDate);
   const activeHabits = habits.filter((habit) => !habit.archived);
 
@@ -108,7 +120,7 @@ export default function PlannerPage() {
   // chip row must not record a check-in), with room for a note; one already checked in edits the note or
   // takes the check-in back.
   const tapHabit = (habit: Habit) => {
-    if (!editable) return;
+    if (!canCheckIn) return;
     setDraft(checkInsOfDay.get(habit.name)?.note ?? "");
     setCheckInSheet({ habit, confirming: !checkInsOfDay.has(habit.name) });
     setCheckInOpen(true);
@@ -242,12 +254,12 @@ export default function PlannerPage() {
               <button
                 key={habit.name}
                 type="button"
-                disabled={!editable}
+                disabled={!canCheckIn}
                 onClick={() => tapHabit(habit)}
                 className={cn(
                   "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[14px] border transition-colors",
                   checkIn ? "text-white border-transparent" : "border-black/15 dark:border-white/20 bg-white dark:bg-[#1c1c1e]",
-                  !editable && "opacity-60",
+                  !canCheckIn && "opacity-60",
                 )}
                 style={checkIn ? { backgroundColor: color } : undefined}
               >
@@ -262,6 +274,7 @@ export default function PlannerPage() {
         <div className="px-4 pb-3 text-[13px] text-black/45 dark:text-white/45">{COPY.planner.noHabits}</div>
       )}
       {!editable && <div className="px-4 pb-2 text-[12px] text-black/40 dark:text-white/40">{COPY.planner.readonlyDay(maxUpdateDays)}</div>}
+      {isFuture && <div className="px-4 pb-2 text-[12px] text-black/40 dark:text-white/40">{COPY.planner.futureCheckIn}</div>}
 
       {dayIsEmpty ? (
         <div className="px-4 py-3 text-[14px] text-black/40 dark:text-white/40">{COPY.planner.dayEmpty}</div>
@@ -289,10 +302,12 @@ export default function PlannerPage() {
 
       <SectionTitle className="mt-8">
         {COPY.planner.todoList}
-        <span className="ml-2 text-[15px] font-normal text-black/40 dark:text-white/40">{openTodos.length}</span>
+        <span className="ml-2 text-[15px] font-normal text-black/40 dark:text-white/40">{listedTodos.length}</span>
       </SectionTitle>
-      {openTodos.length === 0 ? (
-        <div className="px-4 py-3 text-[14px] text-black/40 dark:text-white/40">{COPY.planner.allClear}</div>
+      {listedTodos.length === 0 ? (
+        <div className="px-4 py-3 text-[14px] text-black/40 dark:text-white/40">
+          {openTodos.length === 0 ? COPY.planner.allClear : COPY.planner.allShownAbove}
+        </div>
       ) : (
         listSections
           .filter((section) => section.todos.length > 0)
