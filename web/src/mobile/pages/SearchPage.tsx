@@ -174,28 +174,26 @@ export default function SearchPage() {
             <div className="text-center text-black/40 dark:text-white/40 py-10">{COPY.search.kbTodosEmpty}</div>
           ) : (
             <>
-              <List strongIos insetIos dividersIos className="!my-0">
-                {todoGroups.map((group) => (
-                  <ListItem
-                    key={group.workspace}
-                    link
-                    title={group.title}
-                    after={`${group.todos.length}`}
-                    text={
-                      <ul className="mt-0.5 space-y-0.5 whitespace-normal">
-                        {group.todos.map((todo, i) => (
-                          <li key={i} className="flex gap-2 leading-snug">
-                            <span className="mt-[3px] h-3.5 w-3.5 shrink-0 rounded-full border border-current opacity-50" />
-                            <span>{todo}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    }
-                    onClick={() => go(docRoute(group.memo))}
-                  />
-                ))}
-              </List>
-              <p className="px-8 mt-2 text-[13px] leading-snug text-black/45 dark:text-white/45">{COPY.search.kbTodosHint}</p>
+              {/* One block per knowledge base, every todo on its own row and in full; any row opens the TODO. */}
+              {todoGroups.map((group) => (
+                <div key={group.workspace} className="mb-5">
+                  <div className="px-8 pb-1.5 text-[13px] text-black/45 dark:text-white/45">{group.title}</div>
+                  <List strongIos insetIos dividersIos className="!my-0">
+                    {group.todos.map((todo, i) => (
+                      <ListItem
+                        key={i}
+                        link
+                        chevron={false}
+                        mediaClassName="self-start !pt-[16px] !pb-0"
+                        media={<span className="h-[18px] w-[18px] rounded-full border-[1.5px] border-black/25 dark:border-white/30" />}
+                        title={<span className="block py-0.5 leading-snug">{todo}</span>}
+                        onClick={() => go(docRoute(group.memo))}
+                      />
+                    ))}
+                  </List>
+                </div>
+              ))}
+              <p className="px-8 text-[13px] leading-snug text-black/45 dark:text-white/45">{COPY.search.kbTodosHint}</p>
             </>
           )}
         </>
