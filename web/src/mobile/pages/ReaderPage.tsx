@@ -19,6 +19,7 @@ import { type Memo, Memo_DocType } from "@/types/proto/api/v1/memo_service_pb";
 import { getAttachmentUrl } from "@/utils/attachment";
 import { splitChildMemos } from "@/utils/subDoc";
 import { parseUrlReferences } from "@/utils/urlReferences";
+import BackCapsule from "../components/BackCapsule";
 import BlockPlaceholderCard from "../components/BlockPlaceholderCard";
 import DocGlyph from "../components/DocGlyph";
 import SectionTitle from "../components/SectionTitle";
@@ -273,7 +274,8 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
         title={scrolled ? memo.title : ""}
         centerTitle
         titleClassName="max-w-[52vw] truncate"
-        left={<NavbarBackLink text={backText} showText onClick={onBack} />}
+        // Opened from the shelf, back already goes there.
+        left={<BackCapsule text={backText} onBack={onBack} shelf={backText !== COPY.shelf.title} />}
         right={
           // Konsta's icon links are squares as tall as their container. Filling the glass capsule's height makes
           // each one a 44pt target with its icon centred, so the capsule has even room on both ends.

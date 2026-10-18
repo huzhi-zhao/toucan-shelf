@@ -7,6 +7,7 @@ export const COPY = {
   appName: "ToucanShelf",
   tagline: "随时随地翻阅你的知识库",
   tabs: { shelf: "书架", plan: "计划", search: "搜索", me: "我的" },
+  nav: { toShelf: "回到书架" },
   login: {
     username: "用户名",
     password: "密码",
