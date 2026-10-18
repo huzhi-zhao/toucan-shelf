@@ -30,6 +30,7 @@ const (
 	PlannerService_GetTodo_FullMethodName            = "/memos.api.v1.PlannerService/GetTodo"
 	PlannerService_CreateTodo_FullMethodName         = "/memos.api.v1.PlannerService/CreateTodo"
 	PlannerService_UpdateTodo_FullMethodName         = "/memos.api.v1.PlannerService/UpdateTodo"
+	PlannerService_PostponeTodo_FullMethodName       = "/memos.api.v1.PlannerService/PostponeTodo"
 	PlannerService_DeleteTodo_FullMethodName         = "/memos.api.v1.PlannerService/DeleteTodo"
 	PlannerService_CreatePlannerNote_FullMethodName  = "/memos.api.v1.PlannerService/CreatePlannerNote"
 	PlannerService_UpdatePlannerNote_FullMethodName  = "/memos.api.v1.PlannerService/UpdatePlannerNote"
@@ -78,6 +79,10 @@ type PlannerServiceClient interface {
 	// already overdue (which needs local_date); cancelling needs a cancel_reason;
 	// reopening clears all three.
 	UpdateTodo(ctx context.Context, in *UpdateTodoRequest, opts ...grpc.CallOption) (*Todo, error)
+	// PostponeTodo moves an active, dated todo to a later date. Unlike changing
+	// the date through UpdateTodo (which corrects it), this keeps the original
+	// date and counts the postponement.
+	PostponeTodo(ctx context.Context, in *PostponeTodoRequest, opts ...grpc.CallOption) (*Todo, error)
 	// DeleteTodo deletes a todo.
 	DeleteTodo(ctx context.Context, in *DeleteTodoRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// CreatePlannerNote adds a note to a day.
@@ -200,6 +205,16 @@ func (c *plannerServiceClient) UpdateTodo(ctx context.Context, in *UpdateTodoReq
 	return out, nil
 }
 
+func (c *plannerServiceClient) PostponeTodo(ctx context.Context, in *PostponeTodoRequest, opts ...grpc.CallOption) (*Todo, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Todo)
+	err := c.cc.Invoke(ctx, PlannerService_PostponeTodo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *plannerServiceClient) DeleteTodo(ctx context.Context, in *DeleteTodoRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -291,6 +306,10 @@ type PlannerServiceServer interface {
 	// already overdue (which needs local_date); cancelling needs a cancel_reason;
 	// reopening clears all three.
 	UpdateTodo(context.Context, *UpdateTodoRequest) (*Todo, error)
+	// PostponeTodo moves an active, dated todo to a later date. Unlike changing
+	// the date through UpdateTodo (which corrects it), this keeps the original
+	// date and counts the postponement.
+	PostponeTodo(context.Context, *PostponeTodoRequest) (*Todo, error)
 	// DeleteTodo deletes a todo.
 	DeleteTodo(context.Context, *DeleteTodoRequest) (*emptypb.Empty, error)
 	// CreatePlannerNote adds a note to a day.
@@ -342,6 +361,9 @@ func (UnimplementedPlannerServiceServer) CreateTodo(context.Context, *CreateTodo
 }
 func (UnimplementedPlannerServiceServer) UpdateTodo(context.Context, *UpdateTodoRequest) (*Todo, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateTodo not implemented")
+}
+func (UnimplementedPlannerServiceServer) PostponeTodo(context.Context, *PostponeTodoRequest) (*Todo, error) {
+	return nil, status.Error(codes.Unimplemented, "method PostponeTodo not implemented")
 }
 func (UnimplementedPlannerServiceServer) DeleteTodo(context.Context, *DeleteTodoRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteTodo not implemented")
@@ -559,6 +581,24 @@ func _PlannerService_UpdateTodo_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PlannerService_PostponeTodo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PostponeTodoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlannerServiceServer).PostponeTodo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlannerService_PostponeTodo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlannerServiceServer).PostponeTodo(ctx, req.(*PostponeTodoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PlannerService_DeleteTodo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeleteTodoRequest)
 	if err := dec(in); err != nil {
@@ -695,6 +735,10 @@ var PlannerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateTodo",
 			Handler:    _PlannerService_UpdateTodo_Handler,
+		},
+		{
+			MethodName: "PostponeTodo",
+			Handler:    _PlannerService_PostponeTodo_Handler,
 		},
 		{
 			MethodName: "DeleteTodo",

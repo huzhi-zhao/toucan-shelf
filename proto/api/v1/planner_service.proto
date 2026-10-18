@@ -100,6 +100,17 @@ service PlannerService {
     option (google.api.method_signature) = "todo,update_mask";
   }
 
+  // PostponeTodo moves an active, dated todo to a later date. Unlike changing
+  // the date through UpdateTodo (which corrects it), this keeps the original
+  // date and counts the postponement.
+  rpc PostponeTodo(PostponeTodoRequest) returns (Todo) {
+    option (google.api.http) = {
+      post: "/api/v1/{name=planner/todos/*}:postpone"
+      body: "*"
+    };
+    option (google.api.method_signature) = "name,date";
+  }
+
   // DeleteTodo deletes a todo.
   rpc DeleteTodo(DeleteTodoRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {delete: "/api/v1/{name=planner/todos/*}"};
@@ -232,6 +243,13 @@ message Todo {
   google.protobuf.Timestamp create_time = 13 [(google.api.field_behavior) = OUTPUT_ONLY];
 
   google.protobuf.Timestamp update_time = 14 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // The date before the todo's first postponement, or empty if it was never
+  // postponed. Set by PostponeTodo.
+  string original_date = 15 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // How many times the todo has been postponed. Set by PostponeTodo.
+  int32 postpone_count = 16 [(google.api.field_behavior) = OUTPUT_ONLY];
 }
 
 // PlannerNote is a plain record of what happened on a day.
@@ -326,6 +344,18 @@ message UpdateTodoRequest {
   // The caller's local date, YYYY-MM-DD. Required when closing a todo: whether
   // it was closed overdue depends on the user's day, not the server's.
   string local_date = 3 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message PostponeTodoRequest {
+  // Format: planner/todos/{todo}
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // The new date, YYYY-MM-DD. Must differ from the current one and not be
+  // before local_date.
+  string date = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The caller's local date, YYYY-MM-DD.
+  string local_date = 3 [(google.api.field_behavior) = REQUIRED];
 }
 
 message DeleteTodoRequest {

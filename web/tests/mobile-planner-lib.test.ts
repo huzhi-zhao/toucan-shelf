@@ -9,6 +9,7 @@ import {
   isOverdue,
   localToday,
   monthRange,
+  postponeChoices,
   todosForDay,
 } from "@/mobile/lib/planner";
 import { todoNameFromUid, todoRoute } from "@/mobile/routes";
@@ -39,6 +40,18 @@ describe("dates", () => {
     expect(isOverdue(todo("a", "2026-10-17"), "2026-10-17")).toBe(false);
     expect(isOverdue(todo("a", ""), "2026-10-17")).toBe(false);
     expect(isOverdue(todo("a", "2026-10-16", Todo_Status.DONE), "2026-10-17")).toBe(false);
+  });
+
+  it("offers tomorrow, the day after and next Monday to postpone to", () => {
+    // 2026-10-17 is a Saturday.
+    expect(postponeChoices("2026-10-17", "2026-10-15")).toEqual([
+      { choice: "tomorrow", date: "2026-10-18" },
+      { choice: "dayAfterTomorrow", date: "2026-10-19" },
+    ]);
+    // A Wednesday: next Monday is five days on; the todo's own date is left out.
+    expect(postponeChoices("2026-10-14", "2026-10-15").map((c) => c.choice)).toEqual(["dayAfterTomorrow", "nextMonday"]);
+    // On a Monday, next Monday is a week away.
+    expect(postponeChoices("2026-10-19", "2026-10-19").at(-1)).toEqual({ choice: "nextMonday", date: "2026-10-26" });
   });
 
   it("keeps old days read-only past the limit, and none with 0", () => {

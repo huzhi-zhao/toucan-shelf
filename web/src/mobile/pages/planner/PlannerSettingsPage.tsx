@@ -5,6 +5,7 @@ import { useCreateHabit, useHabits, useUpdateHabit } from "@/hooks/usePlannerQue
 import type { Habit } from "@/types/proto/api/v1/planner_service_pb";
 import SectionTitle from "../../components/SectionTitle";
 import { COPY } from "../../copy";
+import { useBlurOnClose } from "../../lib/keyboard";
 import { useBack, useBackLabel, useGo } from "../../lib/nav";
 import { PLANNER_MAX_UPDATE_DAYS_DEFAULT, PLANNER_MAX_UPDATE_DAYS_KEY, PLANNER_WEEK_START_KEY } from "../../lib/planner";
 import { usePref } from "../../lib/storage";
@@ -39,6 +40,7 @@ export default function PlannerSettingsPage() {
   // The habit sheet edits one habit, or creates one when `editing` is null.
   const [editing, setEditing] = useState<Habit | null>();
   const [draft, setDraft] = useState("");
+  useBlurOnClose(editing !== undefined);
   const [toast, setToast] = useState("");
   const fail = () => {
     setToast(COPY.planner.failed);

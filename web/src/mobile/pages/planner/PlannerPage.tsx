@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import { Link, List, ListItem, Navbar, Page, Segmented, SegmentedButton, Sheet, Toast } from "konsta/react";
 import { PlusIcon, Settings2Icon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { CalendarMonthGrid } from "@/components/MemoContent/calendar/CalendarMonthGrid";
 import { defaultVisibleMonth, type VisibleMonth } from "@/components/MemoContent/calendar/defaultVisibleMonth";
 import { getEventColorByName } from "@/components/MemoContent/calendar/eventColors";
@@ -22,6 +22,7 @@ import { type Habit, type PlannerNote, type Todo, Todo_Status } from "@/types/pr
 import TodoRow from "../../components/planner/TodoRow";
 import SectionTitle from "../../components/SectionTitle";
 import { COPY } from "../../copy";
+import { useBlurOnClose } from "../../lib/keyboard";
 import { useGo, usePageScroll } from "../../lib/nav";
 import {
   buildCalendarData,
@@ -91,6 +92,8 @@ export default function PlannerPage() {
   const [draft, setDraft] = useState("");
   const [checkInTarget, setCheckInTarget] = useState<Habit>();
   const [noteTarget, setNoteTarget] = useState<PlannerNote>();
+  const addInputRef = useRef<HTMLTextAreaElement>(null);
+  useBlurOnClose(addKind !== undefined || checkInTarget !== undefined || noteTarget !== undefined);
 
   const toggleTodo = (todo: Todo) => {
     const status = todo.status === Todo_Status.DONE ? Todo_Status.ACTIVE : Todo_Status.DONE;
@@ -111,6 +114,10 @@ export default function PlannerPage() {
   const openAdd = (kind: AddKind) => {
     setDraft("");
     setAddKind(kind);
+    // Focus now, inside the tap, so iOS opens the keyboard. Not `autoFocus`: the sheet is mounted while
+    // closed, so that would focus a hidden field on page load and iOS would show its keyboard on every
+    // return to the app.
+    addInputRef.current?.focus({ preventScroll: true });
   };
 
   const saveAdd = async () => {
@@ -317,7 +324,7 @@ export default function PlannerPage() {
           )}
           <div className="text-[13px] text-black/45 dark:text-white/45 mb-1.5">{dayTitle}</div>
           <textarea
-            autoFocus
+            ref={addInputRef}
             rows={4}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}

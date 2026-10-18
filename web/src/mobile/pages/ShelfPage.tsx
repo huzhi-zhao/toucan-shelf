@@ -66,7 +66,7 @@ export default function ShelfPage() {
       ) : workspaces.length === 0 ? (
         <div className="text-center text-black/40 dark:text-white/40 py-16">{COPY.shelf.empty}</div>
       ) : view === "cover" ? (
-        <div className="grid grid-cols-2 gap-3 px-4">
+        <div className="grid grid-cols-3 gap-x-3 gap-y-4 px-4">
           {workspaces.map((workspace) => (
             <WorkspaceCover key={workspace.name} workspace={workspace} onClick={() => go(folderRoute(workspace.name))} />
           ))}

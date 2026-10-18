@@ -154,6 +154,50 @@ func TestPlannerTodoStatusRules(t *testing.T) {
 		require.NoError(t, err)
 		require.Empty(t, open.Todos[len(open.Todos)-1].Date)
 	})
+
+	t.Run("postponing keeps the original date and counts", func(t *testing.T) {
+		todo := newTodo("2026-10-15")
+		postpone := func(date string) (*v1pb.Todo, error) {
+			return ts.Service.PostponeTodo(userCtx, &v1pb.PostponeTodoRequest{Name: todo.Name, Date: date, LocalDate: "2026-10-17"})
+		}
+
+		_, err := postpone("2026-10-16")
+		requireCode(t, err, codes.InvalidArgument) // before today
+		_, err = postpone("")
+		requireCode(t, err, codes.InvalidArgument)
+
+		moved, err := postpone("2026-10-18")
+		require.NoError(t, err)
+		require.Equal(t, "2026-10-18", moved.Date)
+		require.Equal(t, "2026-10-15", moved.OriginalDate)
+		require.Equal(t, int32(1), moved.PostponeCount)
+
+		_, err = postpone("2026-10-18")
+		requireCode(t, err, codes.InvalidArgument) // same date
+
+		moved, err = postpone("2026-10-20")
+		require.NoError(t, err)
+		require.Equal(t, "2026-10-15", moved.OriginalDate, "the first date is kept")
+		require.Equal(t, int32(2), moved.PostponeCount)
+
+		// Correcting the date is not a postponement.
+		fixed, err := ts.Service.UpdateTodo(userCtx, &v1pb.UpdateTodoRequest{
+			Todo: &v1pb.Todo{Name: todo.Name, Date: "2026-10-21"}, UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"date"}},
+		})
+		require.NoError(t, err)
+		require.Equal(t, int32(2), fixed.PostponeCount)
+
+		undated := newTodo("")
+		_, err = ts.Service.PostponeTodo(userCtx, &v1pb.PostponeTodoRequest{Name: undated.Name, Date: "2026-10-20", LocalDate: "2026-10-17"})
+		requireCode(t, err, codes.FailedPrecondition)
+
+		_, err = ts.Service.UpdateTodo(userCtx, &v1pb.UpdateTodoRequest{
+			Todo: &v1pb.Todo{Name: todo.Name, Status: v1pb.Todo_DONE}, UpdateMask: statusMask, LocalDate: "2026-10-17",
+		})
+		require.NoError(t, err)
+		_, err = postpone("2026-10-25")
+		requireCode(t, err, codes.FailedPrecondition) // closed
+	})
 }
 
 func TestPlannerTodoFields(t *testing.T) {

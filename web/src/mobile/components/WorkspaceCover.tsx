@@ -20,7 +20,7 @@ interface Props {
  * A knowledge base drawn as a hardcover book: coloured cover with a bound spine
  * on the left, page edges showing on the right, the title near the top and the
  * cover image as a square emblem in the middle (about half the cover's
- * width) rather than a full-bleed picture.
+ * width) rather than a full-bleed picture. Sized for three to a row.
  */
 export default function WorkspaceCover({ workspace, onClick }: Props) {
   const color = coverColorOf(workspace);
@@ -28,28 +28,28 @@ export default function WorkspaceCover({ workspace, onClick }: Props) {
     <button
       type="button"
       onClick={onClick}
-      className="relative block w-full aspect-[3/4] text-left active:scale-[0.97] transition-transform duration-150 [filter:drop-shadow(0_6px_10px_rgb(0_0_0/0.18))_drop-shadow(0_1px_2px_rgb(0_0_0/0.2))]"
+      className="relative block w-full aspect-[3/4] text-left active:scale-[0.97] transition-transform duration-150 [filter:drop-shadow(0_4px_7px_rgb(0_0_0/0.18))_drop-shadow(0_1px_2px_rgb(0_0_0/0.2))]"
     >
       {/* Page block peeking out on the right and bottom, behind the cover. */}
       <div
-        className="absolute left-2 right-0 top-1.5 bottom-0 rounded-r-[10px] rounded-bl-[3px] border border-black/10"
+        className="absolute left-1.5 right-0 top-1 bottom-0 rounded-r-[7px] rounded-bl-[2px] border border-black/10"
         style={{ background: "repeating-linear-gradient(90deg, #fbf8f1 0 2px, #e8e2d4 2px 3px)" }}
       />
 
       {/* The cover itself. */}
       <div
-        className="absolute left-0 top-0 right-1.5 bottom-1.5 overflow-hidden rounded-l-[4px] rounded-r-[10px] text-white"
+        className="absolute left-0 top-0 right-1 bottom-1 overflow-hidden rounded-l-[3px] rounded-r-[7px] text-white"
         style={{ background: `linear-gradient(155deg, ${color}, color-mix(in oklab, ${color} 62%, black))` }}
       >
         {/* Spine: a darker binding strip, then the hinge crease. */}
-        <div className="absolute inset-y-0 left-0 w-3.5 bg-gradient-to-r from-black/35 via-black/15 to-black/5" />
-        <div className="absolute inset-y-0 left-3.5 w-px bg-white/20" />
-        <div className="absolute inset-y-0 left-[15px] w-px bg-black/20" />
+        <div className="absolute inset-y-0 left-0 w-2.5 bg-gradient-to-r from-black/35 via-black/15 to-black/5" />
+        <div className="absolute inset-y-0 left-2.5 w-px bg-white/20" />
+        <div className="absolute inset-y-0 left-[11px] w-px bg-black/20" />
         {/* Soft light across the board, brightest at the top. */}
         <div className="absolute inset-0 bg-gradient-to-b from-white/12 via-transparent to-black/10" />
 
-        <div className="relative h-full flex flex-col pl-6 pr-3 pt-3.5 pb-4">
-          <div className="text-[17px] font-bold leading-snug line-clamp-2 break-words [text-shadow:0_1px_2px_rgb(0_0_0/0.35)]">
+        <div className="relative h-full flex flex-col pl-4 pr-2 pt-2.5 pb-3">
+          <div className="text-[13px] font-bold leading-tight line-clamp-3 break-words [text-shadow:0_1px_2px_rgb(0_0_0/0.35)]">
             {workspace.title}
           </div>
           <div className="flex-1 flex items-center justify-center min-h-0">
@@ -57,7 +57,7 @@ export default function WorkspaceCover({ workspace, onClick }: Props) {
             {workspace.coverImage && <img src={workspace.coverImage} alt="" className="w-2/3 aspect-square object-contain" />}
           </div>
           {/* A thin foil rule near the foot, like a hardcover's stamped band. */}
-          <div className="h-px bg-white/30 mx-1" />
+          <div className="h-px bg-white/30 mx-0.5" />
         </div>
       </div>
     </button>
