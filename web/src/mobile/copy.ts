@@ -22,6 +22,16 @@ export const COPY = {
     cover: "封面",
     list: "列表",
     empty: "还没有可以阅读的知识库",
+    favorites: "收藏",
+    allFavorites: (n: number) => `全部 ${n} 篇`,
+  },
+  favorites: {
+    title: "收藏",
+    empty: "还没有收藏。在文档右上角点星标收藏，或者在电脑端编辑页的菜单里收藏。",
+    pin: "钉住",
+    unpin: "取消钉住",
+    pinHint: "钉住的收藏一直排在最前面，也一直显示在书架上。读完了在文档右上角点星标取消收藏。",
+    failed: "操作失败，请稍后再试",
   },
   folder: {
     empty: "这里还没有文档",
@@ -56,6 +66,10 @@ export const COPY = {
     copied: "已复制电脑端链接",
     viewDocument: "视图文档",
     pdfOpen: "打开 PDF",
+    favorite: "收藏",
+    unfavorite: "取消收藏",
+    favorited: "已收藏",
+    unfavorited: "已取消收藏",
   },
   me: {
     title: "我的",

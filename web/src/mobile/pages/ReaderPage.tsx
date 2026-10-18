@@ -1,6 +1,6 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 import { Link, List, ListItem, Navbar, NavbarBackLink, Range, Segmented, SegmentedButton, Sheet, Toast } from "konsta/react";
-import { ALargeSmallIcon, ExternalLinkIcon, ListIcon } from "lucide-react";
+import { ALargeSmallIcon, ExternalLinkIcon, ListIcon, StarIcon } from "lucide-react";
 import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import MemoContent from "@/components/MemoContent";
@@ -11,6 +11,7 @@ import { InlineAttachmentProvider } from "@/components/MemoContent/InlineAttachm
 import { SubDocReferenceProvider } from "@/components/MemoContent/SubDocReferenceContext";
 import { MemoViewContext, type MemoViewContextValue } from "@/components/MemoView/MemoViewContext";
 import { useCrossWorkspaceTrees } from "@/hooks/useCrossWorkspaceTrees";
+import { useFavorites, useToggleFavorite } from "@/hooks/useFavorites";
 import { useMemoComments, useMemo as useMemoQuery } from "@/hooks/useMemoQueries";
 import { useWorkspace, useWorkspaceTree } from "@/hooks/useWorkspaceQueries";
 import { State } from "@/types/proto/api/v1/common_pb";
@@ -118,7 +119,21 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
   const [leading, setLeading] = usePref<ReaderLeading>(READER_LEADING_KEY, "normal");
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [toast, setToast] = useState(false);
+  const [toast, setToast] = useState("");
+  const showToast = useCallback((message: string) => {
+    setToast(message);
+    window.setTimeout(() => setToast(""), 1600);
+  }, []);
+  // The star toggles this document on the reading list (phase 3 §2). It is shown once the list has loaded,
+  // so it never flips from empty to filled under the reader's finger.
+  const { data: favorites } = useFavorites();
+  const toggleFavorite = useToggleFavorite();
+  const isFavorite = favorites?.some((favorite) => favorite.memo === memo.name) ?? false;
+  const onToggleFavorite = () =>
+    toggleFavorite.mutate(
+      { memo: memo.name, favorite: !isFavorite },
+      { onSuccess: () => showToast(isFavorite ? COPY.reader.unfavorited : COPY.reader.favorited) },
+    );
   const [scrolled, setScrolled] = useState(false);
   const [progress, setProgress] = useState(0);
   const [outline, setOutline] = useState<OutlineEntry[]>([]);
@@ -172,9 +187,8 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
 
   const copyDesktopLink = useCallback(() => {
     void navigator.clipboard?.writeText(desktopDocUrl(memo.name)).catch(() => {});
-    setToast(true);
-    window.setTimeout(() => setToast(false), 1600);
-  }, [memo.name]);
+    showToast(COPY.reader.copied);
+  }, [memo.name, showToast]);
 
   const placeholders = useMemo(
     () => ({
@@ -265,6 +279,16 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
             {outline.length > 0 && (
               <Link iconOnly onClick={() => setOutlineOpen(true)} aria-label={COPY.reader.outline}>
                 <ListIcon className="w-6 h-6" />
+              </Link>
+            )}
+            {favorites && (
+              <Link
+                iconOnly
+                onClick={onToggleFavorite}
+                aria-label={isFavorite ? COPY.reader.unfavorite : COPY.reader.favorite}
+                aria-pressed={isFavorite}
+              >
+                <StarIcon className={isFavorite ? "w-6 h-6 text-[#ff9f0a]" : "w-6 h-6"} fill={isFavorite ? "currentColor" : "none"} />
               </Link>
             )}
             <Link iconOnly onClick={() => setSettingsOpen(true)} aria-label={COPY.reader.settings}>
@@ -401,8 +425,8 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
         </button>
       )}
 
-      <Toast position="center" opened={toast}>
-        {COPY.reader.copied}
+      <Toast position="center" opened={toast !== ""}>
+        {toast}
       </Toast>
     </div>
   );

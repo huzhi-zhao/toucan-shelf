@@ -28,6 +28,7 @@ import { docRoute, MOBILE_ROUTES } from "./routes";
 // on first use keeps the shelf, search and sign-in pages light (requirement §8).
 const ReaderPage = lazy(() => import("./pages/ReaderPage"));
 // The planner reuses the calendar block's grid (and the web UI kit it is built with); same reasoning.
+const FavoritesPage = lazy(() => import("./pages/FavoritesPage"));
 const PlannerPage = lazy(() => import("./pages/planner/PlannerPage"));
 const TodoPage = lazy(() => import("./pages/planner/TodoPage"));
 const PlannerSettingsPage = lazy(() => import("./pages/planner/PlannerSettingsPage"));
@@ -106,6 +107,7 @@ const router = createBrowserRouter([
             ],
           },
           { path: "/kb/:uid/*", element: <FolderPage /> },
+          { path: MOBILE_ROUTES.FAVORITES, element: lazyPage(<FavoritesPage />) },
           { path: "/plan/todo/:uid", element: lazyPage(<TodoPage />) },
           { path: MOBILE_ROUTES.PLAN_SETTINGS, element: lazyPage(<PlannerSettingsPage />) },
           { path: MOBILE_ROUTES.PLAN_IMPORT, element: lazyPage(<PlannerImportPage />) },

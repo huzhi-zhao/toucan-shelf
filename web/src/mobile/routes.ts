@@ -10,6 +10,7 @@ import { extractMemoIdFromName } from "@/helpers/resource-names";
 export const MOBILE_ROUTES = {
   HOME: "/",
   SHELF: "/shelf",
+  FAVORITES: "/favorites",
   PLAN: "/plan",
   PLAN_SETTINGS: "/plan/settings",
   PLAN_IMPORT: "/plan/import",

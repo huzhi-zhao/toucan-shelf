@@ -48,6 +48,7 @@ func (s *ConnectServiceHandler) RegisterConnectHandlers(mux *http.ServeMux, opts
 		wrap(apiv1connect.NewSiteServiceHandler(s, opts...)),
 		wrap(apiv1connect.NewPublicSiteServiceHandler(s, opts...)),
 		wrap(apiv1connect.NewPlannerServiceHandler(s, opts...)),
+		wrap(apiv1connect.NewFavoriteServiceHandler(s, opts...)),
 	}
 
 	for _, h := range handlers {
