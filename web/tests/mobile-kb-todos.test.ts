@@ -1,17 +1,17 @@
 import { create } from "@bufbuild/protobuf";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
-import { groupKbTodos } from "@/mobile/lib/kbTodos";
-import { Memo_DocType, MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
+import { groupKbTodos, isRootTodoDoc } from "@/mobile/lib/kbTodos";
+import { MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
 
-const memo = (name: string, workspace: string, content: string, updated: string, extra: Record<string, unknown> = {}) =>
+const memo = (name: string, workspace: string, content: string, extra: Record<string, unknown> = {}) =>
   create(MemoSchema, {
     name,
     workspace,
-    title: name,
+    title: "TODO",
+    folderPath: "",
     content,
-    docType: Memo_DocType.MARKDOWN,
-    updateTime: timestampFromDate(new Date(updated)),
+    updateTime: timestampFromDate(new Date("2026-10-01")),
     ...extra,
   });
 
@@ -20,39 +20,44 @@ const workspaces = [
   { name: "workspaces/b", title: "B" },
 ];
 
+describe("isRootTodoDoc", () => {
+  it("takes only the TODO document at a knowledge base's root", () => {
+    expect(isRootTodoDoc({ title: "TODO", folderPath: "", parent: "" })).toBe(true);
+    expect(isRootTodoDoc({ title: "todo.md", folderPath: "", parent: "" })).toBe(true);
+    expect(isRootTodoDoc({ title: "TODO", folderPath: "agents", parent: "" })).toBe(false);
+    expect(isRootTodoDoc({ title: "TODO", folderPath: "_sub/x", parent: "memos/x" })).toBe(false);
+    expect(isRootTodoDoc({ title: "发布清单", folderPath: "", parent: "" })).toBe(false);
+  });
+});
+
 describe("groupKbTodos", () => {
   it("lists only empty boxes, outside code blocks", () => {
     const content = ["- [ ] write", "- [x] done", "- [>] later", "* [ ] star bullet", "```calendar", "- [ ] not a task", "```"].join("\n");
-    const groups = groupKbTodos([memo("memos/1", "workspaces/a", content, "2026-10-01")], workspaces);
-    expect(groups).toHaveLength(1);
-    expect(groups[0].docs[0].todos).toEqual(["write", "star bullet"]);
-    expect(groups[0].docs[0].docType).toBe("MARKDOWN");
+    const groups = groupKbTodos([memo("memos/1", "workspaces/a", content)], workspaces);
+    expect(groups).toEqual([{ workspace: "workspaces/a", title: "A", memo: "memos/1", todos: ["write", "star bullet"] }]);
   });
 
-  it("groups by knowledge base in shelf order, newest document first", () => {
+  it("ignores task lists elsewhere in a knowledge base", () => {
     const groups = groupKbTodos(
       [
-        memo("memos/old", "workspaces/b", "- [ ] x", "2026-10-01"),
-        memo("memos/new", "workspaces/b", "- [ ] y", "2026-10-02"),
-        memo("memos/a1", "workspaces/a", "- [ ] z", "2026-09-01"),
+        memo("memos/plan", "workspaces/a", "- [ ] agent step", { title: "实施计划" }),
+        memo("memos/deep", "workspaces/a", "- [ ] nested", { folderPath: "agents" }),
+        memo("memos/todo", "workspaces/b", "- [ ] mine"),
+      ],
+      workspaces,
+    );
+    expect(groups.map((g) => [g.title, g.todos])).toEqual([["B", ["mine"]]]);
+  });
+
+  it("keeps shelf order and leaves out hidden knowledge bases", () => {
+    const groups = groupKbTodos(
+      [
+        memo("memos/b", "workspaces/b", "- [ ] y"),
+        memo("memos/a", "workspaces/a", "- [ ] x"),
+        memo("memos/h", "workspaces/hidden", "- [ ] z"),
       ],
       workspaces,
     );
     expect(groups.map((g) => g.title)).toEqual(["A", "B"]);
-    expect(groups[1].docs.map((d) => d.memo)).toEqual(["memos/new", "memos/old"]);
-  });
-
-  it("leaves out hidden knowledge bases, comments and documents with nothing left", () => {
-    const groups = groupKbTodos(
-      [
-        memo("memos/hidden", "workspaces/hidden", "- [ ] x", "2026-10-01"),
-        memo("memos/comment", "workspaces/a", "- [ ] x", "2026-10-01", { parent: "memos/p", folderPath: "" }),
-        memo("memos/sub", "workspaces/a", "- [ ] sub", "2026-10-01", { parent: "memos/p", folderPath: "_sub/p" }),
-        memo("memos/done", "workspaces/a", "- [x] x\n- [ ] ", "2026-10-01"),
-      ],
-      workspaces,
-    );
-    expect(groups).toHaveLength(1);
-    expect(groups[0].docs.map((d) => d.memo)).toEqual(["memos/sub"]);
   });
 });

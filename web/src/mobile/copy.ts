@@ -8,6 +8,7 @@ export const COPY = {
   tagline: "随时随地翻阅你的知识库",
   tabs: { shelf: "书架", plan: "计划", search: "搜索", me: "我的" },
   docPicker: { knowledgeBases: "知识库" },
+  nav: { toShelf: "回到书架" },
   login: {
     username: "用户名",
     password: "密码",
@@ -48,8 +49,8 @@ export const COPY = {
     empty: (q: string) => `没有找到与"${q}"相关的文档`,
     failed: "搜索失败，请稍后再试",
     kbTodos: "知识库待办",
-    kbTodosHint: "知识库文档里还没勾掉的 [ ]，点进文档查看前后文。勾选请在电脑端。",
-    kbTodosEmpty: "知识库里没有未完成的待办",
+    kbTodosHint: "各知识库根目录 TODO 文档里还没勾掉的 [ ]，点一下打开那篇 TODO。勾选请在电脑端。",
+    kbTodosEmpty: "知识库根目录的 TODO 里没有未完成的待办",
     kbTodosFailed: "待办加载失败，请稍后再试",
   },
   reader: {

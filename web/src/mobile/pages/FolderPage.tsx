@@ -1,4 +1,4 @@
-import { List, ListItem, Navbar, NavbarBackLink, Page, Preloader } from "konsta/react";
+import { List, ListItem, Navbar, Page, Preloader } from "konsta/react";
 import { FolderIcon } from "lucide-react";
 import { useMemo } from "react";
 import { useParams } from "react-router-dom";
@@ -6,6 +6,7 @@ import { buildFreshnessMap, freshnessClass, freshnessKey } from "@/components/No
 import { normalizeSortField, normalizeSortOrder, sortTree } from "@/components/Notebook/notebookSort";
 import { useWorkspace, useWorkspaceTree } from "@/hooks/useWorkspaceQueries";
 import { WorkspaceTreeNode_NodeType } from "@/types/proto/api/v1/workspace_service_pb";
+import BackCapsule from "../components/BackCapsule";
 import DocGlyph from "../components/DocGlyph";
 import { COPY } from "../copy";
 import { formatDate } from "../lib/format";
@@ -43,7 +44,16 @@ export default function FolderPage() {
 
   return (
     <Page ref={scrollRef}>
-      <Navbar title={title} large transparent centerTitle left={<NavbarBackLink text={backText} showText onClick={back} />} />
+      <Navbar
+        title={title}
+        large
+        transparent
+        centerTitle
+        left={
+          // At the knowledge base's root, back is already the shelf.
+          <BackCapsule text={backText} onBack={back} shelf={folderPath !== ""} />
+        }
+      />
       {isPending || !workspace ? (
         <div className="flex justify-center py-16">
           <Preloader />
