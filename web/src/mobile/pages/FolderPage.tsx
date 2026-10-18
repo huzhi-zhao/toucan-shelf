@@ -2,6 +2,7 @@ import { List, ListItem, Navbar, NavbarBackLink, Page, Preloader } from "konsta/
 import { FolderIcon } from "lucide-react";
 import { useMemo } from "react";
 import { useParams } from "react-router-dom";
+import { buildFreshnessMap, freshnessClass, freshnessKey } from "@/components/Notebook/notebookFreshness";
 import { normalizeSortField, normalizeSortOrder, sortTree } from "@/components/Notebook/notebookSort";
 import { useWorkspace, useWorkspaceTree } from "@/hooks/useWorkspaceQueries";
 import { WorkspaceTreeNode_NodeType } from "@/types/proto/api/v1/workspace_service_pb";
@@ -29,6 +30,12 @@ export default function FolderPage() {
     return findFolderChildren(sorted, folderPath);
   }, [tree, workspace, folderPath]);
 
+  // Recently edited names are tinted like the web sidebar (phase 3 §1), with the same rules and colors: a folder
+  // takes the freshest tier found anywhere below it. "Now" is read whenever the tree arrives; a page is not open
+  // long enough for the hour boundary to drift.
+  const freshness = useMemo(() => (tree ? buildFreshnessMap(tree, Math.floor(Date.now() / 1000)) : undefined), [tree]);
+  const tinted = (key: string, name: string) => <span className={freshnessClass(freshness?.get(key))}>{name}</span>;
+
   const title = folderPath ? folderName(folderPath) : workspace?.title;
   const go = useGo(title);
   const parent = parentFolderPath(folderPath);
@@ -52,7 +59,7 @@ export default function FolderPage() {
               <ListItem
                 key={`f:${node.path}`}
                 link
-                title={node.name}
+                title={tinted(freshnessKey(node), node.name)}
                 after={`${countDocuments(node)}`}
                 media={<FolderIcon className="w-6 h-6 text-[#3b9cff]" fill="currentColor" strokeWidth={1.2} />}
                 onClick={() => go(folderRoute(workspaceName, node.path))}
@@ -61,7 +68,7 @@ export default function FolderPage() {
               <ListItem
                 key={node.memo}
                 link
-                title={node.name}
+                title={tinted(freshnessKey(node), node.name)}
                 footer={COPY.folder.updatedAt(formatDate(node.updateTime))}
                 media={<DocGlyph icon={node.icon} docType={node.docType} />}
                 onClick={() => go(docRoute(node.memo))}

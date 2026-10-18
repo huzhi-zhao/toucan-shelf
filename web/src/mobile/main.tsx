@@ -33,6 +33,8 @@ const PlannerPage = lazy(() => import("./pages/planner/PlannerPage"));
 const TodoPage = lazy(() => import("./pages/planner/TodoPage"));
 const PlannerSettingsPage = lazy(() => import("./pages/planner/PlannerSettingsPage"));
 const PlannerImportPage = lazy(() => import("./pages/planner/PlannerImportPage"));
+const MeSettingsPage = lazy(() => import("./pages/MeSettingsPage"));
+const MeItemPage = lazy(() => import("./pages/MeItemPage"));
 
 /** Blank page while a lazy page loads, in the list background so the switch does not flash. */
 const lazyPage = (page: ReactNode) => <Suspense fallback={<div className="min-h-full bg-[#f2f2f7] dark:bg-black" />}>{page}</Suspense>;
@@ -109,6 +111,8 @@ const router = createBrowserRouter([
           { path: "/plan/todo/:uid", element: lazyPage(<TodoPage />) },
           { path: MOBILE_ROUTES.PLAN_SETTINGS, element: lazyPage(<PlannerSettingsPage />) },
           { path: MOBILE_ROUTES.PLAN_IMPORT, element: lazyPage(<PlannerImportPage />) },
+          { path: MOBILE_ROUTES.ME_SETTINGS, element: lazyPage(<MeSettingsPage />) },
+          { path: "/me/item/:id", element: lazyPage(<MeItemPage />) },
           {
             path: "/doc/:uid",
             element: (

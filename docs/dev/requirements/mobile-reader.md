@@ -53,7 +53,7 @@
 - 登录有效期沿用服务端的 refresh token 设置。
 - iOS 上主屏幕 App 和 Safari 的 cookie 是分开存的，从主屏幕打开需要单独登录一次。
   这是系统行为，不做处理。
-- "我的"页提供退出登录。
+- 退出登录在"我的"页右上角的设置里（三期起，见 [mobile-phase3.md](mobile-phase3.md) §5）。
 
 ## 4. 书架
 
