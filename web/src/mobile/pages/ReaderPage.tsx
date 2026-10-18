@@ -280,7 +280,7 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
         subnavbarClassName="h-0"
       />
 
-      <article className="px-4 pt-14 pb-[calc(40px+env(safe-area-inset-bottom))] max-w-[720px] mx-auto">
+      <article className="mobile-selectable px-4 pt-14 pb-[calc(40px+env(safe-area-inset-bottom))] max-w-[720px] mx-auto">
         {pathLabel && <div className="text-[13px] text-black/45 dark:text-white/45 truncate">{pathLabel}</div>}
         {showTitle && (
           <h1 className="mt-2 text-[28px] font-bold leading-tight tracking-tight flex gap-2 items-start">

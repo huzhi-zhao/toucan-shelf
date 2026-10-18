@@ -23,6 +23,24 @@ html.dark body {
   background: #000;
 }
 
+/* Like a native app, only content can be selected. The tab bar, buttons, list rows and labels are for
+   tapping: a long press on them must not start a selection or open the copy menu. The document being
+   read (`.mobile-selectable`) and form fields keep both. */
+body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.mobile-selectable,
+input,
+textarea,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
 /* Page transitions (requirement §8). They only run for in-app navigation; Safari's
    edge-swipe back animates itself and never reaches these rules. */
 ::view-transition-old(root),
