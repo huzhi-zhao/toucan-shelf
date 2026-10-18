@@ -477,6 +477,12 @@ func convertUserSettingFromRaw(raw *UserSetting) (*storepb.UserSetting, error) {
 			return nil, errors.Wrap(err, "unmarshal secret key user setting")
 		}
 		userSetting.Value = &storepb.UserSetting_SecretKey{SecretKey: secretKeyUserSetting}
+	case storepb.UserSetting_ME_ITEMS:
+		meItemsUserSetting := &storepb.MeItemsUserSetting{}
+		if err := protojsonUnmarshaler.Unmarshal([]byte(raw.Value), meItemsUserSetting); err != nil {
+			return nil, errors.Wrap(err, "unmarshal me items user setting")
+		}
+		userSetting.Value = &storepb.UserSetting_MeItems{MeItems: meItemsUserSetting}
 	default:
 		return nil, nil
 	}
@@ -551,6 +557,12 @@ func convertUserSettingToRaw(userSetting *storepb.UserSetting) (*UserSetting, er
 		value, err := protojson.Marshal(secretKeyUserSetting)
 		if err != nil {
 			return nil, errors.Wrap(err, "marshal secret key user setting")
+		}
+		raw.Value = string(value)
+	case storepb.UserSetting_ME_ITEMS:
+		value, err := protojson.Marshal(userSetting.GetMeItems())
+		if err != nil {
+			return nil, errors.Wrap(err, "marshal me items user setting")
 		}
 		raw.Value = string(value)
 	default:

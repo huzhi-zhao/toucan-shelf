@@ -1,46 +1,50 @@
-import { BlockFooter, BlockTitle, List, ListButton, ListItem, Navbar, Page } from "konsta/react";
-import { useNavigate } from "react-router-dom";
-import UserAvatar from "@/components/UserAvatar";
+import { Button, Link, Navbar, Page } from "konsta/react";
+import { SettingsIcon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMeItems } from "@/hooks/useMeItems";
+import MeItemStrip from "../components/MeItemStrip";
 import { COPY } from "../copy";
-import { READER_FONT_SIZE_DEFAULT, READER_FONT_SIZE_KEY } from "../lib/reading";
-import { usePref } from "../lib/storage";
-import { MOBILE_ROUTES } from "../routes";
+import { useGo } from "../lib/nav";
+import { docRoute, MOBILE_ROUTES, meItemRoute, NEW_ME_ITEM } from "../routes";
 
+/**
+ * The user's own items (requirement phase 3 §5): strips they set up in settings, each opening a linked
+ * document. The app's settings live behind the button in the top right.
+ */
 export default function MePage() {
-  const navigate = useNavigate();
-  const { currentUser, logout } = useAuth();
-  const [fontSize] = usePref(READER_FONT_SIZE_KEY, READER_FONT_SIZE_DEFAULT);
-
-  const signOut = async () => {
-    await logout();
-    navigate(MOBILE_ROUTES.AUTH, { replace: true });
-  };
+  const go = useGo(COPY.me.title);
+  const { currentUser } = useAuth();
+  const { data: items = [], isLoading } = useMeItems(currentUser?.name);
 
   return (
     <Page className="pb-tabbar">
-      <Navbar title={COPY.me.title} large transparent centerTitle />
-      <List strongIos insetIos className="mt-4">
-        <ListItem
-          title={currentUser?.displayName || currentUser?.username}
-          text={currentUser?.username}
-          media={<UserAvatar className="w-11 h-11" avatarUrl={currentUser?.avatarUrl} />}
-        />
-      </List>
-      <BlockTitle className="mt-8">{COPY.me.reading}</BlockTitle>
-      <List strongIos insetIos>
-        <ListItem title={COPY.me.fontSize} after={`${fontSize}px`} />
-        <ListItem title={COPY.me.darkMode} after={COPY.me.followSystem} />
-      </List>
-      <BlockFooter>{COPY.me.readingHint}</BlockFooter>
-      <List strongIos insetIos>
-        <ListItem title={COPY.me.homeScreen} text={<span className="whitespace-normal">{COPY.me.homeScreenHint}</span>} />
-      </List>
-      <List strongIos insetIos>
-        <ListButton className="text-red-500" onClick={signOut}>
-          {COPY.me.signOut}
-        </ListButton>
-      </List>
+      <Navbar
+        title={COPY.me.title}
+        large
+        transparent
+        centerTitle
+        right={
+          <Link iconOnly onClick={() => go(MOBILE_ROUTES.ME_SETTINGS)} aria-label={COPY.me.settings}>
+            <SettingsIcon className="w-6 h-6" />
+          </Link>
+        }
+      />
+      {items.length > 0 ? (
+        <div className="mx-4 mt-3 flex flex-col gap-2.5">
+          {items.map((item) => (
+            <MeItemStrip key={item.id} item={item} onOpen={item.memo ? () => go(docRoute(item.memo)) : undefined} />
+          ))}
+        </div>
+      ) : (
+        !isLoading && (
+          <div className="px-8 pt-16 text-center">
+            <p className="text-[15px] leading-relaxed text-black/45 dark:text-white/45">{COPY.me.empty}</p>
+            <Button rounded inline className="mt-5 px-6" onClick={() => go(meItemRoute(NEW_ME_ITEM))}>
+              {COPY.me.addFirst}
+            </Button>
+          </div>
+        )
+      )}
     </Page>
   );
 }

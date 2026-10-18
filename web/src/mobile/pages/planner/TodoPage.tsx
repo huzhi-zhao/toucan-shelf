@@ -1,15 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { List, ListButton, ListItem, Navbar, NavbarBackLink, Page, Preloader, Searchbar, Sheet, Toast, Toggle } from "konsta/react";
+import { List, ListButton, ListItem, Navbar, NavbarBackLink, Page, Preloader, Sheet, Toast, Toggle } from "konsta/react";
 import { ExternalLinkIcon, FileTextIcon } from "lucide-react";
 import { type FormEvent, type RefObject, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { ragServiceClient } from "@/connect";
 import { useMemo as useMemoQuery } from "@/hooks/useMemoQueries";
 import { useDeleteTodo, usePostponeTodo, useTodo, useTodoTags, useUpdateTodo } from "@/hooks/usePlannerQueries";
 import { cn } from "@/lib/utils";
 import { type Todo, Todo_Status } from "@/types/proto/api/v1/planner_service_pb";
-import { SearchMode } from "@/types/proto/api/v1/rag_service_pb";
+import DocPickerSheet from "../../components/DocPickerSheet";
 import SectionTitle from "../../components/SectionTitle";
 import { COPY } from "../../copy";
 import { useBlurOnClose } from "../../lib/keyboard";
@@ -449,58 +447,6 @@ function TagSheet({
             {COPY.planner.cancel}
           </button>
         </div>
-      </div>
-    </Sheet>
-  );
-}
-
-/** Picks a document to link, through the same global search as the search tab. */
-function DocPickerSheet({ opened, onClose, onPick }: { opened: boolean; onClose: () => void; onPick: (memo: string) => void }) {
-  const [draft, setDraft] = useState("");
-  const [query, setQuery] = useState("");
-  const { data, isFetching } = useQuery({
-    queryKey: ["mobile-search", query],
-    queryFn: () => ragServiceClient.search({ query, scope: { case: "global", value: true }, mode: SearchMode.UNSPECIFIED, limit: 0 }),
-    enabled: query !== "",
-    staleTime: 60_000,
-  });
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    setQuery(draft.trim());
-    (document.activeElement as HTMLElement | null)?.blur();
-  };
-
-  return (
-    <Sheet className="pb-safe w-full h-[75vh] rounded-t-2xl flex flex-col" opened={opened} onBackdropClick={onClose}>
-      <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-black/15 dark:bg-white/20" />
-      <form onSubmit={submit} className="px-2 pt-2" action="">
-        <Searchbar
-          placeholder={COPY.todo.searchDoc}
-          value={draft}
-          clearButton
-          onInput={(event: FormEvent<HTMLInputElement>) => setDraft(event.currentTarget.value)}
-          onClear={() => setDraft("")}
-        />
-      </form>
-      <div className="flex-1 overflow-y-auto">
-        {isFetching && (
-          <div className="flex justify-center py-6">
-            <Preloader />
-          </div>
-        )}
-        <List strongIos dividersIos className="!my-0">
-          {(data?.hits ?? []).map((hit) => (
-            <ListItem
-              key={hit.memo}
-              link
-              chevron={false}
-              media={<FileTextIcon className="w-5 h-5 text-black/45 dark:text-white/45" />}
-              title={hit.title}
-              text={hit.folderPath || undefined}
-              onClick={() => onPick(hit.memo)}
-            />
-          ))}
-        </List>
       </div>
     </Sheet>
   );
