@@ -543,6 +543,16 @@ message UserSetting {
   // replaces the whole list.
   message MeItemsSetting {
     repeated MeItem items = 1;
+    // The groups the page shows items in, in display order. Items without a
+    // group come first, under no heading.
+    repeated MeGroup groups = 2;
+  }
+
+  // A titled block of items on the "Me" page.
+  message MeGroup {
+    // Client-generated, stable across renames and reordering.
+    string id = 1 [(google.api.field_behavior) = REQUIRED];
+    string title = 2 [(google.api.field_behavior) = REQUIRED];
   }
 
   // One custom item: an icon, a title and a note, opening a linked document.
@@ -561,9 +571,17 @@ message UserSetting {
     string icon = 2 [(google.api.field_behavior) = OPTIONAL];
     string title = 3 [(google.api.field_behavior) = REQUIRED];
     string note = 4 [(google.api.field_behavior) = OPTIONAL];
-    // The linked document. Format: memos/{memo}. Empty for none.
-    string memo = 5 [(google.api.field_behavior) = OPTIONAL];
+    // Deprecated: use memos. Read as the first of memos; written only by clients
+    // that do not know memos, and then taken as the one linked document.
+    string memo = 5 [
+      deprecated = true,
+      (google.api.field_behavior) = OPTIONAL
+    ];
     Style style = 6 [(google.api.field_behavior) = OPTIONAL];
+    // The linked documents, in display order. Format: memos/{memo}.
+    repeated string memos = 7 [(google.api.field_behavior) = OPTIONAL];
+    // The id of the group the item is shown in, or empty for none.
+    string group = 8 [(google.api.field_behavior) = OPTIONAL];
   }
 
   message LastOpenedSetting {

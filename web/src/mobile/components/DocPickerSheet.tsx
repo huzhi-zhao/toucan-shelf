@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { List, ListItem, Preloader, Searchbar, Sheet } from "konsta/react";
-import { ChevronLeftIcon, FileTextIcon, FolderIcon } from "lucide-react";
+import { CheckIcon, ChevronLeftIcon, FileTextIcon, FolderIcon } from "lucide-react";
 import { type FormEvent, useMemo, useState } from "react";
 import { normalizeSortField, normalizeSortOrder, sortTree } from "@/components/Notebook/notebookSort";
 import { ragServiceClient } from "@/connect";
@@ -13,6 +13,9 @@ import { countDocuments, findFolderChildren, folderName, parentFolderPath } from
 import DocGlyph from "./DocGlyph";
 import { coverColorOf } from "./WorkspaceCover";
 
+/** The mark on a document that is already linked. */
+const pickedMark = (picked: boolean) => (picked ? <CheckIcon className="h-5 w-5 text-primary" /> : undefined);
+
 /** Where the browser is: the list of knowledge bases, or a folder ("" is the root) inside one. */
 type Place = { workspace?: undefined } | { workspace: Workspace; folderPath: string };
 
@@ -23,11 +26,13 @@ type Place = { workspace?: undefined } | { workspace: Workspace; folderPath: str
 function FolderLevel({
   workspace,
   folderPath,
+  picked,
   onOpen,
   onPick,
 }: {
   workspace: Workspace;
   folderPath: string;
+  picked: string[];
   onOpen: (folderPath: string) => void;
   onPick: (memo: string) => void;
 }) {
@@ -64,6 +69,7 @@ function FolderLevel({
             link
             chevron={false}
             title={node.name}
+            after={pickedMark(picked.includes(node.memo))}
             media={<DocGlyph icon={node.icon} docType={node.docType} size={22} />}
             onClick={() => onPick(node.memo)}
           />
@@ -75,14 +81,17 @@ function FolderLevel({
 
 /**
  * Picks a document to link. With nothing searched it browses: the knowledge bases, then folder by folder,
- * the way the shelf does. Searching uses the same global search as the search tab.
+ * the way the shelf does. Searching uses the same global search as the search tab. Documents in `picked` (the
+ * ones already linked) carry a check mark.
  */
 export default function DocPickerSheet({
   opened,
+  picked = [],
   onClose,
   onPick,
 }: {
   opened: boolean;
+  picked?: string[];
   onClose: () => void;
   onPick: (memo: string) => void;
 }) {
@@ -152,6 +161,7 @@ export default function DocPickerSheet({
                   media={<FileTextIcon className="w-5 h-5 text-black/45 dark:text-white/45" />}
                   title={hit.title}
                   text={hit.folderPath || undefined}
+                  after={pickedMark(picked.includes(hit.memo))}
                   onClick={() => onPick(hit.memo)}
                 />
               ))}
@@ -173,6 +183,7 @@ export default function DocPickerSheet({
                 key={`${place.workspace.name}:${place.folderPath}`}
                 workspace={place.workspace}
                 folderPath={place.folderPath}
+                picked={picked}
                 onOpen={(folderPath) => place.workspace && setPlace({ workspace: place.workspace, folderPath })}
                 onPick={onPick}
               />

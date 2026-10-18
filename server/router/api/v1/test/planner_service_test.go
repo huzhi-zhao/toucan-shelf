@@ -229,6 +229,7 @@ func TestPlannerTodoFields(t *testing.T) {
 	require.True(t, updated.Important)
 	require.Equal(t, "学习", updated.Tag)
 	require.Equal(t, "memos/abc123", updated.Memo)
+	require.Equal(t, []string{"memos/abc123"}, updated.Memos, "the deprecated path sets the whole list")
 	require.Equal(t, "https://example.com/ch3", updated.Url)
 	require.Equal(t, "2026-10-20", updated.Date, "fields outside the mask stay")
 
@@ -236,6 +237,45 @@ func TestPlannerTodoFields(t *testing.T) {
 	require.NoError(t, err)
 	_, err = ts.Service.GetTodo(userCtx, &v1pb.GetTodoRequest{Name: todo.Name})
 	requireCode(t, err, codes.NotFound)
+}
+
+func TestTodoLinksSeveralDocuments(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestService(t)
+	defer ts.Cleanup()
+	user, err := ts.CreateRegularUser(ctx, "planner")
+	require.NoError(t, err)
+	userCtx := ts.CreateUserContext(ctx, user.ID)
+
+	todo, err := ts.Service.CreateTodo(userCtx, &v1pb.CreateTodoRequest{Todo: &v1pb.Todo{Title: "x", Memos: []string{"memos/a", "memos/b"}}})
+	require.NoError(t, err)
+	require.Equal(t, []string{"memos/a", "memos/b"}, todo.Memos)
+	require.Equal(t, "memos/a", todo.Memo, "the deprecated field reads the first")
+
+	updated, err := ts.Service.UpdateTodo(userCtx, &v1pb.UpdateTodoRequest{
+		Todo:       &v1pb.Todo{Name: todo.Name, Memos: []string{"memos/c", " ", "memos/a", "memos/c"}},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"memos"}},
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"memos/c", "memos/a"}, updated.Memos, "order kept, blanks and repeats dropped")
+
+	fetched, err := ts.Service.GetTodo(userCtx, &v1pb.GetTodoRequest{Name: todo.Name})
+	require.NoError(t, err)
+	require.Equal(t, []string{"memos/c", "memos/a"}, fetched.Memos)
+
+	cleared, err := ts.Service.UpdateTodo(userCtx, &v1pb.UpdateTodoRequest{
+		Todo:       &v1pb.Todo{Name: todo.Name},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"memos"}},
+	})
+	require.NoError(t, err)
+	require.Empty(t, cleared.Memos)
+	require.Empty(t, cleared.Memo)
+
+	_, err = ts.Service.UpdateTodo(userCtx, &v1pb.UpdateTodoRequest{
+		Todo:       &v1pb.Todo{Name: todo.Name, Memos: []string{"memos/a", "workspaces/b"}},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"memos"}},
+	})
+	requireCode(t, err, codes.InvalidArgument)
 }
 
 func TestPlannerIsPerUser(t *testing.T) {

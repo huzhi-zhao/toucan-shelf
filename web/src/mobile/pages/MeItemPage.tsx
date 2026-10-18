@@ -1,25 +1,37 @@
 import { create } from "@bufbuild/protobuf";
-import { Link, List, ListButton, ListItem, Navbar, NavbarBackLink, Page, Preloader, Segmented, SegmentedButton, Toast } from "konsta/react";
-import { FileTextIcon } from "lucide-react";
+import {
+  Actions,
+  ActionsButton,
+  ActionsGroup,
+  Link,
+  List,
+  ListButton,
+  ListItem,
+  Navbar,
+  NavbarBackLink,
+  Page,
+  Preloader,
+  Segmented,
+  SegmentedButton,
+  Toast,
+} from "konsta/react";
 import { type ReactNode, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useMeItems, useSaveMeItems } from "@/hooks/useMeItems";
-import { useMemo as useMemoQuery } from "@/hooks/useMemoQueries";
+import { newMeId, useMeItems, useSaveMeItems } from "@/hooks/useMeItems";
 import { type UserSetting_MeItem, UserSetting_MeItem_Style, UserSetting_MeItemSchema } from "@/types/proto/api/v1/user_service_pb";
 import DocPickerSheet from "../components/DocPickerSheet";
-import MeItemStrip from "../components/MeItemStrip";
+import { LinkedDocsList } from "../components/LinkedDocs";
+import MeItemStrip, { MeCard } from "../components/MeItemStrip";
 import SectionTitle from "../components/SectionTitle";
 import { COPY } from "../copy";
 import { useBlurOnClose } from "../lib/keyboard";
 import { useBack, useBackLabel } from "../lib/nav";
 import { MOBILE_ROUTES, NEW_ME_ITEM } from "../routes";
 
-type Draft = Pick<UserSetting_MeItem, "icon" | "title" | "note" | "memo" | "style">;
+type Draft = Pick<UserSetting_MeItem, "icon" | "title" | "note" | "memos" | "style" | "group">;
 
-const EMPTY_DRAFT: Draft = { icon: "", title: "", note: "", memo: "", style: UserSetting_MeItem_Style.MULTI_LINE };
-
-const newId = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+const EMPTY_DRAFT: Draft = { icon: "", title: "", note: "", memos: [], style: UserSetting_MeItem_Style.MULTI_LINE, group: "" };
 
 const Hint = ({ children }: { children: ReactNode }) => (
   <p className="px-8 mt-2 text-[13px] leading-snug text-black/45 dark:text-white/45">{children}</p>
@@ -35,7 +47,9 @@ export default function MeItemPage() {
   const back = useBack(MOBILE_ROUTES.ME_SETTINGS);
   const backText = useBackLabel() ?? COPY.me.settings;
   const { currentUser } = useAuth();
-  const { data: items, isLoading } = useMeItems(currentUser?.name);
+  const { data, isLoading } = useMeItems(currentUser?.name);
+  const items = data?.items;
+  const groups = data?.groups ?? [];
   const saveItems = useSaveMeItems(currentUser?.name);
   const existing = items?.find((item) => item.id === id);
 
@@ -43,34 +57,47 @@ export default function MeItemPage() {
   const [loaded, setLoaded] = useState(isNew);
   useEffect(() => {
     if (loaded || !existing) return;
-    setDraft({ icon: existing.icon, title: existing.title, note: existing.note, memo: existing.memo, style: existing.style });
+    setDraft({
+      icon: existing.icon,
+      title: existing.title,
+      note: existing.note,
+      memos: [...existing.memos],
+      style: existing.style,
+      group: existing.group,
+    });
     setLoaded(true);
   }, [existing, loaded]);
 
   const [pickerOpen, setPickerOpen] = useState(false);
-  useBlurOnClose(pickerOpen);
-  const linkedDoc = useMemoQuery(draft.memo, { enabled: Boolean(draft.memo) });
+  const [groupOpen, setGroupOpen] = useState(false);
+  useBlurOnClose(pickerOpen || groupOpen);
+  // A group deleted since the item was opened reads as no group.
+  const group = groups.find((g) => g.id === draft.group);
   const [toast, setToast] = useState("");
   const set = (changes: Partial<Draft>) => setDraft((d) => ({ ...d, ...changes }));
 
   const title = draft.title.trim();
   const save = (next: UserSetting_MeItem[]) =>
-    saveItems.mutate(next, {
-      onSuccess: back,
-      onError: () => {
-        setToast(COPY.me.failed);
-        setTimeout(() => setToast(""), 2000);
+    saveItems.mutate(
+      { items: next, groups },
+      {
+        onSuccess: back,
+        onError: () => {
+          setToast(COPY.me.failed);
+          setTimeout(() => setToast(""), 2000);
+        },
       },
-    });
+    );
 
   const done = () => {
     if (!title || !items) return;
     const item = create(UserSetting_MeItemSchema, {
       ...draft,
-      id: isNew ? newId() : id,
+      id: isNew ? newMeId() : id,
       icon: draft.icon.trim(),
       title,
       note: draft.note.trim(),
+      group: group?.id ?? "",
     });
     save(isNew ? [...items, item] : items.map((it) => (it.id === id ? item : it)));
   };
@@ -136,6 +163,14 @@ export default function MeItemPage() {
             />
           }
         />
+        {groups.length > 0 && (
+          <ListItem
+            link
+            title={COPY.me.group}
+            after={group?.title ?? <span className="text-black/30 dark:text-white/30">{COPY.me.noGroup}</span>}
+            onClick={() => setGroupOpen(true)}
+          />
+        )}
       </List>
 
       <SectionTitle>{COPY.me.note}</SectionTitle>
@@ -171,26 +206,20 @@ export default function MeItemPage() {
 
       {/* How it will look on the "Me" page, with the style chosen above. */}
       <SectionTitle>{COPY.me.preview}</SectionTitle>
-      <div className="mx-4">
-        <MeItemStrip item={create(UserSetting_MeItemSchema, { ...draft, title: draft.title || COPY.me.previewTitle, memo: draft.memo })} />
-      </div>
+      <MeCard>
+        <MeItemStrip
+          item={create(UserSetting_MeItemSchema, { ...draft, title: draft.title || COPY.me.previewTitle })}
+          chevron={draft.memos.length > 0}
+        />
+      </MeCard>
 
       <SectionTitle>{COPY.me.doc}</SectionTitle>
-      <List strongIos insetIos dividersIos className="!my-0">
-        {draft.memo ? (
-          <>
-            <ListItem
-              media={<FileTextIcon className="h-5 w-5 text-black/45 dark:text-white/45" />}
-              title={linkedDoc.data?.title || draft.memo}
-            />
-            <ListButton onClick={() => set({ memo: "" })} className="text-red-500">
-              {COPY.me.removeDoc}
-            </ListButton>
-          </>
-        ) : (
-          <ListButton onClick={() => setPickerOpen(true)}>{COPY.me.pickDoc}</ListButton>
-        )}
-      </List>
+      <LinkedDocsList
+        memos={draft.memos}
+        onRemove={(memo) => set({ memos: draft.memos.filter((m) => m !== memo) })}
+        onAdd={() => setPickerOpen(true)}
+      />
+      {draft.memos.length > 1 && <Hint>{COPY.me.docsHint}</Hint>}
 
       {!isNew && items && (
         <List strongIos insetIos className="mt-7">
@@ -205,12 +234,42 @@ export default function MeItemPage() {
 
       <DocPickerSheet
         opened={pickerOpen}
+        picked={draft.memos}
         onClose={() => setPickerOpen(false)}
         onPick={(memo) => {
-          set({ memo });
+          if (!draft.memos.includes(memo)) set({ memos: [...draft.memos, memo] });
           setPickerOpen(false);
         }}
       />
+
+      <Actions opened={groupOpen} onBackdropClick={() => setGroupOpen(false)}>
+        <ActionsGroup>
+          {groups.map((g) => (
+            <ActionsButton
+              key={g.id}
+              bold={g.id === group?.id}
+              onClick={() => {
+                set({ group: g.id });
+                setGroupOpen(false);
+              }}
+            >
+              {g.title}
+            </ActionsButton>
+          ))}
+          <ActionsButton
+            bold={!group}
+            onClick={() => {
+              set({ group: "" });
+              setGroupOpen(false);
+            }}
+          >
+            {COPY.me.noGroup}
+          </ActionsButton>
+        </ActionsGroup>
+        <ActionsGroup>
+          <ActionsButton onClick={() => setGroupOpen(false)}>{COPY.planner.cancel}</ActionsButton>
+        </ActionsGroup>
+      </Actions>
 
       <Toast position="center" opened={toast !== ""}>
         {toast}

@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -156,25 +157,39 @@ func (d *DB) DeletePlannerCheckIn(ctx context.Context, habitID int32, date strin
 // Todos.
 
 const plannerTodoColumns = "`id`, `uid`, `creator_id`, `title`, `date`, `status`, `closed_overdue`, `closed_ts`, `cancel_reason`, " +
-	"`important`, `tag`, `note`, `memo_name`, `url`, `original_date`, `postpone_count`, `created_ts`, `updated_ts`"
+	"`important`, `tag`, `note`, `memo_names`, `url`, `original_date`, `postpone_count`, `created_ts`, `updated_ts`"
 
 func scanPlannerTodo(row interface{ Scan(...any) error }) (*store.PlannerTodo, error) {
 	t := &store.PlannerTodo{}
+	var memoNames string
 	if err := row.Scan(
 		&t.ID, &t.UID, &t.CreatorID, &t.Title, &t.Date, &t.Status, &t.ClosedOverdue, &t.ClosedTs, &t.CancelReason,
-		&t.Important, &t.Tag, &t.Note, &t.MemoName, &t.URL, &t.OriginalDate, &t.PostponeCount, &t.CreatedTs, &t.UpdatedTs,
+		&t.Important, &t.Tag, &t.Note, &memoNames, &t.URL, &t.OriginalDate, &t.PostponeCount, &t.CreatedTs, &t.UpdatedTs,
 	); err != nil {
 		return nil, err
+	}
+	t.MemoNames = []string{}
+	if err := json.Unmarshal([]byte(memoNames), &t.MemoNames); err != nil {
+		return nil, errors.Wrap(err, "failed to read the todo's linked documents")
 	}
 	return t, nil
 }
 
+// encodeMemoNames is how `memo_names` stores a todo's linked documents: a JSON array, "[]" for none.
+func encodeMemoNames(names []string) string {
+	if len(names) == 0 {
+		return "[]"
+	}
+	bytes, _ := json.Marshal(names)
+	return string(bytes)
+}
+
 func insertPlannerTodo(ctx context.Context, q plannerQuerier, create *store.PlannerTodo) (*store.PlannerTodo, error) {
 	stmt := "INSERT INTO `planner_todo` (`uid`, `creator_id`, `title`, `date`, `status`, `closed_overdue`, `closed_ts`, `cancel_reason`, " +
-		"`important`, `tag`, `note`, `memo_name`, `url`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING " + plannerTodoColumns
+		"`important`, `tag`, `note`, `memo_names`, `url`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING " + plannerTodoColumns
 	return scanPlannerTodo(q.QueryRowContext(ctx, stmt,
 		create.UID, create.CreatorID, create.Title, create.Date, create.Status, create.ClosedOverdue, create.ClosedTs, create.CancelReason,
-		create.Important, create.Tag, create.Note, create.MemoName, create.URL,
+		create.Important, create.Tag, create.Note, encodeMemoNames(create.MemoNames), create.URL,
 	))
 }
 
@@ -220,6 +235,11 @@ func (d *DB) ListPlannerTodos(ctx context.Context, find *store.FindPlannerTodo) 
 
 func (d *DB) UpdatePlannerTodo(ctx context.Context, update *store.UpdatePlannerTodo) (*store.PlannerTodo, error) {
 	set, args := []string{"`updated_ts` = strftime('%s', 'now')"}, []any{}
+	var memoNames *string
+	if update.MemoNames != nil {
+		encoded := encodeMemoNames(*update.MemoNames)
+		memoNames = &encoded
+	}
 	fields := []struct {
 		column string
 		value  any
@@ -234,7 +254,7 @@ func (d *DB) UpdatePlannerTodo(ctx context.Context, update *store.UpdatePlannerT
 		{"important", update.Important, update.Important != nil},
 		{"tag", update.Tag, update.Tag != nil},
 		{"note", update.Note, update.Note != nil},
-		{"memo_name", update.MemoName, update.MemoName != nil},
+		{"memo_names", memoNames, memoNames != nil},
 		{"url", update.URL, update.URL != nil},
 		{"original_date", update.OriginalDate, update.OriginalDate != nil},
 		{"postpone_count", update.PostponeCount, update.PostponeCount != nil},

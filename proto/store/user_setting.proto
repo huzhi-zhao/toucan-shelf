@@ -129,6 +129,13 @@ message RagSearchUserSetting {
 // display order. Each one is a short card that opens a linked document.
 message MeItemsUserSetting {
   repeated MeItem items = 1;
+  // The groups the page shows items in, in display order.
+  repeated MeGroup groups = 2;
+}
+
+message MeGroup {
+  string id = 1;
+  string title = 2;
 }
 
 message MeItem {
@@ -146,9 +153,14 @@ message MeItem {
   string icon = 2;
   string title = 3;
   string note = 4;
-  // The linked document. Format: memos/{memo}. Empty for none.
+  // The one linked document of items saved before memos existed; read into
+  // memos and no longer written. Format: memos/{memo}.
   string memo = 5;
   Style style = 6;
+  // The linked documents, in display order. Format: memos/{memo}.
+  repeated string memos = 7;
+  // The id of the group the item is shown in, or empty for none.
+  string group = 8;
 }
 
 message LastOpenedUserSetting {
