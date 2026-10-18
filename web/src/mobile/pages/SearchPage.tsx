@@ -1,19 +1,33 @@
 import { useQuery } from "@tanstack/react-query";
 import { List, ListItem, Navbar, Page, Preloader, Searchbar } from "konsta/react";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ragServiceClient } from "@/connect";
+import { memoServiceClient, ragServiceClient } from "@/connect";
 import { useWorkspaces } from "@/hooks/useWorkspaceQueries";
 import { SearchMode } from "@/types/proto/api/v1/rag_service_pb";
 import DocGlyph from "../components/DocGlyph";
 import SectionTitle from "../components/SectionTitle";
 import { COPY } from "../copy";
 import { splitHighlights } from "../lib/highlight";
+import { groupKbTodos } from "../lib/kbTodos";
 import { useGo, usePageScroll } from "../lib/nav";
 import { usePref } from "../lib/storage";
 import { docRoute } from "../routes";
 
 const HISTORY_KEY = "search-history";
+const KB_TODOS_PAGE_SIZE = 1000;
+
+/** Every readable document that still has an empty `[ ]`. The store keeps that flag, so this is not a scan. */
+async function listDocsWithOpenTodos() {
+  const memos = [];
+  let pageToken = "";
+  do {
+    const page = await memoServiceClient.listMemos({ filter: "has_incomplete_tasks == true", pageSize: KB_TODOS_PAGE_SIZE, pageToken });
+    memos.push(...page.memos);
+    pageToken = page.nextPageToken;
+  } while (pageToken);
+  return memos;
+}
 const HISTORY_LIMIT = 8;
 
 function Highlighted({ text, terms }: { text: string; terms: readonly string[] }) {
@@ -47,6 +61,17 @@ export default function SearchPage() {
   const [history, setHistory] = usePref<string[]>(HISTORY_KEY, []);
   const formRef = useRef<HTMLFormElement>(null);
   const { data: workspaces = [] } = useWorkspaces(false);
+  // Recent searches show while typing; the rest of the time the space under the box lists the knowledge
+  // bases' open todos (phase 3 §3). They are read fresh on every visit, so a box ticked on the computer is
+  // gone here at once.
+  const [focused, setFocused] = useState(false);
+  const kbTodos = useQuery({
+    queryKey: ["mobile-kb-todos"],
+    queryFn: listDocsWithOpenTodos,
+    enabled: !submitted,
+    staleTime: 0,
+  });
+  const todoGroups = useMemo(() => groupKbTodos(kbTodos.data ?? [], workspaces), [kbTodos.data, workspaces]);
 
   // Konsta's input is a plain text field; ask iOS for a "Search" key on the keyboard.
   useEffect(() => {
@@ -92,7 +117,14 @@ export default function SearchPage() {
         transparent
         centerTitle
         subnavbar={
-          <form ref={formRef} onSubmit={onSubmit} className="w-full" action="">
+          <form
+            ref={formRef}
+            onSubmit={onSubmit}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            className="w-full"
+            action=""
+          >
             <Searchbar
               placeholder={COPY.search.placeholder}
               value={draft}
@@ -106,8 +138,9 @@ export default function SearchPage() {
         }
       />
 
-      {!submitted && history.length > 0 && (
-        <>
+      {!submitted && focused && history.length > 0 && (
+        // Tapping a recent search must not blur the box first: the list would vanish before the tap lands.
+        <div onPointerDown={(event) => event.preventDefault()}>
           <SectionTitle
             action={
               <button type="button" className="text-[15px] text-primary active:opacity-50" onClick={() => setHistory([])}>
@@ -122,6 +155,51 @@ export default function SearchPage() {
               <ListItem key={h} link title={h} onClick={() => submit(h)} />
             ))}
           </List>
+        </div>
+      )}
+
+      {!submitted && !focused && (
+        <>
+          <SectionTitle>{COPY.search.kbTodos}</SectionTitle>
+          {kbTodos.isPending ? (
+            <div className="flex justify-center py-10">
+              <Preloader />
+            </div>
+          ) : kbTodos.isError ? (
+            <div className="text-center text-black/40 dark:text-white/40 py-10">{COPY.search.kbTodosFailed}</div>
+          ) : todoGroups.length === 0 ? (
+            <div className="text-center text-black/40 dark:text-white/40 py-10">{COPY.search.kbTodosEmpty}</div>
+          ) : (
+            <>
+              {todoGroups.map((group) => (
+                <div key={group.workspace} className="mb-5">
+                  <div className="px-8 pb-1.5 text-[13px] text-black/45 dark:text-white/45">{group.title}</div>
+                  <List strongIos insetIos dividersIos className="!my-0">
+                    {group.docs.map((doc) => (
+                      <ListItem
+                        key={doc.memo}
+                        link
+                        media={<DocGlyph icon={doc.icon} docType={doc.docType} size={22} />}
+                        title={doc.title}
+                        text={
+                          <ul className="mt-0.5 space-y-0.5 whitespace-normal">
+                            {doc.todos.map((todo, i) => (
+                              <li key={i} className="flex gap-2 leading-snug">
+                                <span className="mt-[3px] h-3.5 w-3.5 shrink-0 rounded-full border border-current opacity-50" />
+                                <span>{todo}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        }
+                        onClick={() => go(docRoute(doc.memo))}
+                      />
+                    ))}
+                  </List>
+                </div>
+              ))}
+              <p className="px-8 text-[13px] leading-snug text-black/45 dark:text-white/45">{COPY.search.kbTodosHint}</p>
+            </>
+          )}
         </>
       )}
 
