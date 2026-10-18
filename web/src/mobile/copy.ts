@@ -91,6 +91,7 @@ export const COPY = {
     checkInNote: "打卡备注",
     checkInNotePlaceholder: "比如：跑了 5 公里",
     uncheck: "取消打卡",
+    confirmCheckIn: "确认打卡",
     readonlyDay: (days: number) => `只能修改最近 ${days} 天的打卡和备忘`,
     weekStartFrom: (day: string) => `${day}开始`,
     editNote: "备忘",
