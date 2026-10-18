@@ -46,6 +46,10 @@ export const COPY = {
     results: (n: number) => `${n} 个结果`,
     empty: (q: string) => `没有找到与"${q}"相关的文档`,
     failed: "搜索失败，请稍后再试",
+    kbTodos: "知识库待办",
+    kbTodosHint: "知识库文档里还没勾掉的 [ ]，点进文档查看前后文。勾选请在电脑端。",
+    kbTodosEmpty: "知识库里没有未完成的待办",
+    kbTodosFailed: "待办加载失败，请稍后再试",
   },
   reader: {
     outline: "目录",
