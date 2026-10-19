@@ -78,6 +78,10 @@ export const COPY = {
     copyDesktopLink: "复制电脑端链接",
     copied: "已复制电脑端链接",
     viewDocument: "视图文档",
+    viewNotConfigured: "这个视图还没有配置",
+    viewLoading: "加载中…",
+    viewEmpty: "范围里还没有文档",
+    viewDocMissing: "引用的文档不存在，或者你没有权限查看",
     pdfOpen: "打开 PDF",
     favorite: "收藏",
     unfavorite: "取消收藏",
@@ -247,5 +251,6 @@ export const COPY = {
     calendar: "日历",
     grid: "卡片网格",
     secret: "加密内容",
+    calendarLayout: "日历布局",
   } as Record<string, string>,
 } as const;

@@ -95,7 +95,10 @@ interface GalleryViewConfig {
   表单组件（非 schema 动态生成），编辑态与预览态共享同一份 content，
   重新进入编辑态时表单根据已存 JSON 回填。
 - 查询执行：`useScopeMemos` hook + `fields.ts` 的 `matchesScope`/
-  `propertyMap` 等辅助函数。
+  `propertyMap` 等辅助函数。相册块的"命中哪些文档、怎么排序、封面取什么"
+  在 `useGalleryDocs` 和 `cards.ts` 里，web 渲染器和手机阅读端的只读预览
+  （`mobile/components/ViewDocument.tsx`，见
+  [mobile-phase3.md](../mobile-phase3.md) §4）共用这一份。
 
 ## 6. Explore 列表过滤
 

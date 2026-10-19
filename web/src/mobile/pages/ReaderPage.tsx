@@ -23,6 +23,7 @@ import BackCapsule from "../components/BackCapsule";
 import BlockPlaceholderCard from "../components/BlockPlaceholderCard";
 import DocGlyph from "../components/DocGlyph";
 import SectionTitle from "../components/SectionTitle";
+import ViewDocument from "../components/ViewDocument";
 import { COPY } from "../copy";
 import { formatDate } from "../lib/format";
 import { useBack, useBackLabel, useGo } from "../lib/nav";
@@ -140,6 +141,7 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
   const [outline, setOutline] = useState<OutlineEntry[]>([]);
   const [zoomedImage, setZoomedImage] = useState<string>();
   const contentRef = useRef<HTMLDivElement>(null);
+  const readingStyle = { zoom: readerZoom(fontSize), "--mobile-leading": READER_LEADINGS[leading] } as React.CSSProperties;
 
   const isHtml = memo.docType === Memo_DocType.HTML;
   const isPdf = memo.docType === Memo_DocType.PDF;
@@ -219,10 +221,11 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
     [memo.name, subDocs],
   );
 
-  // Tapping an image opens it full screen; the renderer itself has no viewer.
+  // Tapping an image opens it full screen; the renderer itself has no viewer. An image inside a link or a
+  // button (a gallery card's cover) belongs to that control, so the tap goes there instead.
   const onContentClick = (event: MouseEvent) => {
     const target = event.target as HTMLElement;
-    if (target instanceof HTMLImageElement && !target.closest("a")) setZoomedImage(target.currentSrc || target.src);
+    if (target instanceof HTMLImageElement && !target.closest("a, button")) setZoomedImage(target.currentSrc || target.src);
   };
 
   const scrollToHeading = (id: string) => {
@@ -236,8 +239,6 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
       <div className="h-4 rounded bg-black/[0.06] dark:bg-white/[0.08] w-full" />
       <div className="h-4 rounded bg-black/[0.06] dark:bg-white/[0.08] w-3/4" />
     </div>
-  ) : isView ? (
-    <BlockPlaceholderCard title={COPY.reader.viewDocument} onCopyDesktopLink={copyDesktopLink} />
   ) : isPdf ? (
     // Safari's own PDF viewer is the best reader on a phone (requirement §5).
     pdfAttachment && (
@@ -260,7 +261,12 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
         <SubDocReferenceProvider value={subDocReferences}>
           <DocumentLinkProvider value={links}>
             <BlockPlaceholderProvider value={placeholders}>
-              <MemoContent content={memo.content} memoName={memo.name} density="reading" alwaysExpanded isHtml={isHtml} />
+              {isView ? (
+                // A view's text blocks follow the reading settings; its card walls keep their size.
+                <ViewDocument memo={memo} onOpen={onOpen} onCopyDesktopLink={copyDesktopLink} textStyle={readingStyle} />
+              ) : (
+                <MemoContent content={memo.content} memoName={memo.name} density="reading" alwaysExpanded isHtml={isHtml} />
+              )}
             </BlockPlaceholderProvider>
           </DocumentLinkProvider>
         </SubDocReferenceProvider>
@@ -328,11 +334,7 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
           )}
         </div>
 
-        <div
-          ref={contentRef}
-          onClick={onContentClick}
-          style={{ zoom: readerZoom(fontSize), "--mobile-leading": READER_LEADINGS[leading] } as React.CSSProperties}
-        >
+        <div ref={contentRef} onClick={onContentClick} style={isView ? undefined : readingStyle}>
           {body}
         </div>
 
