@@ -13,11 +13,11 @@ import { useCreateMemo } from "@/hooks/useMemoQueries";
 import { cn } from "@/lib/utils";
 import { type Memo, MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
 import { useTranslate } from "@/utils/i18n";
-import { docCalendarDate, docColor, newCalendarDoc } from "./calendar";
+import { calendarDocLabel, docColor, newCalendarDoc } from "./calendar";
 import { buildCalendarWeekRows, dateInRange } from "./calendarWeek";
-import { fieldValue, matchesScope, propertyMap } from "./fields";
+import { propertyMap } from "./fields";
 import type { CalendarLayoutBlock } from "./types";
-import { useScopeMemos } from "./useScopeMemos";
+import { useCalendarDocs } from "./useScopeMemos";
 
 interface Props {
   block: CalendarLayoutBlock;
@@ -65,31 +65,13 @@ const CalendarLayout = ({ block, memo, openDoc }: Props) => {
   const weekDays = useWeekdayLabels();
   const createMemo = useCreateMemo();
 
-  const { memos, isLoading } = useScopeMemos(block.scope, memo.workspace);
+  const { docsByDate, isLoading } = useCalendarDocs(block, memo);
 
   const [month, setMonth] = useState(() => dayjs(today).format("YYYY-MM"));
   const [selectedDate, setSelectedDate] = useState(today);
   const [unit, setUnit] = useState<"day" | "week">(block.cellUnit);
   const [selectedWeekStart, setSelectedWeekStart] = useState<string | undefined>(undefined);
   const [addOpen, setAddOpen] = useState(false);
-
-  // Bucket every in-scope document by its resolved calendar date. Rebuilt from a
-  // live query on each render — nothing is cached or stored.
-  const docsByDate = useMemo(() => {
-    const ctx = { viewFolderPath: memo.folderPath };
-    const map = new Map<string, Memo[]>();
-    for (const doc of memos) {
-      if (doc.name === memo.name) continue;
-      const props = propertyMap(doc.content);
-      if (!matchesScope(doc, props, block.scope, ctx)) continue;
-      const date = docCalendarDate(doc, props, block);
-      if (!date) continue;
-      const list = map.get(date);
-      if (list) list.push(doc);
-      else map.set(date, [doc]);
-    }
-    return map;
-  }, [memos, block, memo.name, memo.folderPath]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
@@ -120,7 +102,7 @@ const CalendarLayout = ({ block, memo, openDoc }: Props) => {
     setSelectedWeekStart(undefined);
   };
 
-  const labelOf = (doc: Memo) => fieldValue(doc, propertyMap(doc.content), block.cardField) || doc.title || doc.name;
+  const labelOf = (doc: Memo) => calendarDocLabel(doc, block);
   const colorOf = (doc: Memo) => docColor(propertyMap(doc.content));
 
   const selectedDocs = docsByDate.get(selectedDate) ?? [];

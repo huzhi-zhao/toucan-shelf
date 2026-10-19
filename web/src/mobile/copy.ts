@@ -82,6 +82,10 @@ export const COPY = {
     viewLoading: "加载中…",
     viewEmpty: "范围里还没有文档",
     viewDocMissing: "引用的文档不存在，或者你没有权限查看",
+    viewCalendarWeekdays: ["日", "一", "二", "三", "四", "五", "六"],
+    viewCalendarDayEmpty: "这一天没有文档",
+    viewCalendarPrev: "上个月",
+    viewCalendarNext: "下个月",
     pdfOpen: "打开 PDF",
     favorite: "收藏",
     unfavorite: "取消收藏",
@@ -251,6 +255,5 @@ export const COPY = {
     calendar: "日历",
     grid: "卡片网格",
     secret: "加密内容",
-    calendarLayout: "日历布局",
   } as Record<string, string>,
 } as const;

@@ -263,7 +263,7 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
             <BlockPlaceholderProvider value={placeholders}>
               {isView ? (
                 // A view's text blocks follow the reading settings; its card walls keep their size.
-                <ViewDocument memo={memo} onOpen={onOpen} onCopyDesktopLink={copyDesktopLink} textStyle={readingStyle} />
+                <ViewDocument memo={memo} onOpen={onOpen} textStyle={readingStyle} />
               ) : (
                 <MemoContent content={memo.content} memoName={memo.name} density="reading" alwaysExpanded isHtml={isHtml} />
               )}
