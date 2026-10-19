@@ -2,17 +2,8 @@ import { CalendarIcon, CheckIcon } from "lucide-react";
 import { Link } from "@/components/MemoContent/markdown/Link";
 import { cn } from "@/lib/utils";
 import type { DragPayload } from "./KanbanColumn";
-import type { KanbanTask, Priority } from "./types";
-
-// Tailwind classes per priority level. Kept as a static map so the classes are
-// visible to Tailwind's content scanner.
-const PRIORITY_BADGE: Record<Priority, string> = {
-  highest: "bg-red-500/15 text-red-600 dark:text-red-400",
-  high: "bg-orange-500/15 text-orange-600 dark:text-orange-400",
-  medium: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
-  low: "bg-sky-500/15 text-sky-600 dark:text-sky-400",
-  lowest: "bg-muted text-muted-foreground",
-};
+import { PRIORITY_BADGE } from "./priority";
+import type { KanbanTask } from "./types";
 
 interface KanbanCardProps {
   task: KanbanTask;

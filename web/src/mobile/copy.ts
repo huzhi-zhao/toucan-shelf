@@ -249,11 +249,21 @@ export const COPY = {
     deleteConfirm: "删除这个待办？删除后不能恢复。",
     notFound: "待办不存在，或者已经被删除",
   },
+  blockPreview: {
+    kanbanEmpty: "看板里还没有卡片",
+    gridEmpty: "卡片网格里还没有卡片",
+    ungrouped: "未分组",
+    columnEmpty: "没有卡片",
+    showMore: (count: number) => `再显示 ${count} 张`,
+    showLess: "收起",
+    done: "已完成",
+    notDone: "未完成",
+    priority: { highest: "最高", high: "高", medium: "中", low: "低", lowest: "最低" },
+    field: { status: "状态", priority: "优先级", done: "完成", due: "截止", tags: "标签", created: "创建", updated: "更新" },
+  },
   blocks: {
-    kanban: "看板",
     sheets: "表格",
     calendar: "日历",
-    grid: "卡片网格",
     secret: "加密内容",
   } as Record<string, string>,
 } as const;
