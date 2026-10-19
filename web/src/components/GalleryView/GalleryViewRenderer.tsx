@@ -8,12 +8,12 @@ import { BlockSourceProvider, type BlockSourceValue } from "@/components/MemoCon
 import { PropertiesPanel } from "@/components/MemoContent/PropertiesPanel";
 import { useMemo as useMemoQuery, useUpdateMemo } from "@/hooks/useMemoQueries";
 import { cn } from "@/lib/utils";
-import { type Memo, Memo_DocType } from "@/types/proto/api/v1/memo_service_pb";
-import { getAttachmentThumbnailUrl, isImage } from "@/utils/attachment";
+import type { Memo } from "@/types/proto/api/v1/memo_service_pb";
 import { type MemoProperty, parseFrontmatter } from "@/utils/frontmatter";
 import { useTranslate } from "@/utils/i18n";
 import CalendarLayout from "./CalendarLayout";
-import { contentPreviewLines, fieldValue, matchesScope, propertyMap, propertyValueToString, textCardProperties } from "./fields";
+import { coverUrl } from "./cards";
+import { contentPreviewLines, fieldValue, propertyMap, textCardProperties } from "./fields";
 import {
   type GalleryBadgeRule,
   type GalleryBlock,
@@ -25,7 +25,7 @@ import {
   serializeGalleryViewConfig,
   type ViewBlock,
 } from "./types";
-import { useScopeMemos } from "./useScopeMemos";
+import { useGalleryDocs } from "./useScopeMemos";
 
 interface Props {
   memo: Memo;
@@ -58,89 +58,6 @@ interface Props {
   readonly?: boolean;
   className?: string;
 }
-
-// Pulls the first markdown image URL out of a document's content, used as a
-// cover fallback when the doc has no image attachment.
-const firstMarkdownImage = (content: string): string | undefined => {
-  const match = content.match(/!\[[^\]]*\]\(([^)\s]+)/);
-  return match?.[1];
-};
-
-// Resolves a `prop:<key>` cover value: an `attachments/...` resource name maps to
-// the matching attachment thumbnail, anything else is treated as a raw image URL.
-const propertyCoverUrl = (doc: Memo, props: Map<string, MemoProperty>, key: string): string | undefined => {
-  const prop = props.get(key);
-  const value = prop ? propertyValueToString(prop) : "";
-  if (!value) return undefined;
-  const attachment = doc.attachments.find((a) => a.name === value || a.filename === value);
-  return attachment ? getAttachmentThumbnailUrl(attachment) : value;
-};
-
-// Fallback used when the configured cover rule finds no image: the document's
-// first image attachment, or its first inline markdown image.
-const documentFirstImage = (doc: Memo): string | undefined => {
-  const imageAttachment = doc.attachments.find((a) => isImage(a.type));
-  if (imageAttachment) return getAttachmentThumbnailUrl(imageAttachment);
-  if (doc.docType === Memo_DocType.MARKDOWN) return firstMarkdownImage(doc.content);
-  return undefined;
-};
-
-const coverUrl = (doc: Memo, props: Map<string, MemoProperty>, block: GalleryBlock): string | undefined => {
-  if (block.cover === "none") return undefined;
-  if (block.cover.startsWith("prop:")) {
-    const propCover = propertyCoverUrl(doc, props, block.cover.slice(5));
-    return propCover || documentFirstImage(doc);
-  }
-  const propCover = propertyCoverUrl(doc, props, "cover");
-  return propCover || documentFirstImage(doc);
-};
-
-// Reads a document's value for a frontmatter property as a plain string ("" when
-// the property is absent or empty).
-const propertyValueOf = (doc: Memo, key: string): string => {
-  const prop = propertyMap(doc.content).get(key);
-  return prop ? propertyValueToString(prop) : "";
-};
-
-// Case-insensitive, numeric-aware comparison of two present property values.
-const comparePresentValues = (as: string, bs: string): number => {
-  const an = Number(as);
-  const bn = Number(bs);
-  if (!Number.isNaN(an) && !Number.isNaN(bn)) return an - bn;
-  return as.localeCompare(bs, undefined, { numeric: true, sensitivity: "base" });
-};
-
-const sortDocs = (docs: Memo[], block: GalleryBlock): Memo[] => {
-  const ts = (t?: { seconds: bigint }) => Number(t?.seconds ?? 0n);
-  const sorted = [...docs];
-  const propSort = block.sort.match(/^prop_(asc|desc):(.*)$/s);
-  if (propSort) {
-    const [, direction, key] = propSort;
-    const factor = direction === "asc" ? 1 : -1;
-    return sorted.sort((a, b) => {
-      const as = propertyValueOf(a, key);
-      const bs = propertyValueOf(b, key);
-      // Documents missing the property always sort last, regardless of direction.
-      if (as === "" || bs === "") {
-        if (as === bs) return 0;
-        return as === "" ? 1 : -1;
-      }
-      return factor * comparePresentValues(as, bs);
-    });
-  }
-  switch (block.sort) {
-    case "updated_asc":
-      return sorted.sort((a, b) => ts(a.updateTime) - ts(b.updateTime));
-    case "created_desc":
-      return sorted.sort((a, b) => ts(b.createTime) - ts(a.createTime));
-    case "created_asc":
-      return sorted.sort((a, b) => ts(a.createTime) - ts(b.createTime));
-    case "title_asc":
-      return sorted.sort((a, b) => a.title.localeCompare(b.title));
-    default:
-      return sorted.sort((a, b) => ts(b.updateTime) - ts(a.updateTime));
-  }
-};
 
 // Renders a block-configured badge as an overlay ribbon on a matching card.
 // `tag` uses a flag/pennant shape in the top-left corner (also dims the card —
@@ -331,15 +248,7 @@ interface BlockProps {
 // live — nothing is generated or cached.
 const GalleryBlockView = ({ block, memo, openDoc }: BlockProps) => {
   const t = useTranslate();
-  const { memos, isLoading } = useScopeMemos(block.scope, memo.workspace);
-
-  const docs = useMemo(() => {
-    // VIEW docs are eligible too: they now carry frontmatter properties, so a
-    // gallery can filter, sort and reference other views like any other doc.
-    const ctx = { viewFolderPath: memo.folderPath };
-    const list = memos.filter((m) => m.name !== memo.name && matchesScope(m, propertyMap(m.content), block.scope, ctx));
-    return sortDocs(list, block);
-  }, [memos, block, memo.name, memo.folderPath]);
+  const { docs, isLoading } = useGalleryDocs(block, memo);
 
   return (
     // Card walls are rebuilt from a live query on every render, so their text is not something a
