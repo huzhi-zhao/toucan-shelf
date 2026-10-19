@@ -1,12 +1,14 @@
 import { CalendarCheckIcon, LibraryBigIcon, SearchIcon, UserRoundIcon } from "lucide-react";
+import { useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { COPY } from "../copy";
+import { noteTabHistory } from "../lib/nav";
 import { MOBILE_ROUTES } from "../routes";
 
 const TABS = [
-  { path: MOBILE_ROUTES.SHELF, label: COPY.tabs.shelf, Icon: LibraryBigIcon },
   { path: MOBILE_ROUTES.PLAN, label: COPY.tabs.plan, Icon: CalendarCheckIcon },
+  { path: MOBILE_ROUTES.SHELF, label: COPY.tabs.shelf, Icon: LibraryBigIcon },
   { path: MOBILE_ROUTES.SEARCH, label: COPY.tabs.search, Icon: SearchIcon },
   { path: MOBILE_ROUTES.ME, label: COPY.tabs.me, Icon: UserRoundIcon },
 ];
@@ -24,6 +26,8 @@ const TABS = [
 export default function TabsLayout() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  // The knowledge-base pages' "back to the shelf" button returns to this entry (useBackToShelf).
+  useEffect(() => noteTabHistory(pathname === MOBILE_ROUTES.SHELF), [pathname]);
   return (
     <>
       <Outlet />

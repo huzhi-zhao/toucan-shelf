@@ -2,6 +2,7 @@ import { ChevronDownIcon, ChevronUpIcon, PlusIcon } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useTranslate } from "@/utils/i18n";
+import { COLLAPSED_LIMIT } from "./columns";
 import { KanbanCard } from "./KanbanCard";
 import type { KanbanTask } from "./types";
 
@@ -43,7 +44,6 @@ export const KanbanColumn = ({
 
   // Cap a column at COLLAPSED_LIMIT cards, hiding the rest behind a "more" toggle
   // so a long column doesn't stretch the board.
-  const COLLAPSED_LIMIT = 6;
   const overflow = tasks.length - COLLAPSED_LIMIT;
   const visibleTasks = expanded ? tasks : tasks.slice(0, COLLAPSED_LIMIT);
 

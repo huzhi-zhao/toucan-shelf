@@ -205,3 +205,39 @@ func TestPlannerDataDeletedWithUser(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, notes)
 }
+
+func TestPlannerTodoTags(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestingStore(ctx, t)
+	defer ts.Close()
+	user, err := createTestingHostUser(ctx, ts)
+	require.NoError(t, err)
+
+	tags, err := ts.ListPlannerTodoTags(ctx, user.ID)
+	require.NoError(t, err)
+	require.Empty(t, tags)
+
+	newTodo := func(uid, tag string) *store.PlannerTodo {
+		todo, err := ts.CreatePlannerTodo(ctx, &store.PlannerTodo{UID: uid, CreatorID: user.ID, Title: uid, Status: store.PlannerTodoActive, Tag: tag})
+		require.NoError(t, err)
+		return todo
+	}
+	newTodo("a", "学业")
+	work := newTodo("b", "工作")
+	newTodo("c", "学业")
+	newTodo("d", "")
+
+	// Distinct, untagged left out, most recently used first.
+	_, err = ts.GetDriver().GetDB().ExecContext(ctx, "UPDATE `planner_todo` SET `updated_ts` = 100")
+	require.NoError(t, err)
+	_, err = ts.GetDriver().GetDB().ExecContext(ctx, "UPDATE `planner_todo` SET `updated_ts` = 200 WHERE `id` = ?", work.ID)
+	require.NoError(t, err)
+	tags, err = ts.ListPlannerTodoTags(ctx, user.ID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"工作", "学业"}, tags)
+
+	other := user.ID + 1000
+	tags, err = ts.ListPlannerTodoTags(ctx, other)
+	require.NoError(t, err)
+	require.Empty(t, tags, "another user's tags are not listed")
+}

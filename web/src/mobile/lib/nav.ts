@@ -134,3 +134,34 @@ export function usePageScroll<T extends HTMLElement>() {
   }, [key]);
   return ref;
 }
+
+const historyIndex = () => (window.history.state as { idx?: number } | null)?.idx ?? 0;
+
+// Where the shelf tab sits in this tab's history. Tabs replace each other in place, so the shelf keeps one
+// entry until another tab takes it over; the tab layout keeps this current.
+let shelfHistoryIndex: number | undefined;
+
+/** Called by the tab layout on every tab page: notes where the shelf is, or that it was replaced. */
+export function noteTabHistory(isShelf: boolean) {
+  const index = historyIndex();
+  if (isShelf) shelfHistoryIndex = index;
+  else if (shelfHistoryIndex === index) shelfHistoryIndex = undefined;
+}
+
+/**
+ * "Back to the shelf" from deep in a knowledge base. When the shelf is further back in history it steps all
+ * the way back to it, so the folders in between leave the stack and an edge swipe from the shelf does not
+ * land in them again; reached any other way (a deep link), it replaces the current page with the shelf.
+ */
+export function useBackToShelf(shelfPath: string) {
+  const navigate = useNavigate();
+  return useCallback(() => {
+    const index = historyIndex();
+    if (shelfHistoryIndex !== undefined && shelfHistoryIndex < index) {
+      const steps = shelfHistoryIndex - index;
+      navigateWithTransition(() => navigate(steps), "back");
+      return;
+    }
+    navigateWithTransition(() => navigate(shelfPath, { replace: true, flushSync: true }), "back");
+  }, [navigate, shelfPath]);
+}

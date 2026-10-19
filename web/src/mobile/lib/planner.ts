@@ -109,6 +109,12 @@ export function groupOpenTodos(todos: Todo[], today: string): OpenTodoGroups {
   return groups;
 }
 
+/** The todo list below the calendar leaves out what the selected day already shows above it. */
+export function todosNotShown(open: Todo[], shownAbove: Todo[]): Todo[] {
+  const shown = new Set(shownAbove.map((todo) => todo.name));
+  return open.filter((todo) => !shown.has(todo.name));
+}
+
 /**
  * The todos shown under a selected day: that day's own, plus — on today only —
  * every overdue one. An overdue todo stays in sight until it is closed (requirement §2.4).
@@ -118,6 +124,26 @@ export function todosForDay(date: string, today: string, dated: Todo[], open: To
   if (date !== today) return own;
   const overdue = open.filter((todo) => isOverdue(todo, today));
   return [...overdue, ...own];
+}
+
+/** What the planner's calendar shows: the month on screen, the selected day and this visit's week start. */
+export interface CalendarView {
+  month: VisibleMonth;
+  selectedDate: string;
+  weekStartOverride?: number;
+}
+
+// Kept in module memory, not storage: coming back from a todo's page lands on the same day, while reopening
+// the app starts from today. `savedOn` drops a view left over from an earlier day (the app kept running past
+// midnight), so a new day also starts from today.
+let savedCalendarView: (CalendarView & { savedOn: string }) | undefined;
+
+export function readCalendarView(today: string): CalendarView | undefined {
+  return savedCalendarView?.savedOn === today ? savedCalendarView : undefined;
+}
+
+export function saveCalendarView(view: CalendarView, today: string) {
+  savedCalendarView = { ...view, savedOn: today };
 }
 
 /** Whether a past day can still be edited: the calendar block's `allowMaxUpdateDays` guard. Todos are exempt. */

@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file api/v1/planner_service.proto.
  */
 export const file_api_v1_planner_service: GenFile = /*@__PURE__*/
-  fileDesc("ChxhcGkvdjEvcGxhbm5lcl9zZXJ2aWNlLnByb3RvEgxtZW1vcy5hcGkudjEiiAIKBUhhYml0EhEKBG5hbWUYASABKAlCA+BBCBISCgV0aXRsZRgCIAEoCUID4EECEhUKCHBvc2l0aW9uGAMgASgFQgPgQQESFQoIYXJjaGl2ZWQYBCABKAhCA+BBARI0CgtjcmVhdGVfdGltZRgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCA+BBAxI0Cgt1cGRhdGVfdGltZRgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCA+BBAzo+6kE7ChJtZW1vcy5hcGkudjEvSGFiaXQSFnBsYW5uZXIvaGFiaXRzL3toYWJpdH0qBmhhYml0czIFaGFiaXQiQwoHQ2hlY2tJbhISCgVoYWJpdBgBIAEoCUID4EECEhEKBGRhdGUYAiABKAlCA+BBAhIRCgRub3RlGAMgASgJQgPgQQEi5wQKBFRvZG8SEQoEbmFtZRgBIAEoCUID4EEIEhIKBXRpdGxlGAIgASgJQgPgQQISEQoEZGF0ZRgDIAEoCUID4EEBEi4KBnN0YXR1cxgEIAEoDjIZLm1lbW9zLmFwaS52MS5Ub2RvLlN0YXR1c0ID4EEBEhsKDmNsb3NlZF9vdmVyZHVlGAUgASgIQgPgQQMSMwoKY2xvc2VfdGltZRgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCA+BBAxIaCg1jYW5jZWxfcmVhc29uGAcgASgJQgPgQQESFgoJaW1wb3J0YW50GAggASgIQgPgQQESEAoDdGFnGAkgASgJQgPgQQESEQoEbm90ZRgKIAEoCUID4EEBEhEKBG1lbW8YCyABKAlCA+BBARIQCgN1cmwYDCABKAlCA+BBARI0CgtjcmVhdGVfdGltZRgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCA+BBAxI0Cgt1cGRhdGVfdGltZRgOIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCA+BBAxIaCg1vcmlnaW5hbF9kYXRlGA8gASgJQgPgQQMSGwoOcG9zdHBvbmVfY291bnQYECABKAVCA+BBAyJFCgZTdGF0dXMSFgoSU1RBVFVTX1VOU1BFQ0lGSUVEEAASCgoGQUNUSVZFEAESCAoERE9ORRACEg0KCUNBTkNFTExFRBADOjnqQTYKEW1lbW9zLmFwaS52MS9Ub2RvEhRwbGFubmVyL3RvZG9zL3t0b2RvfSoFdG9kb3MyBHRvZG8ihQIKC1BsYW5uZXJOb3RlEhEKBG5hbWUYASABKAlCA+BBCBIRCgRkYXRlGAIgASgJQgPgQQISFAoHY29udGVudBgDIAEoCUID4EECEjQKC2NyZWF0ZV90aW1lGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEjQKC3VwZGF0ZV90aW1lGAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDOk7qQUsKGG1lbW9zLmFwaS52MS9QbGFubmVyTm90ZRIUcGxhbm5lci9ub3Rlcy97bm90ZX0qDHBsYW5uZXJOb3RlczILcGxhbm5lck5vdGUiEwoRTGlzdEhhYml0c1JlcXVlc3QiOQoSTGlzdEhhYml0c1Jlc3BvbnNlEiMKBmhhYml0cxgBIAMoCzITLm1lbW9zLmFwaS52MS5IYWJpdCI9ChJDcmVhdGVIYWJpdFJlcXVlc3QSJwoFaGFiaXQYASABKAsyEy5tZW1vcy5hcGkudjEuSGFiaXRCA+BBAiJzChJVcGRhdGVIYWJpdFJlcXVlc3QSJwoFaGFiaXQYASABKAsyEy5tZW1vcy5hcGkudjEuSGFiaXRCA+BBAhI0Cgt1cGRhdGVfbWFzaxgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5GaWVsZE1hc2tCA+BBAiJLChlMaXN0UGxhbm5lckVudHJpZXNSZXF1ZXN0EhcKCnN0YXJ0X2RhdGUYASABKAlCA+BBAhIVCghlbmRfZGF0ZRgCIAEoCUID4EECIpMBChpMaXN0UGxhbm5lckVudHJpZXNSZXNwb25zZRIoCgljaGVja19pbnMYASADKAsyFS5tZW1vcy5hcGkudjEuQ2hlY2tJbhIhCgV0b2RvcxgCIAMoCzISLm1lbW9zLmFwaS52MS5Ub2RvEigKBW5vdGVzGAMgAygLMhkubWVtb3MuYXBpLnYxLlBsYW5uZXJOb3RlIhYKFExpc3RPcGVuVG9kb3NSZXF1ZXN0IjoKFUxpc3RPcGVuVG9kb3NSZXNwb25zZRIhCgV0b2RvcxgBIAMoCzISLm1lbW9zLmFwaS52MS5Ub2RvIkEKEVNldENoZWNrSW5SZXF1ZXN0EiwKCGNoZWNrX2luGAEgASgLMhUubWVtb3MuYXBpLnYxLkNoZWNrSW5CA+BBAiI9ChREZWxldGVDaGVja0luUmVxdWVzdBISCgVoYWJpdBgBIAEoCUID4EECEhEKBGRhdGUYAiABKAlCA+BBAiIjCg5HZXRUb2RvUmVxdWVzdBIRCgRuYW1lGAEgASgJQgPgQQIiOgoRQ3JlYXRlVG9kb1JlcXVlc3QSJQoEdG9kbxgBIAEoCzISLm1lbW9zLmFwaS52MS5Ub2RvQgPgQQIiiQEKEVVwZGF0ZVRvZG9SZXF1ZXN0EiUKBHRvZG8YASABKAsyEi5tZW1vcy5hcGkudjEuVG9kb0ID4EECEjQKC3VwZGF0ZV9tYXNrGAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLkZpZWxkTWFza0ID4EECEhcKCmxvY2FsX2RhdGUYAyABKAlCA+BBASJUChNQb3N0cG9uZVRvZG9SZXF1ZXN0EhEKBG5hbWUYASABKAlCA+BBAhIRCgRkYXRlGAIgASgJQgPgQQISFwoKbG9jYWxfZGF0ZRgDIAEoCUID4EECIiYKEURlbGV0ZVRvZG9SZXF1ZXN0EhEKBG5hbWUYASABKAlCA+BBAiJIChhDcmVhdGVQbGFubmVyTm90ZVJlcXVlc3QSLAoEbm90ZRgBIAEoCzIZLm1lbW9zLmFwaS52MS5QbGFubmVyTm90ZUID4EECIn4KGFVwZGF0ZVBsYW5uZXJOb3RlUmVxdWVzdBIsCgRub3RlGAEgASgLMhkubWVtb3MuYXBpLnYxLlBsYW5uZXJOb3RlQgPgQQISNAoLdXBkYXRlX21hc2sYAiABKAsyGi5nb29nbGUucHJvdG9idWYuRmllbGRNYXNrQgPgQQIiLQoYRGVsZXRlUGxhbm5lck5vdGVSZXF1ZXN0EhEKBG5hbWUYASABKAlCA+BBAiK+AQoUSW1wb3J0UGxhbm5lclJlcXVlc3QSIwoGaGFiaXRzGAEgAygLMhMubWVtb3MuYXBpLnYxLkhhYml0Ei4KCWNoZWNrX2lucxgCIAMoCzIbLm1lbW9zLmFwaS52MS5JbXBvcnRDaGVja0luEicKBXRvZG9zGAMgAygLMhgubWVtb3MuYXBpLnYxLkltcG9ydFRvZG8SKAoFbm90ZXMYBCADKAsyGS5tZW1vcy5hcGkudjEuUGxhbm5lck5vdGUiQAoNSW1wb3J0Q2hlY2tJbhITCgtoYWJpdF9pbmRleBgBIAEoBRIMCgRkYXRlGAIgASgJEgwKBG5vdGUYAyABKAkiRgoKSW1wb3J0VG9kbxIgCgR0b2RvGAEgASgLMhIubWVtb3MuYXBpLnYxLlRvZG8SFgoOY2xvc2VkX292ZXJkdWUYAiABKAgibAoVSW1wb3J0UGxhbm5lclJlc3BvbnNlEhMKC2hhYml0X2NvdW50GAEgASgFEhYKDmNoZWNrX2luX2NvdW50GAIgASgFEhIKCnRvZG9fY291bnQYAyABKAUSEgoKbm90ZV9jb3VudBgEIAEoBTKEEAoOUGxhbm5lclNlcnZpY2USbwoKTGlzdEhhYml0cxIfLm1lbW9zLmFwaS52MS5MaXN0SGFiaXRzUmVxdWVzdBogLm1lbW9zLmFwaS52MS5MaXN0SGFiaXRzUmVzcG9uc2UiHoLT5JMCGBIWL2FwaS92MS9wbGFubmVyL2hhYml0cxJzCgtDcmVhdGVIYWJpdBIgLm1lbW9zLmFwaS52MS5DcmVhdGVIYWJpdFJlcXVlc3QaEy5tZW1vcy5hcGkudjEuSGFiaXQiLdpBBWhhYml0gtPkkwIfOgVoYWJpdCIWL2FwaS92MS9wbGFubmVyL2hhYml0cxKOAQoLVXBkYXRlSGFiaXQSIC5tZW1vcy5hcGkudjEuVXBkYXRlSGFiaXRSZXF1ZXN0GhMubWVtb3MuYXBpLnYxLkhhYml0IkjaQRFoYWJpdCx1cGRhdGVfbWFza4LT5JMCLjoFaGFiaXQyJS9hcGkvdjEve2hhYml0Lm5hbWU9cGxhbm5lci9oYWJpdHMvKn0SiAEKEkxpc3RQbGFubmVyRW50cmllcxInLm1lbW9zLmFwaS52MS5MaXN0UGxhbm5lckVudHJpZXNSZXF1ZXN0GigubWVtb3MuYXBpLnYxLkxpc3RQbGFubmVyRW50cmllc1Jlc3BvbnNlIh+C0+STAhkSFy9hcGkvdjEvcGxhbm5lci9lbnRyaWVzEnsKDUxpc3RPcGVuVG9kb3MSIi5tZW1vcy5hcGkudjEuTGlzdE9wZW5Ub2Rvc1JlcXVlc3QaIy5tZW1vcy5hcGkudjEuTGlzdE9wZW5Ub2Rvc1Jlc3BvbnNlIiGC0+STAhsSGS9hcGkvdjEvcGxhbm5lci9vcGVuVG9kb3MSewoKU2V0Q2hlY2tJbhIfLm1lbW9zLmFwaS52MS5TZXRDaGVja0luUmVxdWVzdBoVLm1lbW9zLmFwaS52MS5DaGVja0luIjXaQQhjaGVja19pboLT5JMCJDoIY2hlY2tfaW4iGC9hcGkvdjEvcGxhbm5lci9jaGVja0lucxJtCg1EZWxldGVDaGVja0luEiIubWVtb3MuYXBpLnYxLkRlbGV0ZUNoZWNrSW5SZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5IiCC0+STAhoqGC9hcGkvdjEvcGxhbm5lci9jaGVja0lucxJqCgdHZXRUb2RvEhwubWVtb3MuYXBpLnYxLkdldFRvZG9SZXF1ZXN0GhIubWVtb3MuYXBpLnYxLlRvZG8iLdpBBG5hbWWC0+STAiASHi9hcGkvdjEve25hbWU9cGxhbm5lci90b2Rvcy8qfRJtCgpDcmVhdGVUb2RvEh8ubWVtb3MuYXBpLnYxLkNyZWF0ZVRvZG9SZXF1ZXN0GhIubWVtb3MuYXBpLnYxLlRvZG8iKtpBBHRvZG+C0+STAh06BHRvZG8iFS9hcGkvdjEvcGxhbm5lci90b2RvcxKHAQoKVXBkYXRlVG9kbxIfLm1lbW9zLmFwaS52MS5VcGRhdGVUb2RvUmVxdWVzdBoSLm1lbW9zLmFwaS52MS5Ub2RvIkTaQRB0b2RvLHVwZGF0ZV9tYXNrgtPkkwIrOgR0b2RvMiMvYXBpL3YxL3t0b2RvLm5hbWU9cGxhbm5lci90b2Rvcy8qfRKFAQoMUG9zdHBvbmVUb2RvEiEubWVtb3MuYXBpLnYxLlBvc3Rwb25lVG9kb1JlcXVlc3QaEi5tZW1vcy5hcGkudjEuVG9kbyI+2kEJbmFtZSxkYXRlgtPkkwIsOgEqIicvYXBpL3YxL3tuYW1lPXBsYW5uZXIvdG9kb3MvKn06cG9zdHBvbmUSdAoKRGVsZXRlVG9kbxIfLm1lbW9zLmFwaS52MS5EZWxldGVUb2RvUmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eSIt2kEEbmFtZYLT5JMCICoeL2FwaS92MS97bmFtZT1wbGFubmVyL3RvZG9zLyp9EoIBChFDcmVhdGVQbGFubmVyTm90ZRImLm1lbW9zLmFwaS52MS5DcmVhdGVQbGFubmVyTm90ZVJlcXVlc3QaGS5tZW1vcy5hcGkudjEuUGxhbm5lck5vdGUiKtpBBG5vdGWC0+STAh06BG5vdGUiFS9hcGkvdjEvcGxhbm5lci9ub3RlcxKcAQoRVXBkYXRlUGxhbm5lck5vdGUSJi5tZW1vcy5hcGkudjEuVXBkYXRlUGxhbm5lck5vdGVSZXF1ZXN0GhkubWVtb3MuYXBpLnYxLlBsYW5uZXJOb3RlIkTaQRBub3RlLHVwZGF0ZV9tYXNrgtPkkwIrOgRub3RlMiMvYXBpL3YxL3tub3RlLm5hbWU9cGxhbm5lci9ub3Rlcy8qfRKCAQoRRGVsZXRlUGxhbm5lck5vdGUSJi5tZW1vcy5hcGkudjEuRGVsZXRlUGxhbm5lck5vdGVSZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5Ii3aQQRuYW1lgtPkkwIgKh4vYXBpL3YxL3tuYW1lPXBsYW5uZXIvbm90ZXMvKn0SewoNSW1wb3J0UGxhbm5lchIiLm1lbW9zLmFwaS52MS5JbXBvcnRQbGFubmVyUmVxdWVzdBojLm1lbW9zLmFwaS52MS5JbXBvcnRQbGFubmVyUmVzcG9uc2UiIYLT5JMCGzoBKiIWL2FwaS92MS9wbGFubmVyOmltcG9ydEKrAQoQY29tLm1lbW9zLmFwaS52MUITUGxhbm5lclNlcnZpY2VQcm90b1ABWjBnaXRodWIuY29tL3VzZW1lbW9zL21lbW9zL3Byb3RvL2dlbi9hcGkvdjE7YXBpdjGiAgNNQViqAgxNZW1vcy5BcGkuVjHKAgxNZW1vc1xBcGlcVjHiAhhNZW1vc1xBcGlcVjFcR1BCTWV0YWRhdGHqAg5NZW1vczo6QXBpOjpWMWIGcHJvdG8z", [file_google_api_annotations, file_google_api_client, file_google_api_field_behavior, file_google_api_resource, file_google_protobuf_empty, file_google_protobuf_field_mask, file_google_protobuf_timestamp]);
+  fileDesc("ChxhcGkvdjEvcGxhbm5lcl9zZXJ2aWNlLnByb3RvEgxtZW1vcy5hcGkudjEiiAIKBUhhYml0EhEKBG5hbWUYASABKAlCA+BBCBISCgV0aXRsZRgCIAEoCUID4EECEhUKCHBvc2l0aW9uGAMgASgFQgPgQQESFQoIYXJjaGl2ZWQYBCABKAhCA+BBARI0CgtjcmVhdGVfdGltZRgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCA+BBAxI0Cgt1cGRhdGVfdGltZRgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCA+BBAzo+6kE7ChJtZW1vcy5hcGkudjEvSGFiaXQSFnBsYW5uZXIvaGFiaXRzL3toYWJpdH0qBmhhYml0czIFaGFiaXQiQwoHQ2hlY2tJbhISCgVoYWJpdBgBIAEoCUID4EECEhEKBGRhdGUYAiABKAlCA+BBAhIRCgRub3RlGAMgASgJQgPgQQEi/QQKBFRvZG8SEQoEbmFtZRgBIAEoCUID4EEIEhIKBXRpdGxlGAIgASgJQgPgQQISEQoEZGF0ZRgDIAEoCUID4EEBEi4KBnN0YXR1cxgEIAEoDjIZLm1lbW9zLmFwaS52MS5Ub2RvLlN0YXR1c0ID4EEBEhsKDmNsb3NlZF9vdmVyZHVlGAUgASgIQgPgQQMSMwoKY2xvc2VfdGltZRgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCA+BBAxIaCg1jYW5jZWxfcmVhc29uGAcgASgJQgPgQQESFgoJaW1wb3J0YW50GAggASgIQgPgQQESEAoDdGFnGAkgASgJQgPgQQESEQoEbm90ZRgKIAEoCUID4EEBEhMKBG1lbW8YCyABKAlCBRgB4EEBEhAKA3VybBgMIAEoCUID4EEBEjQKC2NyZWF0ZV90aW1lGA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEjQKC3VwZGF0ZV90aW1lGA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEhoKDW9yaWdpbmFsX2RhdGUYDyABKAlCA+BBAxIbCg5wb3N0cG9uZV9jb3VudBgQIAEoBUID4EEDEhIKBW1lbW9zGBEgAygJQgPgQQEiRQoGU3RhdHVzEhYKElNUQVRVU19VTlNQRUNJRklFRBAAEgoKBkFDVElWRRABEggKBERPTkUQAhINCglDQU5DRUxMRUQQAzo56kE2ChFtZW1vcy5hcGkudjEvVG9kbxIUcGxhbm5lci90b2Rvcy97dG9kb30qBXRvZG9zMgR0b2RvIoUCCgtQbGFubmVyTm90ZRIRCgRuYW1lGAEgASgJQgPgQQgSEQoEZGF0ZRgCIAEoCUID4EECEhQKB2NvbnRlbnQYAyABKAlCA+BBAhI0CgtjcmVhdGVfdGltZRgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCA+BBAxI0Cgt1cGRhdGVfdGltZRgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCA+BBAzpO6kFLChhtZW1vcy5hcGkudjEvUGxhbm5lck5vdGUSFHBsYW5uZXIvbm90ZXMve25vdGV9KgxwbGFubmVyTm90ZXMyC3BsYW5uZXJOb3RlIhMKEUxpc3RIYWJpdHNSZXF1ZXN0IjkKEkxpc3RIYWJpdHNSZXNwb25zZRIjCgZoYWJpdHMYASADKAsyEy5tZW1vcy5hcGkudjEuSGFiaXQiPQoSQ3JlYXRlSGFiaXRSZXF1ZXN0EicKBWhhYml0GAEgASgLMhMubWVtb3MuYXBpLnYxLkhhYml0QgPgQQIicwoSVXBkYXRlSGFiaXRSZXF1ZXN0EicKBWhhYml0GAEgASgLMhMubWVtb3MuYXBpLnYxLkhhYml0QgPgQQISNAoLdXBkYXRlX21hc2sYAiABKAsyGi5nb29nbGUucHJvdG9idWYuRmllbGRNYXNrQgPgQQIiSwoZTGlzdFBsYW5uZXJFbnRyaWVzUmVxdWVzdBIXCgpzdGFydF9kYXRlGAEgASgJQgPgQQISFQoIZW5kX2RhdGUYAiABKAlCA+BBAiKTAQoaTGlzdFBsYW5uZXJFbnRyaWVzUmVzcG9uc2USKAoJY2hlY2tfaW5zGAEgAygLMhUubWVtb3MuYXBpLnYxLkNoZWNrSW4SIQoFdG9kb3MYAiADKAsyEi5tZW1vcy5hcGkudjEuVG9kbxIoCgVub3RlcxgDIAMoCzIZLm1lbW9zLmFwaS52MS5QbGFubmVyTm90ZSIWChRMaXN0T3BlblRvZG9zUmVxdWVzdCI6ChVMaXN0T3BlblRvZG9zUmVzcG9uc2USIQoFdG9kb3MYASADKAsyEi5tZW1vcy5hcGkudjEuVG9kbyIVChNMaXN0VG9kb1RhZ3NSZXF1ZXN0IiQKFExpc3RUb2RvVGFnc1Jlc3BvbnNlEgwKBHRhZ3MYASADKAkiQQoRU2V0Q2hlY2tJblJlcXVlc3QSLAoIY2hlY2tfaW4YASABKAsyFS5tZW1vcy5hcGkudjEuQ2hlY2tJbkID4EECIj0KFERlbGV0ZUNoZWNrSW5SZXF1ZXN0EhIKBWhhYml0GAEgASgJQgPgQQISEQoEZGF0ZRgCIAEoCUID4EECIiMKDkdldFRvZG9SZXF1ZXN0EhEKBG5hbWUYASABKAlCA+BBAiI6ChFDcmVhdGVUb2RvUmVxdWVzdBIlCgR0b2RvGAEgASgLMhIubWVtb3MuYXBpLnYxLlRvZG9CA+BBAiKJAQoRVXBkYXRlVG9kb1JlcXVlc3QSJQoEdG9kbxgBIAEoCzISLm1lbW9zLmFwaS52MS5Ub2RvQgPgQQISNAoLdXBkYXRlX21hc2sYAiABKAsyGi5nb29nbGUucHJvdG9idWYuRmllbGRNYXNrQgPgQQISFwoKbG9jYWxfZGF0ZRgDIAEoCUID4EEBIlQKE1Bvc3Rwb25lVG9kb1JlcXVlc3QSEQoEbmFtZRgBIAEoCUID4EECEhEKBGRhdGUYAiABKAlCA+BBAhIXCgpsb2NhbF9kYXRlGAMgASgJQgPgQQIiJgoRRGVsZXRlVG9kb1JlcXVlc3QSEQoEbmFtZRgBIAEoCUID4EECIkgKGENyZWF0ZVBsYW5uZXJOb3RlUmVxdWVzdBIsCgRub3RlGAEgASgLMhkubWVtb3MuYXBpLnYxLlBsYW5uZXJOb3RlQgPgQQIifgoYVXBkYXRlUGxhbm5lck5vdGVSZXF1ZXN0EiwKBG5vdGUYASABKAsyGS5tZW1vcy5hcGkudjEuUGxhbm5lck5vdGVCA+BBAhI0Cgt1cGRhdGVfbWFzaxgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5GaWVsZE1hc2tCA+BBAiItChhEZWxldGVQbGFubmVyTm90ZVJlcXVlc3QSEQoEbmFtZRgBIAEoCUID4EECIr4BChRJbXBvcnRQbGFubmVyUmVxdWVzdBIjCgZoYWJpdHMYASADKAsyEy5tZW1vcy5hcGkudjEuSGFiaXQSLgoJY2hlY2tfaW5zGAIgAygLMhsubWVtb3MuYXBpLnYxLkltcG9ydENoZWNrSW4SJwoFdG9kb3MYAyADKAsyGC5tZW1vcy5hcGkudjEuSW1wb3J0VG9kbxIoCgVub3RlcxgEIAMoCzIZLm1lbW9zLmFwaS52MS5QbGFubmVyTm90ZSJACg1JbXBvcnRDaGVja0luEhMKC2hhYml0X2luZGV4GAEgASgFEgwKBGRhdGUYAiABKAkSDAoEbm90ZRgDIAEoCSJGCgpJbXBvcnRUb2RvEiAKBHRvZG8YASABKAsyEi5tZW1vcy5hcGkudjEuVG9kbxIWCg5jbG9zZWRfb3ZlcmR1ZRgCIAEoCCJsChVJbXBvcnRQbGFubmVyUmVzcG9uc2USEwoLaGFiaXRfY291bnQYASABKAUSFgoOY2hlY2tfaW5fY291bnQYAiABKAUSEgoKdG9kb19jb3VudBgDIAEoBRISCgpub3RlX2NvdW50GAQgASgFMv0QCg5QbGFubmVyU2VydmljZRJvCgpMaXN0SGFiaXRzEh8ubWVtb3MuYXBpLnYxLkxpc3RIYWJpdHNSZXF1ZXN0GiAubWVtb3MuYXBpLnYxLkxpc3RIYWJpdHNSZXNwb25zZSIegtPkkwIYEhYvYXBpL3YxL3BsYW5uZXIvaGFiaXRzEnMKC0NyZWF0ZUhhYml0EiAubWVtb3MuYXBpLnYxLkNyZWF0ZUhhYml0UmVxdWVzdBoTLm1lbW9zLmFwaS52MS5IYWJpdCIt2kEFaGFiaXSC0+STAh86BWhhYml0IhYvYXBpL3YxL3BsYW5uZXIvaGFiaXRzEo4BCgtVcGRhdGVIYWJpdBIgLm1lbW9zLmFwaS52MS5VcGRhdGVIYWJpdFJlcXVlc3QaEy5tZW1vcy5hcGkudjEuSGFiaXQiSNpBEWhhYml0LHVwZGF0ZV9tYXNrgtPkkwIuOgVoYWJpdDIlL2FwaS92MS97aGFiaXQubmFtZT1wbGFubmVyL2hhYml0cy8qfRKIAQoSTGlzdFBsYW5uZXJFbnRyaWVzEicubWVtb3MuYXBpLnYxLkxpc3RQbGFubmVyRW50cmllc1JlcXVlc3QaKC5tZW1vcy5hcGkudjEuTGlzdFBsYW5uZXJFbnRyaWVzUmVzcG9uc2UiH4LT5JMCGRIXL2FwaS92MS9wbGFubmVyL2VudHJpZXMSewoNTGlzdE9wZW5Ub2RvcxIiLm1lbW9zLmFwaS52MS5MaXN0T3BlblRvZG9zUmVxdWVzdBojLm1lbW9zLmFwaS52MS5MaXN0T3BlblRvZG9zUmVzcG9uc2UiIYLT5JMCGxIZL2FwaS92MS9wbGFubmVyL29wZW5Ub2RvcxJ3CgxMaXN0VG9kb1RhZ3MSIS5tZW1vcy5hcGkudjEuTGlzdFRvZG9UYWdzUmVxdWVzdBoiLm1lbW9zLmFwaS52MS5MaXN0VG9kb1RhZ3NSZXNwb25zZSIggtPkkwIaEhgvYXBpL3YxL3BsYW5uZXIvdG9kb1RhZ3MSewoKU2V0Q2hlY2tJbhIfLm1lbW9zLmFwaS52MS5TZXRDaGVja0luUmVxdWVzdBoVLm1lbW9zLmFwaS52MS5DaGVja0luIjXaQQhjaGVja19pboLT5JMCJDoIY2hlY2tfaW4iGC9hcGkvdjEvcGxhbm5lci9jaGVja0lucxJtCg1EZWxldGVDaGVja0luEiIubWVtb3MuYXBpLnYxLkRlbGV0ZUNoZWNrSW5SZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5IiCC0+STAhoqGC9hcGkvdjEvcGxhbm5lci9jaGVja0lucxJqCgdHZXRUb2RvEhwubWVtb3MuYXBpLnYxLkdldFRvZG9SZXF1ZXN0GhIubWVtb3MuYXBpLnYxLlRvZG8iLdpBBG5hbWWC0+STAiASHi9hcGkvdjEve25hbWU9cGxhbm5lci90b2Rvcy8qfRJtCgpDcmVhdGVUb2RvEh8ubWVtb3MuYXBpLnYxLkNyZWF0ZVRvZG9SZXF1ZXN0GhIubWVtb3MuYXBpLnYxLlRvZG8iKtpBBHRvZG+C0+STAh06BHRvZG8iFS9hcGkvdjEvcGxhbm5lci90b2RvcxKHAQoKVXBkYXRlVG9kbxIfLm1lbW9zLmFwaS52MS5VcGRhdGVUb2RvUmVxdWVzdBoSLm1lbW9zLmFwaS52MS5Ub2RvIkTaQRB0b2RvLHVwZGF0ZV9tYXNrgtPkkwIrOgR0b2RvMiMvYXBpL3YxL3t0b2RvLm5hbWU9cGxhbm5lci90b2Rvcy8qfRKFAQoMUG9zdHBvbmVUb2RvEiEubWVtb3MuYXBpLnYxLlBvc3Rwb25lVG9kb1JlcXVlc3QaEi5tZW1vcy5hcGkudjEuVG9kbyI+2kEJbmFtZSxkYXRlgtPkkwIsOgEqIicvYXBpL3YxL3tuYW1lPXBsYW5uZXIvdG9kb3MvKn06cG9zdHBvbmUSdAoKRGVsZXRlVG9kbxIfLm1lbW9zLmFwaS52MS5EZWxldGVUb2RvUmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eSIt2kEEbmFtZYLT5JMCICoeL2FwaS92MS97bmFtZT1wbGFubmVyL3RvZG9zLyp9EoIBChFDcmVhdGVQbGFubmVyTm90ZRImLm1lbW9zLmFwaS52MS5DcmVhdGVQbGFubmVyTm90ZVJlcXVlc3QaGS5tZW1vcy5hcGkudjEuUGxhbm5lck5vdGUiKtpBBG5vdGWC0+STAh06BG5vdGUiFS9hcGkvdjEvcGxhbm5lci9ub3RlcxKcAQoRVXBkYXRlUGxhbm5lck5vdGUSJi5tZW1vcy5hcGkudjEuVXBkYXRlUGxhbm5lck5vdGVSZXF1ZXN0GhkubWVtb3MuYXBpLnYxLlBsYW5uZXJOb3RlIkTaQRBub3RlLHVwZGF0ZV9tYXNrgtPkkwIrOgRub3RlMiMvYXBpL3YxL3tub3RlLm5hbWU9cGxhbm5lci9ub3Rlcy8qfRKCAQoRRGVsZXRlUGxhbm5lck5vdGUSJi5tZW1vcy5hcGkudjEuRGVsZXRlUGxhbm5lck5vdGVSZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5Ii3aQQRuYW1lgtPkkwIgKh4vYXBpL3YxL3tuYW1lPXBsYW5uZXIvbm90ZXMvKn0SewoNSW1wb3J0UGxhbm5lchIiLm1lbW9zLmFwaS52MS5JbXBvcnRQbGFubmVyUmVxdWVzdBojLm1lbW9zLmFwaS52MS5JbXBvcnRQbGFubmVyUmVzcG9uc2UiIYLT5JMCGzoBKiIWL2FwaS92MS9wbGFubmVyOmltcG9ydEKrAQoQY29tLm1lbW9zLmFwaS52MUITUGxhbm5lclNlcnZpY2VQcm90b1ABWjBnaXRodWIuY29tL3VzZW1lbW9zL21lbW9zL3Byb3RvL2dlbi9hcGkvdjE7YXBpdjGiAgNNQViqAgxNZW1vcy5BcGkuVjHKAgxNZW1vc1xBcGlcVjHiAhhNZW1vc1xBcGlcVjFcR1BCTWV0YWRhdGHqAg5NZW1vczo6QXBpOjpWMWIGcHJvdG8z", [file_google_api_annotations, file_google_api_client, file_google_api_field_behavior, file_google_api_resource, file_google_protobuf_empty, file_google_protobuf_field_mask, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message memos.api.v1.Habit
@@ -172,9 +172,11 @@ export type Todo = Message<"memos.api.v1.Todo"> & {
   note: string;
 
   /**
-   * A linked document. Format: memos/{memo}
+   * Deprecated: use memos. Read as the first of memos; written (update mask path
+   * "memo") as the only linked document.
    *
-   * @generated from field: string memo = 11;
+   * @generated from field: string memo = 11 [deprecated = true];
+   * @deprecated
    */
   memo: string;
 
@@ -209,6 +211,13 @@ export type Todo = Message<"memos.api.v1.Todo"> & {
    * @generated from field: int32 postpone_count = 16;
    */
   postponeCount: number;
+
+  /**
+   * The linked documents, in display order. Format: memos/{memo}
+   *
+   * @generated from field: repeated string memos = 17;
+   */
+  memos: string[];
 };
 
 /**
@@ -450,6 +459,38 @@ export const ListOpenTodosResponseSchema: GenMessage<ListOpenTodosResponse> = /*
   messageDesc(file_api_v1_planner_service, 11);
 
 /**
+ * @generated from message memos.api.v1.ListTodoTagsRequest
+ */
+export type ListTodoTagsRequest = Message<"memos.api.v1.ListTodoTagsRequest"> & {
+};
+
+/**
+ * Describes the message memos.api.v1.ListTodoTagsRequest.
+ * Use `create(ListTodoTagsRequestSchema)` to create a new message.
+ */
+export const ListTodoTagsRequestSchema: GenMessage<ListTodoTagsRequest> = /*@__PURE__*/
+  messageDesc(file_api_v1_planner_service, 12);
+
+/**
+ * @generated from message memos.api.v1.ListTodoTagsResponse
+ */
+export type ListTodoTagsResponse = Message<"memos.api.v1.ListTodoTagsResponse"> & {
+  /**
+   * Most recently used first; at most 50.
+   *
+   * @generated from field: repeated string tags = 1;
+   */
+  tags: string[];
+};
+
+/**
+ * Describes the message memos.api.v1.ListTodoTagsResponse.
+ * Use `create(ListTodoTagsResponseSchema)` to create a new message.
+ */
+export const ListTodoTagsResponseSchema: GenMessage<ListTodoTagsResponse> = /*@__PURE__*/
+  messageDesc(file_api_v1_planner_service, 13);
+
+/**
  * @generated from message memos.api.v1.SetCheckInRequest
  */
 export type SetCheckInRequest = Message<"memos.api.v1.SetCheckInRequest"> & {
@@ -464,7 +505,7 @@ export type SetCheckInRequest = Message<"memos.api.v1.SetCheckInRequest"> & {
  * Use `create(SetCheckInRequestSchema)` to create a new message.
  */
 export const SetCheckInRequestSchema: GenMessage<SetCheckInRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 12);
+  messageDesc(file_api_v1_planner_service, 14);
 
 /**
  * @generated from message memos.api.v1.DeleteCheckInRequest
@@ -490,7 +531,7 @@ export type DeleteCheckInRequest = Message<"memos.api.v1.DeleteCheckInRequest"> 
  * Use `create(DeleteCheckInRequestSchema)` to create a new message.
  */
 export const DeleteCheckInRequestSchema: GenMessage<DeleteCheckInRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 13);
+  messageDesc(file_api_v1_planner_service, 15);
 
 /**
  * @generated from message memos.api.v1.GetTodoRequest
@@ -509,7 +550,7 @@ export type GetTodoRequest = Message<"memos.api.v1.GetTodoRequest"> & {
  * Use `create(GetTodoRequestSchema)` to create a new message.
  */
 export const GetTodoRequestSchema: GenMessage<GetTodoRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 14);
+  messageDesc(file_api_v1_planner_service, 16);
 
 /**
  * @generated from message memos.api.v1.CreateTodoRequest
@@ -526,7 +567,7 @@ export type CreateTodoRequest = Message<"memos.api.v1.CreateTodoRequest"> & {
  * Use `create(CreateTodoRequestSchema)` to create a new message.
  */
 export const CreateTodoRequestSchema: GenMessage<CreateTodoRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 15);
+  messageDesc(file_api_v1_planner_service, 17);
 
 /**
  * @generated from message memos.api.v1.UpdateTodoRequest
@@ -539,7 +580,7 @@ export type UpdateTodoRequest = Message<"memos.api.v1.UpdateTodoRequest"> & {
 
   /**
    * Supported paths: title, date, status, cancel_reason, important, tag, note,
-   * memo, url.
+   * memos, url, and the deprecated memo.
    *
    * @generated from field: google.protobuf.FieldMask update_mask = 2;
    */
@@ -559,7 +600,7 @@ export type UpdateTodoRequest = Message<"memos.api.v1.UpdateTodoRequest"> & {
  * Use `create(UpdateTodoRequestSchema)` to create a new message.
  */
 export const UpdateTodoRequestSchema: GenMessage<UpdateTodoRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 16);
+  messageDesc(file_api_v1_planner_service, 18);
 
 /**
  * @generated from message memos.api.v1.PostponeTodoRequest
@@ -593,7 +634,7 @@ export type PostponeTodoRequest = Message<"memos.api.v1.PostponeTodoRequest"> & 
  * Use `create(PostponeTodoRequestSchema)` to create a new message.
  */
 export const PostponeTodoRequestSchema: GenMessage<PostponeTodoRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 17);
+  messageDesc(file_api_v1_planner_service, 19);
 
 /**
  * @generated from message memos.api.v1.DeleteTodoRequest
@@ -612,7 +653,7 @@ export type DeleteTodoRequest = Message<"memos.api.v1.DeleteTodoRequest"> & {
  * Use `create(DeleteTodoRequestSchema)` to create a new message.
  */
 export const DeleteTodoRequestSchema: GenMessage<DeleteTodoRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 18);
+  messageDesc(file_api_v1_planner_service, 20);
 
 /**
  * @generated from message memos.api.v1.CreatePlannerNoteRequest
@@ -629,7 +670,7 @@ export type CreatePlannerNoteRequest = Message<"memos.api.v1.CreatePlannerNoteRe
  * Use `create(CreatePlannerNoteRequestSchema)` to create a new message.
  */
 export const CreatePlannerNoteRequestSchema: GenMessage<CreatePlannerNoteRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 19);
+  messageDesc(file_api_v1_planner_service, 21);
 
 /**
  * @generated from message memos.api.v1.UpdatePlannerNoteRequest
@@ -653,7 +694,7 @@ export type UpdatePlannerNoteRequest = Message<"memos.api.v1.UpdatePlannerNoteRe
  * Use `create(UpdatePlannerNoteRequestSchema)` to create a new message.
  */
 export const UpdatePlannerNoteRequestSchema: GenMessage<UpdatePlannerNoteRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 20);
+  messageDesc(file_api_v1_planner_service, 22);
 
 /**
  * @generated from message memos.api.v1.DeletePlannerNoteRequest
@@ -672,7 +713,7 @@ export type DeletePlannerNoteRequest = Message<"memos.api.v1.DeletePlannerNoteRe
  * Use `create(DeletePlannerNoteRequestSchema)` to create a new message.
  */
 export const DeletePlannerNoteRequestSchema: GenMessage<DeletePlannerNoteRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 21);
+  messageDesc(file_api_v1_planner_service, 23);
 
 /**
  * @generated from message memos.api.v1.ImportPlannerRequest
@@ -713,7 +754,7 @@ export type ImportPlannerRequest = Message<"memos.api.v1.ImportPlannerRequest"> 
  * Use `create(ImportPlannerRequestSchema)` to create a new message.
  */
 export const ImportPlannerRequestSchema: GenMessage<ImportPlannerRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 22);
+  messageDesc(file_api_v1_planner_service, 24);
 
 /**
  * @generated from message memos.api.v1.ImportCheckIn
@@ -744,7 +785,7 @@ export type ImportCheckIn = Message<"memos.api.v1.ImportCheckIn"> & {
  * Use `create(ImportCheckInSchema)` to create a new message.
  */
 export const ImportCheckInSchema: GenMessage<ImportCheckIn> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 23);
+  messageDesc(file_api_v1_planner_service, 25);
 
 /**
  * @generated from message memos.api.v1.ImportTodo
@@ -768,7 +809,7 @@ export type ImportTodo = Message<"memos.api.v1.ImportTodo"> & {
  * Use `create(ImportTodoSchema)` to create a new message.
  */
 export const ImportTodoSchema: GenMessage<ImportTodo> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 24);
+  messageDesc(file_api_v1_planner_service, 26);
 
 /**
  * @generated from message memos.api.v1.ImportPlannerResponse
@@ -800,7 +841,7 @@ export type ImportPlannerResponse = Message<"memos.api.v1.ImportPlannerResponse"
  * Use `create(ImportPlannerResponseSchema)` to create a new message.
  */
 export const ImportPlannerResponseSchema: GenMessage<ImportPlannerResponse> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 25);
+  messageDesc(file_api_v1_planner_service, 27);
 
 /**
  * PlannerService keeps the caller's habits, daily check-ins, todos and notes.
@@ -867,6 +908,17 @@ export const PlannerService: GenService<{
     methodKind: "unary";
     input: typeof ListOpenTodosRequestSchema;
     output: typeof ListOpenTodosResponseSchema;
+  },
+  /**
+   * ListTodoTags returns the tags used on the caller's todos, most recently
+   * used first, to pick from when tagging a todo.
+   *
+   * @generated from rpc memos.api.v1.PlannerService.ListTodoTags
+   */
+  listTodoTags: {
+    methodKind: "unary";
+    input: typeof ListTodoTagsRequestSchema;
+    output: typeof ListTodoTagsResponseSchema;
   },
   /**
    * SetCheckIn records a check-in, or replaces the note of an existing one.

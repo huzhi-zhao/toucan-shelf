@@ -49,6 +49,9 @@ const (
 	// PlannerServiceListOpenTodosProcedure is the fully-qualified name of the PlannerService's
 	// ListOpenTodos RPC.
 	PlannerServiceListOpenTodosProcedure = "/memos.api.v1.PlannerService/ListOpenTodos"
+	// PlannerServiceListTodoTagsProcedure is the fully-qualified name of the PlannerService's
+	// ListTodoTags RPC.
+	PlannerServiceListTodoTagsProcedure = "/memos.api.v1.PlannerService/ListTodoTags"
 	// PlannerServiceSetCheckInProcedure is the fully-qualified name of the PlannerService's SetCheckIn
 	// RPC.
 	PlannerServiceSetCheckInProcedure = "/memos.api.v1.PlannerService/SetCheckIn"
@@ -97,6 +100,9 @@ type PlannerServiceClient interface {
 	// ListOpenTodos returns every active todo, dated or not, ordered by date with
 	// undated ones last.
 	ListOpenTodos(context.Context, *connect.Request[v1.ListOpenTodosRequest]) (*connect.Response[v1.ListOpenTodosResponse], error)
+	// ListTodoTags returns the tags used on the caller's todos, most recently
+	// used first, to pick from when tagging a todo.
+	ListTodoTags(context.Context, *connect.Request[v1.ListTodoTagsRequest]) (*connect.Response[v1.ListTodoTagsResponse], error)
 	// SetCheckIn records a check-in, or replaces the note of an existing one.
 	// An archived habit takes no new check-ins.
 	SetCheckIn(context.Context, *connect.Request[v1.SetCheckInRequest]) (*connect.Response[v1.CheckIn], error)
@@ -169,6 +175,12 @@ func NewPlannerServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			httpClient,
 			baseURL+PlannerServiceListOpenTodosProcedure,
 			connect.WithSchema(plannerServiceMethods.ByName("ListOpenTodos")),
+			connect.WithClientOptions(opts...),
+		),
+		listTodoTags: connect.NewClient[v1.ListTodoTagsRequest, v1.ListTodoTagsResponse](
+			httpClient,
+			baseURL+PlannerServiceListTodoTagsProcedure,
+			connect.WithSchema(plannerServiceMethods.ByName("ListTodoTags")),
 			connect.WithClientOptions(opts...),
 		),
 		setCheckIn: connect.NewClient[v1.SetCheckInRequest, v1.CheckIn](
@@ -247,6 +259,7 @@ type plannerServiceClient struct {
 	updateHabit        *connect.Client[v1.UpdateHabitRequest, v1.Habit]
 	listPlannerEntries *connect.Client[v1.ListPlannerEntriesRequest, v1.ListPlannerEntriesResponse]
 	listOpenTodos      *connect.Client[v1.ListOpenTodosRequest, v1.ListOpenTodosResponse]
+	listTodoTags       *connect.Client[v1.ListTodoTagsRequest, v1.ListTodoTagsResponse]
 	setCheckIn         *connect.Client[v1.SetCheckInRequest, v1.CheckIn]
 	deleteCheckIn      *connect.Client[v1.DeleteCheckInRequest, emptypb.Empty]
 	getTodo            *connect.Client[v1.GetTodoRequest, v1.Todo]
@@ -283,6 +296,11 @@ func (c *plannerServiceClient) ListPlannerEntries(ctx context.Context, req *conn
 // ListOpenTodos calls memos.api.v1.PlannerService.ListOpenTodos.
 func (c *plannerServiceClient) ListOpenTodos(ctx context.Context, req *connect.Request[v1.ListOpenTodosRequest]) (*connect.Response[v1.ListOpenTodosResponse], error) {
 	return c.listOpenTodos.CallUnary(ctx, req)
+}
+
+// ListTodoTags calls memos.api.v1.PlannerService.ListTodoTags.
+func (c *plannerServiceClient) ListTodoTags(ctx context.Context, req *connect.Request[v1.ListTodoTagsRequest]) (*connect.Response[v1.ListTodoTagsResponse], error) {
+	return c.listTodoTags.CallUnary(ctx, req)
 }
 
 // SetCheckIn calls memos.api.v1.PlannerService.SetCheckIn.
@@ -354,6 +372,9 @@ type PlannerServiceHandler interface {
 	// ListOpenTodos returns every active todo, dated or not, ordered by date with
 	// undated ones last.
 	ListOpenTodos(context.Context, *connect.Request[v1.ListOpenTodosRequest]) (*connect.Response[v1.ListOpenTodosResponse], error)
+	// ListTodoTags returns the tags used on the caller's todos, most recently
+	// used first, to pick from when tagging a todo.
+	ListTodoTags(context.Context, *connect.Request[v1.ListTodoTagsRequest]) (*connect.Response[v1.ListTodoTagsResponse], error)
 	// SetCheckIn records a check-in, or replaces the note of an existing one.
 	// An archived habit takes no new check-ins.
 	SetCheckIn(context.Context, *connect.Request[v1.SetCheckInRequest]) (*connect.Response[v1.CheckIn], error)
@@ -422,6 +443,12 @@ func NewPlannerServiceHandler(svc PlannerServiceHandler, opts ...connect.Handler
 		PlannerServiceListOpenTodosProcedure,
 		svc.ListOpenTodos,
 		connect.WithSchema(plannerServiceMethods.ByName("ListOpenTodos")),
+		connect.WithHandlerOptions(opts...),
+	)
+	plannerServiceListTodoTagsHandler := connect.NewUnaryHandler(
+		PlannerServiceListTodoTagsProcedure,
+		svc.ListTodoTags,
+		connect.WithSchema(plannerServiceMethods.ByName("ListTodoTags")),
 		connect.WithHandlerOptions(opts...),
 	)
 	plannerServiceSetCheckInHandler := connect.NewUnaryHandler(
@@ -502,6 +529,8 @@ func NewPlannerServiceHandler(svc PlannerServiceHandler, opts ...connect.Handler
 			plannerServiceListPlannerEntriesHandler.ServeHTTP(w, r)
 		case PlannerServiceListOpenTodosProcedure:
 			plannerServiceListOpenTodosHandler.ServeHTTP(w, r)
+		case PlannerServiceListTodoTagsProcedure:
+			plannerServiceListTodoTagsHandler.ServeHTTP(w, r)
 		case PlannerServiceSetCheckInProcedure:
 			plannerServiceSetCheckInHandler.ServeHTTP(w, r)
 		case PlannerServiceDeleteCheckInProcedure:
@@ -551,6 +580,10 @@ func (UnimplementedPlannerServiceHandler) ListPlannerEntries(context.Context, *c
 
 func (UnimplementedPlannerServiceHandler) ListOpenTodos(context.Context, *connect.Request[v1.ListOpenTodosRequest]) (*connect.Response[v1.ListOpenTodosResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.ListOpenTodos is not implemented"))
+}
+
+func (UnimplementedPlannerServiceHandler) ListTodoTags(context.Context, *connect.Request[v1.ListTodoTagsRequest]) (*connect.Response[v1.ListTodoTagsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.ListTodoTags is not implemented"))
 }
 
 func (UnimplementedPlannerServiceHandler) SetCheckIn(context.Context, *connect.Request[v1.SetCheckInRequest]) (*connect.Response[v1.CheckIn], error) {

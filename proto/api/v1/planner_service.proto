@@ -57,6 +57,12 @@ service PlannerService {
     option (google.api.http) = {get: "/api/v1/planner/openTodos"};
   }
 
+  // ListTodoTags returns the tags used on the caller's todos, most recently
+  // used first, to pick from when tagging a todo.
+  rpc ListTodoTags(ListTodoTagsRequest) returns (ListTodoTagsResponse) {
+    option (google.api.http) = {get: "/api/v1/planner/todoTags"};
+  }
+
   // SetCheckIn records a check-in, or replaces the note of an existing one.
   // An archived habit takes no new check-ins.
   rpc SetCheckIn(SetCheckInRequest) returns (CheckIn) {
@@ -234,8 +240,12 @@ message Todo {
 
   string note = 10 [(google.api.field_behavior) = OPTIONAL];
 
-  // A linked document. Format: memos/{memo}
-  string memo = 11 [(google.api.field_behavior) = OPTIONAL];
+  // Deprecated: use memos. Read as the first of memos; written (update mask path
+  // "memo") as the only linked document.
+  string memo = 11 [
+    deprecated = true,
+    (google.api.field_behavior) = OPTIONAL
+  ];
 
   // A linked external page.
   string url = 12 [(google.api.field_behavior) = OPTIONAL];
@@ -250,6 +260,9 @@ message Todo {
 
   // How many times the todo has been postponed. Set by PostponeTodo.
   int32 postpone_count = 16 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // The linked documents, in display order. Format: memos/{memo}
+  repeated string memos = 17 [(google.api.field_behavior) = OPTIONAL];
 }
 
 // PlannerNote is a plain record of what happened on a day.
@@ -313,6 +326,13 @@ message ListOpenTodosResponse {
   repeated Todo todos = 1;
 }
 
+message ListTodoTagsRequest {}
+
+message ListTodoTagsResponse {
+  // Most recently used first; at most 50.
+  repeated string tags = 1;
+}
+
 message SetCheckInRequest {
   CheckIn check_in = 1 [(google.api.field_behavior) = REQUIRED];
 }
@@ -338,7 +358,7 @@ message UpdateTodoRequest {
   Todo todo = 1 [(google.api.field_behavior) = REQUIRED];
 
   // Supported paths: title, date, status, cancel_reason, important, tag, note,
-  // memo, url.
+  // memos, url, and the deprecated memo.
   google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = REQUIRED];
 
   // The caller's local date, YYYY-MM-DD. Required when closing a todo: whether

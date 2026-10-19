@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -228,6 +229,7 @@ func TestPlannerTodoFields(t *testing.T) {
 	require.True(t, updated.Important)
 	require.Equal(t, "学习", updated.Tag)
 	require.Equal(t, "memos/abc123", updated.Memo)
+	require.Equal(t, []string{"memos/abc123"}, updated.Memos, "the deprecated path sets the whole list")
 	require.Equal(t, "https://example.com/ch3", updated.Url)
 	require.Equal(t, "2026-10-20", updated.Date, "fields outside the mask stay")
 
@@ -235,6 +237,45 @@ func TestPlannerTodoFields(t *testing.T) {
 	require.NoError(t, err)
 	_, err = ts.Service.GetTodo(userCtx, &v1pb.GetTodoRequest{Name: todo.Name})
 	requireCode(t, err, codes.NotFound)
+}
+
+func TestTodoLinksSeveralDocuments(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestService(t)
+	defer ts.Cleanup()
+	user, err := ts.CreateRegularUser(ctx, "planner")
+	require.NoError(t, err)
+	userCtx := ts.CreateUserContext(ctx, user.ID)
+
+	todo, err := ts.Service.CreateTodo(userCtx, &v1pb.CreateTodoRequest{Todo: &v1pb.Todo{Title: "x", Memos: []string{"memos/a", "memos/b"}}})
+	require.NoError(t, err)
+	require.Equal(t, []string{"memos/a", "memos/b"}, todo.Memos)
+	require.Equal(t, "memos/a", todo.Memo, "the deprecated field reads the first")
+
+	updated, err := ts.Service.UpdateTodo(userCtx, &v1pb.UpdateTodoRequest{
+		Todo:       &v1pb.Todo{Name: todo.Name, Memos: []string{"memos/c", " ", "memos/a", "memos/c"}},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"memos"}},
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"memos/c", "memos/a"}, updated.Memos, "order kept, blanks and repeats dropped")
+
+	fetched, err := ts.Service.GetTodo(userCtx, &v1pb.GetTodoRequest{Name: todo.Name})
+	require.NoError(t, err)
+	require.Equal(t, []string{"memos/c", "memos/a"}, fetched.Memos)
+
+	cleared, err := ts.Service.UpdateTodo(userCtx, &v1pb.UpdateTodoRequest{
+		Todo:       &v1pb.Todo{Name: todo.Name},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"memos"}},
+	})
+	require.NoError(t, err)
+	require.Empty(t, cleared.Memos)
+	require.Empty(t, cleared.Memo)
+
+	_, err = ts.Service.UpdateTodo(userCtx, &v1pb.UpdateTodoRequest{
+		Todo:       &v1pb.Todo{Name: todo.Name, Memos: []string{"memos/a", "workspaces/b"}},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"memos"}},
+	})
+	requireCode(t, err, codes.InvalidArgument)
 }
 
 func TestPlannerIsPerUser(t *testing.T) {
@@ -333,4 +374,51 @@ func TestPlannerImport(t *testing.T) {
 
 	_, err = ts.Service.ImportPlanner(userCtx, request)
 	requireCode(t, err, codes.FailedPrecondition)
+}
+
+func TestPlannerTodoTags(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestService(t)
+	defer ts.Cleanup()
+	user, err := ts.CreateRegularUser(ctx, "planner")
+	require.NoError(t, err)
+	other, err := ts.CreateRegularUser(ctx, "other")
+	require.NoError(t, err)
+	userCtx, otherCtx := ts.CreateUserContext(ctx, user.ID), ts.CreateUserContext(ctx, other.ID)
+
+	_, err = ts.Service.ListTodoTags(ctx, &v1pb.ListTodoTagsRequest{})
+	requireCode(t, err, codes.Unauthenticated)
+
+	for _, tag := range []string{"学业", "工作", "学业", ""} {
+		_, err := ts.Service.CreateTodo(userCtx, &v1pb.CreateTodoRequest{Todo: &v1pb.Todo{Title: "x", Tag: tag}})
+		require.NoError(t, err)
+	}
+	tags, err := ts.Service.ListTodoTags(userCtx, &v1pb.ListTodoTagsRequest{})
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"学业", "工作"}, tags.Tags)
+
+	tags, err = ts.Service.ListTodoTags(otherCtx, &v1pb.ListTodoTagsRequest{})
+	require.NoError(t, err)
+	require.Empty(t, tags.Tags)
+}
+
+func TestPlannerNoFutureCheckIns(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestService(t)
+	defer ts.Cleanup()
+	user, err := ts.CreateRegularUser(ctx, "planner")
+	require.NoError(t, err)
+	userCtx := ts.CreateUserContext(ctx, user.ID)
+	habit, err := ts.Service.CreateHabit(userCtx, &v1pb.CreateHabitRequest{Habit: &v1pb.Habit{Title: "冥想"}})
+	require.NoError(t, err)
+
+	// Noon UTC on the 17th: UTC+14 is already on the 18th, nowhere has reached the 19th.
+	ts.Service.Clock = func() time.Time { return time.Date(2026, 10, 17, 12, 0, 0, 0, time.UTC) }
+	checkIn := func(date string) error {
+		_, err := ts.Service.SetCheckIn(userCtx, &v1pb.SetCheckInRequest{CheckIn: &v1pb.CheckIn{Habit: habit.Name, Date: date}})
+		return err
+	}
+	require.NoError(t, checkIn("2026-10-17"))
+	require.NoError(t, checkIn("2026-10-18"))
+	requireCode(t, checkIn("2026-10-19"), codes.InvalidArgument)
 }

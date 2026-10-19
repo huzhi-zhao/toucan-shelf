@@ -251,7 +251,10 @@ type Todo struct {
 	// A free-form tag.
 	Tag  string `protobuf:"bytes,9,opt,name=tag,proto3" json:"tag,omitempty"`
 	Note string `protobuf:"bytes,10,opt,name=note,proto3" json:"note,omitempty"`
-	// A linked document. Format: memos/{memo}
+	// Deprecated: use memos. Read as the first of memos; written (update mask path
+	// "memo") as the only linked document.
+	//
+	// Deprecated: Marked as deprecated in api/v1/planner_service.proto.
 	Memo string `protobuf:"bytes,11,opt,name=memo,proto3" json:"memo,omitempty"`
 	// A linked external page.
 	Url        string                 `protobuf:"bytes,12,opt,name=url,proto3" json:"url,omitempty"`
@@ -262,6 +265,8 @@ type Todo struct {
 	OriginalDate string `protobuf:"bytes,15,opt,name=original_date,json=originalDate,proto3" json:"original_date,omitempty"`
 	// How many times the todo has been postponed. Set by PostponeTodo.
 	PostponeCount int32 `protobuf:"varint,16,opt,name=postpone_count,json=postponeCount,proto3" json:"postpone_count,omitempty"`
+	// The linked documents, in display order. Format: memos/{memo}
+	Memos         []string `protobuf:"bytes,17,rep,name=memos,proto3" json:"memos,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -366,6 +371,7 @@ func (x *Todo) GetNote() string {
 	return ""
 }
 
+// Deprecated: Marked as deprecated in api/v1/planner_service.proto.
 func (x *Todo) GetMemo() string {
 	if x != nil {
 		return x.Memo
@@ -406,6 +412,13 @@ func (x *Todo) GetPostponeCount() int32 {
 		return x.PostponeCount
 	}
 	return 0
+}
+
+func (x *Todo) GetMemos() []string {
+	if x != nil {
+		return x.Memos
+	}
+	return nil
 }
 
 // PlannerNote is a plain record of what happened on a day.
@@ -858,6 +871,87 @@ func (x *ListOpenTodosResponse) GetTodos() []*Todo {
 	return nil
 }
 
+type ListTodoTagsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTodoTagsRequest) Reset() {
+	*x = ListTodoTagsRequest{}
+	mi := &file_api_v1_planner_service_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTodoTagsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTodoTagsRequest) ProtoMessage() {}
+
+func (x *ListTodoTagsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_planner_service_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTodoTagsRequest.ProtoReflect.Descriptor instead.
+func (*ListTodoTagsRequest) Descriptor() ([]byte, []int) {
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{12}
+}
+
+type ListTodoTagsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Most recently used first; at most 50.
+	Tags          []string `protobuf:"bytes,1,rep,name=tags,proto3" json:"tags,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTodoTagsResponse) Reset() {
+	*x = ListTodoTagsResponse{}
+	mi := &file_api_v1_planner_service_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTodoTagsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTodoTagsResponse) ProtoMessage() {}
+
+func (x *ListTodoTagsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_planner_service_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTodoTagsResponse.ProtoReflect.Descriptor instead.
+func (*ListTodoTagsResponse) Descriptor() ([]byte, []int) {
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ListTodoTagsResponse) GetTags() []string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
 type SetCheckInRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	CheckIn       *CheckIn               `protobuf:"bytes,1,opt,name=check_in,json=checkIn,proto3" json:"check_in,omitempty"`
@@ -867,7 +961,7 @@ type SetCheckInRequest struct {
 
 func (x *SetCheckInRequest) Reset() {
 	*x = SetCheckInRequest{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[12]
+	mi := &file_api_v1_planner_service_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -879,7 +973,7 @@ func (x *SetCheckInRequest) String() string {
 func (*SetCheckInRequest) ProtoMessage() {}
 
 func (x *SetCheckInRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[12]
+	mi := &file_api_v1_planner_service_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -892,7 +986,7 @@ func (x *SetCheckInRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetCheckInRequest.ProtoReflect.Descriptor instead.
 func (*SetCheckInRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{12}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *SetCheckInRequest) GetCheckIn() *CheckIn {
@@ -914,7 +1008,7 @@ type DeleteCheckInRequest struct {
 
 func (x *DeleteCheckInRequest) Reset() {
 	*x = DeleteCheckInRequest{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[13]
+	mi := &file_api_v1_planner_service_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -926,7 +1020,7 @@ func (x *DeleteCheckInRequest) String() string {
 func (*DeleteCheckInRequest) ProtoMessage() {}
 
 func (x *DeleteCheckInRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[13]
+	mi := &file_api_v1_planner_service_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -939,7 +1033,7 @@ func (x *DeleteCheckInRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteCheckInRequest.ProtoReflect.Descriptor instead.
 func (*DeleteCheckInRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{13}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *DeleteCheckInRequest) GetHabit() string {
@@ -966,7 +1060,7 @@ type GetTodoRequest struct {
 
 func (x *GetTodoRequest) Reset() {
 	*x = GetTodoRequest{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[14]
+	mi := &file_api_v1_planner_service_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -978,7 +1072,7 @@ func (x *GetTodoRequest) String() string {
 func (*GetTodoRequest) ProtoMessage() {}
 
 func (x *GetTodoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[14]
+	mi := &file_api_v1_planner_service_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -991,7 +1085,7 @@ func (x *GetTodoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTodoRequest.ProtoReflect.Descriptor instead.
 func (*GetTodoRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{14}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetTodoRequest) GetName() string {
@@ -1010,7 +1104,7 @@ type CreateTodoRequest struct {
 
 func (x *CreateTodoRequest) Reset() {
 	*x = CreateTodoRequest{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[15]
+	mi := &file_api_v1_planner_service_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1022,7 +1116,7 @@ func (x *CreateTodoRequest) String() string {
 func (*CreateTodoRequest) ProtoMessage() {}
 
 func (x *CreateTodoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[15]
+	mi := &file_api_v1_planner_service_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1035,7 +1129,7 @@ func (x *CreateTodoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateTodoRequest.ProtoReflect.Descriptor instead.
 func (*CreateTodoRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{15}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *CreateTodoRequest) GetTodo() *Todo {
@@ -1049,7 +1143,7 @@ type UpdateTodoRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Todo  *Todo                  `protobuf:"bytes,1,opt,name=todo,proto3" json:"todo,omitempty"`
 	// Supported paths: title, date, status, cancel_reason, important, tag, note,
-	// memo, url.
+	// memos, url, and the deprecated memo.
 	UpdateMask *fieldmaskpb.FieldMask `protobuf:"bytes,2,opt,name=update_mask,json=updateMask,proto3" json:"update_mask,omitempty"`
 	// The caller's local date, YYYY-MM-DD. Required when closing a todo: whether
 	// it was closed overdue depends on the user's day, not the server's.
@@ -1060,7 +1154,7 @@ type UpdateTodoRequest struct {
 
 func (x *UpdateTodoRequest) Reset() {
 	*x = UpdateTodoRequest{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[16]
+	mi := &file_api_v1_planner_service_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1072,7 +1166,7 @@ func (x *UpdateTodoRequest) String() string {
 func (*UpdateTodoRequest) ProtoMessage() {}
 
 func (x *UpdateTodoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[16]
+	mi := &file_api_v1_planner_service_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1085,7 +1179,7 @@ func (x *UpdateTodoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateTodoRequest.ProtoReflect.Descriptor instead.
 func (*UpdateTodoRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{16}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *UpdateTodoRequest) GetTodo() *Todo {
@@ -1124,7 +1218,7 @@ type PostponeTodoRequest struct {
 
 func (x *PostponeTodoRequest) Reset() {
 	*x = PostponeTodoRequest{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[17]
+	mi := &file_api_v1_planner_service_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1136,7 +1230,7 @@ func (x *PostponeTodoRequest) String() string {
 func (*PostponeTodoRequest) ProtoMessage() {}
 
 func (x *PostponeTodoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[17]
+	mi := &file_api_v1_planner_service_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1149,7 +1243,7 @@ func (x *PostponeTodoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PostponeTodoRequest.ProtoReflect.Descriptor instead.
 func (*PostponeTodoRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{17}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *PostponeTodoRequest) GetName() string {
@@ -1183,7 +1277,7 @@ type DeleteTodoRequest struct {
 
 func (x *DeleteTodoRequest) Reset() {
 	*x = DeleteTodoRequest{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[18]
+	mi := &file_api_v1_planner_service_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1195,7 +1289,7 @@ func (x *DeleteTodoRequest) String() string {
 func (*DeleteTodoRequest) ProtoMessage() {}
 
 func (x *DeleteTodoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[18]
+	mi := &file_api_v1_planner_service_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1208,7 +1302,7 @@ func (x *DeleteTodoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTodoRequest.ProtoReflect.Descriptor instead.
 func (*DeleteTodoRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{18}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *DeleteTodoRequest) GetName() string {
@@ -1227,7 +1321,7 @@ type CreatePlannerNoteRequest struct {
 
 func (x *CreatePlannerNoteRequest) Reset() {
 	*x = CreatePlannerNoteRequest{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[19]
+	mi := &file_api_v1_planner_service_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1239,7 +1333,7 @@ func (x *CreatePlannerNoteRequest) String() string {
 func (*CreatePlannerNoteRequest) ProtoMessage() {}
 
 func (x *CreatePlannerNoteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[19]
+	mi := &file_api_v1_planner_service_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1252,7 +1346,7 @@ func (x *CreatePlannerNoteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatePlannerNoteRequest.ProtoReflect.Descriptor instead.
 func (*CreatePlannerNoteRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{19}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *CreatePlannerNoteRequest) GetNote() *PlannerNote {
@@ -1273,7 +1367,7 @@ type UpdatePlannerNoteRequest struct {
 
 func (x *UpdatePlannerNoteRequest) Reset() {
 	*x = UpdatePlannerNoteRequest{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[20]
+	mi := &file_api_v1_planner_service_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1285,7 +1379,7 @@ func (x *UpdatePlannerNoteRequest) String() string {
 func (*UpdatePlannerNoteRequest) ProtoMessage() {}
 
 func (x *UpdatePlannerNoteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[20]
+	mi := &file_api_v1_planner_service_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1298,7 +1392,7 @@ func (x *UpdatePlannerNoteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdatePlannerNoteRequest.ProtoReflect.Descriptor instead.
 func (*UpdatePlannerNoteRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{20}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *UpdatePlannerNoteRequest) GetNote() *PlannerNote {
@@ -1325,7 +1419,7 @@ type DeletePlannerNoteRequest struct {
 
 func (x *DeletePlannerNoteRequest) Reset() {
 	*x = DeletePlannerNoteRequest{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[21]
+	mi := &file_api_v1_planner_service_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1337,7 +1431,7 @@ func (x *DeletePlannerNoteRequest) String() string {
 func (*DeletePlannerNoteRequest) ProtoMessage() {}
 
 func (x *DeletePlannerNoteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[21]
+	mi := &file_api_v1_planner_service_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1350,7 +1444,7 @@ func (x *DeletePlannerNoteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeletePlannerNoteRequest.ProtoReflect.Descriptor instead.
 func (*DeletePlannerNoteRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{21}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *DeletePlannerNoteRequest) GetName() string {
@@ -1377,7 +1471,7 @@ type ImportPlannerRequest struct {
 
 func (x *ImportPlannerRequest) Reset() {
 	*x = ImportPlannerRequest{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[22]
+	mi := &file_api_v1_planner_service_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1389,7 +1483,7 @@ func (x *ImportPlannerRequest) String() string {
 func (*ImportPlannerRequest) ProtoMessage() {}
 
 func (x *ImportPlannerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[22]
+	mi := &file_api_v1_planner_service_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1402,7 +1496,7 @@ func (x *ImportPlannerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImportPlannerRequest.ProtoReflect.Descriptor instead.
 func (*ImportPlannerRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{22}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ImportPlannerRequest) GetHabits() []*Habit {
@@ -1446,7 +1540,7 @@ type ImportCheckIn struct {
 
 func (x *ImportCheckIn) Reset() {
 	*x = ImportCheckIn{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[23]
+	mi := &file_api_v1_planner_service_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1458,7 +1552,7 @@ func (x *ImportCheckIn) String() string {
 func (*ImportCheckIn) ProtoMessage() {}
 
 func (x *ImportCheckIn) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[23]
+	mi := &file_api_v1_planner_service_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1471,7 +1565,7 @@ func (x *ImportCheckIn) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImportCheckIn.ProtoReflect.Descriptor instead.
 func (*ImportCheckIn) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{23}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ImportCheckIn) GetHabitIndex() int32 {
@@ -1506,7 +1600,7 @@ type ImportTodo struct {
 
 func (x *ImportTodo) Reset() {
 	*x = ImportTodo{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[24]
+	mi := &file_api_v1_planner_service_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1518,7 +1612,7 @@ func (x *ImportTodo) String() string {
 func (*ImportTodo) ProtoMessage() {}
 
 func (x *ImportTodo) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[24]
+	mi := &file_api_v1_planner_service_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1531,7 +1625,7 @@ func (x *ImportTodo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImportTodo.ProtoReflect.Descriptor instead.
 func (*ImportTodo) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{24}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *ImportTodo) GetTodo() *Todo {
@@ -1560,7 +1654,7 @@ type ImportPlannerResponse struct {
 
 func (x *ImportPlannerResponse) Reset() {
 	*x = ImportPlannerResponse{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[25]
+	mi := &file_api_v1_planner_service_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1572,7 +1666,7 @@ func (x *ImportPlannerResponse) String() string {
 func (*ImportPlannerResponse) ProtoMessage() {}
 
 func (x *ImportPlannerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[25]
+	mi := &file_api_v1_planner_service_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1585,7 +1679,7 @@ func (x *ImportPlannerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImportPlannerResponse.ProtoReflect.Descriptor instead.
 func (*ImportPlannerResponse) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{25}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *ImportPlannerResponse) GetHabitCount() int32 {
@@ -1634,7 +1728,7 @@ const file_api_v1_planner_service_proto_rawDesc = "" +
 	"\aCheckIn\x12\x19\n" +
 	"\x05habit\x18\x01 \x01(\tB\x03\xe0A\x02R\x05habit\x12\x17\n" +
 	"\x04date\x18\x02 \x01(\tB\x03\xe0A\x02R\x04date\x12\x17\n" +
-	"\x04note\x18\x03 \x01(\tB\x03\xe0A\x01R\x04note\"\x80\x06\n" +
+	"\x04note\x18\x03 \x01(\tB\x03\xe0A\x01R\x04note\"\x9d\x06\n" +
 	"\x04Todo\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12\x19\n" +
 	"\x05title\x18\x02 \x01(\tB\x03\xe0A\x02R\x05title\x12\x17\n" +
@@ -1647,15 +1741,16 @@ const file_api_v1_planner_service_proto_rawDesc = "" +
 	"\timportant\x18\b \x01(\bB\x03\xe0A\x01R\timportant\x12\x15\n" +
 	"\x03tag\x18\t \x01(\tB\x03\xe0A\x01R\x03tag\x12\x17\n" +
 	"\x04note\x18\n" +
-	" \x01(\tB\x03\xe0A\x01R\x04note\x12\x17\n" +
-	"\x04memo\x18\v \x01(\tB\x03\xe0A\x01R\x04memo\x12\x15\n" +
+	" \x01(\tB\x03\xe0A\x01R\x04note\x12\x19\n" +
+	"\x04memo\x18\v \x01(\tB\x05\xe0A\x01\x18\x01R\x04memo\x12\x15\n" +
 	"\x03url\x18\f \x01(\tB\x03\xe0A\x01R\x03url\x12@\n" +
 	"\vcreate_time\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
 	"createTime\x12@\n" +
 	"\vupdate_time\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
 	"updateTime\x12(\n" +
 	"\roriginal_date\x18\x0f \x01(\tB\x03\xe0A\x03R\foriginalDate\x12*\n" +
-	"\x0epostpone_count\x18\x10 \x01(\x05B\x03\xe0A\x03R\rpostponeCount\"E\n" +
+	"\x0epostpone_count\x18\x10 \x01(\x05B\x03\xe0A\x03R\rpostponeCount\x12\x19\n" +
+	"\x05memos\x18\x11 \x03(\tB\x03\xe0A\x01R\x05memos\"E\n" +
 	"\x06Status\x12\x16\n" +
 	"\x12STATUS_UNSPECIFIED\x10\x00\x12\n" +
 	"\n" +
@@ -1691,7 +1786,10 @@ const file_api_v1_planner_service_proto_rawDesc = "" +
 	"\x05notes\x18\x03 \x03(\v2\x19.memos.api.v1.PlannerNoteR\x05notes\"\x16\n" +
 	"\x14ListOpenTodosRequest\"A\n" +
 	"\x15ListOpenTodosResponse\x12(\n" +
-	"\x05todos\x18\x01 \x03(\v2\x12.memos.api.v1.TodoR\x05todos\"J\n" +
+	"\x05todos\x18\x01 \x03(\v2\x12.memos.api.v1.TodoR\x05todos\"\x15\n" +
+	"\x13ListTodoTagsRequest\"*\n" +
+	"\x14ListTodoTagsResponse\x12\x12\n" +
+	"\x04tags\x18\x01 \x03(\tR\x04tags\"J\n" +
 	"\x11SetCheckInRequest\x125\n" +
 	"\bcheck_in\x18\x01 \x01(\v2\x15.memos.api.v1.CheckInB\x03\xe0A\x02R\acheckIn\"J\n" +
 	"\x14DeleteCheckInRequest\x12\x19\n" +
@@ -1743,14 +1841,15 @@ const file_api_v1_planner_service_proto_rawDesc = "" +
 	"\n" +
 	"todo_count\x18\x03 \x01(\x05R\ttodoCount\x12\x1d\n" +
 	"\n" +
-	"note_count\x18\x04 \x01(\x05R\tnoteCount2\x84\x10\n" +
+	"note_count\x18\x04 \x01(\x05R\tnoteCount2\xfd\x10\n" +
 	"\x0ePlannerService\x12o\n" +
 	"\n" +
 	"ListHabits\x12\x1f.memos.api.v1.ListHabitsRequest\x1a .memos.api.v1.ListHabitsResponse\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/api/v1/planner/habits\x12s\n" +
 	"\vCreateHabit\x12 .memos.api.v1.CreateHabitRequest\x1a\x13.memos.api.v1.Habit\"-\xdaA\x05habit\x82\xd3\xe4\x93\x02\x1f:\x05habit\"\x16/api/v1/planner/habits\x12\x8e\x01\n" +
 	"\vUpdateHabit\x12 .memos.api.v1.UpdateHabitRequest\x1a\x13.memos.api.v1.Habit\"H\xdaA\x11habit,update_mask\x82\xd3\xe4\x93\x02.:\x05habit2%/api/v1/{habit.name=planner/habits/*}\x12\x88\x01\n" +
 	"\x12ListPlannerEntries\x12'.memos.api.v1.ListPlannerEntriesRequest\x1a(.memos.api.v1.ListPlannerEntriesResponse\"\x1f\x82\xd3\xe4\x93\x02\x19\x12\x17/api/v1/planner/entries\x12{\n" +
-	"\rListOpenTodos\x12\".memos.api.v1.ListOpenTodosRequest\x1a#.memos.api.v1.ListOpenTodosResponse\"!\x82\xd3\xe4\x93\x02\x1b\x12\x19/api/v1/planner/openTodos\x12{\n" +
+	"\rListOpenTodos\x12\".memos.api.v1.ListOpenTodosRequest\x1a#.memos.api.v1.ListOpenTodosResponse\"!\x82\xd3\xe4\x93\x02\x1b\x12\x19/api/v1/planner/openTodos\x12w\n" +
+	"\fListTodoTags\x12!.memos.api.v1.ListTodoTagsRequest\x1a\".memos.api.v1.ListTodoTagsResponse\" \x82\xd3\xe4\x93\x02\x1a\x12\x18/api/v1/planner/todoTags\x12{\n" +
 	"\n" +
 	"SetCheckIn\x12\x1f.memos.api.v1.SetCheckInRequest\x1a\x15.memos.api.v1.CheckIn\"5\xdaA\bcheck_in\x82\xd3\xe4\x93\x02$:\bcheck_in\"\x18/api/v1/planner/checkIns\x12m\n" +
 	"\rDeleteCheckIn\x12\".memos.api.v1.DeleteCheckInRequest\x1a\x16.google.protobuf.Empty\" \x82\xd3\xe4\x93\x02\x1a*\x18/api/v1/planner/checkIns\x12j\n" +
@@ -1781,7 +1880,7 @@ func file_api_v1_planner_service_proto_rawDescGZIP() []byte {
 }
 
 var file_api_v1_planner_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_api_v1_planner_service_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
+var file_api_v1_planner_service_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_api_v1_planner_service_proto_goTypes = []any{
 	(Todo_Status)(0),                   // 0: memos.api.v1.Todo.Status
 	(*Habit)(nil),                      // 1: memos.api.v1.Habit
@@ -1796,37 +1895,39 @@ var file_api_v1_planner_service_proto_goTypes = []any{
 	(*ListPlannerEntriesResponse)(nil), // 10: memos.api.v1.ListPlannerEntriesResponse
 	(*ListOpenTodosRequest)(nil),       // 11: memos.api.v1.ListOpenTodosRequest
 	(*ListOpenTodosResponse)(nil),      // 12: memos.api.v1.ListOpenTodosResponse
-	(*SetCheckInRequest)(nil),          // 13: memos.api.v1.SetCheckInRequest
-	(*DeleteCheckInRequest)(nil),       // 14: memos.api.v1.DeleteCheckInRequest
-	(*GetTodoRequest)(nil),             // 15: memos.api.v1.GetTodoRequest
-	(*CreateTodoRequest)(nil),          // 16: memos.api.v1.CreateTodoRequest
-	(*UpdateTodoRequest)(nil),          // 17: memos.api.v1.UpdateTodoRequest
-	(*PostponeTodoRequest)(nil),        // 18: memos.api.v1.PostponeTodoRequest
-	(*DeleteTodoRequest)(nil),          // 19: memos.api.v1.DeleteTodoRequest
-	(*CreatePlannerNoteRequest)(nil),   // 20: memos.api.v1.CreatePlannerNoteRequest
-	(*UpdatePlannerNoteRequest)(nil),   // 21: memos.api.v1.UpdatePlannerNoteRequest
-	(*DeletePlannerNoteRequest)(nil),   // 22: memos.api.v1.DeletePlannerNoteRequest
-	(*ImportPlannerRequest)(nil),       // 23: memos.api.v1.ImportPlannerRequest
-	(*ImportCheckIn)(nil),              // 24: memos.api.v1.ImportCheckIn
-	(*ImportTodo)(nil),                 // 25: memos.api.v1.ImportTodo
-	(*ImportPlannerResponse)(nil),      // 26: memos.api.v1.ImportPlannerResponse
-	(*timestamppb.Timestamp)(nil),      // 27: google.protobuf.Timestamp
-	(*fieldmaskpb.FieldMask)(nil),      // 28: google.protobuf.FieldMask
-	(*emptypb.Empty)(nil),              // 29: google.protobuf.Empty
+	(*ListTodoTagsRequest)(nil),        // 13: memos.api.v1.ListTodoTagsRequest
+	(*ListTodoTagsResponse)(nil),       // 14: memos.api.v1.ListTodoTagsResponse
+	(*SetCheckInRequest)(nil),          // 15: memos.api.v1.SetCheckInRequest
+	(*DeleteCheckInRequest)(nil),       // 16: memos.api.v1.DeleteCheckInRequest
+	(*GetTodoRequest)(nil),             // 17: memos.api.v1.GetTodoRequest
+	(*CreateTodoRequest)(nil),          // 18: memos.api.v1.CreateTodoRequest
+	(*UpdateTodoRequest)(nil),          // 19: memos.api.v1.UpdateTodoRequest
+	(*PostponeTodoRequest)(nil),        // 20: memos.api.v1.PostponeTodoRequest
+	(*DeleteTodoRequest)(nil),          // 21: memos.api.v1.DeleteTodoRequest
+	(*CreatePlannerNoteRequest)(nil),   // 22: memos.api.v1.CreatePlannerNoteRequest
+	(*UpdatePlannerNoteRequest)(nil),   // 23: memos.api.v1.UpdatePlannerNoteRequest
+	(*DeletePlannerNoteRequest)(nil),   // 24: memos.api.v1.DeletePlannerNoteRequest
+	(*ImportPlannerRequest)(nil),       // 25: memos.api.v1.ImportPlannerRequest
+	(*ImportCheckIn)(nil),              // 26: memos.api.v1.ImportCheckIn
+	(*ImportTodo)(nil),                 // 27: memos.api.v1.ImportTodo
+	(*ImportPlannerResponse)(nil),      // 28: memos.api.v1.ImportPlannerResponse
+	(*timestamppb.Timestamp)(nil),      // 29: google.protobuf.Timestamp
+	(*fieldmaskpb.FieldMask)(nil),      // 30: google.protobuf.FieldMask
+	(*emptypb.Empty)(nil),              // 31: google.protobuf.Empty
 }
 var file_api_v1_planner_service_proto_depIdxs = []int32{
-	27, // 0: memos.api.v1.Habit.create_time:type_name -> google.protobuf.Timestamp
-	27, // 1: memos.api.v1.Habit.update_time:type_name -> google.protobuf.Timestamp
+	29, // 0: memos.api.v1.Habit.create_time:type_name -> google.protobuf.Timestamp
+	29, // 1: memos.api.v1.Habit.update_time:type_name -> google.protobuf.Timestamp
 	0,  // 2: memos.api.v1.Todo.status:type_name -> memos.api.v1.Todo.Status
-	27, // 3: memos.api.v1.Todo.close_time:type_name -> google.protobuf.Timestamp
-	27, // 4: memos.api.v1.Todo.create_time:type_name -> google.protobuf.Timestamp
-	27, // 5: memos.api.v1.Todo.update_time:type_name -> google.protobuf.Timestamp
-	27, // 6: memos.api.v1.PlannerNote.create_time:type_name -> google.protobuf.Timestamp
-	27, // 7: memos.api.v1.PlannerNote.update_time:type_name -> google.protobuf.Timestamp
+	29, // 3: memos.api.v1.Todo.close_time:type_name -> google.protobuf.Timestamp
+	29, // 4: memos.api.v1.Todo.create_time:type_name -> google.protobuf.Timestamp
+	29, // 5: memos.api.v1.Todo.update_time:type_name -> google.protobuf.Timestamp
+	29, // 6: memos.api.v1.PlannerNote.create_time:type_name -> google.protobuf.Timestamp
+	29, // 7: memos.api.v1.PlannerNote.update_time:type_name -> google.protobuf.Timestamp
 	1,  // 8: memos.api.v1.ListHabitsResponse.habits:type_name -> memos.api.v1.Habit
 	1,  // 9: memos.api.v1.CreateHabitRequest.habit:type_name -> memos.api.v1.Habit
 	1,  // 10: memos.api.v1.UpdateHabitRequest.habit:type_name -> memos.api.v1.Habit
-	28, // 11: memos.api.v1.UpdateHabitRequest.update_mask:type_name -> google.protobuf.FieldMask
+	30, // 11: memos.api.v1.UpdateHabitRequest.update_mask:type_name -> google.protobuf.FieldMask
 	2,  // 12: memos.api.v1.ListPlannerEntriesResponse.check_ins:type_name -> memos.api.v1.CheckIn
 	3,  // 13: memos.api.v1.ListPlannerEntriesResponse.todos:type_name -> memos.api.v1.Todo
 	4,  // 14: memos.api.v1.ListPlannerEntriesResponse.notes:type_name -> memos.api.v1.PlannerNote
@@ -1834,13 +1935,13 @@ var file_api_v1_planner_service_proto_depIdxs = []int32{
 	2,  // 16: memos.api.v1.SetCheckInRequest.check_in:type_name -> memos.api.v1.CheckIn
 	3,  // 17: memos.api.v1.CreateTodoRequest.todo:type_name -> memos.api.v1.Todo
 	3,  // 18: memos.api.v1.UpdateTodoRequest.todo:type_name -> memos.api.v1.Todo
-	28, // 19: memos.api.v1.UpdateTodoRequest.update_mask:type_name -> google.protobuf.FieldMask
+	30, // 19: memos.api.v1.UpdateTodoRequest.update_mask:type_name -> google.protobuf.FieldMask
 	4,  // 20: memos.api.v1.CreatePlannerNoteRequest.note:type_name -> memos.api.v1.PlannerNote
 	4,  // 21: memos.api.v1.UpdatePlannerNoteRequest.note:type_name -> memos.api.v1.PlannerNote
-	28, // 22: memos.api.v1.UpdatePlannerNoteRequest.update_mask:type_name -> google.protobuf.FieldMask
+	30, // 22: memos.api.v1.UpdatePlannerNoteRequest.update_mask:type_name -> google.protobuf.FieldMask
 	1,  // 23: memos.api.v1.ImportPlannerRequest.habits:type_name -> memos.api.v1.Habit
-	24, // 24: memos.api.v1.ImportPlannerRequest.check_ins:type_name -> memos.api.v1.ImportCheckIn
-	25, // 25: memos.api.v1.ImportPlannerRequest.todos:type_name -> memos.api.v1.ImportTodo
+	26, // 24: memos.api.v1.ImportPlannerRequest.check_ins:type_name -> memos.api.v1.ImportCheckIn
+	27, // 25: memos.api.v1.ImportPlannerRequest.todos:type_name -> memos.api.v1.ImportTodo
 	4,  // 26: memos.api.v1.ImportPlannerRequest.notes:type_name -> memos.api.v1.PlannerNote
 	3,  // 27: memos.api.v1.ImportTodo.todo:type_name -> memos.api.v1.Todo
 	5,  // 28: memos.api.v1.PlannerService.ListHabits:input_type -> memos.api.v1.ListHabitsRequest
@@ -1848,35 +1949,37 @@ var file_api_v1_planner_service_proto_depIdxs = []int32{
 	8,  // 30: memos.api.v1.PlannerService.UpdateHabit:input_type -> memos.api.v1.UpdateHabitRequest
 	9,  // 31: memos.api.v1.PlannerService.ListPlannerEntries:input_type -> memos.api.v1.ListPlannerEntriesRequest
 	11, // 32: memos.api.v1.PlannerService.ListOpenTodos:input_type -> memos.api.v1.ListOpenTodosRequest
-	13, // 33: memos.api.v1.PlannerService.SetCheckIn:input_type -> memos.api.v1.SetCheckInRequest
-	14, // 34: memos.api.v1.PlannerService.DeleteCheckIn:input_type -> memos.api.v1.DeleteCheckInRequest
-	15, // 35: memos.api.v1.PlannerService.GetTodo:input_type -> memos.api.v1.GetTodoRequest
-	16, // 36: memos.api.v1.PlannerService.CreateTodo:input_type -> memos.api.v1.CreateTodoRequest
-	17, // 37: memos.api.v1.PlannerService.UpdateTodo:input_type -> memos.api.v1.UpdateTodoRequest
-	18, // 38: memos.api.v1.PlannerService.PostponeTodo:input_type -> memos.api.v1.PostponeTodoRequest
-	19, // 39: memos.api.v1.PlannerService.DeleteTodo:input_type -> memos.api.v1.DeleteTodoRequest
-	20, // 40: memos.api.v1.PlannerService.CreatePlannerNote:input_type -> memos.api.v1.CreatePlannerNoteRequest
-	21, // 41: memos.api.v1.PlannerService.UpdatePlannerNote:input_type -> memos.api.v1.UpdatePlannerNoteRequest
-	22, // 42: memos.api.v1.PlannerService.DeletePlannerNote:input_type -> memos.api.v1.DeletePlannerNoteRequest
-	23, // 43: memos.api.v1.PlannerService.ImportPlanner:input_type -> memos.api.v1.ImportPlannerRequest
-	6,  // 44: memos.api.v1.PlannerService.ListHabits:output_type -> memos.api.v1.ListHabitsResponse
-	1,  // 45: memos.api.v1.PlannerService.CreateHabit:output_type -> memos.api.v1.Habit
-	1,  // 46: memos.api.v1.PlannerService.UpdateHabit:output_type -> memos.api.v1.Habit
-	10, // 47: memos.api.v1.PlannerService.ListPlannerEntries:output_type -> memos.api.v1.ListPlannerEntriesResponse
-	12, // 48: memos.api.v1.PlannerService.ListOpenTodos:output_type -> memos.api.v1.ListOpenTodosResponse
-	2,  // 49: memos.api.v1.PlannerService.SetCheckIn:output_type -> memos.api.v1.CheckIn
-	29, // 50: memos.api.v1.PlannerService.DeleteCheckIn:output_type -> google.protobuf.Empty
-	3,  // 51: memos.api.v1.PlannerService.GetTodo:output_type -> memos.api.v1.Todo
-	3,  // 52: memos.api.v1.PlannerService.CreateTodo:output_type -> memos.api.v1.Todo
-	3,  // 53: memos.api.v1.PlannerService.UpdateTodo:output_type -> memos.api.v1.Todo
-	3,  // 54: memos.api.v1.PlannerService.PostponeTodo:output_type -> memos.api.v1.Todo
-	29, // 55: memos.api.v1.PlannerService.DeleteTodo:output_type -> google.protobuf.Empty
-	4,  // 56: memos.api.v1.PlannerService.CreatePlannerNote:output_type -> memos.api.v1.PlannerNote
-	4,  // 57: memos.api.v1.PlannerService.UpdatePlannerNote:output_type -> memos.api.v1.PlannerNote
-	29, // 58: memos.api.v1.PlannerService.DeletePlannerNote:output_type -> google.protobuf.Empty
-	26, // 59: memos.api.v1.PlannerService.ImportPlanner:output_type -> memos.api.v1.ImportPlannerResponse
-	44, // [44:60] is the sub-list for method output_type
-	28, // [28:44] is the sub-list for method input_type
+	13, // 33: memos.api.v1.PlannerService.ListTodoTags:input_type -> memos.api.v1.ListTodoTagsRequest
+	15, // 34: memos.api.v1.PlannerService.SetCheckIn:input_type -> memos.api.v1.SetCheckInRequest
+	16, // 35: memos.api.v1.PlannerService.DeleteCheckIn:input_type -> memos.api.v1.DeleteCheckInRequest
+	17, // 36: memos.api.v1.PlannerService.GetTodo:input_type -> memos.api.v1.GetTodoRequest
+	18, // 37: memos.api.v1.PlannerService.CreateTodo:input_type -> memos.api.v1.CreateTodoRequest
+	19, // 38: memos.api.v1.PlannerService.UpdateTodo:input_type -> memos.api.v1.UpdateTodoRequest
+	20, // 39: memos.api.v1.PlannerService.PostponeTodo:input_type -> memos.api.v1.PostponeTodoRequest
+	21, // 40: memos.api.v1.PlannerService.DeleteTodo:input_type -> memos.api.v1.DeleteTodoRequest
+	22, // 41: memos.api.v1.PlannerService.CreatePlannerNote:input_type -> memos.api.v1.CreatePlannerNoteRequest
+	23, // 42: memos.api.v1.PlannerService.UpdatePlannerNote:input_type -> memos.api.v1.UpdatePlannerNoteRequest
+	24, // 43: memos.api.v1.PlannerService.DeletePlannerNote:input_type -> memos.api.v1.DeletePlannerNoteRequest
+	25, // 44: memos.api.v1.PlannerService.ImportPlanner:input_type -> memos.api.v1.ImportPlannerRequest
+	6,  // 45: memos.api.v1.PlannerService.ListHabits:output_type -> memos.api.v1.ListHabitsResponse
+	1,  // 46: memos.api.v1.PlannerService.CreateHabit:output_type -> memos.api.v1.Habit
+	1,  // 47: memos.api.v1.PlannerService.UpdateHabit:output_type -> memos.api.v1.Habit
+	10, // 48: memos.api.v1.PlannerService.ListPlannerEntries:output_type -> memos.api.v1.ListPlannerEntriesResponse
+	12, // 49: memos.api.v1.PlannerService.ListOpenTodos:output_type -> memos.api.v1.ListOpenTodosResponse
+	14, // 50: memos.api.v1.PlannerService.ListTodoTags:output_type -> memos.api.v1.ListTodoTagsResponse
+	2,  // 51: memos.api.v1.PlannerService.SetCheckIn:output_type -> memos.api.v1.CheckIn
+	31, // 52: memos.api.v1.PlannerService.DeleteCheckIn:output_type -> google.protobuf.Empty
+	3,  // 53: memos.api.v1.PlannerService.GetTodo:output_type -> memos.api.v1.Todo
+	3,  // 54: memos.api.v1.PlannerService.CreateTodo:output_type -> memos.api.v1.Todo
+	3,  // 55: memos.api.v1.PlannerService.UpdateTodo:output_type -> memos.api.v1.Todo
+	3,  // 56: memos.api.v1.PlannerService.PostponeTodo:output_type -> memos.api.v1.Todo
+	31, // 57: memos.api.v1.PlannerService.DeleteTodo:output_type -> google.protobuf.Empty
+	4,  // 58: memos.api.v1.PlannerService.CreatePlannerNote:output_type -> memos.api.v1.PlannerNote
+	4,  // 59: memos.api.v1.PlannerService.UpdatePlannerNote:output_type -> memos.api.v1.PlannerNote
+	31, // 60: memos.api.v1.PlannerService.DeletePlannerNote:output_type -> google.protobuf.Empty
+	28, // 61: memos.api.v1.PlannerService.ImportPlanner:output_type -> memos.api.v1.ImportPlannerResponse
+	45, // [45:62] is the sub-list for method output_type
+	28, // [28:45] is the sub-list for method input_type
 	28, // [28:28] is the sub-list for extension type_name
 	28, // [28:28] is the sub-list for extension extendee
 	0,  // [0:28] is the sub-list for field type_name
@@ -1893,7 +1996,7 @@ func file_api_v1_planner_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_v1_planner_service_proto_rawDesc), len(file_api_v1_planner_service_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   26,
+			NumMessages:   28,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

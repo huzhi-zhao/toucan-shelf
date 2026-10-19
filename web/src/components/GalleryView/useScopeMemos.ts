@@ -3,7 +3,9 @@ import { isHomeDocument } from "@/hooks/useHomeDocument";
 import { useMemos } from "@/hooks/useMemoQueries";
 import { State } from "@/types/proto/api/v1/common_pb";
 import type { Memo } from "@/types/proto/api/v1/memo_service_pb";
-import { type GalleryScope, resolveScopeWorkspaces } from "./types";
+import { sortDocs } from "./cards";
+import { matchesScope, propertyMap } from "./fields";
+import { type GalleryBlock, type GalleryScope, resolveScopeWorkspaces } from "./types";
 
 /**
  * The candidate documents a block's scope may match: every normal document in
@@ -25,4 +27,20 @@ export function useScopeMemos(scope: GalleryScope, ownWorkspace: string): { memo
     return allowed ? list.filter((m) => allowed.has(m.workspace)) : list;
   }, [data, selectionKey]);
   return { memos, isLoading };
+}
+
+/**
+ * The documents a gallery block shows, in card order: its scope's candidates
+ * that match the block's rules, minus the view itself, sorted by the block.
+ */
+export function useGalleryDocs(block: GalleryBlock, view: Memo): { docs: Memo[]; isLoading: boolean } {
+  const { memos, isLoading } = useScopeMemos(block.scope, view.workspace);
+  const docs = useMemo(() => {
+    // VIEW docs are eligible too: they now carry frontmatter properties, so a
+    // gallery can filter, sort and reference other views like any other doc.
+    const ctx = { viewFolderPath: view.folderPath };
+    const list = memos.filter((m) => m.name !== view.name && matchesScope(m, propertyMap(m.content), block.scope, ctx));
+    return sortDocs(list, block);
+  }, [memos, block, view.name, view.folderPath]);
+  return { docs, isLoading };
 }

@@ -29,6 +29,8 @@ message UserSetting {
     // The user's master key for `toucan-secret` blocks, wrapped under their
     // passphrase. Opaque to the server, which cannot unwrap it.
     SECRET_KEY = 11;
+    // The custom items on the mobile app's "Me" page.
+    ME_ITEMS = 12;
   }
 
   int32 user_id = 1;
@@ -44,6 +46,7 @@ message UserSetting {
     LastOpenedUserSetting last_opened = 11;
     RagSearchUserSetting rag_search = 12;
     SecretKeyUserSetting secret_key = 13;
+    MeItemsUserSetting me_items = 14;
   }
 }
 
@@ -120,6 +123,44 @@ message RagSearchUserSetting {
   // mode selects the retrieval strategy. Unspecified falls back to MIXED.
   // When no embedding model is configured, search is forced to KEYWORD regardless.
   RagSearchMode mode = 2;
+}
+
+// MeItemsUserSetting holds the custom items on the mobile app's "Me" page, in
+// display order. Each one is a short card that opens a linked document.
+message MeItemsUserSetting {
+  repeated MeItem items = 1;
+  // The groups the page shows items in, in display order.
+  repeated MeGroup groups = 2;
+}
+
+message MeGroup {
+  string id = 1;
+  string title = 2;
+}
+
+message MeItem {
+  enum Style {
+    STYLE_UNSPECIFIED = 0;
+    // Title on one line, note on the next.
+    MULTI_LINE = 1;
+    // Title and note on the same line.
+    SINGLE_LINE = 2;
+  }
+
+  // Client-generated, stable across edits and reordering.
+  string id = 1;
+  // Usually one emoji.
+  string icon = 2;
+  string title = 3;
+  string note = 4;
+  // The one linked document of items saved before memos existed; read into
+  // memos and no longer written. Format: memos/{memo}.
+  string memo = 5;
+  Style style = 6;
+  // The linked documents, in display order. Format: memos/{memo}.
+  repeated string memos = 7;
+  // The id of the group the item is shown in, or empty for none.
+  string group = 8;
 }
 
 message LastOpenedUserSetting {

@@ -153,6 +153,12 @@ type Driver interface {
 	OpenSecretBlockUnlock(ctx context.Context, id int32, openedTs, expiresTs int64) (bool, error)
 	CancelSecretBlockUnlock(ctx context.Context, id int32, canceledTs int64) error
 
+	// MemoFavorite model related methods.
+	AddMemoFavorite(ctx context.Context, userID, memoID int32) (*MemoFavorite, error)
+	ListMemoFavorites(ctx context.Context, find *FindMemoFavorite) ([]*MemoFavorite, error)
+	UpdateMemoFavorite(ctx context.Context, update *UpdateMemoFavorite) (*MemoFavorite, error)
+	DeleteMemoFavorite(ctx context.Context, userID, memoID int32) error
+
 	// Planner model related methods.
 	CreatePlannerHabit(ctx context.Context, create *PlannerHabit) (*PlannerHabit, error)
 	ListPlannerHabits(ctx context.Context, find *FindPlannerHabit) ([]*PlannerHabit, error)
@@ -164,6 +170,7 @@ type Driver interface {
 	ListPlannerTodos(ctx context.Context, find *FindPlannerTodo) ([]*PlannerTodo, error)
 	UpdatePlannerTodo(ctx context.Context, update *UpdatePlannerTodo) (*PlannerTodo, error)
 	DeletePlannerTodo(ctx context.Context, id int32) error
+	ListPlannerTodoTags(ctx context.Context, creatorID int32) ([]string, error)
 	CreatePlannerNote(ctx context.Context, create *PlannerNote) (*PlannerNote, error)
 	ListPlannerNotes(ctx context.Context, find *FindPlannerNote) ([]*PlannerNote, error)
 	UpdatePlannerNote(ctx context.Context, update *UpdatePlannerNote) (*PlannerNote, error)

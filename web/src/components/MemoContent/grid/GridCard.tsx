@@ -1,5 +1,6 @@
-import { classifyDocHref, useDocumentLinkContext } from "@/components/MemoContent/DocumentLinkContext";
 import { cn } from "@/lib/utils";
+import { GridCardLink } from "./GridCardLink";
+import { gridCardKind, textCardSlots } from "./layout";
 import type { GridCardData } from "./parseGridBlock";
 
 interface GridCardProps {
@@ -16,34 +17,6 @@ const LONGBAR_CLASS =
   "relative flex flex-col justify-center rounded-lg border border-border bg-card text-left px-3.5 py-2.5 min-h-[3.25rem]";
 const TEXT_CARD_CLASS =
   "relative flex flex-col rounded-lg border border-border bg-card text-left px-4 py-3.5 min-h-[7.5rem] hover:shadow-md hover:border-accent transition-all";
-
-// A no-cover text card fits within this many text rows (title + subtitle count
-// toward it), keeping the wall of cards visually even.
-const MAX_TEXT_CARD_ROWS = 6;
-
-// Splits a card's extra fields into the slots of a text card: a trailing footer
-// (date / note, pinned to the bottom, full width), and the remaining fields laid
-// out two-per-row (a 50/50 split, left value + right value) starting at the lead
-// "price" row. Rows are capped so the whole card stays within the 6-row budget.
-function textCardSlots(card: GridCardData) {
-  const fields = card.fields;
-  // A trailing field becomes the footer only when there is a body field ahead of it.
-  const footer = fields.length >= 2 ? fields[fields.length - 1] : undefined;
-  const body = footer ? fields.slice(0, -1) : fields;
-
-  // Row budget: title(1) + subtitle? + footer? leaves this many rows for body,
-  // each row holding up to two fields.
-  const used = 1 + (card.subtitle ? 1 : 0) + (footer ? 1 : 0);
-  const rowBudget = Math.max(0, MAX_TEXT_CARD_ROWS - used);
-  const visible = body.slice(0, rowBudget * 2);
-
-  const rows: { left?: (typeof visible)[number]; right?: (typeof visible)[number] }[] = [];
-  for (let i = 0; i < visible.length; i += 2) {
-    rows.push({ left: visible[i], right: visible[i + 1] });
-  }
-
-  return { rows, footer };
-}
 
 // Text block under a cover image: title + subtitle + fields as muted rows.
 // Cover cards stay compact and low-key so the image leads.
@@ -111,64 +84,16 @@ const LongbarBody = ({ card }: { card: GridCardData }) => (
   </>
 );
 
-// Scrolls to an in-page heading/anchor, scoped to the enclosing memo's own content
-// container so duplicate ids elsewhere on the page can't steal the scroll. Mirrors
-// the fallback branch of MemoContent/markdown/AnchorLink.tsx.
-const handleAnchorClick = (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-  const id = decodeURIComponent(href.slice(1));
-  if (!id) return;
-  const root = event.currentTarget.closest("[data-memo-content]");
-  const target = root?.querySelector(`#${CSS.escape(id)}`);
-  if (target) {
-    event.preventDefault();
-    target.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
-};
-
 export const GridCard = ({ card, nocover, longbar }: GridCardProps) => {
-  const docLinkContext = useDocumentLinkContext();
-  const { url } = card;
-
-  const hideCover = longbar || nocover || card.nocover;
   // Three distinct layouts: longbar strip, no-cover text card, cover card.
-  const containerClass = longbar ? LONGBAR_CLASS : hideCover ? TEXT_CARD_CLASS : CARD_CLASS;
-  const body = longbar ? <LongbarBody card={card} /> : hideCover ? <TextCardBody card={card} /> : <CoverCardBody card={card} />;
-
-  if (!url) {
-    return <div className={containerClass}>{body}</div>;
-  }
-
-  if (url.startsWith("#")) {
-    return (
-      <a href={url} className={cn(containerClass, LINKED_CARD_CLASS)} onClick={(e) => handleAnchorClick(e, url)}>
-        {body}
-      </a>
-    );
-  }
-
-  const form = classifyDocHref(url);
-  if (docLinkContext && (form === "rootRelative" || form === "relativeExplicit" || form === "relativeBare")) {
-    const target = docLinkContext.resolve(url);
-    if (target) {
-      return (
-        <a
-          href={`/${target}`}
-          className={cn(containerClass, LINKED_CARD_CLASS)}
-          onClick={(e) => {
-            if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-            e.preventDefault();
-            docLinkContext.navigate(target, url);
-          }}
-        >
-          {body}
-        </a>
-      );
-    }
-  }
+  const kind = gridCardKind(card, !!longbar, !!nocover);
+  const containerClass = kind === "longbar" ? LONGBAR_CLASS : kind === "text" ? TEXT_CARD_CLASS : CARD_CLASS;
+  const body =
+    kind === "longbar" ? <LongbarBody card={card} /> : kind === "text" ? <TextCardBody card={card} /> : <CoverCardBody card={card} />;
 
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer" className={cn(containerClass, LINKED_CARD_CLASS)}>
+    <GridCardLink url={card.url} className={containerClass} linkedClassName={LINKED_CARD_CLASS}>
       {body}
-    </a>
+    </GridCardLink>
   );
 };

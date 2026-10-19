@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 #
-# Builds the memogit CLI, syncing docs/skill/ into its embedded copy first —
-# so packaging memogit never ships a stale agent manual just because someone
-# forgot to run sync-agent-skill-docs.sh by hand.
+# Builds the memogit CLI. Its agent manual is go:embed'ed straight from
+# docs/skill/ (the docs/skill Go package), so there is nothing to sync first.
 #
 # Other repos depend on memogit binaries built here (see
 # docs/dev/requirements/collaboration/memogit-distribution.md), so build what
@@ -50,8 +49,6 @@ while [ $# -gt 0 ]; do
       ;;
   esac
 done
-
-./scripts/sync-agent-skill-docs.sh
 
 # Same string `memogit -v` prints (cmd/memogit/version.go), computed from git
 # so it also works for a cross-compiled binary this machine can't run. It is

@@ -1,6 +1,6 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 import { Link, List, ListItem, Navbar, NavbarBackLink, Range, Segmented, SegmentedButton, Sheet, Toast } from "konsta/react";
-import { ALargeSmallIcon, ExternalLinkIcon, ListIcon } from "lucide-react";
+import { ALargeSmallIcon, ExternalLinkIcon, ListIcon, StarIcon } from "lucide-react";
 import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import MemoContent from "@/components/MemoContent";
@@ -11,6 +11,7 @@ import { InlineAttachmentProvider } from "@/components/MemoContent/InlineAttachm
 import { SubDocReferenceProvider } from "@/components/MemoContent/SubDocReferenceContext";
 import { MemoViewContext, type MemoViewContextValue } from "@/components/MemoView/MemoViewContext";
 import { useCrossWorkspaceTrees } from "@/hooks/useCrossWorkspaceTrees";
+import { useFavorites, useToggleFavorite } from "@/hooks/useFavorites";
 import { useMemoComments, useMemo as useMemoQuery } from "@/hooks/useMemoQueries";
 import { useWorkspace, useWorkspaceTree } from "@/hooks/useWorkspaceQueries";
 import { State } from "@/types/proto/api/v1/common_pb";
@@ -18,9 +19,13 @@ import { type Memo, Memo_DocType } from "@/types/proto/api/v1/memo_service_pb";
 import { getAttachmentUrl } from "@/utils/attachment";
 import { splitChildMemos } from "@/utils/subDoc";
 import { parseUrlReferences } from "@/utils/urlReferences";
+import BackCapsule from "../components/BackCapsule";
 import BlockPlaceholderCard from "../components/BlockPlaceholderCard";
 import DocGlyph from "../components/DocGlyph";
+import GridPreview from "../components/GridPreview";
+import KanbanPreview from "../components/KanbanPreview";
 import SectionTitle from "../components/SectionTitle";
+import ViewDocument from "../components/ViewDocument";
 import { COPY } from "../copy";
 import { formatDate } from "../lib/format";
 import { useBack, useBackLabel, useGo } from "../lib/nav";
@@ -42,12 +47,15 @@ import { desktopDocUrl, docRoute, folderRoute, MOBILE_ROUTES } from "../routes";
 
 /** Special blocks the phone does not render (requirement §7). Fence languages, lower-case. */
 const PLACEHOLDER_BLOCKS: Record<string, string> = {
-  kanban: COPY.blocks.kanban,
   calendar: COPY.blocks.calendar,
-  grid: COPY.blocks.grid,
   "toucan-secret": COPY.blocks.secret,
 };
-const PLACEHOLDER_LANGUAGES = new Set(Object.keys(PLACEHOLDER_BLOCKS));
+/** Special blocks the phone draws its own read-only way (phase 3 §4), from the fence body. */
+const PREVIEW_BLOCKS: Record<string, (content: string) => React.ReactNode> = {
+  kanban: (content) => <KanbanPreview content={content} />,
+  grid: (content) => <GridPreview content={content} />,
+};
+const REPLACED_LANGUAGES = new Set([...Object.keys(PLACEHOLDER_BLOCKS), ...Object.keys(PREVIEW_BLOCKS)]);
 const REFERENCES_ID = "mobile-references";
 
 const previewContext = (memo: Memo): MemoViewContextValue => ({
@@ -117,12 +125,27 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
   const [leading, setLeading] = usePref<ReaderLeading>(READER_LEADING_KEY, "normal");
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [toast, setToast] = useState(false);
+  const [toast, setToast] = useState("");
+  const showToast = useCallback((message: string) => {
+    setToast(message);
+    window.setTimeout(() => setToast(""), 1600);
+  }, []);
+  // The star toggles this document on the reading list (phase 3 §2). It is shown once the list has loaded,
+  // so it never flips from empty to filled under the reader's finger.
+  const { data: favorites } = useFavorites();
+  const toggleFavorite = useToggleFavorite();
+  const isFavorite = favorites?.some((favorite) => favorite.memo === memo.name) ?? false;
+  const onToggleFavorite = () =>
+    toggleFavorite.mutate(
+      { memo: memo.name, favorite: !isFavorite },
+      { onSuccess: () => showToast(isFavorite ? COPY.reader.unfavorited : COPY.reader.favorited) },
+    );
   const [scrolled, setScrolled] = useState(false);
   const [progress, setProgress] = useState(0);
   const [outline, setOutline] = useState<OutlineEntry[]>([]);
   const [zoomedImage, setZoomedImage] = useState<string>();
   const contentRef = useRef<HTMLDivElement>(null);
+  const readingStyle = { zoom: readerZoom(fontSize), "--mobile-leading": READER_LEADINGS[leading] } as React.CSSProperties;
 
   const isHtml = memo.docType === Memo_DocType.HTML;
   const isPdf = memo.docType === Memo_DocType.PDF;
@@ -171,14 +194,16 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
 
   const copyDesktopLink = useCallback(() => {
     void navigator.clipboard?.writeText(desktopDocUrl(memo.name)).catch(() => {});
-    setToast(true);
-    window.setTimeout(() => setToast(false), 1600);
-  }, [memo.name]);
+    showToast(COPY.reader.copied);
+  }, [memo.name, showToast]);
 
   const placeholders = useMemo(
     () => ({
-      languages: PLACEHOLDER_LANGUAGES,
-      render: (language: string) => <BlockPlaceholderCard title={PLACEHOLDER_BLOCKS[language]} onCopyDesktopLink={copyDesktopLink} />,
+      languages: REPLACED_LANGUAGES,
+      render: (language: string, content: string) =>
+        PREVIEW_BLOCKS[language]?.(content) ?? (
+          <BlockPlaceholderCard title={PLACEHOLDER_BLOCKS[language]} onCopyDesktopLink={copyDesktopLink} />
+        ),
     }),
     [copyDesktopLink],
   );
@@ -203,10 +228,11 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
     [memo.name, subDocs],
   );
 
-  // Tapping an image opens it full screen; the renderer itself has no viewer.
+  // Tapping an image opens it full screen; the renderer itself has no viewer. An image inside a link or a
+  // button (a gallery card's cover) belongs to that control, so the tap goes there instead.
   const onContentClick = (event: MouseEvent) => {
     const target = event.target as HTMLElement;
-    if (target instanceof HTMLImageElement && !target.closest("a")) setZoomedImage(target.currentSrc || target.src);
+    if (target instanceof HTMLImageElement && !target.closest("a, button")) setZoomedImage(target.currentSrc || target.src);
   };
 
   const scrollToHeading = (id: string) => {
@@ -220,8 +246,6 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
       <div className="h-4 rounded bg-black/[0.06] dark:bg-white/[0.08] w-full" />
       <div className="h-4 rounded bg-black/[0.06] dark:bg-white/[0.08] w-3/4" />
     </div>
-  ) : isView ? (
-    <BlockPlaceholderCard title={COPY.reader.viewDocument} onCopyDesktopLink={copyDesktopLink} />
   ) : isPdf ? (
     // Safari's own PDF viewer is the best reader on a phone (requirement §5).
     pdfAttachment && (
@@ -244,7 +268,12 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
         <SubDocReferenceProvider value={subDocReferences}>
           <DocumentLinkProvider value={links}>
             <BlockPlaceholderProvider value={placeholders}>
-              <MemoContent content={memo.content} memoName={memo.name} density="reading" alwaysExpanded isHtml={isHtml} />
+              {isView ? (
+                // A view's text blocks follow the reading settings; its card walls keep their size.
+                <ViewDocument memo={memo} onOpen={onOpen} onCopyDesktopLink={copyDesktopLink} textStyle={readingStyle} />
+              ) : (
+                <MemoContent content={memo.content} memoName={memo.name} density="reading" alwaysExpanded isHtml={isHtml} />
+              )}
             </BlockPlaceholderProvider>
           </DocumentLinkProvider>
         </SubDocReferenceProvider>
@@ -258,12 +287,25 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
         title={scrolled ? memo.title : ""}
         centerTitle
         titleClassName="max-w-[52vw] truncate"
-        left={<NavbarBackLink text={backText} showText onClick={onBack} />}
+        // Opened from the shelf, back already goes there.
+        left={<BackCapsule text={backText} onBack={onBack} shelf={backText !== COPY.shelf.title} />}
         right={
-          <div className="flex items-center gap-1 pr-1">
+          // Konsta's icon links are squares as tall as their container. Filling the glass capsule's height makes
+          // each one a 44pt target with its icon centred, so the capsule has even room on both ends.
+          <div className="flex h-full items-center">
             {outline.length > 0 && (
               <Link iconOnly onClick={() => setOutlineOpen(true)} aria-label={COPY.reader.outline}>
                 <ListIcon className="w-6 h-6" />
+              </Link>
+            )}
+            {favorites && (
+              <Link
+                iconOnly
+                onClick={onToggleFavorite}
+                aria-label={isFavorite ? COPY.reader.unfavorite : COPY.reader.favorite}
+                aria-pressed={isFavorite}
+              >
+                <StarIcon className={isFavorite ? "w-6 h-6 text-[#ff9f0a]" : "w-6 h-6"} fill={isFavorite ? "currentColor" : "none"} />
               </Link>
             )}
             <Link iconOnly onClick={() => setSettingsOpen(true)} aria-label={COPY.reader.settings}>
@@ -299,11 +341,7 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
           )}
         </div>
 
-        <div
-          ref={contentRef}
-          onClick={onContentClick}
-          style={{ zoom: readerZoom(fontSize), "--mobile-leading": READER_LEADINGS[leading] } as React.CSSProperties}
-        >
+        <div ref={contentRef} onClick={onContentClick} style={isView ? undefined : readingStyle}>
           {body}
         </div>
 
@@ -400,8 +438,8 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
         </button>
       )}
 
-      <Toast position="center" opened={toast}>
-        {COPY.reader.copied}
+      <Toast position="center" opened={toast !== ""}>
+        {toast}
       </Toast>
     </div>
   );

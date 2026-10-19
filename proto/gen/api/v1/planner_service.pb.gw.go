@@ -220,6 +220,27 @@ func local_request_PlannerService_ListOpenTodos_0(ctx context.Context, marshaler
 	return msg, metadata, err
 }
 
+func request_PlannerService_ListTodoTags_0(ctx context.Context, marshaler runtime.Marshaler, client PlannerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq ListTodoTagsRequest
+		metadata runtime.ServerMetadata
+	)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	msg, err := client.ListTodoTags(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_PlannerService_ListTodoTags_0(ctx context.Context, marshaler runtime.Marshaler, server PlannerServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq ListTodoTagsRequest
+		metadata runtime.ServerMetadata
+	)
+	msg, err := server.ListTodoTags(ctx, &protoReq)
+	return msg, metadata, err
+}
+
 func request_PlannerService_SetCheckIn_0(ctx context.Context, marshaler runtime.Marshaler, client PlannerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
 		protoReq SetCheckInRequest
@@ -793,6 +814,26 @@ func RegisterPlannerServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		}
 		forward_PlannerService_ListOpenTodos_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
+	mux.Handle(http.MethodGet, pattern_PlannerService_ListTodoTags_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/memos.api.v1.PlannerService/ListTodoTags", runtime.WithHTTPPathPattern("/api/v1/planner/todoTags"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PlannerService_ListTodoTags_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_PlannerService_ListTodoTags_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
 	mux.Handle(http.MethodPost, pattern_PlannerService_SetCheckIn_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -1138,6 +1179,23 @@ func RegisterPlannerServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		}
 		forward_PlannerService_ListOpenTodos_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
+	mux.Handle(http.MethodGet, pattern_PlannerService_ListTodoTags_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/memos.api.v1.PlannerService/ListTodoTags", runtime.WithHTTPPathPattern("/api/v1/planner/todoTags"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_PlannerService_ListTodoTags_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_PlannerService_ListTodoTags_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
 	mux.Handle(http.MethodPost, pattern_PlannerService_SetCheckIn_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -1334,6 +1392,7 @@ var (
 	pattern_PlannerService_UpdateHabit_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 3, 5, 4}, []string{"api", "v1", "planner", "habits", "habit.name"}, ""))
 	pattern_PlannerService_ListPlannerEntries_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "entries"}, ""))
 	pattern_PlannerService_ListOpenTodos_0      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "openTodos"}, ""))
+	pattern_PlannerService_ListTodoTags_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "todoTags"}, ""))
 	pattern_PlannerService_SetCheckIn_0         = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "checkIns"}, ""))
 	pattern_PlannerService_DeleteCheckIn_0      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "checkIns"}, ""))
 	pattern_PlannerService_GetTodo_0            = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 3, 5, 4}, []string{"api", "v1", "planner", "todos", "name"}, ""))
@@ -1353,6 +1412,7 @@ var (
 	forward_PlannerService_UpdateHabit_0        = runtime.ForwardResponseMessage
 	forward_PlannerService_ListPlannerEntries_0 = runtime.ForwardResponseMessage
 	forward_PlannerService_ListOpenTodos_0      = runtime.ForwardResponseMessage
+	forward_PlannerService_ListTodoTags_0       = runtime.ForwardResponseMessage
 	forward_PlannerService_SetCheckIn_0         = runtime.ForwardResponseMessage
 	forward_PlannerService_DeleteCheckIn_0      = runtime.ForwardResponseMessage
 	forward_PlannerService_GetTodo_0            = runtime.ForwardResponseMessage

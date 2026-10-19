@@ -7,6 +7,7 @@ import { placeholder as cmPlaceholder, drawSelection, dropCursor, EditorView, ty
 import { GFM } from "@lezer/markdown";
 import { cjkEmphasis } from "./cjkEmphasis";
 import { type EmbedTarget, makeEmbedCompletionSource } from "./embedAutocomplete";
+import { fileDrop } from "./fileDrop";
 import { createFormattingKeymap } from "./formatting";
 import { headingDecorations } from "./headingDecorations";
 import { htmlPaste } from "./htmlPaste";
@@ -55,6 +56,7 @@ export function buildEditorExtensions({ placeholder, onChange, onUpdate, getEmbe
     headingDecorations,
     // Before the keymap below: its Mod-Shift-V binding must not be shadowed.
     htmlPaste(),
+    fileDrop(),
     // Must precede the editing keymap so the completion popup's Enter/Tab/arrow bindings win
     // while it is open.
     autocompletion({ override: [makeEmbedCompletionSource(getEmbedTargets)] }),

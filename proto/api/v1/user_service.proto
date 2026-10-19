@@ -436,6 +436,7 @@ message UserSetting {
     LastOpenedSetting last_opened_setting = 7;
     RagSearchSetting rag_search_setting = 8;
     SecretKeySetting secret_key_setting = 9;
+    MeItemsSetting me_items_setting = 10;
   }
 
   // Enumeration of user setting keys.
@@ -453,6 +454,8 @@ message UserSetting {
     RAG_SEARCH = 7;
     // SECRET_KEY is the key for the user's wrapped `toucan-secret` master key.
     SECRET_KEY = 8;
+    // ME_ITEMS is the key for the custom items on the mobile app's "Me" page.
+    ME_ITEMS = 9;
   }
 
   // General user settings configuration.
@@ -536,6 +539,51 @@ message UserSetting {
   }
 
   // The last workspace/document the user had open in the Notebook home page.
+  // The custom items on the mobile app's "Me" page, in display order. An update
+  // replaces the whole list.
+  message MeItemsSetting {
+    repeated MeItem items = 1;
+    // The groups the page shows items in, in display order. Items without a
+    // group come first, under no heading.
+    repeated MeGroup groups = 2;
+  }
+
+  // A titled block of items on the "Me" page.
+  message MeGroup {
+    // Client-generated, stable across renames and reordering.
+    string id = 1 [(google.api.field_behavior) = REQUIRED];
+    string title = 2 [(google.api.field_behavior) = REQUIRED];
+  }
+
+  // One custom item: an icon, a title and a note, opening a linked document.
+  message MeItem {
+    enum Style {
+      STYLE_UNSPECIFIED = 0;
+      // Title on one line, note on the next.
+      MULTI_LINE = 1;
+      // Title and note on the same line.
+      SINGLE_LINE = 2;
+    }
+
+    // Client-generated, stable across edits and reordering.
+    string id = 1 [(google.api.field_behavior) = REQUIRED];
+    // Usually one emoji.
+    string icon = 2 [(google.api.field_behavior) = OPTIONAL];
+    string title = 3 [(google.api.field_behavior) = REQUIRED];
+    string note = 4 [(google.api.field_behavior) = OPTIONAL];
+    // Deprecated: use memos. Read as the first of memos; written only by clients
+    // that do not know memos, and then taken as the one linked document.
+    string memo = 5 [
+      deprecated = true,
+      (google.api.field_behavior) = OPTIONAL
+    ];
+    Style style = 6 [(google.api.field_behavior) = OPTIONAL];
+    // The linked documents, in display order. Format: memos/{memo}.
+    repeated string memos = 7 [(google.api.field_behavior) = OPTIONAL];
+    // The id of the group the item is shown in, or empty for none.
+    string group = 8 [(google.api.field_behavior) = OPTIONAL];
+  }
+
   message LastOpenedSetting {
     // The workspace resource name last opened. Format: workspaces/{workspace}
     string workspace = 1 [(google.api.field_behavior) = OPTIONAL];

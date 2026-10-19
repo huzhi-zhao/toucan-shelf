@@ -21,6 +21,7 @@ export const plannerKeys = {
   entries: (startDate: string, endDate: string) => [...plannerKeys.all, "entries", startDate, endDate] as const,
   openTodos: () => [...plannerKeys.all, "openTodos"] as const,
   todo: (name?: string) => [...plannerKeys.all, "todo", name] as const,
+  todoTags: () => [...plannerKeys.all, "todoTags"] as const,
 };
 
 export function useHabits() {
@@ -43,6 +44,14 @@ export function useOpenTodos() {
   return useQuery({
     queryKey: plannerKeys.openTodos(),
     queryFn: async () => (await plannerServiceClient.listOpenTodos({})).todos,
+  });
+}
+
+/** Tags already used on todos, most recent first: the history to pick a tag from. */
+export function useTodoTags() {
+  return useQuery({
+    queryKey: plannerKeys.todoTags(),
+    queryFn: async () => (await plannerServiceClient.listTodoTags({})).tags,
   });
 }
 
@@ -97,7 +106,7 @@ export function useCreateTodo() {
   );
 }
 
-type TodoField = "title" | "date" | "status" | "cancelReason" | "important" | "tag" | "note" | "memo" | "url";
+type TodoField = "title" | "date" | "status" | "cancelReason" | "important" | "tag" | "note" | "memos" | "url";
 
 const TODO_MASK_PATHS: Record<TodoField, string> = {
   title: "title",
@@ -107,7 +116,7 @@ const TODO_MASK_PATHS: Record<TodoField, string> = {
   important: "important",
   tag: "tag",
   note: "note",
-  memo: "memo",
+  memos: "memos",
   url: "url",
 };
 

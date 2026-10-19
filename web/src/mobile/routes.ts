@@ -4,15 +4,19 @@ import { extractMemoIdFromName } from "@/helpers/resource-names";
  * The mobile reader's URLs. It owns its whole host (toucan-app.huzhi.dev), so
  * paths start at the root. The sign-in page sits at `/auth` on purpose: that is
  * where `redirectOnAuthFailure` in `@/connect` sends an expired session, so the
- * shared transport needs no mobile-specific branch.
+ * shared transport needs no mobile-specific branch. The planner is the home page:
+ * `/` (the home-screen app's start URL) goes there.
  */
 export const MOBILE_ROUTES = {
-  SHELF: "/",
+  HOME: "/",
+  SHELF: "/shelf",
+  FAVORITES: "/favorites",
   PLAN: "/plan",
   PLAN_SETTINGS: "/plan/settings",
   PLAN_IMPORT: "/plan/import",
   SEARCH: "/search",
   ME: "/me",
+  ME_SETTINGS: "/me/settings",
   AUTH: "/auth",
 } as const;
 
@@ -42,3 +46,9 @@ export const todoRoute = (todoName: string): string => `/plan/todo/${encodeURICo
 
 /** `planner/todos/{uid}` from the detail page's `:uid`. */
 export const todoNameFromUid = (uid: string): string => `planner/todos/${uid}`;
+
+/** A "Me" page item's edit page; `new` adds one. */
+export const meItemRoute = (id: string): string => `/me/item/${encodeURIComponent(id)}`;
+
+/** The id in `meItemRoute` for an item that does not exist yet. */
+export const NEW_ME_ITEM = "new";

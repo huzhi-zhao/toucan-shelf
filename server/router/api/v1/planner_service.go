@@ -111,6 +111,47 @@ func checkPlannerMemo(name string) (string, error) {
 	return name, nil
 }
 
+// plannerMaxMemos caps a todo's linked documents; a todo needing more is a document of its own.
+const plannerMaxMemos = 20
+
+// checkPlannerMemos accepts the linked documents in order, dropping blanks and repeats.
+func checkPlannerMemos(names []string) ([]string, error) {
+	memos := []string{}
+	seen := map[string]bool{}
+	for _, name := range names {
+		memo, err := checkPlannerMemo(name)
+		if err != nil {
+			return nil, err
+		}
+		if memo == "" || seen[memo] {
+			continue
+		}
+		seen[memo] = true
+		memos = append(memos, memo)
+	}
+	if len(memos) > plannerMaxMemos {
+		return nil, status.Errorf(codes.InvalidArgument, "at most %d linked documents", plannerMaxMemos)
+	}
+	return memos, nil
+}
+
+// todoMemos is what a todo in a request links: memos, or for a client that only knows the deprecated memo,
+// that one document.
+func todoMemos(todo *v1pb.Todo) ([]string, error) {
+	if len(todo.Memos) == 0 && todo.Memo != "" { //nolint:staticcheck // the deprecated field is still accepted
+		return checkPlannerMemos([]string{todo.Memo}) //nolint:staticcheck
+	}
+	return checkPlannerMemos(todo.Memos)
+}
+
+// firstMemo is what the deprecated single-document fields read: the first linked document, or "".
+func firstMemo(memos []string) string {
+	if len(memos) == 0 {
+		return ""
+	}
+	return memos[0]
+}
+
 func plannerTimestamp(ts int64) *timestamppb.Timestamp {
 	if ts == 0 {
 		return nil
@@ -156,7 +197,8 @@ func convertTodoFromStore(t *store.PlannerTodo) *v1pb.Todo {
 		Important:     t.Important,
 		Tag:           t.Tag,
 		Note:          t.Note,
-		Memo:          t.MemoName,
+		Memo:          firstMemo(t.MemoNames), //nolint:staticcheck // still filled for clients that only know it
+		Memos:         t.MemoNames,
 		Url:           t.URL,
 		OriginalDate:  t.OriginalDate,
 		PostponeCount: t.PostponeCount,
@@ -382,6 +424,18 @@ func (s *APIV1Service) ListOpenTodos(ctx context.Context, _ *v1pb.ListOpenTodosR
 	return response, nil
 }
 
+func (s *APIV1Service) ListTodoTags(ctx context.Context, _ *v1pb.ListTodoTagsRequest) (*v1pb.ListTodoTagsResponse, error) {
+	user, err := s.plannerUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tags, err := s.Store.ListPlannerTodoTags(ctx, user.ID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list todo tags: %v", err)
+	}
+	return &v1pb.ListTodoTagsResponse{Tags: tags}, nil
+}
+
 // Check-ins.
 
 func (s *APIV1Service) SetCheckIn(ctx context.Context, request *v1pb.SetCheckInRequest) (*v1pb.CheckIn, error) {
@@ -402,6 +456,11 @@ func (s *APIV1Service) SetCheckIn(ctx context.Context, request *v1pb.SetCheckInR
 	date, err := parsePlannerDate(request.CheckIn.Date, "date", false)
 	if err != nil {
 		return nil, err
+	}
+	// A check-in records what has happened, so it cannot be for a day still ahead. The caller's day is
+	// unknown here; no time zone is past UTC+14, so a later date is in the future everywhere.
+	if latest := s.now().UTC().Add(14 * time.Hour).Format(time.DateOnly); date > latest {
+		return nil, status.Errorf(codes.InvalidArgument, "cannot check in for a future day: %s", date)
 	}
 	note, err := checkPlannerText(request.CheckIn.Note, "note", plannerMaxTitleLength, false)
 	if err != nil {
@@ -465,7 +524,7 @@ func plannerTodoFields(todo *v1pb.Todo) (*store.PlannerTodo, error) {
 	if err != nil {
 		return nil, err
 	}
-	memo, err := checkPlannerMemo(todo.Memo)
+	memos, err := todoMemos(todo)
 	if err != nil {
 		return nil, err
 	}
@@ -480,7 +539,7 @@ func plannerTodoFields(todo *v1pb.Todo) (*store.PlannerTodo, error) {
 		Important: todo.Important,
 		Tag:       tag,
 		Note:      note,
-		MemoName:  memo,
+		MemoNames: memos,
 		URL:       link,
 	}, nil
 }
@@ -563,12 +622,19 @@ func (s *APIV1Service) UpdateTodo(ctx context.Context, request *v1pb.UpdateTodoR
 				return nil, err
 			}
 			update.Note = &note
-		case "memo":
-			memo, err := checkPlannerMemo(request.Todo.Memo)
+		case "memos":
+			memos, err := checkPlannerMemos(request.Todo.Memos)
 			if err != nil {
 				return nil, err
 			}
-			update.MemoName = &memo
+			update.MemoNames = &memos
+		case "memo":
+			// The deprecated path: the one document becomes the whole list.
+			memos, err := checkPlannerMemos([]string{request.Todo.Memo}) //nolint:staticcheck
+			if err != nil {
+				return nil, err
+			}
+			update.MemoNames = &memos
 		case "url":
 			link, err := checkPlannerURL(request.Todo.Url)
 			if err != nil {

@@ -11,12 +11,15 @@ const fence = (language: string, body: string) => (
   </CodeBlock>
 );
 
-const placeholders = { languages: new Set(["kanban"]), render: (language: string) => <aside>{`placeholder:${language}`}</aside> };
+const placeholders = {
+  languages: new Set(["kanban"]),
+  render: (language: string, content: string) => <aside>{`placeholder:${language}:${content.split("\n")[0]}`}</aside>,
+};
 
 describe("BlockPlaceholderContext", () => {
-  it("replaces a listed block with the surface's placeholder", () => {
+  it("replaces a listed block with the surface's own rendering, given the fence body", () => {
     const html = renderToString(<BlockPlaceholderProvider value={placeholders}>{fence("kanban", "## Todo\n- a")}</BlockPlaceholderProvider>);
-    expect(html).toContain("placeholder:kanban");
+    expect(html).toContain("placeholder:kanban:## Todo");
   });
 
   it("leaves other blocks alone", () => {

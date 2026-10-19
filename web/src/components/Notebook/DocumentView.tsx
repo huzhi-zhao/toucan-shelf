@@ -15,6 +15,7 @@ import {
   PencilIcon,
   SaveIcon,
   Settings2Icon,
+  StarIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
@@ -53,6 +54,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { memoServiceClient } from "@/connect";
 import { useSoftBreakDefault } from "@/contexts/AuthContext";
+import { useFavorites, useToggleFavorite } from "@/hooks/useFavorites";
 import useMediaQuery from "@/hooks/useMediaQuery";
 import { useCreateMemoHistory, useMemoHistories, useRestoreMemoHistory } from "@/hooks/useMemoHistoryQueries";
 import { memoKeys, useInfiniteMemoComments, useUpdateMemo } from "@/hooks/useMemoQueries";
@@ -368,6 +370,18 @@ const DocumentView = ({
   const handleOpenDetail = () => {
     window.open(`/${memo.name}`, "_blank", "noopener");
   };
+
+  const { data: favorites } = useFavorites();
+  const toggleFavorite = useToggleFavorite();
+  const isFavorite = favorites?.some((favorite) => favorite.memo === memo.name) ?? false;
+  const handleToggleFavorite = () =>
+    toggleFavorite.mutate(
+      { memo: memo.name, favorite: !isFavorite },
+      {
+        onSuccess: () => toast.success(t(isFavorite ? "memo.unfavorited" : "memo.favorited")),
+        onError: () => toast.error(t("message.update-failed")),
+      },
+    );
 
   const handleOpenEdit = () => {
     setMode("edit");
@@ -938,6 +952,13 @@ const DocumentView = ({
                 <ExternalLinkIcon className="w-4 h-4" />
                 {t("memo.open-detail-page")}
               </DropdownMenuItem>
+              {/* The personal reading list, read on the phone's shelf (mobile-phase3.md §2). */}
+              {favorites && !isArchived && (
+                <DropdownMenuItem onClick={handleToggleFavorite}>
+                  <StarIcon className="w-4 h-4" fill={isFavorite ? "currentColor" : "none"} />
+                  {isFavorite ? t("memo.unfavorite") : t("memo.favorite")}
+                </DropdownMenuItem>
+              )}
               {/* This document's own framing. Reading density is NOT here: it's a per-reader
                   preference and lives in the appearance settings, applied to every document. */}
               {!isPdf && !isHtml && (

@@ -21,7 +21,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const redirect = getSafeRedirectPath(params.get(AUTH_REDIRECT_PARAM)) ?? MOBILE_ROUTES.SHELF;
+  const redirect = getSafeRedirectPath(params.get(AUTH_REDIRECT_PARAM)) ?? MOBILE_ROUTES.HOME;
 
   if (currentUser) return <Navigate to={redirect} replace />;
 

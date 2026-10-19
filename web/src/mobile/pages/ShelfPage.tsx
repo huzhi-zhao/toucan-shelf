@@ -1,14 +1,19 @@
 import { List, ListItem, Navbar, Page, Preloader, Segmented, SegmentedButton } from "konsta/react";
+import { useFavorites } from "@/hooks/useFavorites";
 import { useWorkspaces } from "@/hooks/useWorkspaceQueries";
+import FavoriteRow from "../components/FavoriteRow";
 import SectionTitle from "../components/SectionTitle";
 import WorkspaceCover, { coverColorOf } from "../components/WorkspaceCover";
 import { COPY } from "../copy";
 import { useGo, usePageScroll } from "../lib/nav";
 import { RECENT_KEY, type RecentRead } from "../lib/recent";
 import { usePref } from "../lib/storage";
-import { docRoute, folderRoute } from "../routes";
+import { docRoute, folderRoute, MOBILE_ROUTES } from "../routes";
 
 type ShelfView = "cover" | "list";
+
+/** How many unpinned favorites the shelf shows; pinned ones are always shown and do not count. */
+const SHELF_FAVORITES = 5;
 
 export default function ShelfPage() {
   const go = useGo(COPY.shelf.title);
@@ -17,6 +22,9 @@ export default function ShelfPage() {
   const { data: workspaces = [], isPending } = useWorkspaces(false);
   const [recent] = usePref<RecentRead[]>(RECENT_KEY, []);
   const [view, setView] = usePref<ShelfView>("shelf-view", "cover");
+  const { data: favorites = [] } = useFavorites();
+  const pinnedCount = favorites.filter((favorite) => favorite.pinned).length;
+  const shelfFavorites = favorites.slice(0, pinnedCount + SHELF_FAVORITES);
 
   return (
     <Page ref={scrollRef} className="pb-tabbar">
@@ -83,6 +91,28 @@ export default function ShelfPage() {
             />
           ))}
         </List>
+      )}
+
+      {favorites.length > 0 && (
+        <>
+          <SectionTitle
+            className="mt-8"
+            action={
+              favorites.length > shelfFavorites.length && (
+                <button type="button" className="text-[15px] text-primary active:opacity-50" onClick={() => go(MOBILE_ROUTES.FAVORITES)}>
+                  {COPY.shelf.allFavorites(favorites.length)}
+                </button>
+              )
+            }
+          >
+            {COPY.shelf.favorites}
+          </SectionTitle>
+          <List strongIos insetIos dividersIos className="!my-0">
+            {shelfFavorites.map((favorite) => (
+              <FavoriteRow key={favorite.name} favorite={favorite} onOpen={() => go(docRoute(favorite.memo))} />
+            ))}
+          </List>
+        </>
       )}
     </Page>
   );
