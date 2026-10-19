@@ -51,8 +51,7 @@ cd proto && buf lint               # Lint proto files
 cd proto && buf format -w          # Format proto files
 
 # Agent-facing docs
-./scripts/sync-agent-skill-docs.sh # Mirror docs/skill/ into internal/memogit/assets/skill/ (go:embed source)
-./scripts/build-memogit.sh         # Sync (above) + build the memogit CLI -> ./build/memogit
+./scripts/build-memogit.sh         # Build the memogit CLI -> ./build/memogit (embeds docs/skill/ directly)
 ./scripts/build-memogit.sh --linux-amd64  # Same, Linux x86-64 for Claude cloud sandboxes -> ./build/memogit-linux-amd64
 ./scripts/build-memogit.sh --dist  # All platforms + version.json + install.sh + bootstrap.md -> ./memogit-dist/ (prod image builds its own, see deploy.sh)
 ```
@@ -98,7 +97,7 @@ Releasing to production (merge to `main`, backup, `./deploy.sh`, verify, rollbac
 | Frontend production output | Vite config or release-sensitive UI | `cd web && pnpm build` or `pnpm release` |
 | Proto API | `.proto` source plus generated outputs | `cd proto && buf generate && buf lint` |
 | Public unauthenticated route | `server/router/api/v1/acl_config.go` | Targeted server test or manual route check |
-| Agent-facing manual (`docs/skill/SKILL.md` or `references/*.md`) | Run `scripts/sync-agent-skill-docs.sh` to regenerate `internal/memogit/assets/skill/` (or just use `scripts/build-memogit.sh`, which syncs then builds); also check whether `serverInstructions` in `server/router/mcp/service.go` (a short hand-written summary of the same rules, resident in every MCP session) needs a matching update | `go test ./internal/memogit/...` — `TestSkillAssetsMatchSource` fails if the sync was skipped |
+| Agent-facing manual (`docs/skill/SKILL.md` or `references/*.md`) | Edit `docs/skill/` only — memogit embeds it directly via the `docs/skill` Go package; also check whether `serverInstructions` in `server/router/mcp/service.go` (a short hand-written summary of the same rules, resident in every MCP session) needs a matching update | `git diff --check`; `go build ./internal/memogit/...` if you added or renamed files |
 
 ## Go Conventions
 

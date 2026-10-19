@@ -42,11 +42,9 @@ types, custom Markdown syntax, view blocks & gallery views, attachments,
 memogit, MCP), read on demand rather than up front. **This is where agent-facing
 documentation goes from now on.**
 
-`docs/skill/` covers both channels. `memogit` embeds it verbatim
-(`internal/memogit/assets/skill/`, a generated mirror kept in sync by
-`scripts/sync-agent-skill-docs.sh` — building with `scripts/build-memogit.sh`
-runs that automatically; `go test ./internal/memogit/...` also fails loudly if
-the two have drifted) and drops it into every checkout as `.memogit/skill/`,
+`docs/skill/` covers both channels. `memogit` embeds it verbatim, straight
+from that directory (the `docs/skill` Go package; there is no copy to keep in
+sync), and drops it into every checkout as `.memogit/skill/`,
 see [§5.2a](./05-memogit-cli.md). Agents on the MCP
 channel never see a file tree, so they are additionally briefed by the
 server's own `initialize` instructions — a hand-written summary of `SKILL.md`,
