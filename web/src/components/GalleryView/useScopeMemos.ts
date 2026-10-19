@@ -3,9 +3,10 @@ import { isHomeDocument } from "@/hooks/useHomeDocument";
 import { useMemos } from "@/hooks/useMemoQueries";
 import { State } from "@/types/proto/api/v1/common_pb";
 import type { Memo } from "@/types/proto/api/v1/memo_service_pb";
+import { calendarDocsByDate } from "./calendar";
 import { sortDocs } from "./cards";
 import { matchesScope, propertyMap } from "./fields";
-import { type GalleryBlock, type GalleryScope, resolveScopeWorkspaces } from "./types";
+import { type CalendarLayoutBlock, type GalleryBlock, type GalleryScope, resolveScopeWorkspaces } from "./types";
 
 /**
  * The candidate documents a block's scope may match: every normal document in
@@ -43,4 +44,11 @@ export function useGalleryDocs(block: GalleryBlock, view: Memo): { docs: Memo[];
     return sortDocs(list, block);
   }, [memos, block, view.name, view.folderPath]);
   return { docs, isLoading };
+}
+
+/** The documents a calendar layout block shows, bucketed by the day each lands on (see `calendarDocsByDate`). */
+export function useCalendarDocs(block: CalendarLayoutBlock, view: Memo): { docsByDate: Map<string, Memo[]>; isLoading: boolean } {
+  const { memos, isLoading } = useScopeMemos(block.scope, view.workspace);
+  const docsByDate = useMemo(() => calendarDocsByDate(memos, block, view), [memos, block, view.name, view.folderPath]);
+  return { docsByDate, isLoading };
 }

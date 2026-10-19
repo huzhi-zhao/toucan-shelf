@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import type { Memo } from "@/types/proto/api/v1/memo_service_pb";
 import type { MemoProperty } from "@/utils/frontmatter";
-import { propertyValueToString } from "./fields";
+import { fieldValue, matchesScope, propertyMap, propertyValueToString } from "./fields";
 import type { CalendarLayoutBlock } from "./types";
 
 // The property key a document's date is written to when the block has no
@@ -71,6 +71,34 @@ export function docCalendarDate(doc: Memo, props: Map<string, MemoProperty>, blo
     if (norm) return norm;
   }
   return doc.createTime ? dayjs(Number(doc.createTime.seconds) * 1000).format("YYYY-MM-DD") : undefined;
+}
+
+/**
+ * Buckets a calendar block's documents by the day they land on: the scope's
+ * candidates that match the block's rules, minus the view itself, keyed by
+ * `YYYY-MM-DD` (documents without a resolvable date are left out). Shared by
+ * the web layout and the mobile reader's preview so both put a document on the
+ * same day. Rebuilt from the live query each time — nothing is stored.
+ */
+export function calendarDocsByDate(memos: Memo[], block: CalendarLayoutBlock, view: Memo): Map<string, Memo[]> {
+  const ctx = { viewFolderPath: view.folderPath };
+  const map = new Map<string, Memo[]>();
+  for (const doc of memos) {
+    if (doc.name === view.name) continue;
+    const props = propertyMap(doc.content);
+    if (!matchesScope(doc, props, block.scope, ctx)) continue;
+    const date = docCalendarDate(doc, props, block);
+    if (!date) continue;
+    const list = map.get(date);
+    if (list) list.push(doc);
+    else map.set(date, [doc]);
+  }
+  return map;
+}
+
+/** The text a document shows on the calendar: the block's card field, else its title. */
+export function calendarDocLabel(doc: Memo, block: CalendarLayoutBlock): string {
+  return fieldValue(doc, propertyMap(doc.content), block.cardField) || doc.title || doc.name;
 }
 
 /**

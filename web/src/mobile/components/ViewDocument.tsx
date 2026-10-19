@@ -9,15 +9,13 @@ import { useMemo as useMemoQuery } from "@/hooks/useMemoQueries";
 import { cn } from "@/lib/utils";
 import type { Memo } from "@/types/proto/api/v1/memo_service_pb";
 import { COPY } from "../copy";
-import BlockPlaceholderCard from "./BlockPlaceholderCard";
+import CalendarLayoutView from "./CalendarLayoutView";
 import DocGlyph from "./DocGlyph";
 
 interface Props {
   memo: Memo;
   /** Opens a document in the reader. */
   onOpen: (memoName: string) => void;
-  /** Shown for blocks the phone does not render yet. */
-  onCopyDesktopLink: () => void;
   /** The reading settings (font size, line height). Applied to text blocks only: card walls keep their size. */
   textStyle?: CSSProperties;
 }
@@ -25,11 +23,12 @@ interface Props {
 /**
  * A VIEW document on the phone, read-only (phase 3 §4): each block top to bottom.
  * Gallery blocks become a card wall built from the same query, order, covers and
- * badges as the web renderer; text blocks go through the shared renderer, under
- * the providers the reading page already set up. Calendar layouts are not drawn
- * yet; outward-facing blocks belong to the public site and are left out.
+ * badges as the web renderer; calendar layouts become a month grid over the
+ * selected day's documents, bucketed the same way as on the web; text blocks go
+ * through the shared renderer, under the providers the reading page already set
+ * up. Outward-facing blocks belong to the public site and are left out.
  */
-export default function ViewDocument({ memo, onOpen, onCopyDesktopLink, textStyle }: Props) {
+export default function ViewDocument({ memo, onOpen, textStyle }: Props) {
   const config = parseGalleryViewConfig(memo.content);
   if (!config || config.blocks.length === 0) {
     return <div className="py-12 text-center text-[15px] text-black/45 dark:text-white/45">{COPY.reader.viewNotConfigured}</div>;
@@ -41,7 +40,7 @@ export default function ViewDocument({ memo, onOpen, onCopyDesktopLink, textStyl
           case "gallery":
             return <GalleryCards key={index} block={block} view={memo} onOpen={onOpen} />;
           case "calendar":
-            return <BlockPlaceholderCard key={index} title={COPY.blocks.calendarLayout} onCopyDesktopLink={onCopyDesktopLink} />;
+            return <CalendarLayoutView key={index} block={block} view={memo} blockIndex={index} onOpen={onOpen} />;
           case "markdown":
             return (
               <div key={index} style={textStyle}>
