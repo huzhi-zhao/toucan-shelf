@@ -27,9 +27,13 @@ export interface GridBlockData {
   columns?: number;
 }
 
-const CARD_LINE_RE = /^-\s+([A-Za-z_]+):\s*(.*)$/;
-const FIELD_LINE_RE = /^\s+([A-Za-z_]+):\s*(.*)$/;
-const CONFIG_LINE_RE = /^([A-Za-z_]+):\s*(.*)$/;
+// Keys may be any script (e.g. `价格: ¥8,000`): a letter or `_`, then letters, marks, digits or `_`.
+// Requiring a leading letter keeps value-like lines such as `10:30` from being read as a key.
+// Matching stops at the first `:`, so colons inside values (`url: https://…`) stay in the value.
+const KEY = String.raw`[\p{L}_][\p{L}\p{M}\p{N}_]*`;
+const CARD_LINE_RE = new RegExp(String.raw`^-\s+(${KEY}):\s*(.*)$`, "u");
+const FIELD_LINE_RE = new RegExp(String.raw`^\s+(${KEY}):\s*(.*)$`, "u");
+const CONFIG_LINE_RE = new RegExp(String.raw`^(${KEY}):\s*(.*)$`, "u");
 
 function unquote(value: string): string {
   const trimmed = value.trim();
