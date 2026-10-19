@@ -22,6 +22,8 @@ import { parseUrlReferences } from "@/utils/urlReferences";
 import BackCapsule from "../components/BackCapsule";
 import BlockPlaceholderCard from "../components/BlockPlaceholderCard";
 import DocGlyph from "../components/DocGlyph";
+import GridPreview from "../components/GridPreview";
+import KanbanPreview from "../components/KanbanPreview";
 import SectionTitle from "../components/SectionTitle";
 import ViewDocument from "../components/ViewDocument";
 import { COPY } from "../copy";
@@ -45,13 +47,16 @@ import { desktopDocUrl, docRoute, folderRoute, MOBILE_ROUTES } from "../routes";
 
 /** Special blocks the phone does not render (requirement §7). Fence languages, lower-case. */
 const PLACEHOLDER_BLOCKS: Record<string, string> = {
-  kanban: COPY.blocks.kanban,
   sheets: COPY.blocks.sheets,
   calendar: COPY.blocks.calendar,
-  grid: COPY.blocks.grid,
   "toucan-secret": COPY.blocks.secret,
 };
-const PLACEHOLDER_LANGUAGES = new Set(Object.keys(PLACEHOLDER_BLOCKS));
+/** Special blocks the phone draws its own read-only way (phase 3 §4), from the fence body. */
+const PREVIEW_BLOCKS: Record<string, (content: string) => React.ReactNode> = {
+  kanban: (content) => <KanbanPreview content={content} />,
+  grid: (content) => <GridPreview content={content} />,
+};
+const REPLACED_LANGUAGES = new Set([...Object.keys(PLACEHOLDER_BLOCKS), ...Object.keys(PREVIEW_BLOCKS)]);
 const REFERENCES_ID = "mobile-references";
 
 const previewContext = (memo: Memo): MemoViewContextValue => ({
@@ -195,8 +200,11 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
 
   const placeholders = useMemo(
     () => ({
-      languages: PLACEHOLDER_LANGUAGES,
-      render: (language: string) => <BlockPlaceholderCard title={PLACEHOLDER_BLOCKS[language]} onCopyDesktopLink={copyDesktopLink} />,
+      languages: REPLACED_LANGUAGES,
+      render: (language: string, content: string) =>
+        PREVIEW_BLOCKS[language]?.(content) ?? (
+          <BlockPlaceholderCard title={PLACEHOLDER_BLOCKS[language]} onCopyDesktopLink={copyDesktopLink} />
+        ),
     }),
     [copyDesktopLink],
   );
