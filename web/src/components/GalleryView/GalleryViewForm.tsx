@@ -1204,7 +1204,7 @@ const DocumentPicker = ({
 };
 
 // One editable markdown block. Its content comes either from markdown typed
-// here (anything the document renderer supports — grid/calendar/kanban/sheets
+// here (anything the document renderer supports — grid/calendar/kanban
 // fences included — so the view needs no block type of its own for them), or
 // from a referenced knowledge-base document, rendered read-only in the view.
 const MarkdownBlockForm = ({

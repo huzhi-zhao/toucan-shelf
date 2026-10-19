@@ -37,16 +37,6 @@ service AIService {
     };
     option (google.api.method_signature) = "text,instruction";
   }
-
-  // GenerateFormula produces a spreadsheet formula from a natural-language prompt
-  // using an instance AI provider, returning only the formula string.
-  rpc GenerateFormula(GenerateFormulaRequest) returns (GenerateFormulaResponse) {
-    option (google.api.http) = {
-      post: "/api/v1/ai:generateFormula"
-      body: "*"
-    };
-    option (google.api.method_signature) = "prompt";
-  }
 }
 
 message PolishTextRequest {
@@ -66,21 +56,6 @@ message PolishTextRequest {
 message PolishTextResponse {
   // The rewritten text.
   string text = 1;
-}
-
-message GenerateFormulaRequest {
-  // Required. A natural-language description of the formula to generate
-  // (e.g. "sum the price column", "average of B2 to B10").
-  string prompt = 1 [(google.api.field_behavior) = REQUIRED];
-
-  // Optional. Spreadsheet context to ground the formula, such as the active
-  // cell reference and the sheet's header row / sample rows.
-  string context = 2 [(google.api.field_behavior) = OPTIONAL];
-}
-
-message GenerateFormulaResponse {
-  // The generated formula, beginning with "=".
-  string formula = 1;
 }
 
 message FormatMarkdownRequest {

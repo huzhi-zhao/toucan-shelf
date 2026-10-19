@@ -389,21 +389,6 @@
         "updated": "Updated"
       }
     },
-    "sheets-block": {
-      "comment": "Comment",
-      "comment-placeholder": "Add a note for this cell (empty to remove)",
-      "more": "More",
-      "empty": "Empty sheets code block",
-      "ai-formula": "AI formula",
-      "ai-placeholder": "Describe the formula, e.g. sum the price column",
-      "ai-generate": "Generate",
-      "ai-generating": "Generating…",
-      "ai-unsupported": "The generated formula uses {{fn}}, which isn't supported. Try rephrasing (only SUM, AVERAGE, MAX, MIN, PRODUCT, IF and basic arithmetic work).",
-      "resize": "Drag to resize",
-      "freeze": "Freeze view (lock scrolling and resizing)",
-      "unfreeze": "Unfreeze view",
-      "render-error": "This sheet couldn't be rendered (likely an invalid formula). Edit the block to fix it; the raw content is shown below."
-    },
     "task-status": {
       "cancelled": "Cancelled",
       "done": "Done",
@@ -1657,7 +1642,7 @@
     "feature-hierarchy-title": "Hierarchical knowledge base",
     "feature-hierarchy-body": "Workspaces, multi-level folders and sub-documents, with a Bookshelf overview. Read and edit from any browser.",
     "feature-view-blocks-title": "View blocks",
-    "feature-view-blocks-body": "Calendar, kanban, grid and sheets as fenced blocks inside a document — edit them straight from the preview.",
+    "feature-view-blocks-body": "Calendar, kanban and grid as fenced blocks inside a document — edit them straight from the preview.",
     "feature-gallery-title": "Gallery views",
     "feature-gallery-body": "Card walls scoped by folder, tag or property. A view holds only configuration, so it always shows current data.",
     "feature-agents-title": "AI agent collaboration",

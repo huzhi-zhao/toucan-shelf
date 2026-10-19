@@ -16,7 +16,6 @@ import { MaskBlock } from "./MaskBlock";
 import { MermaidBlock } from "./MermaidBlock";
 import type { ReactMarkdownProps } from "./markdown/types";
 import { SecretBlock } from "./SecretBlock";
-import { SheetsBlock } from "./SheetsBlock";
 
 import { extractCodeContent, extractLanguage } from "./utils";
 
@@ -36,7 +35,7 @@ export const CodeBlock = ({ children, className, node: _node, ...props }: CodeBl
 
   // Collapse state comes from the fence info string (```ts fold / fold=open /
   // title="xxx"), promoted to real attributes by remark-code-fold. Only plain
-  // code blocks honour it — the special blocks below (mermaid/sheets/…) return
+  // code blocks honour it — the special blocks below (mermaid/kanban/…) return
   // early and render their own chrome.
   const foldProps = codeElement?.props as { "data-fold"?: string; "data-fold-title"?: string; "data-nocopy"?: string } | undefined;
   const foldMode = foldProps?.["data-fold"];
@@ -163,21 +162,6 @@ export const CodeBlock = ({ children, className, node: _node, ...props }: CodeBl
         <GridBlock className={cn(className)} {...props}>
           {children}
         </GridBlock>
-      </pre>
-    );
-  }
-
-  // If it's a sheets block, render with SheetsBlock component. The block's style
-  // overlay anchor lives on the fence info string (```sheets id=xxx); the
-  // remark-sheets-id plugin promotes it to a real `data-sheet-id` attribute,
-  // because the raw fence meta on `node.data` is stripped by rehype-raw.
-  if (language === "sheets") {
-    const blockId = (codeElement?.props as { "data-sheet-id"?: string } | undefined)?.["data-sheet-id"];
-    return (
-      <pre className={cn("relative", markdownStyles.blockWrapper)}>
-        <SheetsBlock className={cn(className)} blockId={blockId} {...props}>
-          {children}
-        </SheetsBlock>
       </pre>
     );
   }

@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file api/v1/ai_service.proto.
  */
 export const file_api_v1_ai_service: GenFile = /*@__PURE__*/
-  fileDesc("ChdhcGkvdjEvYWlfc2VydmljZS5wcm90bxIMbWVtb3MuYXBpLnYxIlUKEVBvbGlzaFRleHRSZXF1ZXN0EhEKBHRleHQYASABKAlCA+BBAhIYCgtpbnN0cnVjdGlvbhgCIAEoCUID4EEBEhMKBnByZXNldBgDIAEoCUID4EEBIiIKElBvbGlzaFRleHRSZXNwb25zZRIMCgR0ZXh0GAEgASgJIkMKFkdlbmVyYXRlRm9ybXVsYVJlcXVlc3QSEwoGcHJvbXB0GAEgASgJQgPgQQISFAoHY29udGV4dBgCIAEoCUID4EEBIioKF0dlbmVyYXRlRm9ybXVsYVJlc3BvbnNlEg8KB2Zvcm11bGEYASABKAkiQQoVRm9ybWF0TWFya2Rvd25SZXF1ZXN0EhEKBHRleHQYASABKAlCA+BBAhIVCghmaWxlbmFtZRgCIAEoCUID4EEBIioKFkZvcm1hdE1hcmtkb3duUmVzcG9uc2USEAoIbWFya2Rvd24YASABKAkiSQoRVHJhbnNjcmliZVJlcXVlc3QSNAoFYXVkaW8YASABKAsyIC5tZW1vcy5hcGkudjEuVHJhbnNjcmlwdGlvbkF1ZGlvQgPgQQIidwoSVHJhbnNjcmlwdGlvbkF1ZGlvEhYKB2NvbnRlbnQYASABKAxCA+BBBEgAEg0KA3VyaRgCIAEoCUgAEhUKCGZpbGVuYW1lGAMgASgJQgPgQQESGQoMY29udGVudF90eXBlGAQgASgJQgPgQQFCCAoGc291cmNlIiIKElRyYW5zY3JpYmVSZXNwb25zZRIMCgR0ZXh0GAEgASgJMqkECglBSVNlcnZpY2USeQoKVHJhbnNjcmliZRIfLm1lbW9zLmFwaS52MS5UcmFuc2NyaWJlUmVxdWVzdBogLm1lbW9zLmFwaS52MS5UcmFuc2NyaWJlUmVzcG9uc2UiKNpBBWF1ZGlvgtPkkwIaOgEqIhUvYXBpL3YxL2FpOnRyYW5zY3JpYmUSiAEKDkZvcm1hdE1hcmtkb3duEiMubWVtb3MuYXBpLnYxLkZvcm1hdE1hcmtkb3duUmVxdWVzdBokLm1lbW9zLmFwaS52MS5Gb3JtYXRNYXJrZG93blJlc3BvbnNlIivaQQR0ZXh0gtPkkwIeOgEqIhkvYXBpL3YxL2FpOmZvcm1hdE1hcmtkb3duEoQBCgpQb2xpc2hUZXh0Eh8ubWVtb3MuYXBpLnYxLlBvbGlzaFRleHRSZXF1ZXN0GiAubWVtb3MuYXBpLnYxLlBvbGlzaFRleHRSZXNwb25zZSIz2kEQdGV4dCxpbnN0cnVjdGlvboLT5JMCGjoBKiIVL2FwaS92MS9haTpwb2xpc2hUZXh0Eo4BCg9HZW5lcmF0ZUZvcm11bGESJC5tZW1vcy5hcGkudjEuR2VuZXJhdGVGb3JtdWxhUmVxdWVzdBolLm1lbW9zLmFwaS52MS5HZW5lcmF0ZUZvcm11bGFSZXNwb25zZSIu2kEGcHJvbXB0gtPkkwIfOgEqIhovYXBpL3YxL2FpOmdlbmVyYXRlRm9ybXVsYUKmAQoQY29tLm1lbW9zLmFwaS52MUIOQWlTZXJ2aWNlUHJvdG9QAVowZ2l0aHViLmNvbS91c2VtZW1vcy9tZW1vcy9wcm90by9nZW4vYXBpL3YxO2FwaXYxogIDTUFYqgIMTWVtb3MuQXBpLlYxygIMTWVtb3NcQXBpXFYx4gIYTWVtb3NcQXBpXFYxXEdQQk1ldGFkYXRh6gIOTWVtb3M6OkFwaTo6VjFiBnByb3RvMw", [file_google_api_annotations, file_google_api_client, file_google_api_field_behavior]);
+  fileDesc("ChdhcGkvdjEvYWlfc2VydmljZS5wcm90bxIMbWVtb3MuYXBpLnYxIlUKEVBvbGlzaFRleHRSZXF1ZXN0EhEKBHRleHQYASABKAlCA+BBAhIYCgtpbnN0cnVjdGlvbhgCIAEoCUID4EEBEhMKBnByZXNldBgDIAEoCUID4EEBIiIKElBvbGlzaFRleHRSZXNwb25zZRIMCgR0ZXh0GAEgASgJIkEKFUZvcm1hdE1hcmtkb3duUmVxdWVzdBIRCgR0ZXh0GAEgASgJQgPgQQISFQoIZmlsZW5hbWUYAiABKAlCA+BBASIqChZGb3JtYXRNYXJrZG93blJlc3BvbnNlEhAKCG1hcmtkb3duGAEgASgJIkkKEVRyYW5zY3JpYmVSZXF1ZXN0EjQKBWF1ZGlvGAEgASgLMiAubWVtb3MuYXBpLnYxLlRyYW5zY3JpcHRpb25BdWRpb0ID4EECIncKElRyYW5zY3JpcHRpb25BdWRpbxIWCgdjb250ZW50GAEgASgMQgPgQQRIABINCgN1cmkYAiABKAlIABIVCghmaWxlbmFtZRgDIAEoCUID4EEBEhkKDGNvbnRlbnRfdHlwZRgEIAEoCUID4EEBQggKBnNvdXJjZSIiChJUcmFuc2NyaWJlUmVzcG9uc2USDAoEdGV4dBgBIAEoCTKYAwoJQUlTZXJ2aWNlEnkKClRyYW5zY3JpYmUSHy5tZW1vcy5hcGkudjEuVHJhbnNjcmliZVJlcXVlc3QaIC5tZW1vcy5hcGkudjEuVHJhbnNjcmliZVJlc3BvbnNlIijaQQVhdWRpb4LT5JMCGjoBKiIVL2FwaS92MS9haTp0cmFuc2NyaWJlEogBCg5Gb3JtYXRNYXJrZG93bhIjLm1lbW9zLmFwaS52MS5Gb3JtYXRNYXJrZG93blJlcXVlc3QaJC5tZW1vcy5hcGkudjEuRm9ybWF0TWFya2Rvd25SZXNwb25zZSIr2kEEdGV4dILT5JMCHjoBKiIZL2FwaS92MS9haTpmb3JtYXRNYXJrZG93bhKEAQoKUG9saXNoVGV4dBIfLm1lbW9zLmFwaS52MS5Qb2xpc2hUZXh0UmVxdWVzdBogLm1lbW9zLmFwaS52MS5Qb2xpc2hUZXh0UmVzcG9uc2UiM9pBEHRleHQsaW5zdHJ1Y3Rpb26C0+STAho6ASoiFS9hcGkvdjEvYWk6cG9saXNoVGV4dEKmAQoQY29tLm1lbW9zLmFwaS52MUIOQWlTZXJ2aWNlUHJvdG9QAVowZ2l0aHViLmNvbS91c2VtZW1vcy9tZW1vcy9wcm90by9nZW4vYXBpL3YxO2FwaXYxogIDTUFYqgIMTWVtb3MuQXBpLlYxygIMTWVtb3NcQXBpXFYx4gIYTWVtb3NcQXBpXFYxXEdQQk1ldGFkYXRh6gIOTWVtb3M6OkFwaTo6VjFiBnByb3RvMw", [file_google_api_annotations, file_google_api_client, file_google_api_field_behavior]);
 
 /**
  * @generated from message memos.api.v1.PolishTextRequest
@@ -71,53 +71,6 @@ export const PolishTextResponseSchema: GenMessage<PolishTextResponse> = /*@__PUR
   messageDesc(file_api_v1_ai_service, 1);
 
 /**
- * @generated from message memos.api.v1.GenerateFormulaRequest
- */
-export type GenerateFormulaRequest = Message<"memos.api.v1.GenerateFormulaRequest"> & {
-  /**
-   * Required. A natural-language description of the formula to generate
-   * (e.g. "sum the price column", "average of B2 to B10").
-   *
-   * @generated from field: string prompt = 1;
-   */
-  prompt: string;
-
-  /**
-   * Optional. Spreadsheet context to ground the formula, such as the active
-   * cell reference and the sheet's header row / sample rows.
-   *
-   * @generated from field: string context = 2;
-   */
-  context: string;
-};
-
-/**
- * Describes the message memos.api.v1.GenerateFormulaRequest.
- * Use `create(GenerateFormulaRequestSchema)` to create a new message.
- */
-export const GenerateFormulaRequestSchema: GenMessage<GenerateFormulaRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_ai_service, 2);
-
-/**
- * @generated from message memos.api.v1.GenerateFormulaResponse
- */
-export type GenerateFormulaResponse = Message<"memos.api.v1.GenerateFormulaResponse"> & {
-  /**
-   * The generated formula, beginning with "=".
-   *
-   * @generated from field: string formula = 1;
-   */
-  formula: string;
-};
-
-/**
- * Describes the message memos.api.v1.GenerateFormulaResponse.
- * Use `create(GenerateFormulaResponseSchema)` to create a new message.
- */
-export const GenerateFormulaResponseSchema: GenMessage<GenerateFormulaResponse> = /*@__PURE__*/
-  messageDesc(file_api_v1_ai_service, 3);
-
-/**
  * @generated from message memos.api.v1.FormatMarkdownRequest
  */
 export type FormatMarkdownRequest = Message<"memos.api.v1.FormatMarkdownRequest"> & {
@@ -141,7 +94,7 @@ export type FormatMarkdownRequest = Message<"memos.api.v1.FormatMarkdownRequest"
  * Use `create(FormatMarkdownRequestSchema)` to create a new message.
  */
 export const FormatMarkdownRequestSchema: GenMessage<FormatMarkdownRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_ai_service, 4);
+  messageDesc(file_api_v1_ai_service, 2);
 
 /**
  * @generated from message memos.api.v1.FormatMarkdownResponse
@@ -160,7 +113,7 @@ export type FormatMarkdownResponse = Message<"memos.api.v1.FormatMarkdownRespons
  * Use `create(FormatMarkdownResponseSchema)` to create a new message.
  */
 export const FormatMarkdownResponseSchema: GenMessage<FormatMarkdownResponse> = /*@__PURE__*/
-  messageDesc(file_api_v1_ai_service, 5);
+  messageDesc(file_api_v1_ai_service, 3);
 
 /**
  * @generated from message memos.api.v1.TranscribeRequest
@@ -179,7 +132,7 @@ export type TranscribeRequest = Message<"memos.api.v1.TranscribeRequest"> & {
  * Use `create(TranscribeRequestSchema)` to create a new message.
  */
 export const TranscribeRequestSchema: GenMessage<TranscribeRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_ai_service, 6);
+  messageDesc(file_api_v1_ai_service, 4);
 
 /**
  * @generated from message memos.api.v1.TranscriptionAudio
@@ -226,7 +179,7 @@ export type TranscriptionAudio = Message<"memos.api.v1.TranscriptionAudio"> & {
  * Use `create(TranscriptionAudioSchema)` to create a new message.
  */
 export const TranscriptionAudioSchema: GenMessage<TranscriptionAudio> = /*@__PURE__*/
-  messageDesc(file_api_v1_ai_service, 7);
+  messageDesc(file_api_v1_ai_service, 5);
 
 /**
  * @generated from message memos.api.v1.TranscribeResponse
@@ -245,7 +198,7 @@ export type TranscribeResponse = Message<"memos.api.v1.TranscribeResponse"> & {
  * Use `create(TranscribeResponseSchema)` to create a new message.
  */
 export const TranscribeResponseSchema: GenMessage<TranscribeResponse> = /*@__PURE__*/
-  messageDesc(file_api_v1_ai_service, 8);
+  messageDesc(file_api_v1_ai_service, 6);
 
 /**
  * @generated from service memos.api.v1.AIService
@@ -282,17 +235,6 @@ export const AIService: GenService<{
     methodKind: "unary";
     input: typeof PolishTextRequestSchema;
     output: typeof PolishTextResponseSchema;
-  },
-  /**
-   * GenerateFormula produces a spreadsheet formula from a natural-language prompt
-   * using an instance AI provider, returning only the formula string.
-   *
-   * @generated from rpc memos.api.v1.AIService.GenerateFormula
-   */
-  generateFormula: {
-    methodKind: "unary";
-    input: typeof GenerateFormulaRequestSchema;
-    output: typeof GenerateFormulaResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_api_v1_ai_service, 0);

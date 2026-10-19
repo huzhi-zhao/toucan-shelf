@@ -127,15 +127,12 @@ export const SANITIZE_SCHEMA = {
     // from remark-task-status through to the list item renderer; `data-counter`
     // carries a `- [N]` click counter's value and position (see remark-counter).
     li: [...(defaultSchema.attributes?.li || []), "dataTaskStatus", "dataCounter", "dataCounterIndex"],
-    // `data-sheet-id` carries a sheets block's style-overlay anchor from the fence
-    // info string (```sheets id=xxx) through to CodeBlock; see remark-sheets-id.
     // `data-fold`/`data-fold-title` carry a collapsible code block's initial state
-    // and header label from the same info string; `data-nocopy` marks a block
+    // and header label from the fence info string; `data-nocopy` marks a block
     // whose text should not be copyable. See remark-code-fold.
     code: [
       ...(defaultSchema.attributes?.code || []),
       ["className", ...KATEX_INLINE_CLASS_NAMES, ...KATEX_BLOCK_CLASS_NAMES],
-      "dataSheetId",
       "dataFold",
       "dataFoldTitle",
       "dataNocopy",

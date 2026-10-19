@@ -1,30 +1,29 @@
-# 6. View Blocks (calendar / kanban / grid / sheets)
+# 6. View Blocks (calendar / kanban / grid)
 
-Beyond the four **document types**, this fork adds four **interactive view
+Beyond the four **document types**, this fork adds three **interactive view
 blocks** you embed *inside* a Markdown document with a fenced code block. They
 all share one mechanism: the code-block renderer dispatches on the fence
 language and hands the block off to a dedicated component.
 
 - **Dispatch:** `web/src/components/MemoContent/CodeBlock.tsx` — `language ===`
-  `"calendar" | "kanban" | "grid" | "sheets"`.
+  `"calendar" | "kanban" | "grid"`.
 - Each block **degrades gracefully**: malformed input renders an empty-state or
   the raw source rather than breaking the document, and an `ErrorBoundary`
   contains any remaining throw to the block.
-- **Editing is contextual.** Blocks that write back (calendar, kanban, sheets)
+- **Editing is contextual.** Blocks that write back (calendar, kanban)
   only allow direct manipulation when you open **your own** document in a context
   that can save it. In the Explore feed, shared views, or someone else's
   document, they render read-only.
 
 > 📋 **Copy-paste playground:** every syntax feature and edge case below is
 > demonstrated end-to-end in **[View Blocks — Complete Demo](./demo-views.md)**.
-> Open it as a memo to see all four blocks render live.
+> Open it as a memo to see all three blocks render live.
 
 | Block | Fence | Body format | Write-back | Renderer |
 |-------|-------|-------------|-----------|----------|
 | Calendar | ` ```calendar ` | date groups + checklist/event lines | checkbox toggle, add items, event dots | `CalendarBlock.tsx` |
 | Kanban | ` ```kanban ` | YAML | checkbox, drag, add task | `KanbanBlock.tsx` |
 | Grid | ` ```grid ` | `key: value` config + cards | — (display only) | `GridBlock.tsx` |
-| Sheets | ` ```sheets ` | CSV + `view:` | cell edits (debounced) | `SheetsBlock.tsx` |
 
 ---
 
@@ -200,97 +199,10 @@ Cards without a `title` are dropped.
 
 ---
 
-## 6.4 Sheets
-
-An interactive spreadsheet (canvas grid) with formulas and debounced write-back.
-
-- **Parser:** `web/src/components/MemoContent/sheets/parseSheetsBlock.ts`.
-- **Write-back:** `web/src/components/MemoContent/sheets/serializeSheetsBlock.ts`.
-- **Grid engine:** [`x-data-spreadsheet`](https://github.com/myliang/x-spreadsheet)
-  — a pure front-end, canvas-rendered editable grid.
-
-### Syntax
-
-CSV-based. `sheet:<name>` starts a named tab; a `view:` section holds block-level
-display config.
-
-```sheets
-sheet:销售数据
-name,price,qty
-苹果,3.5,10
-香蕉,2.1,20
-,,,总价,=B2*C2+B3*C3
-
-view:
-  lock: false
-```
-
-- **`sheet:<name>`** — starts a tab. Multiple markers → multiple tabs; a block
-  with no marker is one unnamed sheet.
-- **CSV rows** — parsed with papaparse, first row is the header. A cell starting
-  with `=` is a **formula**; everything else is literal text or a number.
-- **`view:`** — `lock: true|false` (read-only even in an editable doc). The
-  viewport height is *not* written here: drag the handle at the bottom of the
-  grid and the height is saved with the block (in the memo's node overlays,
-  alongside cell styles), then restored on the next load.
-
-Edits (edit mode only) are debounced (~600 ms) and serialized back into the
-` ```sheets ` block, so the grid and the raw source never drift apart.
-
-> **Theming note.** x-spreadsheet draws to a `<canvas>` with hard-coded light
-> colors and ships no dark theme / runtime theming API, so the block is
-> deliberately pinned to a light card in dark mode. This is a grid-engine
-> limitation, not a bug.
-
-### Formulas — what actually works
-
-x-spreadsheet v1.1.9 builds in only **eight** functions:
-
-```
-SUM   AVERAGE   MAX   MIN   IF   AND   OR   CONCAT
-```
-
-`web/src/components/MemoContent/sheets/formulaPatch.ts` registers **fallbacks**
-so more compute or at least don't crash — `PRODUCT`, `DIVIDE`, `SUBTRACT`,
-`COUNT`, `COUNTA`, `ABS`, `INT`, `SQRT`, `ROUND`, `LEN`, and others. Functions
-that are neither built in nor implemented (e.g. `VLOOKUP`, `SUMPRODUCT`,
-`COUNTIF`) fall back to a safe `#N/A` marker instead of throwing. Plain
-arithmetic on **individual** cell references works: `=B2*C2+B3*C3`.
-
-**What does NOT work — range / array arithmetic.** The engine expands `A1:A3`
-into a flat argument list with no element-wise math, so `=SUM(B2:B3*C2:C3)` and
-`=SUMPRODUCT(B2:B3,C2:C3)` do **not** compute row-wise `price × qty`. Expand it
-explicitly instead: `=B2*C2+B3*C3`.
-
-### AI formula assistant
-
-In edit mode, the right-click menu gains a **✨ AI formula** entry: pick a cell,
-describe the formula in natural language, and the instance's AI provider returns
-a single formula inserted into the cell.
-
-- **Endpoint:** `AIService.GenerateFormula` (`POST /api/v1/ai:generateFormula`) —
-  see the [API reference](./07-api-reference.md). The request carries the prompt
-  plus a `context` string (target cell + active sheet as CSV).
-- **Server guard rails** (`server/router/api/v1/ai_service.go`): the system
-  prompt constrains the model to supported functions and A1 references and
-  forbids range arithmetic; `normalizeFormula` strips fences/prose to a single
-  `=`-line; `validateFormula` **rejects** replies that leave the grammar.
-- **Client guard rails** (`SheetsBlock.tsx`): the returned formula is checked
-  against the supported set before insertion; if the engine still throws while
-  rendering, the cell is re-inserted as **literal text** (leading `'`) so you see
-  what the model produced instead of a crash.
-
-> **Transport note.** The web client talks to the API over **Connect binary
-> protobuf**, so in dev-tools the `GenerateFormula` bodies show as byte streams
-> (Chinese text looks like mojibake). This is expected — use *View parsed* or
-> switch the transport to JSON to read them.
-
----
-
-## 6.5 Secret block (`toucan-secret`)
+## 6.4 Secret block (`toucan-secret`)
 
 A block that holds credentials — MinIO logins, API tokens, `.env` fragments —
-encrypted with a passphrase only you know. Unlike the four view blocks above, its
+encrypted with a passphrase only you know. Unlike the three view blocks above, its
 fence body is **not** the data: it is a reference plus a label.
 
 ````
@@ -370,7 +282,7 @@ revoked, none of which copy-paste supports well.
 
 ---
 
-## 6.6 Roadmap (not in this release)
+## 6.5 Roadmap (not in this release)
 
 - **Kanban:** reorder within a column, inline field editing, delete cards, column
   management (add / rename / reorder via `statusOrder`).

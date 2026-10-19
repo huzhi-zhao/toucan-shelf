@@ -1,5 +1,12 @@
 # sheets 代码块（可编辑表格）
 
+> **已移除（2026-10-18）。** 一直没人用，连同 x-data-spreadsheet / papaparse 依赖、
+> `AIService.GenerateFormula` 接口一起删掉了。之后有表格需求：简单的用 Markdown 表格，
+> 复杂的放 Google Sheets，作为 [References 外链](../knowledge-base/url-references.md) 挂到文档上。
+> 已有文档里残留的 ` ```sheets ` 块现在按普通代码块显示，内容不丢。
+> `node_overlays` 字段（[ADR-0005](../../adr/0005-block-style-in-node-overlays.md)）保留，目前没有使用方。
+> 下文是移除前的设计记录。
+
 ## 是什么
 
 语言标签为 `sheets` 的 fenced code block，预览时渲染成一个**可直接编辑的表格网格**

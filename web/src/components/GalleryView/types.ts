@@ -172,7 +172,7 @@ export interface CalendarLayoutBlock {
 /**
  * A markdown block within a VIEW document. Rendered by the same markdown
  * pipeline as any other document, so every block type it supports (grid,
- * calendar, kanban, sheets, …) works here too.
+ * calendar, kanban, …) works here too.
  *
  * Two sources: inline markdown typed into the view (`content`, editable in
  * place), or a reference to an existing knowledge-base document (`docName`, a

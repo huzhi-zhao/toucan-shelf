@@ -47,7 +47,6 @@ import { desktopDocUrl, docRoute, folderRoute, MOBILE_ROUTES } from "../routes";
 
 /** Special blocks the phone does not render (requirement §7). Fence languages, lower-case. */
 const PLACEHOLDER_BLOCKS: Record<string, string> = {
-  sheets: COPY.blocks.sheets,
   calendar: COPY.blocks.calendar,
   "toucan-secret": COPY.blocks.secret,
 };

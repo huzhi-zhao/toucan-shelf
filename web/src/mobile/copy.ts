@@ -262,7 +262,6 @@ export const COPY = {
     field: { status: "状态", priority: "优先级", done: "完成", due: "截止", tags: "标签", created: "创建", updated: "更新" },
   },
   blocks: {
-    sheets: "表格",
     calendar: "日历",
     secret: "加密内容",
   } as Record<string, string>,

@@ -40,9 +40,6 @@ const (
 	AIServiceFormatMarkdownProcedure = "/memos.api.v1.AIService/FormatMarkdown"
 	// AIServicePolishTextProcedure is the fully-qualified name of the AIService's PolishText RPC.
 	AIServicePolishTextProcedure = "/memos.api.v1.AIService/PolishText"
-	// AIServiceGenerateFormulaProcedure is the fully-qualified name of the AIService's GenerateFormula
-	// RPC.
-	AIServiceGenerateFormulaProcedure = "/memos.api.v1.AIService/GenerateFormula"
 )
 
 // AIServiceClient is a client for the memos.api.v1.AIService service.
@@ -55,9 +52,6 @@ type AIServiceClient interface {
 	// PolishText rewrites a selected span of text using an instance AI provider,
 	// following a preset or custom instruction, and returns the rewritten text.
 	PolishText(context.Context, *connect.Request[v1.PolishTextRequest]) (*connect.Response[v1.PolishTextResponse], error)
-	// GenerateFormula produces a spreadsheet formula from a natural-language prompt
-	// using an instance AI provider, returning only the formula string.
-	GenerateFormula(context.Context, *connect.Request[v1.GenerateFormulaRequest]) (*connect.Response[v1.GenerateFormulaResponse], error)
 }
 
 // NewAIServiceClient constructs a client for the memos.api.v1.AIService service. By default, it
@@ -89,21 +83,14 @@ func NewAIServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...c
 			connect.WithSchema(aIServiceMethods.ByName("PolishText")),
 			connect.WithClientOptions(opts...),
 		),
-		generateFormula: connect.NewClient[v1.GenerateFormulaRequest, v1.GenerateFormulaResponse](
-			httpClient,
-			baseURL+AIServiceGenerateFormulaProcedure,
-			connect.WithSchema(aIServiceMethods.ByName("GenerateFormula")),
-			connect.WithClientOptions(opts...),
-		),
 	}
 }
 
 // aIServiceClient implements AIServiceClient.
 type aIServiceClient struct {
-	transcribe      *connect.Client[v1.TranscribeRequest, v1.TranscribeResponse]
-	formatMarkdown  *connect.Client[v1.FormatMarkdownRequest, v1.FormatMarkdownResponse]
-	polishText      *connect.Client[v1.PolishTextRequest, v1.PolishTextResponse]
-	generateFormula *connect.Client[v1.GenerateFormulaRequest, v1.GenerateFormulaResponse]
+	transcribe     *connect.Client[v1.TranscribeRequest, v1.TranscribeResponse]
+	formatMarkdown *connect.Client[v1.FormatMarkdownRequest, v1.FormatMarkdownResponse]
+	polishText     *connect.Client[v1.PolishTextRequest, v1.PolishTextResponse]
 }
 
 // Transcribe calls memos.api.v1.AIService.Transcribe.
@@ -121,11 +108,6 @@ func (c *aIServiceClient) PolishText(ctx context.Context, req *connect.Request[v
 	return c.polishText.CallUnary(ctx, req)
 }
 
-// GenerateFormula calls memos.api.v1.AIService.GenerateFormula.
-func (c *aIServiceClient) GenerateFormula(ctx context.Context, req *connect.Request[v1.GenerateFormulaRequest]) (*connect.Response[v1.GenerateFormulaResponse], error) {
-	return c.generateFormula.CallUnary(ctx, req)
-}
-
 // AIServiceHandler is an implementation of the memos.api.v1.AIService service.
 type AIServiceHandler interface {
 	// Transcribe transcribes an audio file using an instance AI provider.
@@ -136,9 +118,6 @@ type AIServiceHandler interface {
 	// PolishText rewrites a selected span of text using an instance AI provider,
 	// following a preset or custom instruction, and returns the rewritten text.
 	PolishText(context.Context, *connect.Request[v1.PolishTextRequest]) (*connect.Response[v1.PolishTextResponse], error)
-	// GenerateFormula produces a spreadsheet formula from a natural-language prompt
-	// using an instance AI provider, returning only the formula string.
-	GenerateFormula(context.Context, *connect.Request[v1.GenerateFormulaRequest]) (*connect.Response[v1.GenerateFormulaResponse], error)
 }
 
 // NewAIServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -166,12 +145,6 @@ func NewAIServiceHandler(svc AIServiceHandler, opts ...connect.HandlerOption) (s
 		connect.WithSchema(aIServiceMethods.ByName("PolishText")),
 		connect.WithHandlerOptions(opts...),
 	)
-	aIServiceGenerateFormulaHandler := connect.NewUnaryHandler(
-		AIServiceGenerateFormulaProcedure,
-		svc.GenerateFormula,
-		connect.WithSchema(aIServiceMethods.ByName("GenerateFormula")),
-		connect.WithHandlerOptions(opts...),
-	)
 	return "/memos.api.v1.AIService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AIServiceTranscribeProcedure:
@@ -180,8 +153,6 @@ func NewAIServiceHandler(svc AIServiceHandler, opts ...connect.HandlerOption) (s
 			aIServiceFormatMarkdownHandler.ServeHTTP(w, r)
 		case AIServicePolishTextProcedure:
 			aIServicePolishTextHandler.ServeHTTP(w, r)
-		case AIServiceGenerateFormulaProcedure:
-			aIServiceGenerateFormulaHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -201,8 +172,4 @@ func (UnimplementedAIServiceHandler) FormatMarkdown(context.Context, *connect.Re
 
 func (UnimplementedAIServiceHandler) PolishText(context.Context, *connect.Request[v1.PolishTextRequest]) (*connect.Response[v1.PolishTextResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.AIService.PolishText is not implemented"))
-}
-
-func (UnimplementedAIServiceHandler) GenerateFormula(context.Context, *connect.Request[v1.GenerateFormulaRequest]) (*connect.Response[v1.GenerateFormulaResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.AIService.GenerateFormula is not implemented"))
 }

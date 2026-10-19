@@ -33,33 +33,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
-    /api/v1/ai:generateFormula:
-        post:
-            tags:
-                - AIService
-            description: |-
-                GenerateFormula produces a spreadsheet formula from a natural-language prompt
-                 using an instance AI provider, returning only the formula string.
-            operationId: AIService_GenerateFormula
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/GenerateFormulaRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/GenerateFormulaResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /api/v1/ai:polishText:
         post:
             tags:
@@ -5389,27 +5362,6 @@ components:
                 logoUrl:
                     type: string
             description: Custom profile configuration for instance branding.
-        GenerateFormulaRequest:
-            required:
-                - prompt
-            type: object
-            properties:
-                prompt:
-                    type: string
-                    description: |-
-                        Required. A natural-language description of the formula to generate
-                         (e.g. "sum the price column", "average of B2 to B10").
-                context:
-                    type: string
-                    description: |-
-                        Optional. Spreadsheet context to ground the formula, such as the active
-                         cell reference and the sheet's header row / sample rows.
-        GenerateFormulaResponse:
-            type: object
-            properties:
-                formula:
-                    type: string
-                    description: The generated formula, beginning with "=".
         GetCurrentUserResponse:
             type: object
             properties:

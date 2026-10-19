@@ -92,7 +92,7 @@ export const markdownStyles = {
    */
   restrictedLink: "text-muted-foreground underline decoration-muted-foreground/40 decoration-dotted underline-offset-2 cursor-not-allowed",
   horizontalRule: "my-[var(--md-rule-gap)] h-0 border-0 border-b border-border",
-  /** Wrapper spacing for block-level embeds (tables, code fences, mermaid, sheets…). */
+  /** Wrapper spacing for block-level embeds (tables, code fences, mermaid, kanban…). */
   blockWrapper: "mt-0 mb-[var(--md-block-gap)]",
   /** Table header/body cell padding. */
   tableCell: "px-[var(--md-cell-pad-x)] py-[var(--md-cell-pad-y)] [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
