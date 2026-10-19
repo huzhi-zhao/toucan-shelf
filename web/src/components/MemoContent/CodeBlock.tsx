@@ -102,8 +102,8 @@ export const CodeBlock = ({ children, className, node: _node, ...props }: CodeBl
     }).innerHTML;
   }, [language, codeContent]);
 
-  // A surface may replace some special blocks with a placeholder (the mobile reader).
-  const placeholder = useBlockPlaceholder(language);
+  // A surface may replace some special blocks with its own rendering (the mobile reader).
+  const placeholder = useBlockPlaceholder(language, codeContent);
   if (placeholder !== undefined) {
     return <div className={cn("relative", markdownStyles.blockWrapper)}>{placeholder}</div>;
   }

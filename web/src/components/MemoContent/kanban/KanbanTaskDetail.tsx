@@ -1,16 +1,10 @@
 import { Link } from "@/components/MemoContent/markdown/Link";
 import { useTranslate } from "@/utils/i18n";
+import { formatTaskValue, taskCustomEntries } from "./columns";
 import type { KanbanTask } from "./types";
 
 interface KanbanTaskDetailProps {
   task?: KanbanTask;
-}
-
-function formatValue(value: unknown): string {
-  if (value === null || value === undefined) return "";
-  if (Array.isArray(value)) return value.map((v) => String(v)).join(", ");
-  if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
 }
 
 const Row = ({ label, value }: { label: string; value: React.ReactNode }) => (
@@ -27,7 +21,7 @@ export const KanbanTaskDetail = ({ task }: KanbanTaskDetailProps) => {
     return <div className="px-1 py-4 text-sm text-muted-foreground">{t("markdown.kanban-block.select-task")}</div>;
   }
 
-  const customEntries = Object.entries(task.custom).filter(([, v]) => v !== null && v !== undefined && v !== "");
+  const customEntries = taskCustomEntries(task);
 
   return (
     <div className="flex flex-col">
@@ -41,7 +35,7 @@ export const KanbanTaskDetail = ({ task }: KanbanTaskDetailProps) => {
       {task.createAt && <Row label={t("markdown.kanban-block.field.created")} value={task.createAt} />}
       {task.updateAt && <Row label={t("markdown.kanban-block.field.updated")} value={task.updateAt} />}
       {customEntries.map(([key, value]) => (
-        <Row key={key} label={key} value={formatValue(value)} />
+        <Row key={key} label={key} value={formatTaskValue(value)} />
       ))}
     </div>
   );
