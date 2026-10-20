@@ -5,6 +5,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -13,9 +14,9 @@ import (
 	"github.com/usememos/memos/store"
 )
 
-// Habit versions decide which habits are in use on a day: the latest version effective on or before it. A
-// version only takes effect from the caller's today on, so the past never changes; one not yet in effect
-// can still be replaced or deleted. See planner-and-check-in.md §2.4.2.
+// Habit versions decide which habits are in use on a day: the latest version effective on or before it. A plan
+// is drafted first, changed freely, and takes effect only when enabled, from the caller's today on; once
+// enabled it never changes, so the past stays as it was. See planner-and-check-in.md §2.4.2.
 
 // plannerHabitColors is the size of the client's habit palette; a habit's color indexes it.
 const plannerHabitColors = 8
@@ -34,16 +35,6 @@ func habitVersionOn(versions []*store.PlannerHabitVersion, date string) *store.P
 		on = version
 	}
 	return on
-}
-
-// nextHabitVersionDate is the effective date of the first version after date, or "" when none follows.
-func nextHabitVersionDate(versions []*store.PlannerHabitVersion, date string) string {
-	for _, version := range versions {
-		if version.EffectiveDate > date {
-			return version.EffectiveDate
-		}
-	}
-	return ""
 }
 
 func habitVersionHas(version *store.PlannerHabitVersion, habitID int32) bool {
@@ -87,6 +78,7 @@ func convertHabitVersionFromStore(version *store.PlannerHabitVersion, habitUIDs 
 	result := &v1pb.HabitVersion{
 		EffectiveDate: version.EffectiveDate,
 		Entries:       []*v1pb.HabitVersionEntry{},
+		Memos:         version.MemoNames,
 		CreateTime:    optionalTimestamp(version.CreatedTs),
 		UpdateTime:    optionalTimestamp(version.UpdatedTs),
 	}
@@ -98,6 +90,12 @@ func convertHabitVersionFromStore(version *store.PlannerHabitVersion, habitUIDs 
 		result.Entries = append(result.Entries, &v1pb.HabitVersionEntry{Habit: habitNamePrefix + uid, WeeklyGoal: entry.WeeklyGoal})
 	}
 	return result
+}
+
+func convertHabitDraftFromStore(draft *store.PlannerHabitDraft, habitUIDs map[int32]string) *v1pb.HabitVersion {
+	return convertHabitVersionFromStore(&store.PlannerHabitVersion{
+		Entries: draft.Entries, MemoNames: draft.MemoNames, CreatedTs: draft.CreatedTs, UpdatedTs: draft.UpdatedTs,
+	}, habitUIDs)
 }
 
 func (s *APIV1Service) habitUIDs(ctx context.Context, user *store.User) (map[int32]string, error) {
@@ -129,112 +127,143 @@ func (s *APIV1Service) ListHabitVersions(ctx context.Context, _ *v1pb.ListHabitV
 	for _, version := range versions {
 		response.Versions = append(response.Versions, convertHabitVersionFromStore(version, uids))
 	}
+	draft, err := s.Store.GetPlannerHabitDraft(ctx, user.ID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get habit draft: %v", err)
+	}
+	if draft != nil {
+		response.Draft = convertHabitDraftFromStore(draft, uids)
+	}
 	return response, nil
 }
 
-// SetHabitVersion writes the version taking effect on its date, replacing one already set for that date.
-// Habit todos it leaves without their habit become plain todos, but only once the caller agrees.
-func (s *APIV1Service) SetHabitVersion(ctx context.Context, request *v1pb.SetHabitVersionRequest) (*v1pb.HabitVersion, error) {
+// planEntries checks a plan's habits and turns them into store entries: at most five, each once, no two of
+// the same color, goals within a week. It also returns the habits' UIDs for the response.
+func (s *APIV1Service) planEntries(ctx context.Context, user *store.User, entries []*v1pb.HabitVersionEntry) ([]store.PlannerHabitVersionEntry, map[int32]string, error) {
+	if len(entries) > store.PlannerMaxHabitsPerVersion {
+		return nil, nil, status.Errorf(codes.InvalidArgument, "a plan has at most %d habits", store.PlannerMaxHabitsPerVersion)
+	}
+	result := []store.PlannerHabitVersionEntry{}
+	colors := map[int32]bool{}
+	uids := map[int32]string{}
+	for _, entry := range entries {
+		habit, err := s.getOwnHabit(ctx, user, entry.Habit)
+		if err != nil {
+			return nil, nil, err
+		}
+		if _, dup := uids[habit.ID]; dup {
+			return nil, nil, status.Errorf(codes.InvalidArgument, "habit %s is in the plan twice", entry.Habit)
+		}
+		if colors[habit.Color] {
+			return nil, nil, status.Errorf(codes.InvalidArgument, "two habits in a plan share a color")
+		}
+		if entry.WeeklyGoal < 0 || entry.WeeklyGoal > plannerMaxWeeklyGoal {
+			return nil, nil, status.Errorf(codes.InvalidArgument, "weekly_goal must be 0 to %d", plannerMaxWeeklyGoal)
+		}
+		uids[habit.ID], colors[habit.Color] = habit.UID, true
+		result = append(result, store.PlannerHabitVersionEntry{HabitID: habit.ID, WeeklyGoal: entry.WeeklyGoal})
+	}
+	return result, uids, nil
+}
+
+// UpdateHabitDraft writes the caller's plan draft. Nothing takes effect until it is enabled.
+func (s *APIV1Service) UpdateHabitDraft(ctx context.Context, request *v1pb.UpdateHabitDraftRequest) (*v1pb.HabitVersion, error) {
 	user, err := s.plannerUser(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if request.Version == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "version is required")
+	if request.Draft == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "draft is required")
+	}
+	entries, uids, err := s.planEntries(ctx, user, request.Draft.Entries)
+	if err != nil {
+		return nil, err
+	}
+	memos, err := checkPlannerMemos(request.Draft.Memos)
+	if err != nil {
+		return nil, err
+	}
+	draft, err := s.Store.UpsertPlannerHabitDraft(ctx, &store.PlannerHabitDraft{CreatorID: user.ID, Entries: entries, MemoNames: memos})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to save habit draft: %v", err)
+	}
+	return convertHabitDraftFromStore(draft, uids), nil
+}
+
+func (s *APIV1Service) DeleteHabitDraft(ctx context.Context, _ *v1pb.DeleteHabitDraftRequest) (*emptypb.Empty, error) {
+	user, err := s.plannerUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.Store.DeletePlannerHabitDraft(ctx, user.ID); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to delete habit draft: %v", err)
+	}
+	return &emptypb.Empty{}, nil
+}
+
+// EnableHabitDraft puts the draft in use from the caller's today: the plan before it stops there, and a plan
+// enabled earlier the same day is replaced. Habit todos from today on whose habit the draft leaves out become
+// plain todos, but only once the caller agrees.
+func (s *APIV1Service) EnableHabitDraft(ctx context.Context, request *v1pb.EnableHabitDraftRequest) (*v1pb.HabitVersion, error) {
+	user, err := s.plannerUser(ctx)
+	if err != nil {
+		return nil, err
 	}
 	local, err := parsePlannerDate(request.LocalDate, "local_date", false)
 	if err != nil {
 		return nil, err
 	}
-	effective, err := parsePlannerDate(request.Version.EffectiveDate, "effective_date", false)
+	draft, err := s.Store.GetPlannerHabitDraft(ctx, user.ID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get habit draft: %v", err)
+	}
+	if draft == nil {
+		return nil, status.Errorf(codes.NotFound, "there is no habit draft to enable")
+	}
+	// A habit may have changed color since the draft was saved.
+	uids, err := s.habitUIDs(ctx, user)
 	if err != nil {
 		return nil, err
 	}
-	if effective < local {
-		return nil, status.Errorf(codes.InvalidArgument, "a version takes effect today or later, not on %s", effective)
-	}
-	if len(request.Version.Entries) > store.PlannerMaxHabitsPerVersion {
-		return nil, status.Errorf(codes.InvalidArgument, "a version has at most %d habits", store.PlannerMaxHabitsPerVersion)
-	}
-	version := &store.PlannerHabitVersion{CreatorID: user.ID, EffectiveDate: effective, Entries: []store.PlannerHabitVersionEntry{}}
-	colors := map[int32]bool{}
-	uids := map[int32]string{}
-	for _, entry := range request.Version.Entries {
-		habit, err := s.getOwnHabit(ctx, user, entry.Habit)
-		if err != nil {
-			return nil, err
-		}
-		if _, dup := uids[habit.ID]; dup {
-			return nil, status.Errorf(codes.InvalidArgument, "habit %s is in the version twice", entry.Habit)
-		}
-		if colors[habit.Color] {
-			return nil, status.Errorf(codes.InvalidArgument, "two habits in a version share a color")
-		}
-		if entry.WeeklyGoal < 0 || entry.WeeklyGoal > plannerMaxWeeklyGoal {
-			return nil, status.Errorf(codes.InvalidArgument, "weekly_goal must be 0 to %d", plannerMaxWeeklyGoal)
-		}
-		uids[habit.ID], colors[habit.Color] = habit.UID, true
-		version.Entries = append(version.Entries, store.PlannerHabitVersionEntry{HabitID: habit.ID, WeeklyGoal: entry.WeeklyGoal})
-	}
-
-	versions, err := s.listHabitVersions(ctx, user)
-	if err != nil {
+	if err := s.checkPlanColors(ctx, user, draft.Entries); err != nil {
 		return nil, err
 	}
-	dropped, err := s.orphanedHabitTodos(ctx, user, version, effective, nextHabitVersionDate(versions, effective))
+	dropped, err := s.orphanedHabitTodos(ctx, user, &store.PlannerHabitVersion{Entries: draft.Entries}, local, "")
 	if err != nil {
 		return nil, err
 	}
 	if len(dropped) > 0 && !request.UnlinkTodos {
-		return nil, status.Errorf(codes.FailedPrecondition, "%d habit todos lose their habit in this version; set unlink_todos to make them plain todos", len(dropped))
+		return nil, status.Errorf(codes.FailedPrecondition, "%d habit todos lose their habit in this plan; set unlink_todos to make them plain todos", len(dropped))
 	}
-	saved, err := s.Store.UpsertPlannerHabitVersion(ctx, version, dropped)
+	enabled, err := s.Store.EnablePlannerHabitDraft(ctx, user.ID, local, dropped)
+	if errors.Is(err, store.ErrPlannerNoDraft) {
+		return nil, status.Errorf(codes.NotFound, "there is no habit draft to enable")
+	}
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to set habit version: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to enable habit draft: %v", err)
 	}
-	return convertHabitVersionFromStore(saved, uids), nil
+	return convertHabitVersionFromStore(enabled, uids), nil
 }
 
-// DeleteHabitVersion removes a version not yet in effect; its days fall back to the version before it.
-func (s *APIV1Service) DeleteHabitVersion(ctx context.Context, request *v1pb.DeleteHabitVersionRequest) (*emptypb.Empty, error) {
-	user, err := s.plannerUser(ctx)
+// checkPlanColors refuses a plan with two habits of the same color.
+func (s *APIV1Service) checkPlanColors(ctx context.Context, user *store.User, entries []store.PlannerHabitVersionEntry) error {
+	habits, err := s.Store.ListPlannerHabits(ctx, &store.FindPlannerHabit{CreatorID: &user.ID})
 	if err != nil {
-		return nil, err
+		return status.Errorf(codes.Internal, "failed to list habits: %v", err)
 	}
-	local, err := parsePlannerDate(request.LocalDate, "local_date", false)
-	if err != nil {
-		return nil, err
+	colorOf := map[int32]int32{}
+	for _, habit := range habits {
+		colorOf[habit.ID] = habit.Color
 	}
-	effective, err := parsePlannerDate(request.EffectiveDate, "effective_date", false)
-	if err != nil {
-		return nil, err
+	seen := map[int32]bool{}
+	for _, entry := range entries {
+		color := colorOf[entry.HabitID]
+		if seen[color] {
+			return status.Errorf(codes.FailedPrecondition, "two habits in the plan share a color")
+		}
+		seen[color] = true
 	}
-	if effective <= local {
-		return nil, status.Errorf(codes.FailedPrecondition, "a version in effect can no longer be deleted")
-	}
-	versions, err := s.listHabitVersions(ctx, user)
-	if err != nil {
-		return nil, err
-	}
-	index := slices.IndexFunc(versions, func(version *store.PlannerHabitVersion) bool { return version.EffectiveDate == effective })
-	if index < 0 {
-		return nil, status.Errorf(codes.NotFound, "no habit version takes effect on %s", effective)
-	}
-	previous := &store.PlannerHabitVersion{}
-	if index > 0 {
-		previous = versions[index-1]
-	}
-	orphaned, err := s.orphanedHabitTodos(ctx, user, previous, effective, nextHabitVersionDate(versions, effective))
-	if err != nil {
-		return nil, err
-	}
-	if len(orphaned) > 0 {
-		return nil, status.Errorf(codes.FailedPrecondition, "%d habit todos rely on this version; delete them first", len(orphaned))
-	}
-	if err := s.Store.DeletePlannerHabitVersion(ctx, user.ID, effective); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to delete habit version: %v", err)
-	}
-	return &emptypb.Empty{}, nil
+	return nil
 }
 
 // orphanedHabitTodos lists the open habit todos dated from start up to (not including) end, "" for no end,

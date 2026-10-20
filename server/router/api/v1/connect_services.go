@@ -1103,16 +1103,24 @@ func (s *ConnectServiceHandler) ListHabitVersions(ctx context.Context, req *conn
 	return connect.NewResponse(resp), nil
 }
 
-func (s *ConnectServiceHandler) SetHabitVersion(ctx context.Context, req *connect.Request[v1pb.SetHabitVersionRequest]) (*connect.Response[v1pb.HabitVersion], error) {
-	resp, err := s.APIV1Service.SetHabitVersion(ctx, req.Msg)
+func (s *ConnectServiceHandler) UpdateHabitDraft(ctx context.Context, req *connect.Request[v1pb.UpdateHabitDraftRequest]) (*connect.Response[v1pb.HabitVersion], error) {
+	resp, err := s.APIV1Service.UpdateHabitDraft(ctx, req.Msg)
 	if err != nil {
 		return nil, convertGRPCError(err)
 	}
 	return connect.NewResponse(resp), nil
 }
 
-func (s *ConnectServiceHandler) DeleteHabitVersion(ctx context.Context, req *connect.Request[v1pb.DeleteHabitVersionRequest]) (*connect.Response[emptypb.Empty], error) {
-	resp, err := s.APIV1Service.DeleteHabitVersion(ctx, req.Msg)
+func (s *ConnectServiceHandler) DeleteHabitDraft(ctx context.Context, req *connect.Request[v1pb.DeleteHabitDraftRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := s.APIV1Service.DeleteHabitDraft(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) EnableHabitDraft(ctx context.Context, req *connect.Request[v1pb.EnableHabitDraftRequest]) (*connect.Response[v1pb.HabitVersion], error) {
+	resp, err := s.APIV1Service.EnableHabitDraft(ctx, req.Msg)
 	if err != nil {
 		return nil, convertGRPCError(err)
 	}

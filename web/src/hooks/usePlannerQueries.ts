@@ -33,12 +33,16 @@ export function useHabits() {
   });
 }
 
-/** Which habits are in use when (requirement §2.4.2), earliest version first. */
+const listHabitPlans = () => plannerServiceClient.listHabitVersions({});
+
+/** Which habits are in use when (requirement §2.4.2): the enabled versions, earliest first. */
 export function useHabitVersions() {
-  return useQuery({
-    queryKey: plannerKeys.habitVersions(),
-    queryFn: async () => (await plannerServiceClient.listHabitVersions({})).versions,
-  });
+  return useQuery({ queryKey: plannerKeys.habitVersions(), queryFn: listHabitPlans, select: (response) => response.versions });
+}
+
+/** The enabled versions and the draft not yet enabled (undefined when there is none). */
+export function useHabitPlans() {
+  return useQuery({ queryKey: plannerKeys.habitVersions(), queryFn: listHabitPlans });
 }
 
 /** Everything dated within an inclusive range: one calendar month plus its spill-over days. */
@@ -95,36 +99,25 @@ export function useUpdateHabit() {
   });
 }
 
-/**
- * Sets the version taking effect on `effectiveDate`, replacing one already set for that day. With
- * `unlinkTodos`, habit todos it leaves without their habit become plain todos; without it the server
- * refuses (FailedPrecondition) so the user can be asked first.
- */
-export function useSetHabitVersion() {
-  return usePlannerMutation(
-    ({
-      effectiveDate,
-      entries,
-      localDate,
-      unlinkTodos,
-    }: {
-      effectiveDate: string;
-      entries: { habit: string; weeklyGoal: number }[];
-      localDate: string;
-      unlinkTodos?: boolean;
-    }) =>
-      plannerServiceClient.setHabitVersion({
-        version: create(HabitVersionSchema, { effectiveDate, entries }),
-        localDate,
-        unlinkTodos: unlinkTodos ?? false,
-      }),
+/** Saves the plan draft, creating it or replacing the one there. A draft takes no effect. */
+export function useSaveHabitDraft() {
+  return usePlannerMutation(({ entries, memos }: { entries: { habit: string; weeklyGoal: number }[]; memos: string[] }) =>
+    plannerServiceClient.updateHabitDraft({ draft: create(HabitVersionSchema, { entries, memos }) }),
   );
 }
 
-/** Deletes a version not yet in effect. */
-export function useDeleteHabitVersion() {
-  return usePlannerMutation(({ effectiveDate, localDate }: { effectiveDate: string; localDate: string }) =>
-    plannerServiceClient.deleteHabitVersion({ effectiveDate, localDate }),
+export function useDeleteHabitDraft() {
+  return usePlannerMutation(() => plannerServiceClient.deleteHabitDraft({}));
+}
+
+/**
+ * Enables the draft from `localDate` (the phone's today) on. With `unlinkTodos`, habit todos it leaves
+ * without their habit become plain todos; without it the server refuses (FailedPrecondition) so the user
+ * can be asked first.
+ */
+export function useEnableHabitDraft() {
+  return usePlannerMutation(({ localDate, unlinkTodos }: { localDate: string; unlinkTodos: boolean }) =>
+    plannerServiceClient.enableHabitDraft({ localDate, unlinkTodos }),
   );
 }
 

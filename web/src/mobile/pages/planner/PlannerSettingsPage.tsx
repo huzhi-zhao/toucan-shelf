@@ -1,7 +1,8 @@
 import { List, ListButton, ListItem, Navbar, NavbarBackLink, Page, Radio, Stepper, Toast } from "konsta/react";
 import { type ReactNode, useState } from "react";
-import { useHabits, useHabitVersions, useUpdateHabit } from "@/hooks/usePlannerQueries";
+import { useHabitPlans, useHabits, useUpdateHabit } from "@/hooks/usePlannerQueries";
 import type { Habit } from "@/types/proto/api/v1/planner_service_pb";
+import { LinkedDocsList } from "../../components/LinkedDocs";
 import HabitEditSheet from "../../components/planner/HabitEditSheet";
 import SectionTitle from "../../components/SectionTitle";
 import { COPY } from "../../copy";
@@ -18,7 +19,7 @@ import {
   versionLabel,
 } from "../../lib/planner";
 import { usePref } from "../../lib/storage";
-import { habitVersionRoute, MOBILE_ROUTES } from "../../routes";
+import { docRoute, habitVersionRoute, MOBILE_ROUTES } from "../../routes";
 
 // 0 follows the instance setting; otherwise the calendar grid's 1 = Monday … 7 = Sunday.
 const WEEK_START_OPTIONS = [
@@ -46,7 +47,9 @@ export default function PlannerSettingsPage() {
   const [maxUpdateDays, setMaxUpdateDays] = usePref(PLANNER_MAX_UPDATE_DAYS_KEY, PLANNER_MAX_UPDATE_DAYS_DEFAULT);
   const today = localToday();
   const { data: habits = [] } = useHabits();
-  const { data: versions = [] } = useHabitVersions();
+  const { data: plans } = useHabitPlans();
+  const versions = plans?.versions ?? [];
+  const draft = plans?.draft;
   const updateHabit = useUpdateHabit();
   const habitByName = new Map(habits.map((habit) => [habit.name, habit]));
   const current = habitVersionOn(versions, today);
@@ -123,23 +126,47 @@ export default function PlannerSettingsPage() {
             />
           );
         })}
-        <ListButton onClick={() => go(habitVersionRoute())}>{COPY.plannerSettings.revise}</ListButton>
       </List>
-      <Hint>{current ? COPY.plannerSettings.versionHint : COPY.plannerSettings.noVersion}</Hint>
+      {current && current.memos.length > 0 && (
+        <>
+          <div className="px-8 mt-4 pb-1.5 text-[13px] text-black/45 dark:text-white/45">{COPY.plannerSettings.docs}</div>
+          <LinkedDocsList memos={current.memos} onOpen={(memo) => go(docRoute(memo))} />
+        </>
+      )}
+
+      <List strongIos insetIos dividersIos className="mt-4 mb-0">
+        {draft ? (
+          <ListItem
+            link
+            title={COPY.plannerSettings.draft}
+            text={
+              <span className="whitespace-normal">
+                {draft.entries
+                  .map((entry) => habitByName.get(entry.habit)?.title)
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+            }
+            onClick={() => go(habitVersionRoute())}
+          />
+        ) : (
+          <ListButton onClick={() => go(habitVersionRoute())}>{COPY.plannerSettings.revise}</ListButton>
+        )}
+      </List>
+      <Hint>{draft ? COPY.plannerSettings.draftHint : current ? COPY.plannerSettings.versionHint : COPY.plannerSettings.noVersion}</Hint>
 
       {versions.length > 0 && (
         <>
           <SectionTitle>{COPY.plannerSettings.history}</SectionTitle>
           <List strongIos insetIos dividersIos className="!my-0">
             {[...versions].reverse().map((version) => {
-              const pending = version.effectiveDate > today;
               const titles = version.entries.map((entry) => habitByName.get(entry.habit)?.title).filter(Boolean);
               return (
                 <ListItem
                   key={version.effectiveDate}
                   link
                   title={label(version.effectiveDate)}
-                  after={pending ? COPY.plannerSettings.notYetInEffect : undefined}
+                  after={version.memos.length > 0 ? `📄 ${version.memos.length}` : undefined}
                   text={<span className="whitespace-normal">{titles.join(" · ")}</span>}
                   onClick={() => go(habitVersionRoute(version.effectiveDate || "-"))}
                 />

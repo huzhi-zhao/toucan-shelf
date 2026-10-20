@@ -46,12 +46,15 @@ const (
 	// PlannerServiceListHabitVersionsProcedure is the fully-qualified name of the PlannerService's
 	// ListHabitVersions RPC.
 	PlannerServiceListHabitVersionsProcedure = "/memos.api.v1.PlannerService/ListHabitVersions"
-	// PlannerServiceSetHabitVersionProcedure is the fully-qualified name of the PlannerService's
-	// SetHabitVersion RPC.
-	PlannerServiceSetHabitVersionProcedure = "/memos.api.v1.PlannerService/SetHabitVersion"
-	// PlannerServiceDeleteHabitVersionProcedure is the fully-qualified name of the PlannerService's
-	// DeleteHabitVersion RPC.
-	PlannerServiceDeleteHabitVersionProcedure = "/memos.api.v1.PlannerService/DeleteHabitVersion"
+	// PlannerServiceUpdateHabitDraftProcedure is the fully-qualified name of the PlannerService's
+	// UpdateHabitDraft RPC.
+	PlannerServiceUpdateHabitDraftProcedure = "/memos.api.v1.PlannerService/UpdateHabitDraft"
+	// PlannerServiceDeleteHabitDraftProcedure is the fully-qualified name of the PlannerService's
+	// DeleteHabitDraft RPC.
+	PlannerServiceDeleteHabitDraftProcedure = "/memos.api.v1.PlannerService/DeleteHabitDraft"
+	// PlannerServiceEnableHabitDraftProcedure is the fully-qualified name of the PlannerService's
+	// EnableHabitDraft RPC.
+	PlannerServiceEnableHabitDraftProcedure = "/memos.api.v1.PlannerService/EnableHabitDraft"
 	// PlannerServiceListPlannerEntriesProcedure is the fully-qualified name of the PlannerService's
 	// ListPlannerEntries RPC.
 	PlannerServiceListPlannerEntriesProcedure = "/memos.api.v1.PlannerService/ListPlannerEntries"
@@ -105,13 +108,18 @@ type PlannerServiceClient interface {
 	CreateHabit(context.Context, *connect.Request[v1.CreateHabitRequest]) (*connect.Response[v1.Habit], error)
 	// UpdateHabit renames a habit or changes its colour, on every day at once.
 	UpdateHabit(context.Context, *connect.Request[v1.UpdateHabitRequest]) (*connect.Response[v1.Habit], error)
-	// ListHabitVersions returns the caller's habit versions, earliest first.
+	// ListHabitVersions returns the caller's enabled habit versions, earliest
+	// first, and the draft not yet enabled, if any.
 	ListHabitVersions(context.Context, *connect.Request[v1.ListHabitVersionsRequest]) (*connect.Response[v1.ListHabitVersionsResponse], error)
-	// SetHabitVersion writes the version for its effective date, which must not be
-	// before the caller's local date; one already there is replaced.
-	SetHabitVersion(context.Context, *connect.Request[v1.SetHabitVersionRequest]) (*connect.Response[v1.HabitVersion], error)
-	// DeleteHabitVersion removes a version that has not taken effect yet.
-	DeleteHabitVersion(context.Context, *connect.Request[v1.DeleteHabitVersionRequest]) (*connect.Response[emptypb.Empty], error)
+	// UpdateHabitDraft writes the caller's habit plan draft, creating it or
+	// replacing the one there. A draft does not take effect until enabled.
+	UpdateHabitDraft(context.Context, *connect.Request[v1.UpdateHabitDraftRequest]) (*connect.Response[v1.HabitVersion], error)
+	// DeleteHabitDraft discards the caller's habit plan draft.
+	DeleteHabitDraft(context.Context, *connect.Request[v1.DeleteHabitDraftRequest]) (*connect.Response[emptypb.Empty], error)
+	// EnableHabitDraft turns the draft into the version in use from the caller's
+	// local date on. A version enabled earlier that day is replaced. Once enabled,
+	// a version never changes.
+	EnableHabitDraft(context.Context, *connect.Request[v1.EnableHabitDraftRequest]) (*connect.Response[v1.HabitVersion], error)
 	// ListPlannerEntries returns everything dated within an inclusive range:
 	// check-ins, todos of any status, and notes. Undated todos are not included.
 	ListPlannerEntries(context.Context, *connect.Request[v1.ListPlannerEntriesRequest]) (*connect.Response[v1.ListPlannerEntriesResponse], error)
@@ -189,16 +197,22 @@ func NewPlannerServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(plannerServiceMethods.ByName("ListHabitVersions")),
 			connect.WithClientOptions(opts...),
 		),
-		setHabitVersion: connect.NewClient[v1.SetHabitVersionRequest, v1.HabitVersion](
+		updateHabitDraft: connect.NewClient[v1.UpdateHabitDraftRequest, v1.HabitVersion](
 			httpClient,
-			baseURL+PlannerServiceSetHabitVersionProcedure,
-			connect.WithSchema(plannerServiceMethods.ByName("SetHabitVersion")),
+			baseURL+PlannerServiceUpdateHabitDraftProcedure,
+			connect.WithSchema(plannerServiceMethods.ByName("UpdateHabitDraft")),
 			connect.WithClientOptions(opts...),
 		),
-		deleteHabitVersion: connect.NewClient[v1.DeleteHabitVersionRequest, emptypb.Empty](
+		deleteHabitDraft: connect.NewClient[v1.DeleteHabitDraftRequest, emptypb.Empty](
 			httpClient,
-			baseURL+PlannerServiceDeleteHabitVersionProcedure,
-			connect.WithSchema(plannerServiceMethods.ByName("DeleteHabitVersion")),
+			baseURL+PlannerServiceDeleteHabitDraftProcedure,
+			connect.WithSchema(plannerServiceMethods.ByName("DeleteHabitDraft")),
+			connect.WithClientOptions(opts...),
+		),
+		enableHabitDraft: connect.NewClient[v1.EnableHabitDraftRequest, v1.HabitVersion](
+			httpClient,
+			baseURL+PlannerServiceEnableHabitDraftProcedure,
+			connect.WithSchema(plannerServiceMethods.ByName("EnableHabitDraft")),
 			connect.WithClientOptions(opts...),
 		),
 		listPlannerEntries: connect.NewClient[v1.ListPlannerEntriesRequest, v1.ListPlannerEntriesResponse](
@@ -294,8 +308,9 @@ type plannerServiceClient struct {
 	createHabit        *connect.Client[v1.CreateHabitRequest, v1.Habit]
 	updateHabit        *connect.Client[v1.UpdateHabitRequest, v1.Habit]
 	listHabitVersions  *connect.Client[v1.ListHabitVersionsRequest, v1.ListHabitVersionsResponse]
-	setHabitVersion    *connect.Client[v1.SetHabitVersionRequest, v1.HabitVersion]
-	deleteHabitVersion *connect.Client[v1.DeleteHabitVersionRequest, emptypb.Empty]
+	updateHabitDraft   *connect.Client[v1.UpdateHabitDraftRequest, v1.HabitVersion]
+	deleteHabitDraft   *connect.Client[v1.DeleteHabitDraftRequest, emptypb.Empty]
+	enableHabitDraft   *connect.Client[v1.EnableHabitDraftRequest, v1.HabitVersion]
 	listPlannerEntries *connect.Client[v1.ListPlannerEntriesRequest, v1.ListPlannerEntriesResponse]
 	listOpenTodos      *connect.Client[v1.ListOpenTodosRequest, v1.ListOpenTodosResponse]
 	listTodoTags       *connect.Client[v1.ListTodoTagsRequest, v1.ListTodoTagsResponse]
@@ -332,14 +347,19 @@ func (c *plannerServiceClient) ListHabitVersions(ctx context.Context, req *conne
 	return c.listHabitVersions.CallUnary(ctx, req)
 }
 
-// SetHabitVersion calls memos.api.v1.PlannerService.SetHabitVersion.
-func (c *plannerServiceClient) SetHabitVersion(ctx context.Context, req *connect.Request[v1.SetHabitVersionRequest]) (*connect.Response[v1.HabitVersion], error) {
-	return c.setHabitVersion.CallUnary(ctx, req)
+// UpdateHabitDraft calls memos.api.v1.PlannerService.UpdateHabitDraft.
+func (c *plannerServiceClient) UpdateHabitDraft(ctx context.Context, req *connect.Request[v1.UpdateHabitDraftRequest]) (*connect.Response[v1.HabitVersion], error) {
+	return c.updateHabitDraft.CallUnary(ctx, req)
 }
 
-// DeleteHabitVersion calls memos.api.v1.PlannerService.DeleteHabitVersion.
-func (c *plannerServiceClient) DeleteHabitVersion(ctx context.Context, req *connect.Request[v1.DeleteHabitVersionRequest]) (*connect.Response[emptypb.Empty], error) {
-	return c.deleteHabitVersion.CallUnary(ctx, req)
+// DeleteHabitDraft calls memos.api.v1.PlannerService.DeleteHabitDraft.
+func (c *plannerServiceClient) DeleteHabitDraft(ctx context.Context, req *connect.Request[v1.DeleteHabitDraftRequest]) (*connect.Response[emptypb.Empty], error) {
+	return c.deleteHabitDraft.CallUnary(ctx, req)
+}
+
+// EnableHabitDraft calls memos.api.v1.PlannerService.EnableHabitDraft.
+func (c *plannerServiceClient) EnableHabitDraft(ctx context.Context, req *connect.Request[v1.EnableHabitDraftRequest]) (*connect.Response[v1.HabitVersion], error) {
+	return c.enableHabitDraft.CallUnary(ctx, req)
 }
 
 // ListPlannerEntries calls memos.api.v1.PlannerService.ListPlannerEntries.
@@ -422,13 +442,18 @@ type PlannerServiceHandler interface {
 	CreateHabit(context.Context, *connect.Request[v1.CreateHabitRequest]) (*connect.Response[v1.Habit], error)
 	// UpdateHabit renames a habit or changes its colour, on every day at once.
 	UpdateHabit(context.Context, *connect.Request[v1.UpdateHabitRequest]) (*connect.Response[v1.Habit], error)
-	// ListHabitVersions returns the caller's habit versions, earliest first.
+	// ListHabitVersions returns the caller's enabled habit versions, earliest
+	// first, and the draft not yet enabled, if any.
 	ListHabitVersions(context.Context, *connect.Request[v1.ListHabitVersionsRequest]) (*connect.Response[v1.ListHabitVersionsResponse], error)
-	// SetHabitVersion writes the version for its effective date, which must not be
-	// before the caller's local date; one already there is replaced.
-	SetHabitVersion(context.Context, *connect.Request[v1.SetHabitVersionRequest]) (*connect.Response[v1.HabitVersion], error)
-	// DeleteHabitVersion removes a version that has not taken effect yet.
-	DeleteHabitVersion(context.Context, *connect.Request[v1.DeleteHabitVersionRequest]) (*connect.Response[emptypb.Empty], error)
+	// UpdateHabitDraft writes the caller's habit plan draft, creating it or
+	// replacing the one there. A draft does not take effect until enabled.
+	UpdateHabitDraft(context.Context, *connect.Request[v1.UpdateHabitDraftRequest]) (*connect.Response[v1.HabitVersion], error)
+	// DeleteHabitDraft discards the caller's habit plan draft.
+	DeleteHabitDraft(context.Context, *connect.Request[v1.DeleteHabitDraftRequest]) (*connect.Response[emptypb.Empty], error)
+	// EnableHabitDraft turns the draft into the version in use from the caller's
+	// local date on. A version enabled earlier that day is replaced. Once enabled,
+	// a version never changes.
+	EnableHabitDraft(context.Context, *connect.Request[v1.EnableHabitDraftRequest]) (*connect.Response[v1.HabitVersion], error)
 	// ListPlannerEntries returns everything dated within an inclusive range:
 	// check-ins, todos of any status, and notes. Undated todos are not included.
 	ListPlannerEntries(context.Context, *connect.Request[v1.ListPlannerEntriesRequest]) (*connect.Response[v1.ListPlannerEntriesResponse], error)
@@ -502,16 +527,22 @@ func NewPlannerServiceHandler(svc PlannerServiceHandler, opts ...connect.Handler
 		connect.WithSchema(plannerServiceMethods.ByName("ListHabitVersions")),
 		connect.WithHandlerOptions(opts...),
 	)
-	plannerServiceSetHabitVersionHandler := connect.NewUnaryHandler(
-		PlannerServiceSetHabitVersionProcedure,
-		svc.SetHabitVersion,
-		connect.WithSchema(plannerServiceMethods.ByName("SetHabitVersion")),
+	plannerServiceUpdateHabitDraftHandler := connect.NewUnaryHandler(
+		PlannerServiceUpdateHabitDraftProcedure,
+		svc.UpdateHabitDraft,
+		connect.WithSchema(plannerServiceMethods.ByName("UpdateHabitDraft")),
 		connect.WithHandlerOptions(opts...),
 	)
-	plannerServiceDeleteHabitVersionHandler := connect.NewUnaryHandler(
-		PlannerServiceDeleteHabitVersionProcedure,
-		svc.DeleteHabitVersion,
-		connect.WithSchema(plannerServiceMethods.ByName("DeleteHabitVersion")),
+	plannerServiceDeleteHabitDraftHandler := connect.NewUnaryHandler(
+		PlannerServiceDeleteHabitDraftProcedure,
+		svc.DeleteHabitDraft,
+		connect.WithSchema(plannerServiceMethods.ByName("DeleteHabitDraft")),
+		connect.WithHandlerOptions(opts...),
+	)
+	plannerServiceEnableHabitDraftHandler := connect.NewUnaryHandler(
+		PlannerServiceEnableHabitDraftProcedure,
+		svc.EnableHabitDraft,
+		connect.WithSchema(plannerServiceMethods.ByName("EnableHabitDraft")),
 		connect.WithHandlerOptions(opts...),
 	)
 	plannerServiceListPlannerEntriesHandler := connect.NewUnaryHandler(
@@ -608,10 +639,12 @@ func NewPlannerServiceHandler(svc PlannerServiceHandler, opts ...connect.Handler
 			plannerServiceUpdateHabitHandler.ServeHTTP(w, r)
 		case PlannerServiceListHabitVersionsProcedure:
 			plannerServiceListHabitVersionsHandler.ServeHTTP(w, r)
-		case PlannerServiceSetHabitVersionProcedure:
-			plannerServiceSetHabitVersionHandler.ServeHTTP(w, r)
-		case PlannerServiceDeleteHabitVersionProcedure:
-			plannerServiceDeleteHabitVersionHandler.ServeHTTP(w, r)
+		case PlannerServiceUpdateHabitDraftProcedure:
+			plannerServiceUpdateHabitDraftHandler.ServeHTTP(w, r)
+		case PlannerServiceDeleteHabitDraftProcedure:
+			plannerServiceDeleteHabitDraftHandler.ServeHTTP(w, r)
+		case PlannerServiceEnableHabitDraftProcedure:
+			plannerServiceEnableHabitDraftHandler.ServeHTTP(w, r)
 		case PlannerServiceListPlannerEntriesProcedure:
 			plannerServiceListPlannerEntriesHandler.ServeHTTP(w, r)
 		case PlannerServiceListOpenTodosProcedure:
@@ -665,12 +698,16 @@ func (UnimplementedPlannerServiceHandler) ListHabitVersions(context.Context, *co
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.ListHabitVersions is not implemented"))
 }
 
-func (UnimplementedPlannerServiceHandler) SetHabitVersion(context.Context, *connect.Request[v1.SetHabitVersionRequest]) (*connect.Response[v1.HabitVersion], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.SetHabitVersion is not implemented"))
+func (UnimplementedPlannerServiceHandler) UpdateHabitDraft(context.Context, *connect.Request[v1.UpdateHabitDraftRequest]) (*connect.Response[v1.HabitVersion], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.UpdateHabitDraft is not implemented"))
 }
 
-func (UnimplementedPlannerServiceHandler) DeleteHabitVersion(context.Context, *connect.Request[v1.DeleteHabitVersionRequest]) (*connect.Response[emptypb.Empty], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.DeleteHabitVersion is not implemented"))
+func (UnimplementedPlannerServiceHandler) DeleteHabitDraft(context.Context, *connect.Request[v1.DeleteHabitDraftRequest]) (*connect.Response[emptypb.Empty], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.DeleteHabitDraft is not implemented"))
+}
+
+func (UnimplementedPlannerServiceHandler) EnableHabitDraft(context.Context, *connect.Request[v1.EnableHabitDraftRequest]) (*connect.Response[v1.HabitVersion], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.EnableHabitDraft is not implemented"))
 }
 
 func (UnimplementedPlannerServiceHandler) ListPlannerEntries(context.Context, *connect.Request[v1.ListPlannerEntriesRequest]) (*connect.Response[v1.ListPlannerEntriesResponse], error) {

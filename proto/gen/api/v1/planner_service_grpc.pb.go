@@ -24,8 +24,9 @@ const (
 	PlannerService_CreateHabit_FullMethodName        = "/memos.api.v1.PlannerService/CreateHabit"
 	PlannerService_UpdateHabit_FullMethodName        = "/memos.api.v1.PlannerService/UpdateHabit"
 	PlannerService_ListHabitVersions_FullMethodName  = "/memos.api.v1.PlannerService/ListHabitVersions"
-	PlannerService_SetHabitVersion_FullMethodName    = "/memos.api.v1.PlannerService/SetHabitVersion"
-	PlannerService_DeleteHabitVersion_FullMethodName = "/memos.api.v1.PlannerService/DeleteHabitVersion"
+	PlannerService_UpdateHabitDraft_FullMethodName   = "/memos.api.v1.PlannerService/UpdateHabitDraft"
+	PlannerService_DeleteHabitDraft_FullMethodName   = "/memos.api.v1.PlannerService/DeleteHabitDraft"
+	PlannerService_EnableHabitDraft_FullMethodName   = "/memos.api.v1.PlannerService/EnableHabitDraft"
 	PlannerService_ListPlannerEntries_FullMethodName = "/memos.api.v1.PlannerService/ListPlannerEntries"
 	PlannerService_ListOpenTodos_FullMethodName      = "/memos.api.v1.PlannerService/ListOpenTodos"
 	PlannerService_ListTodoTags_FullMethodName       = "/memos.api.v1.PlannerService/ListTodoTags"
@@ -64,13 +65,18 @@ type PlannerServiceClient interface {
 	CreateHabit(ctx context.Context, in *CreateHabitRequest, opts ...grpc.CallOption) (*Habit, error)
 	// UpdateHabit renames a habit or changes its colour, on every day at once.
 	UpdateHabit(ctx context.Context, in *UpdateHabitRequest, opts ...grpc.CallOption) (*Habit, error)
-	// ListHabitVersions returns the caller's habit versions, earliest first.
+	// ListHabitVersions returns the caller's enabled habit versions, earliest
+	// first, and the draft not yet enabled, if any.
 	ListHabitVersions(ctx context.Context, in *ListHabitVersionsRequest, opts ...grpc.CallOption) (*ListHabitVersionsResponse, error)
-	// SetHabitVersion writes the version for its effective date, which must not be
-	// before the caller's local date; one already there is replaced.
-	SetHabitVersion(ctx context.Context, in *SetHabitVersionRequest, opts ...grpc.CallOption) (*HabitVersion, error)
-	// DeleteHabitVersion removes a version that has not taken effect yet.
-	DeleteHabitVersion(ctx context.Context, in *DeleteHabitVersionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// UpdateHabitDraft writes the caller's habit plan draft, creating it or
+	// replacing the one there. A draft does not take effect until enabled.
+	UpdateHabitDraft(ctx context.Context, in *UpdateHabitDraftRequest, opts ...grpc.CallOption) (*HabitVersion, error)
+	// DeleteHabitDraft discards the caller's habit plan draft.
+	DeleteHabitDraft(ctx context.Context, in *DeleteHabitDraftRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// EnableHabitDraft turns the draft into the version in use from the caller's
+	// local date on. A version enabled earlier that day is replaced. Once enabled,
+	// a version never changes.
+	EnableHabitDraft(ctx context.Context, in *EnableHabitDraftRequest, opts ...grpc.CallOption) (*HabitVersion, error)
 	// ListPlannerEntries returns everything dated within an inclusive range:
 	// check-ins, todos of any status, and notes. Undated todos are not included.
 	ListPlannerEntries(ctx context.Context, in *ListPlannerEntriesRequest, opts ...grpc.CallOption) (*ListPlannerEntriesResponse, error)
@@ -161,20 +167,30 @@ func (c *plannerServiceClient) ListHabitVersions(ctx context.Context, in *ListHa
 	return out, nil
 }
 
-func (c *plannerServiceClient) SetHabitVersion(ctx context.Context, in *SetHabitVersionRequest, opts ...grpc.CallOption) (*HabitVersion, error) {
+func (c *plannerServiceClient) UpdateHabitDraft(ctx context.Context, in *UpdateHabitDraftRequest, opts ...grpc.CallOption) (*HabitVersion, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(HabitVersion)
-	err := c.cc.Invoke(ctx, PlannerService_SetHabitVersion_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, PlannerService_UpdateHabitDraft_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *plannerServiceClient) DeleteHabitVersion(ctx context.Context, in *DeleteHabitVersionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *plannerServiceClient) DeleteHabitDraft(ctx context.Context, in *DeleteHabitDraftRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, PlannerService_DeleteHabitVersion_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, PlannerService_DeleteHabitDraft_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plannerServiceClient) EnableHabitDraft(ctx context.Context, in *EnableHabitDraftRequest, opts ...grpc.CallOption) (*HabitVersion, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(HabitVersion)
+	err := c.cc.Invoke(ctx, PlannerService_EnableHabitDraft_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -343,13 +359,18 @@ type PlannerServiceServer interface {
 	CreateHabit(context.Context, *CreateHabitRequest) (*Habit, error)
 	// UpdateHabit renames a habit or changes its colour, on every day at once.
 	UpdateHabit(context.Context, *UpdateHabitRequest) (*Habit, error)
-	// ListHabitVersions returns the caller's habit versions, earliest first.
+	// ListHabitVersions returns the caller's enabled habit versions, earliest
+	// first, and the draft not yet enabled, if any.
 	ListHabitVersions(context.Context, *ListHabitVersionsRequest) (*ListHabitVersionsResponse, error)
-	// SetHabitVersion writes the version for its effective date, which must not be
-	// before the caller's local date; one already there is replaced.
-	SetHabitVersion(context.Context, *SetHabitVersionRequest) (*HabitVersion, error)
-	// DeleteHabitVersion removes a version that has not taken effect yet.
-	DeleteHabitVersion(context.Context, *DeleteHabitVersionRequest) (*emptypb.Empty, error)
+	// UpdateHabitDraft writes the caller's habit plan draft, creating it or
+	// replacing the one there. A draft does not take effect until enabled.
+	UpdateHabitDraft(context.Context, *UpdateHabitDraftRequest) (*HabitVersion, error)
+	// DeleteHabitDraft discards the caller's habit plan draft.
+	DeleteHabitDraft(context.Context, *DeleteHabitDraftRequest) (*emptypb.Empty, error)
+	// EnableHabitDraft turns the draft into the version in use from the caller's
+	// local date on. A version enabled earlier that day is replaced. Once enabled,
+	// a version never changes.
+	EnableHabitDraft(context.Context, *EnableHabitDraftRequest) (*HabitVersion, error)
 	// ListPlannerEntries returns everything dated within an inclusive range:
 	// check-ins, todos of any status, and notes. Undated todos are not included.
 	ListPlannerEntries(context.Context, *ListPlannerEntriesRequest) (*ListPlannerEntriesResponse, error)
@@ -412,11 +433,14 @@ func (UnimplementedPlannerServiceServer) UpdateHabit(context.Context, *UpdateHab
 func (UnimplementedPlannerServiceServer) ListHabitVersions(context.Context, *ListHabitVersionsRequest) (*ListHabitVersionsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListHabitVersions not implemented")
 }
-func (UnimplementedPlannerServiceServer) SetHabitVersion(context.Context, *SetHabitVersionRequest) (*HabitVersion, error) {
-	return nil, status.Error(codes.Unimplemented, "method SetHabitVersion not implemented")
+func (UnimplementedPlannerServiceServer) UpdateHabitDraft(context.Context, *UpdateHabitDraftRequest) (*HabitVersion, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateHabitDraft not implemented")
 }
-func (UnimplementedPlannerServiceServer) DeleteHabitVersion(context.Context, *DeleteHabitVersionRequest) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method DeleteHabitVersion not implemented")
+func (UnimplementedPlannerServiceServer) DeleteHabitDraft(context.Context, *DeleteHabitDraftRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteHabitDraft not implemented")
+}
+func (UnimplementedPlannerServiceServer) EnableHabitDraft(context.Context, *EnableHabitDraftRequest) (*HabitVersion, error) {
+	return nil, status.Error(codes.Unimplemented, "method EnableHabitDraft not implemented")
 }
 func (UnimplementedPlannerServiceServer) ListPlannerEntries(context.Context, *ListPlannerEntriesRequest) (*ListPlannerEntriesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListPlannerEntries not implemented")
@@ -553,38 +577,56 @@ func _PlannerService_ListHabitVersions_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
-func _PlannerService_SetHabitVersion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SetHabitVersionRequest)
+func _PlannerService_UpdateHabitDraft_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateHabitDraftRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(PlannerServiceServer).SetHabitVersion(ctx, in)
+		return srv.(PlannerServiceServer).UpdateHabitDraft(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: PlannerService_SetHabitVersion_FullMethodName,
+		FullMethod: PlannerService_UpdateHabitDraft_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PlannerServiceServer).SetHabitVersion(ctx, req.(*SetHabitVersionRequest))
+		return srv.(PlannerServiceServer).UpdateHabitDraft(ctx, req.(*UpdateHabitDraftRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _PlannerService_DeleteHabitVersion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteHabitVersionRequest)
+func _PlannerService_DeleteHabitDraft_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteHabitDraftRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(PlannerServiceServer).DeleteHabitVersion(ctx, in)
+		return srv.(PlannerServiceServer).DeleteHabitDraft(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: PlannerService_DeleteHabitVersion_FullMethodName,
+		FullMethod: PlannerService_DeleteHabitDraft_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PlannerServiceServer).DeleteHabitVersion(ctx, req.(*DeleteHabitVersionRequest))
+		return srv.(PlannerServiceServer).DeleteHabitDraft(ctx, req.(*DeleteHabitDraftRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlannerService_EnableHabitDraft_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EnableHabitDraftRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlannerServiceServer).EnableHabitDraft(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlannerService_EnableHabitDraft_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlannerServiceServer).EnableHabitDraft(ctx, req.(*EnableHabitDraftRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -865,12 +907,16 @@ var PlannerService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _PlannerService_ListHabitVersions_Handler,
 		},
 		{
-			MethodName: "SetHabitVersion",
-			Handler:    _PlannerService_SetHabitVersion_Handler,
+			MethodName: "UpdateHabitDraft",
+			Handler:    _PlannerService_UpdateHabitDraft_Handler,
 		},
 		{
-			MethodName: "DeleteHabitVersion",
-			Handler:    _PlannerService_DeleteHabitVersion_Handler,
+			MethodName: "DeleteHabitDraft",
+			Handler:    _PlannerService_DeleteHabitDraft_Handler,
+		},
+		{
+			MethodName: "EnableHabitDraft",
+			Handler:    _PlannerService_EnableHabitDraft_Handler,
 		},
 		{
 			MethodName: "ListPlannerEntries",

@@ -1,41 +1,45 @@
-import { Code, ConnectError } from "@connectrpc/connect";
 import { List, ListButton, ListItem, Navbar, NavbarBackLink, Page, Preloader, Stepper, Toast } from "konsta/react";
 import { ArrowDownIcon, ArrowUpIcon, XIcon } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   useCreateHabit,
-  useDeleteHabitVersion,
+  useDeleteHabitDraft,
+  useEnableHabitDraft,
+  useHabitPlans,
   useHabits,
-  useHabitVersions,
   useOpenTodos,
-  useSetHabitVersion,
+  useSaveHabitDraft,
   useUpdateHabit,
 } from "@/hooks/usePlannerQueries";
 import type { Habit } from "@/types/proto/api/v1/planner_service_pb";
 import DangerListButton from "../../components/DangerListButton";
+import DocPickerSheet from "../../components/DocPickerSheet";
+import { LinkedDocsList } from "../../components/LinkedDocs";
 import HabitEditSheet from "../../components/planner/HabitEditSheet";
 import SectionTitle from "../../components/SectionTitle";
 import { COPY } from "../../copy";
 import { useBlurOnClose } from "../../lib/keyboard";
-import { useBack, useBackLabel } from "../../lib/nav";
+import { useBack, useBackLabel, useGo } from "../../lib/nav";
 import { colorsTakenFor, habitColor, habitVersionOn, localToday, versionLabel } from "../../lib/planner";
-import { MOBILE_ROUTES } from "../../routes";
+import { docRoute, MOBILE_ROUTES } from "../../routes";
 
-// The server's limits: five habits a version, a goal of at most every day.
+// The server's limits: five habits a plan, a goal of at most every day.
 const MAX_HABITS = 5;
 const MAX_WEEKLY_GOAL = 7;
 
 type Entry = { habit: string; weeklyGoal: number };
+type Plan = { entries: Entry[]; memos: string[] };
 
 const Hint = ({ children, danger }: { children: ReactNode; danger?: boolean }) => (
   <p className={`px-8 mt-2 text-[13px] leading-snug ${danger ? "text-red-500" : "text-black/45 dark:text-white/45"}`}>{children}</p>
 );
 
 /**
- * One habit version (requirement §2.4.2 §2, §8). Without `?date` it revises: a new version, from today
- * by default, starting from the one in use. With `?date` it opens that version: one not yet in effect can be
- * changed or deleted, one in effect is only shown (`-` names the very first, effective from the beginning).
+ * A habit plan (requirement §2.4.2 §2, §8). Without `?date` it is the draft: habits, order, weekly goals and
+ * linked documents, saved without taking effect, then enabled from today on — or started from the plan in use
+ * when there is no draft yet. With `?date` it shows the plan enabled that day, read-only (`-` names the very
+ * first, in use from the beginning).
  */
 export default function HabitVersionPage() {
   const back = useBack(MOBILE_ROUTES.PLAN_SETTINGS);
@@ -43,27 +47,34 @@ export default function HabitVersionPage() {
   const [params] = useSearchParams();
   const param = params.get("date");
   const opened = param === null ? undefined : param === "-" ? "" : param;
+  const readonly = opened !== undefined;
   const today = localToday();
+  const label = (effectiveDate: string) =>
+    versionLabel(effectiveDate, today, COPY.plannerSettings.fromBeginning, COPY.plannerSettings.from);
+  const go = useGo(readonly ? label(opened) : COPY.plannerSettings.draftTitle);
   const { data: habits = [] } = useHabits();
-  const { data: versions } = useHabitVersions();
+  const { data: plans } = useHabitPlans();
   const { data: openTodos = [] } = useOpenTodos();
-  const setVersion = useSetHabitVersion();
-  const deleteVersion = useDeleteHabitVersion();
+  const saveDraft = useSaveHabitDraft();
+  const deleteDraft = useDeleteHabitDraft();
+  const enableDraft = useEnableHabitDraft();
   const createHabit = useCreateHabit();
   const updateHabit = useUpdateHabit();
-  const readonly = opened !== undefined && opened <= today;
 
-  const [effectiveDate, setEffectiveDate] = useState(opened ?? today);
-  const [entries, setEntries] = useState<Entry[]>();
-  // Starts from the version opened, or, for a revision, from the one in use today.
+  // Starts from the plan opened, the draft, or else the plan in use today.
+  const [plan, setPlan] = useState<Plan>();
   useEffect(() => {
-    if (entries || !versions) return;
-    const base = opened !== undefined ? versions.find((v) => v.effectiveDate === opened) : habitVersionOn(versions, today);
-    setEntries(base?.entries.map((entry) => ({ habit: entry.habit, weeklyGoal: entry.weeklyGoal })) ?? []);
-  }, [entries, versions, opened, today]);
+    if (plan || !plans) return;
+    const base = readonly ? plans.versions.find((v) => v.effectiveDate === opened) : (plans.draft ?? habitVersionOn(plans.versions, today));
+    setPlan({
+      entries: base?.entries.map((entry) => ({ habit: entry.habit, weeklyGoal: entry.weeklyGoal })) ?? [],
+      memos: [...(base?.memos ?? [])],
+    });
+  }, [plan, plans, readonly, opened, today]);
 
   const [editing, setEditing] = useState<Habit | null>();
-  useBlurOnClose(editing !== undefined);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  useBlurOnClose(editing !== undefined || pickerOpen);
   const [toast, setToast] = useState("");
   const flash = (message: string) => {
     setToast(message);
@@ -72,15 +83,11 @@ export default function HabitVersionPage() {
 
   const header = (
     <Navbar
-      title={
-        opened === undefined
-          ? COPY.plannerSettings.reviseTitle
-          : versionLabel(opened, today, COPY.plannerSettings.fromBeginning, COPY.plannerSettings.from)
-      }
+      title={readonly ? label(opened) : COPY.plannerSettings.draftTitle}
       left={<NavbarBackLink text={backText} showText onClick={back} />}
     />
   );
-  if (!entries || !versions) {
+  if (!plan || !plans) {
     return (
       <Page>
         {header}
@@ -91,11 +98,15 @@ export default function HabitVersionPage() {
     );
   }
 
+  const { entries, memos } = plan;
+  const setEntries = (next: Entry[]) => setPlan({ ...plan, entries: next });
+  const setMemos = (next: string[]) => setPlan({ ...plan, memos: next });
   const habitByName = new Map(habits.map((habit) => [habit.name, habit]));
   const picked = new Set(entries.map((entry) => entry.habit));
   const pool = habits.filter((habit) => !picked.has(habit.name));
   const colors = entries.map((entry) => habitByName.get(entry.habit)?.color);
   const sameColor = colors.some((color, i) => color !== undefined && colors.indexOf(color) !== i);
+  const busy = saveDraft.isPending || enableDraft.isPending;
 
   const add = (habit: string) => {
     if (entries.length >= MAX_HABITS) {
@@ -115,16 +126,27 @@ export default function HabitVersionPage() {
     );
 
   const save = async () => {
-    // Open habit todos from the effective date until the next version lose their habit if it is dropped
-    // (§2.4.2 §2): ask first, as the server does.
-    const kept = new Set(entries.map((entry) => entry.habit));
-    const next = versions.find((version) => version.effectiveDate > effectiveDate)?.effectiveDate;
-    const dropped = openTodos.filter(
-      (todo) => todo.habit !== "" && !kept.has(todo.habit) && todo.date >= effectiveDate && (!next || todo.date < next),
-    );
-    if (dropped.length > 0 && !window.confirm(COPY.plannerSettings.unlinkConfirm(dropped.map((todo) => todo.title)))) return;
     try {
-      await setVersion.mutateAsync({ effectiveDate, entries, localDate: today, unlinkTodos: dropped.length > 0 });
+      await saveDraft.mutateAsync({ entries, memos });
+      flash(COPY.plannerSettings.draftSaved);
+    } catch {
+      flash(COPY.planner.failed);
+    }
+  };
+
+  // Saves what is on screen, then enables it from today. Open habit todos from today on lose their habit
+  // if the plan drops it (§2.4.2 §2): ask first, as the server does.
+  const enable = async () => {
+    const kept = new Set(entries.map((entry) => entry.habit));
+    const dropped = openTodos.filter((todo) => todo.habit !== "" && !kept.has(todo.habit) && todo.date >= today);
+    const confirmed =
+      dropped.length > 0
+        ? window.confirm(COPY.plannerSettings.unlinkConfirm(dropped.map((todo) => todo.title)))
+        : window.confirm(COPY.plannerSettings.enableConfirm);
+    if (!confirmed) return;
+    try {
+      await saveDraft.mutateAsync({ entries, memos });
+      await enableDraft.mutateAsync({ localDate: today, unlinkTodos: dropped.length > 0 });
       back();
     } catch {
       flash(COPY.planner.failed);
@@ -132,19 +154,8 @@ export default function HabitVersionPage() {
   };
 
   const remove = () => {
-    if (opened === undefined || !window.confirm(COPY.plannerSettings.deleteVersionConfirm)) return;
-    deleteVersion.mutate(
-      { effectiveDate: opened, localDate: today },
-      {
-        onSuccess: back,
-        onError: (err) =>
-          flash(
-            err instanceof ConnectError && err.code === Code.FailedPrecondition
-              ? COPY.plannerSettings.deleteVersionBlocked
-              : COPY.planner.failed,
-          ),
-      },
-    );
+    if (!window.confirm(COPY.plannerSettings.deleteDraftConfirm)) return;
+    deleteDraft.mutate(undefined, { onSuccess: back, onError: () => flash(COPY.planner.failed) });
   };
 
   const saveHabit = async ({ title, color }: { title: string; color?: number }) => {
@@ -165,10 +176,10 @@ export default function HabitVersionPage() {
       flash(COPY.planner.failed);
     }
   };
-  // A color is taken when a habit of this draft, or of a saved version with this habit, already has it.
+  // A color is taken when a habit of this plan, or of an enabled plan with this habit, already has it.
   const takenColors = (habit: Habit) =>
     new Set([
-      ...colorsTakenFor(habit.name, habits, versions, today),
+      ...colorsTakenFor(habit.name, habits, plans.versions, today),
       ...entries.flatMap((entry) => (entry.habit !== habit.name ? (habitByName.get(entry.habit)?.color ?? []) : [])),
     ]);
 
@@ -176,25 +187,6 @@ export default function HabitVersionPage() {
     <Page className="pb-safe">
       {header}
 
-      <SectionTitle>{COPY.plannerSettings.effectiveDate}</SectionTitle>
-      <List strongIos insetIos className="!my-0">
-        <ListItem
-          title={COPY.plannerSettings.effectiveDate}
-          after={
-            opened === undefined ? (
-              <input
-                type="date"
-                min={today}
-                value={effectiveDate}
-                onChange={(event) => event.target.value >= today && setEffectiveDate(event.target.value)}
-                className="bg-transparent text-right outline-none"
-              />
-            ) : (
-              versionLabel(opened, today, COPY.plannerSettings.fromBeginning, COPY.plannerSettings.from)
-            )
-          }
-        />
-      </List>
       {readonly && <Hint>{COPY.plannerSettings.versionReadonly}</Hint>}
 
       <SectionTitle>{COPY.plannerSettings.versionHabits(entries.length, MAX_HABITS)}</SectionTitle>
@@ -287,15 +279,35 @@ export default function HabitVersionPage() {
             <ListButton onClick={() => setEditing(null)}>{COPY.plannerSettings.newHabit}</ListButton>
           </List>
           <Hint>{COPY.plannerSettings.habitPoolHint}</Hint>
+        </>
+      )}
 
-          <List strongIos insetIos className="mt-8">
-            <ListButton onClick={save} className={sameColor || setVersion.isPending ? "pointer-events-none opacity-40" : undefined}>
-              {COPY.planner.save}
+      <SectionTitle>{COPY.plannerSettings.docs}</SectionTitle>
+      {readonly && memos.length === 0 ? (
+        <div className="px-8 text-[14px] text-black/40 dark:text-white/40">{COPY.plannerSettings.noDocs}</div>
+      ) : (
+        <LinkedDocsList
+          memos={memos}
+          onOpen={(memo) => go(docRoute(memo))}
+          onRemove={readonly ? undefined : (memo) => setMemos(memos.filter((m) => m !== memo))}
+          onAdd={readonly ? undefined : () => setPickerOpen(true)}
+        />
+      )}
+      {!readonly && <Hint>{COPY.plannerSettings.docsHint}</Hint>}
+
+      {!readonly && (
+        <>
+          <List strongIos insetIos dividersIos className="mt-8">
+            <ListButton onClick={save} className={sameColor || busy ? "pointer-events-none opacity-40" : undefined}>
+              {COPY.plannerSettings.saveDraft}
+            </ListButton>
+            <ListButton onClick={enable} className={sameColor || busy ? "pointer-events-none opacity-40" : "font-semibold"}>
+              {COPY.plannerSettings.enable}
             </ListButton>
           </List>
-          {opened !== undefined && (
+          {plans.draft && (
             <List strongIos insetIos className="mt-4">
-              <DangerListButton onClick={remove}>{COPY.plannerSettings.deleteVersion}</DangerListButton>
+              <DangerListButton onClick={remove}>{COPY.plannerSettings.deleteDraft}</DangerListButton>
             </List>
           )}
         </>
@@ -306,6 +318,16 @@ export default function HabitVersionPage() {
         takenColors={editing ? takenColors(editing) : new Set()}
         onClose={() => setEditing(undefined)}
         onSave={saveHabit}
+      />
+
+      <DocPickerSheet
+        opened={pickerOpen}
+        picked={memos}
+        onClose={() => setPickerOpen(false)}
+        onPick={(memo) => {
+          if (!memos.includes(memo)) setMemos([...memos, memo]);
+          setPickerOpen(false);
+        }}
       />
 
       <Toast position="center" opened={toast !== ""}>

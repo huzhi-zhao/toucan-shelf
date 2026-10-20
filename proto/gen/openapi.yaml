@@ -1892,37 +1892,34 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
-    /api/v1/planner/habitVersions:
-        get:
+    /api/v1/planner/habitDraft:
+        delete:
             tags:
                 - PlannerService
-            description: ListHabitVersions returns the caller's habit versions, earliest first.
-            operationId: PlannerService_ListHabitVersions
+            description: DeleteHabitDraft discards the caller's habit plan draft.
+            operationId: PlannerService_DeleteHabitDraft
             responses:
                 "200":
                     description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ListHabitVersionsResponse'
+                    content: {}
                 default:
                     description: Default error response
                     content:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
-        post:
+        patch:
             tags:
                 - PlannerService
             description: |-
-                SetHabitVersion writes the version for its effective date, which must not be
-                 before the caller's local date; one already there is replaced.
-            operationId: PlannerService_SetHabitVersion
+                UpdateHabitDraft writes the caller's habit plan draft, creating it or
+                 replacing the one there. A draft does not take effect until enabled.
+            operationId: PlannerService_UpdateHabitDraft
             requestBody:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/SetHabitVersionRequest'
+                            $ref: '#/components/schemas/HabitVersion'
                 required: true
             responses:
                 "200":
@@ -1937,26 +1934,49 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
-        delete:
+    /api/v1/planner/habitDraft:enable:
+        post:
             tags:
                 - PlannerService
-            description: DeleteHabitVersion removes a version that has not taken effect yet.
-            operationId: PlannerService_DeleteHabitVersion
-            parameters:
-                - name: effectiveDate
-                  in: query
-                  description: YYYY-MM-DD; must be after local_date.
-                  schema:
-                    type: string
-                - name: localDate
-                  in: query
-                  description: The caller's local date, YYYY-MM-DD.
-                  schema:
-                    type: string
+            description: |-
+                EnableHabitDraft turns the draft into the version in use from the caller's
+                 local date on. A version enabled earlier that day is replaced. Once enabled,
+                 a version never changes.
+            operationId: PlannerService_EnableHabitDraft
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/EnableHabitDraftRequest'
+                required: true
             responses:
                 "200":
                     description: OK
-                    content: {}
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/HabitVersion'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/planner/habitVersions:
+        get:
+            tags:
+                - PlannerService
+            description: |-
+                ListHabitVersions returns the caller's enabled habit versions, earliest
+                 first, and the draft not yet enabled, if any.
+            operationId: PlannerService_ListHabitVersions
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListHabitVersionsResponse'
                 default:
                     description: Default error response
                     content:
@@ -5349,6 +5369,19 @@ components:
                  Every field uses explicit presence. Unset means "never configured" and resolves
                  to the app default, which for `full_width` is true — so a plain bool could not
                  tell an unconfigured document from one the author explicitly narrowed.
+        EnableHabitDraftRequest:
+            required:
+                - localDate
+            type: object
+            properties:
+                localDate:
+                    type: string
+                    description: 'The caller''s local date, YYYY-MM-DD: the version takes effect on it.'
+                unlinkTodos:
+                    type: boolean
+                    description: |-
+                        Must be set when the draft drops a habit that still has open habit todos
+                         from local_date on: those become plain todos.
         EpubAnnotation:
             required:
                 - attachmentName
@@ -5581,12 +5614,19 @@ components:
             properties:
                 effectiveDate:
                     type: string
-                    description: YYYY-MM-DD, or empty for "from the very beginning".
+                    description: |-
+                        YYYY-MM-DD, the day it was enabled, or empty for "from the very beginning"
+                         (and for the draft).
                 entries:
                     type: array
                     items:
                         $ref: '#/components/schemas/HabitVersionEntry'
                     description: At most five, each habit once, no two of the same colour.
+                memos:
+                    type: array
+                    items:
+                        type: string
+                    description: 'The linked documents, in display order. Format: memos/{memo}'
                 createTime:
                     readOnly: true
                     type: string
@@ -5596,8 +5636,9 @@ components:
                     type: string
                     format: date-time
             description: |-
-                HabitVersion is the set of habits in use from effective_date on, until the
-                 next version: the habits that can be checked in, in calendar order.
+                HabitVersion is a habit plan. Enabled, it is the set of habits in use from
+                 effective_date on, until the next version: the habits that can be checked in,
+                 in calendar order. The draft has the same shape and no date.
         HabitVersionEntry:
             required:
                 - habit
@@ -6115,6 +6156,10 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/HabitVersion'
+                draft:
+                    allOf:
+                        - $ref: '#/components/schemas/HabitVersion'
+                    description: The plan not yet enabled; unset when there is none.
         ListHabitsResponse:
             type: object
             properties:
@@ -7626,22 +7671,6 @@ components:
             description: |-
                 SecretEnvelope is everything needed to decrypt a secret given the passphrase,
                  and nothing that helps without it. The server treats every field as opaque.
-        SetHabitVersionRequest:
-            required:
-                - version
-                - localDate
-            type: object
-            properties:
-                version:
-                    $ref: '#/components/schemas/HabitVersion'
-                localDate:
-                    type: string
-                    description: The caller's local date, YYYY-MM-DD.
-                unlinkTodos:
-                    type: boolean
-                    description: |-
-                        Must be set when the version drops a habit that still has open habit todos
-                         on or after its effective date: those become plain todos.
         SetMemoAttachmentsRequest:
             required:
                 - name

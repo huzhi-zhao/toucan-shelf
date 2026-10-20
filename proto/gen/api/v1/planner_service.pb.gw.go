@@ -185,9 +185,57 @@ func local_request_PlannerService_ListHabitVersions_0(ctx context.Context, marsh
 	return msg, metadata, err
 }
 
-func request_PlannerService_SetHabitVersion_0(ctx context.Context, marshaler runtime.Marshaler, client PlannerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_PlannerService_UpdateHabitDraft_0(ctx context.Context, marshaler runtime.Marshaler, client PlannerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq SetHabitVersionRequest
+		protoReq UpdateHabitDraftRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Draft); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	msg, err := client.UpdateHabitDraft(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_PlannerService_UpdateHabitDraft_0(ctx context.Context, marshaler runtime.Marshaler, server PlannerServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq UpdateHabitDraftRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Draft); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	msg, err := server.UpdateHabitDraft(ctx, &protoReq)
+	return msg, metadata, err
+}
+
+func request_PlannerService_DeleteHabitDraft_0(ctx context.Context, marshaler runtime.Marshaler, client PlannerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq DeleteHabitDraftRequest
+		metadata runtime.ServerMetadata
+	)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	msg, err := client.DeleteHabitDraft(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_PlannerService_DeleteHabitDraft_0(ctx context.Context, marshaler runtime.Marshaler, server PlannerServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq DeleteHabitDraftRequest
+		metadata runtime.ServerMetadata
+	)
+	msg, err := server.DeleteHabitDraft(ctx, &protoReq)
+	return msg, metadata, err
+}
+
+func request_PlannerService_EnableHabitDraft_0(ctx context.Context, marshaler runtime.Marshaler, client PlannerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq EnableHabitDraftRequest
 		metadata runtime.ServerMetadata
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
@@ -196,54 +244,19 @@ func request_PlannerService_SetHabitVersion_0(ctx context.Context, marshaler run
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
-	msg, err := client.SetHabitVersion(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.EnableHabitDraft(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 }
 
-func local_request_PlannerService_SetHabitVersion_0(ctx context.Context, marshaler runtime.Marshaler, server PlannerServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_PlannerService_EnableHabitDraft_0(ctx context.Context, marshaler runtime.Marshaler, server PlannerServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq SetHabitVersionRequest
+		protoReq EnableHabitDraftRequest
 		metadata runtime.ServerMetadata
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	msg, err := server.SetHabitVersion(ctx, &protoReq)
-	return msg, metadata, err
-}
-
-var filter_PlannerService_DeleteHabitVersion_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
-
-func request_PlannerService_DeleteHabitVersion_0(ctx context.Context, marshaler runtime.Marshaler, client PlannerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq DeleteHabitVersionRequest
-		metadata runtime.ServerMetadata
-	)
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PlannerService_DeleteHabitVersion_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if req.Body != nil {
-		_, _ = io.Copy(io.Discard, req.Body)
-	}
-	msg, err := client.DeleteHabitVersion(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return msg, metadata, err
-}
-
-func local_request_PlannerService_DeleteHabitVersion_0(ctx context.Context, marshaler runtime.Marshaler, server PlannerServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq DeleteHabitVersionRequest
-		metadata runtime.ServerMetadata
-	)
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PlannerService_DeleteHabitVersion_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	msg, err := server.DeleteHabitVersion(ctx, &protoReq)
+	msg, err := server.EnableHabitDraft(ctx, &protoReq)
 	return msg, metadata, err
 }
 
@@ -891,45 +904,65 @@ func RegisterPlannerServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		}
 		forward_PlannerService_ListHabitVersions_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
-	mux.Handle(http.MethodPost, pattern_PlannerService_SetHabitVersion_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPatch, pattern_PlannerService_UpdateHabitDraft_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/memos.api.v1.PlannerService/SetHabitVersion", runtime.WithHTTPPathPattern("/api/v1/planner/habitVersions"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/memos.api.v1.PlannerService/UpdateHabitDraft", runtime.WithHTTPPathPattern("/api/v1/planner/habitDraft"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_PlannerService_SetHabitVersion_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_PlannerService_UpdateHabitDraft_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_PlannerService_SetHabitVersion_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_PlannerService_UpdateHabitDraft_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
-	mux.Handle(http.MethodDelete, pattern_PlannerService_DeleteHabitVersion_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodDelete, pattern_PlannerService_DeleteHabitDraft_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/memos.api.v1.PlannerService/DeleteHabitVersion", runtime.WithHTTPPathPattern("/api/v1/planner/habitVersions"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/memos.api.v1.PlannerService/DeleteHabitDraft", runtime.WithHTTPPathPattern("/api/v1/planner/habitDraft"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_PlannerService_DeleteHabitVersion_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_PlannerService_DeleteHabitDraft_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_PlannerService_DeleteHabitVersion_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_PlannerService_DeleteHabitDraft_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodPost, pattern_PlannerService_EnableHabitDraft_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/memos.api.v1.PlannerService/EnableHabitDraft", runtime.WithHTTPPathPattern("/api/v1/planner/habitDraft:enable"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PlannerService_EnableHabitDraft_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_PlannerService_EnableHabitDraft_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
 	mux.Handle(http.MethodGet, pattern_PlannerService_ListPlannerEntries_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
@@ -1319,39 +1352,56 @@ func RegisterPlannerServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		}
 		forward_PlannerService_ListHabitVersions_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
-	mux.Handle(http.MethodPost, pattern_PlannerService_SetHabitVersion_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPatch, pattern_PlannerService_UpdateHabitDraft_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/memos.api.v1.PlannerService/SetHabitVersion", runtime.WithHTTPPathPattern("/api/v1/planner/habitVersions"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/memos.api.v1.PlannerService/UpdateHabitDraft", runtime.WithHTTPPathPattern("/api/v1/planner/habitDraft"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_PlannerService_SetHabitVersion_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_PlannerService_UpdateHabitDraft_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_PlannerService_SetHabitVersion_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_PlannerService_UpdateHabitDraft_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
-	mux.Handle(http.MethodDelete, pattern_PlannerService_DeleteHabitVersion_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodDelete, pattern_PlannerService_DeleteHabitDraft_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/memos.api.v1.PlannerService/DeleteHabitVersion", runtime.WithHTTPPathPattern("/api/v1/planner/habitVersions"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/memos.api.v1.PlannerService/DeleteHabitDraft", runtime.WithHTTPPathPattern("/api/v1/planner/habitDraft"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_PlannerService_DeleteHabitVersion_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_PlannerService_DeleteHabitDraft_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_PlannerService_DeleteHabitVersion_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_PlannerService_DeleteHabitDraft_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodPost, pattern_PlannerService_EnableHabitDraft_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/memos.api.v1.PlannerService/EnableHabitDraft", runtime.WithHTTPPathPattern("/api/v1/planner/habitDraft:enable"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_PlannerService_EnableHabitDraft_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_PlannerService_EnableHabitDraft_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
 	mux.Handle(http.MethodGet, pattern_PlannerService_ListPlannerEntries_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
@@ -1599,8 +1649,9 @@ var (
 	pattern_PlannerService_CreateHabit_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "habits"}, ""))
 	pattern_PlannerService_UpdateHabit_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 3, 5, 4}, []string{"api", "v1", "planner", "habits", "habit.name"}, ""))
 	pattern_PlannerService_ListHabitVersions_0  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "habitVersions"}, ""))
-	pattern_PlannerService_SetHabitVersion_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "habitVersions"}, ""))
-	pattern_PlannerService_DeleteHabitVersion_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "habitVersions"}, ""))
+	pattern_PlannerService_UpdateHabitDraft_0   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "habitDraft"}, ""))
+	pattern_PlannerService_DeleteHabitDraft_0   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "habitDraft"}, ""))
+	pattern_PlannerService_EnableHabitDraft_0   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "habitDraft"}, "enable"))
 	pattern_PlannerService_ListPlannerEntries_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "entries"}, ""))
 	pattern_PlannerService_ListOpenTodos_0      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "openTodos"}, ""))
 	pattern_PlannerService_ListTodoTags_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "todoTags"}, ""))
@@ -1622,8 +1673,9 @@ var (
 	forward_PlannerService_CreateHabit_0        = runtime.ForwardResponseMessage
 	forward_PlannerService_UpdateHabit_0        = runtime.ForwardResponseMessage
 	forward_PlannerService_ListHabitVersions_0  = runtime.ForwardResponseMessage
-	forward_PlannerService_SetHabitVersion_0    = runtime.ForwardResponseMessage
-	forward_PlannerService_DeleteHabitVersion_0 = runtime.ForwardResponseMessage
+	forward_PlannerService_UpdateHabitDraft_0   = runtime.ForwardResponseMessage
+	forward_PlannerService_DeleteHabitDraft_0   = runtime.ForwardResponseMessage
+	forward_PlannerService_EnableHabitDraft_0   = runtime.ForwardResponseMessage
 	forward_PlannerService_ListPlannerEntries_0 = runtime.ForwardResponseMessage
 	forward_PlannerService_ListOpenTodos_0      = runtime.ForwardResponseMessage
 	forward_PlannerService_ListTodoTags_0       = runtime.ForwardResponseMessage
