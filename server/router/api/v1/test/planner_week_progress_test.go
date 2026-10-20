@@ -101,6 +101,8 @@ func TestWeekProgress(t *testing.T) {
 		require.Equal(t, int32(5), week.DaysLeft)
 		require.Nil(t, week.Plan)
 		require.Empty(t, week.Habits)
+		require.NotNil(t, week.Notes)
+		require.Empty(t, week.Notes)
 	})
 
 	run, err := ts.Service.CreateHabit(userCtx, &v1pb.CreateHabitRequest{Habit: &v1pb.Habit{Title: "💪运动"}})
@@ -134,6 +136,25 @@ func TestWeekProgress(t *testing.T) {
 	require.NoError(t, err)
 	_, err = ts.Service.CreateTodo(userCtx, &v1pb.CreateTodoRequest{Todo: &v1pb.Todo{Title: "交电费", Date: "2026-10-23"}, LocalDate: "2026-10-22"})
 	require.NoError(t, err)
+
+	// Notes, written out of date order: one each side of the week boundary and one after the range asked for.
+	for _, note := range []struct{ date, content string }{
+		{"2026-10-24", "旅行 到 2026-10-27"},
+		{"2026-10-26", "回来了"},
+		{"2026-10-15", "病"},
+		{"2026-10-20", "病"},
+		{"2026-10-20", "好了一点"},
+	} {
+		_, err := ts.Service.CreatePlannerNote(userCtx, &v1pb.CreatePlannerNoteRequest{Note: &v1pb.PlannerNote{Date: note.date, Content: note.content}})
+		require.NoError(t, err)
+	}
+	notes := func(week *v1pb.WeekProgress) []string {
+		lines := []string{}
+		for _, note := range week.Notes {
+			lines = append(lines, note.Date+" "+note.Content)
+		}
+		return lines
+	}
 
 	t.Run("weeks from Monday, a plan changed mid-week", func(t *testing.T) {
 		setWeekStart(1)
@@ -182,8 +203,12 @@ func TestWeekProgress(t *testing.T) {
 		require.Equal(t, walk.Name, this.HabitTodos[1].Habit)
 		require.Equal(t, v1pb.WeekHabitTodo_FAILED, this.HabitTodos[1].State)
 
+		// The week's notes by date, same-day ones in the order written.
+		require.Equal(t, []string{"2026-10-20 病", "2026-10-20 好了一点", "2026-10-24 旅行 到 2026-10-27"}, notes(this))
+
 		last := response.Weeks[1]
 		require.Equal(t, "2026-10-12", last.WeekStart)
+		require.Equal(t, []string{"2026-10-15 病"}, notes(last))
 		require.False(t, last.ContainsDate)
 		require.Zero(t, last.DaysLeft)
 		require.Equal(t, "2026-10-01", last.Plan.EffectiveDate)
@@ -209,8 +234,11 @@ func TestWeekProgress(t *testing.T) {
 		require.Equal(t, "2026-10-21", this.Plan.EffectiveDate)
 		require.Equal(t, int32(1), this.Habits[0].CheckInCount)
 
+		require.Equal(t, []string{"2026-10-20 病", "2026-10-20 好了一点", "2026-10-24 旅行 到 2026-10-27"}, notes(this))
+
 		last := response.Weeks[1]
 		require.Equal(t, "2026-10-11", last.WeekStart)
+		require.Equal(t, []string{"2026-10-15 病"}, notes(last))
 		require.Equal(t, "2026-10-17", last.WeekEnd)
 		require.Equal(t, int32(2), last.Habits[0].CheckInCount)
 
@@ -218,6 +246,7 @@ func TestWeekProgress(t *testing.T) {
 		setWeekStart(6)
 		this = progress("2026-10-24", 1).Weeks[0]
 		require.Equal(t, "2026-10-24", this.WeekStart)
+		require.Equal(t, []string{"2026-10-24 旅行 到 2026-10-27", "2026-10-26 回来了"}, notes(this))
 		require.Equal(t, "2026-10-30", this.WeekEnd)
 		require.Equal(t, int32(7), this.DaysLeft)
 		require.Empty(t, this.Plan.Replaced)

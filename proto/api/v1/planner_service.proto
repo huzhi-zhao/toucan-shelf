@@ -90,8 +90,8 @@ service PlannerService {
   // effect on its last day, and a habit's count includes check-ins made by
   // completing habit todos, as the app's "2/3" does.
   //
-  // It reports facts only: what was planned and what was checked in. Whether a
-  // week passed is for the caller to judge.
+  // It reports facts only: what was planned, what was checked in, and the
+  // week's notes. Whether a week passed is for the caller to judge.
   rpc GetWeekProgress(GetWeekProgressRequest) returns (GetWeekProgressResponse) {
     option (google.api.http) = {get: "/api/v1/planner/weekProgress"};
   }
@@ -631,6 +631,9 @@ message WeekProgress {
 
   // The week's habit todos, by date.
   repeated WeekHabitTodo habit_todos = 7;
+
+  // The week's notes, by date.
+  repeated WeekNote notes = 8;
 }
 
 // WeekPlan is a habit plan (a habit version). Plans have no names: the app
@@ -691,6 +694,14 @@ message WeekCheckIn {
   // The todo whose completion made the check-in, or empty for one checked in
   // by hand. Format: planner/todos/{todo}
   string todo = 3;
+}
+
+// WeekNote is a note written on a day of the week, e.g. that one was ill or away.
+message WeekNote {
+  // Format: YYYY-MM-DD.
+  string date = 1;
+
+  string content = 2;
 }
 
 message WeekHabitTodo {

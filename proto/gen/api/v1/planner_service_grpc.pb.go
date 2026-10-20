@@ -90,8 +90,8 @@ type PlannerServiceClient interface {
 	// effect on its last day, and a habit's count includes check-ins made by
 	// completing habit todos, as the app's "2/3" does.
 	//
-	// It reports facts only: what was planned and what was checked in. Whether a
-	// week passed is for the caller to judge.
+	// It reports facts only: what was planned, what was checked in, and the
+	// week's notes. Whether a week passed is for the caller to judge.
 	GetWeekProgress(ctx context.Context, in *GetWeekProgressRequest, opts ...grpc.CallOption) (*GetWeekProgressResponse, error)
 	// ListOpenTodos returns every active todo, dated or not, ordered by date with
 	// undated ones last.
@@ -428,8 +428,8 @@ type PlannerServiceServer interface {
 	// effect on its last day, and a habit's count includes check-ins made by
 	// completing habit todos, as the app's "2/3" does.
 	//
-	// It reports facts only: what was planned and what was checked in. Whether a
-	// week passed is for the caller to judge.
+	// It reports facts only: what was planned, what was checked in, and the
+	// week's notes. Whether a week passed is for the caller to judge.
 	GetWeekProgress(context.Context, *GetWeekProgressRequest) (*GetWeekProgressResponse, error)
 	// ListOpenTodos returns every active todo, dated or not, ordered by date with
 	// undated ones last.
