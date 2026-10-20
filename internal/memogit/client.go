@@ -20,9 +20,11 @@ import (
 // Client wraps the memos Connect API clients with PAT auth and exposes the
 // subset of operations memogit needs.
 type Client struct {
-	memo      apiv1connect.MemoServiceClient
-	auth      apiv1connect.AuthServiceClient
-	workspace apiv1connect.WorkspaceServiceClient
+	memo       apiv1connect.MemoServiceClient
+	auth       apiv1connect.AuthServiceClient
+	workspace  apiv1connect.WorkspaceServiceClient
+	attachment apiv1connect.AttachmentServiceClient
+	instance   apiv1connect.InstanceServiceClient
 
 	// baseURL and token back the raw HTTP calls (attachment download) that go
 	// through the /file/ route rather than the Connect API.
@@ -61,12 +63,14 @@ func NewClient(cfg *Config) *Client {
 	baseURL := strings.TrimRight(cfg.Server, "/")
 	opts := connect.WithInterceptors(patInterceptor{token: cfg.Token})
 	return &Client{
-		memo:      apiv1connect.NewMemoServiceClient(httpClient, baseURL, opts),
-		auth:      apiv1connect.NewAuthServiceClient(httpClient, baseURL, opts),
-		workspace: apiv1connect.NewWorkspaceServiceClient(httpClient, baseURL, opts),
-		baseURL:   baseURL,
-		token:     cfg.Token,
-		http:      httpClient,
+		memo:       apiv1connect.NewMemoServiceClient(httpClient, baseURL, opts),
+		auth:       apiv1connect.NewAuthServiceClient(httpClient, baseURL, opts),
+		workspace:  apiv1connect.NewWorkspaceServiceClient(httpClient, baseURL, opts),
+		attachment: apiv1connect.NewAttachmentServiceClient(httpClient, baseURL, opts),
+		instance:   apiv1connect.NewInstanceServiceClient(httpClient, baseURL, opts),
+		baseURL:    baseURL,
+		token:      cfg.Token,
+		http:       httpClient,
 	}
 }
 
@@ -302,6 +306,42 @@ func (c *Client) ArchiveMemo(ctx context.Context, uid string) error {
 		return fmt.Errorf("archive memo %s: %w", uid, err)
 	}
 	return nil
+}
+
+// AddMemoAttachment uploads one file and links it to an existing memo as a
+// mounted attachment, in a single CreateAttachment call. Naming the memo makes
+// the server check write access and attach it alongside whatever the memo
+// already has: this is append-only by construction.
+//
+// It is deliberately the only attachment write memogit has. SetMemoAttachments
+// replaces the whole set (an omission is a deletion), and delete/unlink/update
+// are exactly what agents must leave to the user in the app — see
+// docs/dev/requirements/collaboration/agent-attachment-upload.md §3.
+func (c *Client) AddMemoAttachment(ctx context.Context, memoName, filename, mimeType string, content []byte) (*v1pb.Attachment, error) {
+	att := &v1pb.Attachment{
+		Filename: filename,
+		Type:     mimeType,
+		Content:  content,
+		Memo:     &memoName,
+		Origin:   v1pb.AttachmentOrigin_MOUNTED,
+	}
+	resp, err := c.attachment.CreateAttachment(ctx, connect.NewRequest(&v1pb.CreateAttachmentRequest{Attachment: att}))
+	if err != nil {
+		return nil, fmt.Errorf("upload %s: %w", filename, err)
+	}
+	return resp.Msg, nil
+}
+
+// UploadSizeLimit returns the instance's configured upload limit in bytes, or 0
+// when it cannot be read. The storage setting carries credentials, so the
+// server shows it to admins only; everyone else gets 0 and leaves the check to
+// the server.
+func (c *Client) UploadSizeLimit(ctx context.Context) int64 {
+	resp, err := c.instance.GetInstanceSetting(ctx, connect.NewRequest(&v1pb.GetInstanceSettingRequest{Name: "instance/settings/STORAGE"}))
+	if err != nil {
+		return 0
+	}
+	return resp.Msg.GetStorageSetting().GetUploadSizeLimitMb() << 20
 }
 
 // errorBodySuffix reads an error response body and renders it as a short

@@ -1,6 +1,6 @@
 ---
 name: toucanshelf
-description: 在 ToucanShelf 知识库中读取、编辑、移动、创作文档时使用（memogit 检出的本地目录，或通过 MCP 在线协同）。ToucanShelf 是 memos 的 fork，一条 memo = 一篇文档，带有一批标准 Markdown 渲染器不认识的定制语法（frontmatter 属性、callout、kanban/grid/calendar 交互块、toucan-secret 密文块、.view.json 画廊视图）和一套同步契约（memogit-id 身份标记、删除即归档、附件只读）。踩到它们会静默丢数据或制造假冲突。
+description: 在 ToucanShelf 知识库中读取、编辑、移动、创作文档时使用（memogit 检出的本地目录，或通过 MCP 在线协同）。ToucanShelf 是 memos 的 fork，一条 memo = 一篇文档，带有一批标准 Markdown 渲染器不认识的定制语法（frontmatter 属性、callout、kanban/grid/calendar 交互块、toucan-secret 密文块、.view.json 画廊视图）和一套同步契约（memogit-id 身份标记、删除即归档、附件只读、加附件须经用户同意）。踩到它们会静默丢数据或制造假冲突。
 ---
 
 # ToucanShelf 操作手册（核心）
@@ -68,8 +68,10 @@ d=$PWD; while [ "$d" != / ] && [ ! -d "$d/.memogit" ]; do d=$(dirname "$d"); don
 4. **【两者】别改写内联附件引用 `![](...)`**，即使看起来"链接坏了"。那个引用本来就是对的，
    改了只会真的弄坏它；在 memogit 下还会被误判成本地编辑，制造假冲突。
    要读它指向的字节，memogit 下去 `_attachments/`，MCP 下用 `attachment_get_download_url`。
-5. **【仅 memogit】附件只读。** `_attachments/**` 下的字节可以**读**（这正是它们被下载下来的原因），
-   但绝不编辑、不删除、不移动、不上传。一篇文档挂了哪些附件、落在哪，
+5. **【仅 memogit】附件只读，只能经用户同意追加。** `_attachments/**` 下的字节可以**读**（这正是它们被下载下来的原因），
+   但绝不编辑、不删除、不移动。要**给文档加附件**只能用 `memogit attach`：先预演，把清单原样给用户看，
+   用户在对话里明确同意后才带 `--confirm` 上传；删除、替换、改名一律引导用户去 app 里做。
+   一篇文档挂了哪些附件、落在哪，
    看文件末尾的 `memogit-attachments` 注释块（和 `memogit-id` 一样是本地标记，别动它）；
    **判断该读哪个、以及必须汇报你没读哪些**，详见 `references/attachments.md`。
    （MCP 通道下没有这个目录，也没有附件清单：由用户点名某个附件，你用
@@ -94,6 +96,7 @@ d=$PWD; while [ "$d" != / ] && [ ! -d "$d/.memogit" ]; do d=$(dirname "$d"); don
 | 仅 memogit | 文件路径/文件名 | ✅ | = 移动/重命名文档，直接 `mv`；**仅限同一知识库内**，跨库走 MCP 的 `workspace` 字段 |
 | 仅 memogit | `*.pdf.md` | ❌ | 生成的引用桩，push 会忽略 |
 | 仅 memogit | `_attachments/**` | ❌ 只读 | 可以阅读内容，不能编辑/删除；push 从不上传附件 |
+| 仅 memogit | 给文档加附件 | ⚠️ 须经同意 | 只能 `memogit attach` 追加，用户同意预演清单后才 `--confirm`；删除/替换/改名去 app，见 `references/attachments.md` §4 |
 | 仅 memogit | 末尾 `memogit-id` 行 | ❌ | 见铁律 1 |
 | 仅 memogit | 末尾 `memogit-attachments` 块 | ❌ 只读 | 本文档附件的本地路径清单，用它找附件；本地生成物，改了不同步 |
 | 仅 memogit | `.memogit/**` | ❌ | 同步状态账本，不要手改 |
@@ -146,7 +149,7 @@ d=$PWD; while [ "$d" != / ] && [ ! -d "$d/.memogit" ]; do d=$(dirname "$d"); don
 | 两者 | frontmatter（可写）、装饰语法（callout / 着色 / 计数器，只读不写）、标题锚点、批注机制、`toucan-secret` 密文块、内联媒体 | `references/markdown-syntax.md` |
 | 两者 | 文档之间的引用：四种路径形式（库根相对 / 文档相对 / 跨库库限定 / UID）、`[]()` 与 `![[]]` 的边界、移动时的自动固化 | `references/document-links.md` |
 | 两者 | ` ```kanban ` / ` ```grid ` / ` ```calendar ` 三种交互块，以及画廊视图 | `references/blocks-and-views.md` |
-| 两者 | 附件工作原理、该不该读某个附件怎么判断、PDF/EPUB 的边界 | `references/attachments.md` |
+| 两者 | 附件工作原理、该不该读某个附件怎么判断、怎么经同意加附件、PDF/EPUB 的边界 | `references/attachments.md` |
 | 仅 memogit | `memogit status/pull/push`、冲突 `.remote`、检出布局、排障 | `references/memogit.md` |
 | 仅 MCP | MCP 工具集、寻址方式、全量覆写语义、并发风险 | `references/mcp.md` |
 

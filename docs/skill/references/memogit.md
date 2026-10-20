@@ -108,6 +108,7 @@ garden/notes/todo.subdocs/补充说明.md    ← 它的子文档
 | `memogit status [库名]` | **只读**。列出待 push 的本地改动、待 pull 的远端改动、冲突，外加本地 git 工作区的未提交条目数 |
 | `memogit pull [库名]` | 拉下服务器变更，与本地对账，做一次 git commit，并下载新增/变化的附件 |
 | `memogit push [库名]` | 推送本地改动；**`--dry-run` 只打印计划不发送** |
+| `memogit attach <文档> <文件>...` | 给一篇文档**追加**附件。不带 `--confirm` 只预演；**用户同意清单后**才带 `--confirm` 上传，见 `attachments.md` §4 |
 | `memogit clone [库名]` | 首次检出某 workspace（本地一般已 clone 好） |
 | `memogit workspaces`（别名 `ws`） | 列出账号下的知识库及本地检出状态 |
 | `memogit agents` | 只重写代理简报文件，不联网 |
@@ -129,7 +130,7 @@ garden/notes/todo.subdocs/补充说明.md    ← 它的子文档
 | **两边都改** | **冲突**（`⚠`）——保留你的文件，服务器版写到 `<path>.remote` 待合并 |
 | 按目录检出时，新建/移动到列出的目录之外 | 跳过（`!`），说明原因；文件留在本地，什么都不发 |
 | 本地删了跟踪文件 | **归档**该 memo（`-`，软删除，可恢复，绝不硬删） |
-| PDF 桩 & 下载的附件 | 忽略（生成物 / 只读下载） |
+| PDF 桩 & 下载的附件 | 忽略（生成物 / 只读下载）。加附件只走 `memogit attach` |
 | `AGENTS.md` / `CLAUDE.md` | 跳过——**除非**该路径本来就是一篇已跟踪的文档（老知识库里可能真有一篇叫 AGENTS 的文档，那篇照常同步） |
 
 覆盖前 push 会**重读服务器副本**，若它自上次同步后也变了，该文件转为冲突，
@@ -174,7 +175,8 @@ memos 是 REST 不是 git remote，`git fetch` 拿不出 "theirs"，所以 memog
 
 ## 6. 已知限制
 
-- **附件上传未实现**（下载是单向的）。需要加/换附件请让用户在 app 里做。
+- **附件只能追加**：`memogit attach` 只把文件挂在附件区（mounted），不改正文，不支持 PDF 文档；
+  删除、替换、改名附件没有实现，也不会实现，请用户在 app 里做。
 - **关系写回未实现**（v1 只读导出）。
 - **只同步你自己的文档——但管理员例外**：普通用户的 clone/pull 只抓 `creator == 你`，
   别人共享的 PROTECTED / PUBLIC 文档不会进本地库，也 push 不回去。**管理员账号的 token
