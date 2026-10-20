@@ -50,6 +50,7 @@ Typical session:
   ... edit files ...
   memogit status             # what is out of sync
   memogit push               # send local edits back
+  memogit attach doc.md a.pdf  # add an attachment (preview; --confirm uploads)
   memogit rm "My KB"         # stop tracking it locally (the server is untouched)
 
 Files are the only carrier of content; everything else (doc type, visibility,
@@ -64,7 +65,7 @@ the end of each document -- never delete, edit, or hand-write it.`,
 	root.PersistentPostRun = func(cmd *cobra.Command, _ []string) {
 		noteVersionMismatch(cmd, cmd.ErrOrStderr())
 	}
-	root.AddCommand(loginCmd(), cloneCmd(), workspacesCmd(), pullCmd(), pushCmd(), statusCmd(), rmCmd(), agentsCmd(), selfUpdateCmd(), syncCmd(), hookCmd())
+	root.AddCommand(loginCmd(), cloneCmd(), workspacesCmd(), pullCmd(), pushCmd(), statusCmd(), attachCmd(), rmCmd(), agentsCmd(), selfUpdateCmd(), syncCmd(), hookCmd())
 	return root
 }
 
@@ -329,7 +330,7 @@ func pushCmd() *cobra.Command {
 	var dryRun bool
 	cmd := &cobra.Command{
 		Use:   "push [workspace-title]",
-		Short: "Sync local edits back to the server (create/update/archive); attachments are download-only",
+		Short: "Sync local edits back to the server (create/update/archive); never sends attachments (see `memogit attach`)",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			root, cfg, targets, err := selectWorkspaces(args)
@@ -347,6 +348,51 @@ func pushCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "print the push plan without sending changes")
+	return cmd
+}
+
+// attachCmd appends local files to a document. It is the only way memogit
+// uploads attachments, and it only ever adds.
+func attachCmd() *cobra.Command {
+	var confirm bool
+	cmd := &cobra.Command{
+		Use:   "attach <document> <file>...",
+		Short: "Add local files to a document as attachments (preview first; --confirm uploads)",
+		Long: `Add local files to a document as attachments.
+
+Without --confirm this is a preview: it checks every file, prints what would be
+attached and exits with an error, uploading nothing. An AI agent must show that
+list to the user and get their agreement before re-running with --confirm.
+
+Attachments are only ever added. memogit has no way to delete, replace or rename
+one: a file whose name is already attached to the document is refused, and
+those changes are made in the app. Files land in the document's attachment
+area (mounted); the document's text is not changed.
+
+The document must already exist on the server (push a new document first).
+PDF documents are not supported.`,
+		Args: cobra.MinimumNArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cwd, err := os.Getwd()
+			if err != nil {
+				return err
+			}
+			root, err := memogit.FindRoot(cwd)
+			if err != nil {
+				return err
+			}
+			cfg, err := memogit.LoadConfig(root)
+			if err != nil {
+				return err
+			}
+			if err := memogit.Migrate(root, cfg); err != nil {
+				return err
+			}
+			_, err = memogit.Attach(cmd.Context(), root, cfg, args[0], args[1:], confirm, cmd.OutOrStdout())
+			return err
+		},
+	}
+	cmd.Flags().BoolVar(&confirm, "confirm", false, "upload for real (only after the user agreed to the previewed list)")
 	return cmd
 }
 

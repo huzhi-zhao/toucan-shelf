@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"sort"
 
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
@@ -24,6 +26,9 @@ type StatusResult struct {
 	RemoteDeleted []string
 	// Changed on both sides (a push/pull will report a conflict).
 	Conflicts []string
+	// AttachmentsTouched lists downloaded attachment files changed or deleted in
+	// the work tree. Such changes never sync — attachments are changed in the app.
+	AttachmentsTouched []string
 	// Uncommitted git working-tree entries.
 	GitDirty int
 }
@@ -130,8 +135,38 @@ func Status(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, 
 		}
 	}
 
+	if !ws.NoAttachments {
+		res.AttachmentsTouched = touchedAttachments(cfg, contentRoot, state)
+	}
+
 	printStatus(out, ws, res)
 	return res, nil
+}
+
+// touchedAttachments reports downloaded attachments whose local bytes are gone
+// or no longer the size the server reported. Size is the change signal pull
+// itself relies on, so a same-size edit goes unnoticed here too. Nothing a user
+// does under _attachments/ reaches the server: deleting, replacing or renaming
+// an attachment is done in the app, which each line links to.
+func touchedAttachments(cfg *Config, contentRoot string, state *State) []string {
+	var out []string
+	for _, uid := range sortedUIDs(state) {
+		for _, r := range state.Memos[uid].Attachments {
+			change := ""
+			fi, err := os.Stat(filepath.Join(contentRoot, r.Path))
+			switch {
+			case os.IsNotExist(err):
+				change = "deleted"
+			case err == nil && fi.Size() != r.Size:
+				change = "modified"
+			default:
+				continue
+			}
+			out = append(out, fmt.Sprintf("%s %s locally — not synced; change it in the app: %s",
+				filepath.ToSlash(r.Path), change, appLink(cfg, uid)))
+		}
+	}
+	return out
 }
 
 // serverPath returns the local relative path a server memo (identified by uid)
@@ -187,6 +222,8 @@ func printStatus(out io.Writer, ws *WorkspaceConfig, res *StatusResult) {
 		line{"~", res.RemoteUpdated}, line{"+", res.RemoteNew}, line{"-", res.RemoteDeleted})
 	group("Conflicts (changed on both sides — resolve manually):",
 		line{"⚠", res.Conflicts})
+	group("Attachments changed locally (push never sends these):",
+		line{"!", res.AttachmentsTouched})
 
 	nLocal := len(res.LocalModified) + len(res.LocalNew) + len(res.LocalDeleted) + len(res.LocalMoved)
 	nRemote := len(res.RemoteUpdated) + len(res.RemoteNew) + len(res.RemoteDeleted)
@@ -202,5 +239,6 @@ func printStatus(out io.Writer, ws *WorkspaceConfig, res *StatusResult) {
 // checkout, not of one knowledge base.
 func (r *StatusResult) Quiet() bool {
 	return len(r.LocalModified)+len(r.LocalNew)+len(r.LocalDeleted)+len(r.LocalMoved)+
-		len(r.RemoteUpdated)+len(r.RemoteNew)+len(r.RemoteDeleted)+len(r.Conflicts) == 0
+		len(r.RemoteUpdated)+len(r.RemoteNew)+len(r.RemoteDeleted)+len(r.Conflicts)+
+		len(r.AttachmentsTouched) == 0
 }

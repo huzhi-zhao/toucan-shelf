@@ -163,9 +163,10 @@ unsupported type。
 
 ## 4. 明确不做
 
-- **附件写入/上传。** `push` 永远不上传附件，目前靠遍历时 `SkipDir` 整个 `_attachments`
-  保证（[push.go:539](../../../../internal/memogit/push.go)）。用户要加/换/删附件，
-  让他在 app 里做。
+- **附件写入/上传。** `push` 永远不上传附件，靠遍历时 `SkipDir` 整个 `_attachments`
+  保证（[push.go:616](../../../../internal/memogit/push.go)）。后来只放开了一个角：
+  memogit 可以经用户同意**追加**附件，走独立的 `memogit attach` 命令，不走 push，
+  见 [`agent-attachment-upload.md`](agent-attachment-upload.md)。替换和删除仍然让用户在 app 里做。
 - **MCP 附件枚举工具。** 发现附件是用户的事（§1）。加了只会撑大常驻上下文。
 - **MCP resources 原语。** 概念上更正统，但客户端支持面比 tools 窄得多，
   且解决不了体积和格式这两个真问题。
