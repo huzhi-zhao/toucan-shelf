@@ -98,6 +98,7 @@ export default function PlannerPage() {
   const groups = groupOpenTodos(listedTodos, today);
   const notesOfDay = (entries?.notes ?? []).filter((note) => note.date === selectedDate);
   const activeHabits = habits.filter((habit) => !habit.archived);
+  const habitTitles = new Map(habits.map((habit) => [habit.name, habit.title]));
 
   // Sheets.
   const [addKind, setAddKind] = useState<AddKind>();
@@ -299,7 +300,14 @@ export default function PlannerPage() {
       ) : (
         <List strongIos insetIos dividersIos className="!my-0">
           {todosOfDay.map((todo) => (
-            <TodoRow key={todo.name} todo={todo} today={today} onToggle={toggleTodo} onOpen={openTodo} />
+            <TodoRow
+              key={todo.name}
+              todo={todo}
+              today={today}
+              habitTitle={habitTitles.get(todo.habit)}
+              onToggle={toggleTodo}
+              onOpen={openTodo}
+            />
           ))}
           {notesOfDay.map((note) => (
             <ListItem
@@ -307,7 +315,7 @@ export default function PlannerPage() {
               link={editable}
               chevron={false}
               title={<span className="whitespace-pre-wrap text-[15px]">{note.content}</span>}
-              media={<span className="w-[22px] text-center text-black/35 dark:text-white/35">·</span>}
+              media={<span className="w-[22px] text-center text-[15px] leading-none">📋</span>}
               onClick={() => {
                 if (!editable) return;
                 setDraft(note.content);
@@ -338,7 +346,15 @@ export default function PlannerPage() {
               </div>
               <List strongIos insetIos dividersIos className="!my-0">
                 {section.todos.map((todo) => (
-                  <TodoRow key={todo.name} todo={todo} today={today} showDate onToggle={toggleTodo} onOpen={openTodo} />
+                  <TodoRow
+                    key={todo.name}
+                    todo={todo}
+                    today={today}
+                    showDate
+                    habitTitle={habitTitles.get(todo.habit)}
+                    onToggle={toggleTodo}
+                    onOpen={openTodo}
+                  />
                 ))}
               </List>
             </div>

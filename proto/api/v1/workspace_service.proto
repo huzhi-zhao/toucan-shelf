@@ -173,6 +173,11 @@ message Workspace {
   // Whether the workspace is hidden (a soft delete). Hidden workspaces are left
   // out of list responses unless show_hidden is set, but stay readable by name.
   bool hidden = 12;
+
+  // Output only. When a document in the workspace was last changed, leaving out
+  // the trash. Unset when it has none. Unlike update_time, which tracks the
+  // workspace's own settings.
+  google.protobuf.Timestamp last_edit_time = 13 [(google.api.field_behavior) = OUTPUT_ONLY];
 }
 
 message WorkspaceFolder {

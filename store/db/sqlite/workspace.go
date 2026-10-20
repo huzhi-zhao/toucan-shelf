@@ -57,7 +57,8 @@ func (d *DB) ListWorkspaces(ctx context.Context, find *store.FindWorkspace) ([]*
 	// placed on the shelf by hand fall in behind the ones that carry an explicit
 	// order, and tie-break among themselves by creation time.
 	rows, err := d.db.QueryContext(ctx, `
-		SELECT id, uid, creator_id, title, created_ts, updated_ts, sort_field, sort_order, cover_color, cover_image, folders_first, storage_slug, display_order, hidden
+		SELECT id, uid, creator_id, title, created_ts, updated_ts, sort_field, sort_order, cover_color, cover_image, folders_first, storage_slug, display_order, hidden,
+			(SELECT COALESCE(MAX(memo.updated_ts), 0) FROM memo WHERE memo.workspace_id = workspace.id AND memo.row_status = 'NORMAL')
 		FROM workspace
 		WHERE `+strings.Join(where, " AND ")+` ORDER BY (CASE WHEN display_order = 0 THEN 1 ELSE 0 END) ASC, display_order ASC, created_ts ASC`,
 		args...,
@@ -70,7 +71,10 @@ func (d *DB) ListWorkspaces(ctx context.Context, find *store.FindWorkspace) ([]*
 	var list []*store.Workspace
 	for rows.Next() {
 		w := &store.Workspace{}
-		if err := rows.Scan(&w.ID, &w.UID, &w.CreatorID, &w.Title, &w.CreatedTs, &w.UpdatedTs, &w.SortField, &w.SortOrder, &w.CoverColor, &w.CoverImage, &w.FoldersFirst, &w.StorageSlug, &w.DisplayOrder, &w.Hidden); err != nil {
+		if err := rows.Scan(
+			&w.ID, &w.UID, &w.CreatorID, &w.Title, &w.CreatedTs, &w.UpdatedTs, &w.SortField, &w.SortOrder, &w.CoverColor, &w.CoverImage,
+			&w.FoldersFirst, &w.StorageSlug, &w.DisplayOrder, &w.Hidden, &w.LastMemoUpdatedTs,
+		); err != nil {
 			return nil, err
 		}
 		list = append(list, w)

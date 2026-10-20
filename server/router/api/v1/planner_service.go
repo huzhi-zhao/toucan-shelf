@@ -152,7 +152,8 @@ func firstMemo(memos []string) string {
 	return memos[0]
 }
 
-func plannerTimestamp(ts int64) *timestamppb.Timestamp {
+// optionalTimestamp converts Unix seconds, leaving 0 (never, or unknown) unset.
+func optionalTimestamp(ts int64) *timestamppb.Timestamp {
 	if ts == 0 {
 		return nil
 	}
@@ -165,8 +166,8 @@ func convertHabitFromStore(h *store.PlannerHabit) *v1pb.Habit {
 		Title:      h.Name,
 		Position:   h.Position,
 		Archived:   h.Archived,
-		CreateTime: plannerTimestamp(h.CreatedTs),
-		UpdateTime: plannerTimestamp(h.UpdatedTs),
+		CreateTime: optionalTimestamp(h.CreatedTs),
+		UpdateTime: optionalTimestamp(h.UpdatedTs),
 	}
 }
 
@@ -192,7 +193,7 @@ func convertTodoFromStore(t *store.PlannerTodo) *v1pb.Todo {
 		Date:          t.Date,
 		Status:        todoStatusFromStore(t.Status),
 		ClosedOverdue: t.ClosedOverdue,
-		CloseTime:     plannerTimestamp(t.ClosedTs),
+		CloseTime:     optionalTimestamp(t.ClosedTs),
 		CancelReason:  t.CancelReason,
 		Important:     t.Important,
 		Tag:           t.Tag,
@@ -204,8 +205,8 @@ func convertTodoFromStore(t *store.PlannerTodo) *v1pb.Todo {
 		PostponeCount: t.PostponeCount,
 		Habit:         plannerName(habitNamePrefix, t.HabitUID),
 		CheckInDate:   t.CheckInDate,
-		CreateTime:    plannerTimestamp(t.CreatedTs),
-		UpdateTime:    plannerTimestamp(t.UpdatedTs),
+		CreateTime:    optionalTimestamp(t.CreatedTs),
+		UpdateTime:    optionalTimestamp(t.UpdatedTs),
 	}
 }
 
@@ -231,8 +232,8 @@ func convertPlannerNoteFromStore(n *store.PlannerNote) *v1pb.PlannerNote {
 		Name:       plannerNoteNamePrefix + n.UID,
 		Date:       n.Date,
 		Content:    n.Content,
-		CreateTime: plannerTimestamp(n.CreatedTs),
-		UpdateTime: plannerTimestamp(n.UpdatedTs),
+		CreateTime: optionalTimestamp(n.CreatedTs),
+		UpdateTime: optionalTimestamp(n.UpdatedTs),
 	}
 }
 
