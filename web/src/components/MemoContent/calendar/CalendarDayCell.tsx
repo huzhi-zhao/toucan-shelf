@@ -36,6 +36,8 @@ export const CalendarDayCell = ({ day, items, dayEvents, events, showTaskDot, sl
   const className = cn(
     "relative flex aspect-square flex-col justify-between gap-0.5 overflow-hidden rounded-xl border border-border/30 bg-muted/10 p-1 transition-colors",
     "md:justify-start md:gap-1 md:p-1.5",
+    // 宽屏下高度正好放下：日期一行、两行文字预览、一行图标（2 + 12 + 16 + 2 + 27 + 2 + 13），不随宽度拉成正方形留白
+    iconOf && "md:aspect-auto md:h-[74px] md:gap-0.5",
     isOutside && "border-border/15 bg-transparent opacity-50",
     isInteractive ? "cursor-pointer hover:bg-muted/40" : "cursor-default",
     // 选中态用实心外框强调；今天的框减半淡化，两者同时出现时也能区分开
@@ -53,21 +55,17 @@ export const CalendarDayCell = ({ day, items, dayEvents, events, showTaskDot, sl
       )}
       {/* 日期数字一行，右侧对齐当天有任务的方点（仅 showTaskDot: true 时显示） */}
       <div className="flex w-full items-center justify-between gap-1">
-        <span className={cn("shrink-0 text-xs font-medium md:text-sm", isOutside ? "text-muted-foreground/50" : "text-foreground")}>
+        <span
+          className={cn(
+            "shrink-0 text-xs font-medium md:text-sm",
+            iconOf && "md:leading-4",
+            isOutside ? "text-muted-foreground/50" : "text-foreground",
+          )}
+        >
           {day.label}
         </span>
-        {showTaskDot && hasTasks && <span className="h-1 w-1 shrink-0 bg-primary/70" aria-hidden="true" />}
+        {showTaskDot && hasTasks && <span className="h-1.5 w-1.5 shrink-0 bg-primary/70" aria-hidden="true" />}
       </div>
-      {/* 图标本身认得出是哪个 event，不必靠位置：只排打了卡的，不留空位；抵消格子内边距，整格宽三等分、各自居中 */}
-      {hasEvents && iconOf && (
-        <div className="-mx-1 mt-auto grid grid-cols-3 text-[11px] md:-mx-1.5 leading-[13px]" aria-hidden="true">
-          {dayEvents.map((name) => (
-            <span key={name} className="text-center" title={isOutside ? undefined : eventTitle(name)}>
-              {iconOf(name)}
-            </span>
-          ))}
-        </div>
-      )}
       {/* 移动端：events 圆点固定分布在 5 等分格中，按 events 定义顺序对号入座 */}
       {hasEvents && !iconOf && (
         <div className="mt-auto grid grid-cols-5 items-center md:hidden" aria-hidden="true">
@@ -79,13 +77,23 @@ export const CalendarDayCell = ({ day, items, dayEvents, events, showTaskDot, sl
         </div>
       )}
       {hasTasks && (
-        <div className="hidden md:flex md:flex-col md:gap-0.5 md:overflow-hidden md:text-left">
+        <div className="hidden md:flex md:min-h-0 md:flex-col md:gap-0.5 md:overflow-hidden md:text-left">
           {previewItems.map((item, index) => (
             <span
               key={index}
               className={cn("truncate text-[10px] leading-tight", isOutside ? "text-muted-foreground/50" : "text-muted-foreground")}
             >
               {item.text}
+            </span>
+          ))}
+        </div>
+      )}
+      {/* 图标本身认得出是哪个 event，不必靠位置：只排打了卡的，不留空位；抵消格子内边距，整格宽三等分、各自居中；总在最底下，放在文字预览之后 */}
+      {hasEvents && iconOf && (
+        <div className="-mx-1 mt-auto grid shrink-0 grid-cols-3 text-[11px] leading-[13px] md:-mx-1.5" aria-hidden="true">
+          {dayEvents.map((name) => (
+            <span key={name} className="text-center" title={isOutside ? undefined : eventTitle(name)}>
+              {iconOf(name)}
             </span>
           ))}
         </div>

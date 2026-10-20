@@ -211,7 +211,9 @@ export function buildCalendarData(
     const title = titleOf.get(checkIn.habit);
     if (title) push(checkIn.date, { text: title, isEvent: true, comment: checkIn.note || undefined });
   }
+  // 习惯待办不进格子：做完就是一次打卡，已经画成图标了。待办排在备忘前面，格子里预览两行时先给待办。
   for (const todo of entries?.todos ?? []) {
+    if (todo.habit) continue;
     const marker = todoMarker(todo.status);
     push(todo.date, { text: todo.title, marker, checked: marker === "x" });
   }

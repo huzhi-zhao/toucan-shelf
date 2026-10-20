@@ -109,7 +109,7 @@ describe("todo lists", () => {
 });
 
 describe("calendar data", () => {
-  it("draws check-ins as event dots, todos as tasks and notes as plain items", () => {
+  it("draws check-ins as event dots, todos as tasks and notes as plain items, leaving habit todos out", () => {
     const habits = [
       create(HabitSchema, { name: "planner/habits/a", title: "冥想", color: 0 }),
       create(HabitSchema, { name: "planner/habits/b", title: "运动", color: 1 }),
@@ -117,7 +117,10 @@ describe("calendar data", () => {
     const versions = [version("", "planner/habits/a", "planner/habits/b")];
     const entries = create(ListPlannerEntriesResponseSchema, {
       checkIns: [create(CheckInSchema, { habit: "planner/habits/b", date: "2026-10-02", note: "走路" })],
-      todos: [todo("作业", "2026-10-02", Todo_Status.DONE)],
+      todos: [
+        todo("作业", "2026-10-02", Todo_Status.DONE),
+        create(TodoSchema, { name: "planner/todos/h", title: "运动 30 分钟", date: "2026-10-02", habit: "planner/habits/b" }),
+      ],
       notes: [create(PlannerNoteSchema, { name: "planner/notes/n", date: "2026-10-02", content: "记一笔" })],
     });
     const data = buildCalendarData(habits, versions, entries, { startDate: "2026-09-24", endDate: "2026-11-07" });
