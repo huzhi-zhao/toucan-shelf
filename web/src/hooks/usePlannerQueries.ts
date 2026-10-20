@@ -8,6 +8,8 @@ import {
   HabitVersionSchema,
   type ImportPlannerRequest,
   PlannerNoteSchema,
+  type PlannerSettings,
+  PlannerSettingsSchema,
   type Todo,
   TodoSchema,
 } from "@/types/proto/api/v1/planner_service_pb";
@@ -24,6 +26,7 @@ export const plannerKeys = {
   openTodos: () => [...plannerKeys.all, "openTodos"] as const,
   todo: (name?: string) => [...plannerKeys.all, "todo", name] as const,
   todoTags: () => [...plannerKeys.all, "todoTags"] as const,
+  settings: () => [...plannerKeys.all, "settings"] as const,
 };
 
 export function useHabits() {
@@ -82,6 +85,27 @@ function usePlannerMutation<TArgs, TResult>(mutationFn: (args: TArgs) => Promise
   return useMutation({
     mutationFn,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: plannerKeys.all }),
+  });
+}
+
+/** The planner settings kept on the server, shared by every device and API caller: today, the week start. */
+export function usePlannerSettings() {
+  return useQuery({ queryKey: plannerKeys.settings(), queryFn: () => plannerServiceClient.getPlannerSettings({}) });
+}
+
+/** Saves the week start (1 = Monday … 7 = Sunday, 0 to follow the instance), showing it at once. */
+export function useUpdatePlannerSettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (weekStartDay: number) =>
+      plannerServiceClient.updatePlannerSettings({ settings: create(PlannerSettingsSchema, { weekStartDay }) }),
+    onMutate: (weekStartDay) => {
+      const previous = queryClient.getQueryData<PlannerSettings>(plannerKeys.settings());
+      queryClient.setQueryData(plannerKeys.settings(), create(PlannerSettingsSchema, { weekStartDay }));
+      return { previous };
+    },
+    onError: (_error, _weekStartDay, context) => queryClient.setQueryData(plannerKeys.settings(), context?.previous),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: plannerKeys.settings() }),
   });
 }
 

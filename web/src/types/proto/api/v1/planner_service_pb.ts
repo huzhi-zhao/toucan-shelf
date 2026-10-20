@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file api/v1/planner_service.proto.
  */
 export const file_api_v1_planner_service: GenFile = /*@__PURE__*/
-  fileDesc("ChxhcGkvdjEvcGxhbm5lcl9zZXJ2aWNlLnByb3RvEgxtZW1vcy5hcGkudjEingIKBUhhYml0EhEKBG5hbWUYASABKAlCA+BBCBISCgV0aXRsZRgCIAEoCUID4EECEhUKCHBvc2l0aW9uGAMgASgFQgPgQQESFwoIYXJjaGl2ZWQYBCABKAhCBRgB4EEDEjQKC2NyZWF0ZV90aW1lGAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEjQKC3VwZGF0ZV90aW1lGAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEhIKBWNvbG9yGAcgASgFQgPgQQE6PupBOwoSbWVtb3MuYXBpLnYxL0hhYml0EhZwbGFubmVyL2hhYml0cy97aGFiaXR9KgZoYWJpdHMyBWhhYml0ItgBCgxIYWJpdFZlcnNpb24SFgoOZWZmZWN0aXZlX2RhdGUYASABKAkSMAoHZW50cmllcxgCIAMoCzIfLm1lbW9zLmFwaS52MS5IYWJpdFZlcnNpb25FbnRyeRISCgVtZW1vcxgFIAMoCUID4EEBEjQKC2NyZWF0ZV90aW1lGAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEjQKC3VwZGF0ZV90aW1lGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDIkEKEUhhYml0VmVyc2lvbkVudHJ5EhIKBWhhYml0GAEgASgJQgPgQQISGAoLd2Vla2x5X2dvYWwYAiABKAVCA+BBASJWCgdDaGVja0luEhIKBWhhYml0GAEgASgJQgPgQQISEQoEZGF0ZRgCIAEoCUID4EECEhEKBG5vdGUYAyABKAlCA+BBARIRCgR0b2RvGAQgASgJQgPgQQMirQUKBFRvZG8SEQoEbmFtZRgBIAEoCUID4EEIEhIKBXRpdGxlGAIgASgJQgPgQQISEQoEZGF0ZRgDIAEoCUID4EEBEi4KBnN0YXR1cxgEIAEoDjIZLm1lbW9zLmFwaS52MS5Ub2RvLlN0YXR1c0ID4EEBEhsKDmNsb3NlZF9vdmVyZHVlGAUgASgIQgPgQQMSMwoKY2xvc2VfdGltZRgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCA+BBAxIaCg1jYW5jZWxfcmVhc29uGAcgASgJQgPgQQESFgoJaW1wb3J0YW50GAggASgIQgPgQQESEAoDdGFnGAkgASgJQgPgQQESEQoEbm90ZRgKIAEoCUID4EEBEhMKBG1lbW8YCyABKAlCBRgB4EEBEhAKA3VybBgMIAEoCUID4EEBEjQKC2NyZWF0ZV90aW1lGA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEjQKC3VwZGF0ZV90aW1lGA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEhoKDW9yaWdpbmFsX2RhdGUYDyABKAlCA+BBAxIbCg5wb3N0cG9uZV9jb3VudBgQIAEoBUID4EEDEhIKBW1lbW9zGBEgAygJQgPgQQESEgoFaGFiaXQYEiABKAlCA+BBARIaCg1jaGVja19pbl9kYXRlGBMgASgJQgPgQQMiRQoGU3RhdHVzEhYKElNUQVRVU19VTlNQRUNJRklFRBAAEgoKBkFDVElWRRABEggKBERPTkUQAhINCglDQU5DRUxMRUQQAzo56kE2ChFtZW1vcy5hcGkudjEvVG9kbxIUcGxhbm5lci90b2Rvcy97dG9kb30qBXRvZG9zMgR0b2RvIoUCCgtQbGFubmVyTm90ZRIRCgRuYW1lGAEgASgJQgPgQQgSEQoEZGF0ZRgCIAEoCUID4EECEhQKB2NvbnRlbnQYAyABKAlCA+BBAhI0CgtjcmVhdGVfdGltZRgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCA+BBAxI0Cgt1cGRhdGVfdGltZRgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCA+BBAzpO6kFLChhtZW1vcy5hcGkudjEvUGxhbm5lck5vdGUSFHBsYW5uZXIvbm90ZXMve25vdGV9KgxwbGFubmVyTm90ZXMyC3BsYW5uZXJOb3RlIhMKEUxpc3RIYWJpdHNSZXF1ZXN0IhoKGExpc3RIYWJpdFZlcnNpb25zUmVxdWVzdCJ0ChlMaXN0SGFiaXRWZXJzaW9uc1Jlc3BvbnNlEiwKCHZlcnNpb25zGAEgAygLMhoubWVtb3MuYXBpLnYxLkhhYml0VmVyc2lvbhIpCgVkcmFmdBgCIAEoCzIaLm1lbW9zLmFwaS52MS5IYWJpdFZlcnNpb24iSQoXVXBkYXRlSGFiaXREcmFmdFJlcXVlc3QSLgoFZHJhZnQYASABKAsyGi5tZW1vcy5hcGkudjEuSGFiaXRWZXJzaW9uQgPgQQIiGQoXRGVsZXRlSGFiaXREcmFmdFJlcXVlc3QiTQoXRW5hYmxlSGFiaXREcmFmdFJlcXVlc3QSFwoKbG9jYWxfZGF0ZRgBIAEoCUID4EECEhkKDHVubGlua190b2RvcxgCIAEoCEID4EEBIjkKEkxpc3RIYWJpdHNSZXNwb25zZRIjCgZoYWJpdHMYASADKAsyEy5tZW1vcy5hcGkudjEuSGFiaXQiPQoSQ3JlYXRlSGFiaXRSZXF1ZXN0EicKBWhhYml0GAEgASgLMhMubWVtb3MuYXBpLnYxLkhhYml0QgPgQQIicwoSVXBkYXRlSGFiaXRSZXF1ZXN0EicKBWhhYml0GAEgASgLMhMubWVtb3MuYXBpLnYxLkhhYml0QgPgQQISNAoLdXBkYXRlX21hc2sYAiABKAsyGi5nb29nbGUucHJvdG9idWYuRmllbGRNYXNrQgPgQQIiSwoZTGlzdFBsYW5uZXJFbnRyaWVzUmVxdWVzdBIXCgpzdGFydF9kYXRlGAEgASgJQgPgQQISFQoIZW5kX2RhdGUYAiABKAlCA+BBAiKTAQoaTGlzdFBsYW5uZXJFbnRyaWVzUmVzcG9uc2USKAoJY2hlY2tfaW5zGAEgAygLMhUubWVtb3MuYXBpLnYxLkNoZWNrSW4SIQoFdG9kb3MYAiADKAsyEi5tZW1vcy5hcGkudjEuVG9kbxIoCgVub3RlcxgDIAMoCzIZLm1lbW9zLmFwaS52MS5QbGFubmVyTm90ZSIWChRMaXN0T3BlblRvZG9zUmVxdWVzdCI6ChVMaXN0T3BlblRvZG9zUmVzcG9uc2USIQoFdG9kb3MYASADKAsyEi5tZW1vcy5hcGkudjEuVG9kbyIVChNMaXN0VG9kb1RhZ3NSZXF1ZXN0IiQKFExpc3RUb2RvVGFnc1Jlc3BvbnNlEgwKBHRhZ3MYASADKAkiQQoRU2V0Q2hlY2tJblJlcXVlc3QSLAoIY2hlY2tfaW4YASABKAsyFS5tZW1vcy5hcGkudjEuQ2hlY2tJbkID4EECIj0KFERlbGV0ZUNoZWNrSW5SZXF1ZXN0EhIKBWhhYml0GAEgASgJQgPgQQISEQoEZGF0ZRgCIAEoCUID4EECIiMKDkdldFRvZG9SZXF1ZXN0EhEKBG5hbWUYASABKAlCA+BBAiJTChFDcmVhdGVUb2RvUmVxdWVzdBIlCgR0b2RvGAEgASgLMhIubWVtb3MuYXBpLnYxLlRvZG9CA+BBAhIXCgpsb2NhbF9kYXRlGAIgASgJQgPgQQEiiQEKEVVwZGF0ZVRvZG9SZXF1ZXN0EiUKBHRvZG8YASABKAsyEi5tZW1vcy5hcGkudjEuVG9kb0ID4EECEjQKC3VwZGF0ZV9tYXNrGAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLkZpZWxkTWFza0ID4EECEhcKCmxvY2FsX2RhdGUYAyABKAlCA+BBASJUChNQb3N0cG9uZVRvZG9SZXF1ZXN0EhEKBG5hbWUYASABKAlCA+BBAhIRCgRkYXRlGAIgASgJQgPgQQISFwoKbG9jYWxfZGF0ZRgDIAEoCUID4EECIiYKEURlbGV0ZVRvZG9SZXF1ZXN0EhEKBG5hbWUYASABKAlCA+BBAiJIChhDcmVhdGVQbGFubmVyTm90ZVJlcXVlc3QSLAoEbm90ZRgBIAEoCzIZLm1lbW9zLmFwaS52MS5QbGFubmVyTm90ZUID4EECIn4KGFVwZGF0ZVBsYW5uZXJOb3RlUmVxdWVzdBIsCgRub3RlGAEgASgLMhkubWVtb3MuYXBpLnYxLlBsYW5uZXJOb3RlQgPgQQISNAoLdXBkYXRlX21hc2sYAiABKAsyGi5nb29nbGUucHJvdG9idWYuRmllbGRNYXNrQgPgQQIiLQoYRGVsZXRlUGxhbm5lck5vdGVSZXF1ZXN0EhEKBG5hbWUYASABKAlCA+BBAiK+AQoUSW1wb3J0UGxhbm5lclJlcXVlc3QSIwoGaGFiaXRzGAEgAygLMhMubWVtb3MuYXBpLnYxLkhhYml0Ei4KCWNoZWNrX2lucxgCIAMoCzIbLm1lbW9zLmFwaS52MS5JbXBvcnRDaGVja0luEicKBXRvZG9zGAMgAygLMhgubWVtb3MuYXBpLnYxLkltcG9ydFRvZG8SKAoFbm90ZXMYBCADKAsyGS5tZW1vcy5hcGkudjEuUGxhbm5lck5vdGUiQAoNSW1wb3J0Q2hlY2tJbhITCgtoYWJpdF9pbmRleBgBIAEoBRIMCgRkYXRlGAIgASgJEgwKBG5vdGUYAyABKAkiRgoKSW1wb3J0VG9kbxIgCgR0b2RvGAEgASgLMhIubWVtb3MuYXBpLnYxLlRvZG8SFgoOY2xvc2VkX292ZXJkdWUYAiABKAgibAoVSW1wb3J0UGxhbm5lclJlc3BvbnNlEhMKC2hhYml0X2NvdW50GAEgASgFEhYKDmNoZWNrX2luX2NvdW50GAIgASgFEhIKCnRvZG9fY291bnQYAyABKAUSEgoKbm90ZV9jb3VudBgEIAEoBTKLFQoOUGxhbm5lclNlcnZpY2USbwoKTGlzdEhhYml0cxIfLm1lbW9zLmFwaS52MS5MaXN0SGFiaXRzUmVxdWVzdBogLm1lbW9zLmFwaS52MS5MaXN0SGFiaXRzUmVzcG9uc2UiHoLT5JMCGBIWL2FwaS92MS9wbGFubmVyL2hhYml0cxJzCgtDcmVhdGVIYWJpdBIgLm1lbW9zLmFwaS52MS5DcmVhdGVIYWJpdFJlcXVlc3QaEy5tZW1vcy5hcGkudjEuSGFiaXQiLdpBBWhhYml0gtPkkwIfOgVoYWJpdCIWL2FwaS92MS9wbGFubmVyL2hhYml0cxKOAQoLVXBkYXRlSGFiaXQSIC5tZW1vcy5hcGkudjEuVXBkYXRlSGFiaXRSZXF1ZXN0GhMubWVtb3MuYXBpLnYxLkhhYml0IkjaQRFoYWJpdCx1cGRhdGVfbWFza4LT5JMCLjoFaGFiaXQyJS9hcGkvdjEve2hhYml0Lm5hbWU9cGxhbm5lci9oYWJpdHMvKn0SiwEKEUxpc3RIYWJpdFZlcnNpb25zEiYubWVtb3MuYXBpLnYxLkxpc3RIYWJpdFZlcnNpb25zUmVxdWVzdBonLm1lbW9zLmFwaS52MS5MaXN0SGFiaXRWZXJzaW9uc1Jlc3BvbnNlIiWC0+STAh8SHS9hcGkvdjEvcGxhbm5lci9oYWJpdFZlcnNpb25zEoABChBVcGRhdGVIYWJpdERyYWZ0EiUubWVtb3MuYXBpLnYxLlVwZGF0ZUhhYml0RHJhZnRSZXF1ZXN0GhoubWVtb3MuYXBpLnYxLkhhYml0VmVyc2lvbiIpgtPkkwIjOgVkcmFmdDIaL2FwaS92MS9wbGFubmVyL2hhYml0RHJhZnQSdQoQRGVsZXRlSGFiaXREcmFmdBIlLm1lbW9zLmFwaS52MS5EZWxldGVIYWJpdERyYWZ0UmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eSIigtPkkwIcKhovYXBpL3YxL3BsYW5uZXIvaGFiaXREcmFmdBKDAQoQRW5hYmxlSGFiaXREcmFmdBIlLm1lbW9zLmFwaS52MS5FbmFibGVIYWJpdERyYWZ0UmVxdWVzdBoaLm1lbW9zLmFwaS52MS5IYWJpdFZlcnNpb24iLILT5JMCJjoBKiIhL2FwaS92MS9wbGFubmVyL2hhYml0RHJhZnQ6ZW5hYmxlEogBChJMaXN0UGxhbm5lckVudHJpZXMSJy5tZW1vcy5hcGkudjEuTGlzdFBsYW5uZXJFbnRyaWVzUmVxdWVzdBooLm1lbW9zLmFwaS52MS5MaXN0UGxhbm5lckVudHJpZXNSZXNwb25zZSIfgtPkkwIZEhcvYXBpL3YxL3BsYW5uZXIvZW50cmllcxJ7Cg1MaXN0T3BlblRvZG9zEiIubWVtb3MuYXBpLnYxLkxpc3RPcGVuVG9kb3NSZXF1ZXN0GiMubWVtb3MuYXBpLnYxLkxpc3RPcGVuVG9kb3NSZXNwb25zZSIhgtPkkwIbEhkvYXBpL3YxL3BsYW5uZXIvb3BlblRvZG9zEncKDExpc3RUb2RvVGFncxIhLm1lbW9zLmFwaS52MS5MaXN0VG9kb1RhZ3NSZXF1ZXN0GiIubWVtb3MuYXBpLnYxLkxpc3RUb2RvVGFnc1Jlc3BvbnNlIiCC0+STAhoSGC9hcGkvdjEvcGxhbm5lci90b2RvVGFncxJ7CgpTZXRDaGVja0luEh8ubWVtb3MuYXBpLnYxLlNldENoZWNrSW5SZXF1ZXN0GhUubWVtb3MuYXBpLnYxLkNoZWNrSW4iNdpBCGNoZWNrX2lugtPkkwIkOghjaGVja19pbiIYL2FwaS92MS9wbGFubmVyL2NoZWNrSW5zEm0KDURlbGV0ZUNoZWNrSW4SIi5tZW1vcy5hcGkudjEuRGVsZXRlQ2hlY2tJblJlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkiIILT5JMCGioYL2FwaS92MS9wbGFubmVyL2NoZWNrSW5zEmoKB0dldFRvZG8SHC5tZW1vcy5hcGkudjEuR2V0VG9kb1JlcXVlc3QaEi5tZW1vcy5hcGkudjEuVG9kbyIt2kEEbmFtZYLT5JMCIBIeL2FwaS92MS97bmFtZT1wbGFubmVyL3RvZG9zLyp9Em0KCkNyZWF0ZVRvZG8SHy5tZW1vcy5hcGkudjEuQ3JlYXRlVG9kb1JlcXVlc3QaEi5tZW1vcy5hcGkudjEuVG9kbyIq2kEEdG9kb4LT5JMCHToEdG9kbyIVL2FwaS92MS9wbGFubmVyL3RvZG9zEocBCgpVcGRhdGVUb2RvEh8ubWVtb3MuYXBpLnYxLlVwZGF0ZVRvZG9SZXF1ZXN0GhIubWVtb3MuYXBpLnYxLlRvZG8iRNpBEHRvZG8sdXBkYXRlX21hc2uC0+STAis6BHRvZG8yIy9hcGkvdjEve3RvZG8ubmFtZT1wbGFubmVyL3RvZG9zLyp9EoUBCgxQb3N0cG9uZVRvZG8SIS5tZW1vcy5hcGkudjEuUG9zdHBvbmVUb2RvUmVxdWVzdBoSLm1lbW9zLmFwaS52MS5Ub2RvIj7aQQluYW1lLGRhdGWC0+STAiw6ASoiJy9hcGkvdjEve25hbWU9cGxhbm5lci90b2Rvcy8qfTpwb3N0cG9uZRJ0CgpEZWxldGVUb2RvEh8ubWVtb3MuYXBpLnYxLkRlbGV0ZVRvZG9SZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5Ii3aQQRuYW1lgtPkkwIgKh4vYXBpL3YxL3tuYW1lPXBsYW5uZXIvdG9kb3MvKn0SggEKEUNyZWF0ZVBsYW5uZXJOb3RlEiYubWVtb3MuYXBpLnYxLkNyZWF0ZVBsYW5uZXJOb3RlUmVxdWVzdBoZLm1lbW9zLmFwaS52MS5QbGFubmVyTm90ZSIq2kEEbm90ZYLT5JMCHToEbm90ZSIVL2FwaS92MS9wbGFubmVyL25vdGVzEpwBChFVcGRhdGVQbGFubmVyTm90ZRImLm1lbW9zLmFwaS52MS5VcGRhdGVQbGFubmVyTm90ZVJlcXVlc3QaGS5tZW1vcy5hcGkudjEuUGxhbm5lck5vdGUiRNpBEG5vdGUsdXBkYXRlX21hc2uC0+STAis6BG5vdGUyIy9hcGkvdjEve25vdGUubmFtZT1wbGFubmVyL25vdGVzLyp9EoIBChFEZWxldGVQbGFubmVyTm90ZRImLm1lbW9zLmFwaS52MS5EZWxldGVQbGFubmVyTm90ZVJlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkiLdpBBG5hbWWC0+STAiAqHi9hcGkvdjEve25hbWU9cGxhbm5lci9ub3Rlcy8qfRJ7Cg1JbXBvcnRQbGFubmVyEiIubWVtb3MuYXBpLnYxLkltcG9ydFBsYW5uZXJSZXF1ZXN0GiMubWVtb3MuYXBpLnYxLkltcG9ydFBsYW5uZXJSZXNwb25zZSIhgtPkkwIbOgEqIhYvYXBpL3YxL3BsYW5uZXI6aW1wb3J0QqsBChBjb20ubWVtb3MuYXBpLnYxQhNQbGFubmVyU2VydmljZVByb3RvUAFaMGdpdGh1Yi5jb20vdXNlbWVtb3MvbWVtb3MvcHJvdG8vZ2VuL2FwaS92MTthcGl2MaICA01BWKoCDE1lbW9zLkFwaS5WMcoCDE1lbW9zXEFwaVxWMeICGE1lbW9zXEFwaVxWMVxHUEJNZXRhZGF0YeoCDk1lbW9zOjpBcGk6OlYxYgZwcm90bzM", [file_google_api_annotations, file_google_api_client, file_google_api_field_behavior, file_google_api_resource, file_google_protobuf_empty, file_google_protobuf_field_mask, file_google_protobuf_timestamp]);
+  fileDesc("ChxhcGkvdjEvcGxhbm5lcl9zZXJ2aWNlLnByb3RvEgxtZW1vcy5hcGkudjEingIKBUhhYml0EhEKBG5hbWUYASABKAlCA+BBCBISCgV0aXRsZRgCIAEoCUID4EECEhUKCHBvc2l0aW9uGAMgASgFQgPgQQESFwoIYXJjaGl2ZWQYBCABKAhCBRgB4EEDEjQKC2NyZWF0ZV90aW1lGAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEjQKC3VwZGF0ZV90aW1lGAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEhIKBWNvbG9yGAcgASgFQgPgQQE6PupBOwoSbWVtb3MuYXBpLnYxL0hhYml0EhZwbGFubmVyL2hhYml0cy97aGFiaXR9KgZoYWJpdHMyBWhhYml0ItgBCgxIYWJpdFZlcnNpb24SFgoOZWZmZWN0aXZlX2RhdGUYASABKAkSMAoHZW50cmllcxgCIAMoCzIfLm1lbW9zLmFwaS52MS5IYWJpdFZlcnNpb25FbnRyeRISCgVtZW1vcxgFIAMoCUID4EEBEjQKC2NyZWF0ZV90aW1lGAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEjQKC3VwZGF0ZV90aW1lGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDIkEKEUhhYml0VmVyc2lvbkVudHJ5EhIKBWhhYml0GAEgASgJQgPgQQISGAoLd2Vla2x5X2dvYWwYAiABKAVCA+BBASJWCgdDaGVja0luEhIKBWhhYml0GAEgASgJQgPgQQISEQoEZGF0ZRgCIAEoCUID4EECEhEKBG5vdGUYAyABKAlCA+BBARIRCgR0b2RvGAQgASgJQgPgQQMirQUKBFRvZG8SEQoEbmFtZRgBIAEoCUID4EEIEhIKBXRpdGxlGAIgASgJQgPgQQISEQoEZGF0ZRgDIAEoCUID4EEBEi4KBnN0YXR1cxgEIAEoDjIZLm1lbW9zLmFwaS52MS5Ub2RvLlN0YXR1c0ID4EEBEhsKDmNsb3NlZF9vdmVyZHVlGAUgASgIQgPgQQMSMwoKY2xvc2VfdGltZRgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCA+BBAxIaCg1jYW5jZWxfcmVhc29uGAcgASgJQgPgQQESFgoJaW1wb3J0YW50GAggASgIQgPgQQESEAoDdGFnGAkgASgJQgPgQQESEQoEbm90ZRgKIAEoCUID4EEBEhMKBG1lbW8YCyABKAlCBRgB4EEBEhAKA3VybBgMIAEoCUID4EEBEjQKC2NyZWF0ZV90aW1lGA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEjQKC3VwZGF0ZV90aW1lGA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEhoKDW9yaWdpbmFsX2RhdGUYDyABKAlCA+BBAxIbCg5wb3N0cG9uZV9jb3VudBgQIAEoBUID4EEDEhIKBW1lbW9zGBEgAygJQgPgQQESEgoFaGFiaXQYEiABKAlCA+BBARIaCg1jaGVja19pbl9kYXRlGBMgASgJQgPgQQMiRQoGU3RhdHVzEhYKElNUQVRVU19VTlNQRUNJRklFRBAAEgoKBkFDVElWRRABEggKBERPTkUQAhINCglDQU5DRUxMRUQQAzo56kE2ChFtZW1vcy5hcGkudjEvVG9kbxIUcGxhbm5lci90b2Rvcy97dG9kb30qBXRvZG9zMgR0b2RvIoUCCgtQbGFubmVyTm90ZRIRCgRuYW1lGAEgASgJQgPgQQgSEQoEZGF0ZRgCIAEoCUID4EECEhQKB2NvbnRlbnQYAyABKAlCA+BBAhI0CgtjcmVhdGVfdGltZRgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCA+BBAxI0Cgt1cGRhdGVfdGltZRgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCA+BBAzpO6kFLChhtZW1vcy5hcGkudjEvUGxhbm5lck5vdGUSFHBsYW5uZXIvbm90ZXMve25vdGV9KgxwbGFubmVyTm90ZXMyC3BsYW5uZXJOb3RlIhMKEUxpc3RIYWJpdHNSZXF1ZXN0IhoKGExpc3RIYWJpdFZlcnNpb25zUmVxdWVzdCJ0ChlMaXN0SGFiaXRWZXJzaW9uc1Jlc3BvbnNlEiwKCHZlcnNpb25zGAEgAygLMhoubWVtb3MuYXBpLnYxLkhhYml0VmVyc2lvbhIpCgVkcmFmdBgCIAEoCzIaLm1lbW9zLmFwaS52MS5IYWJpdFZlcnNpb24iSQoXVXBkYXRlSGFiaXREcmFmdFJlcXVlc3QSLgoFZHJhZnQYASABKAsyGi5tZW1vcy5hcGkudjEuSGFiaXRWZXJzaW9uQgPgQQIiGQoXRGVsZXRlSGFiaXREcmFmdFJlcXVlc3QiTQoXRW5hYmxlSGFiaXREcmFmdFJlcXVlc3QSFwoKbG9jYWxfZGF0ZRgBIAEoCUID4EECEhkKDHVubGlua190b2RvcxgCIAEoCEID4EEBIjkKEkxpc3RIYWJpdHNSZXNwb25zZRIjCgZoYWJpdHMYASADKAsyEy5tZW1vcy5hcGkudjEuSGFiaXQiPQoSQ3JlYXRlSGFiaXRSZXF1ZXN0EicKBWhhYml0GAEgASgLMhMubWVtb3MuYXBpLnYxLkhhYml0QgPgQQIicwoSVXBkYXRlSGFiaXRSZXF1ZXN0EicKBWhhYml0GAEgASgLMhMubWVtb3MuYXBpLnYxLkhhYml0QgPgQQISNAoLdXBkYXRlX21hc2sYAiABKAsyGi5nb29nbGUucHJvdG9idWYuRmllbGRNYXNrQgPgQQIiSwoZTGlzdFBsYW5uZXJFbnRyaWVzUmVxdWVzdBIXCgpzdGFydF9kYXRlGAEgASgJQgPgQQISFQoIZW5kX2RhdGUYAiABKAlCA+BBAiKTAQoaTGlzdFBsYW5uZXJFbnRyaWVzUmVzcG9uc2USKAoJY2hlY2tfaW5zGAEgAygLMhUubWVtb3MuYXBpLnYxLkNoZWNrSW4SIQoFdG9kb3MYAiADKAsyEi5tZW1vcy5hcGkudjEuVG9kbxIoCgVub3RlcxgDIAMoCzIZLm1lbW9zLmFwaS52MS5QbGFubmVyTm90ZSIWChRMaXN0T3BlblRvZG9zUmVxdWVzdCI6ChVMaXN0T3BlblRvZG9zUmVzcG9uc2USIQoFdG9kb3MYASADKAsyEi5tZW1vcy5hcGkudjEuVG9kbyIVChNMaXN0VG9kb1RhZ3NSZXF1ZXN0IiQKFExpc3RUb2RvVGFnc1Jlc3BvbnNlEgwKBHRhZ3MYASADKAkiQQoRU2V0Q2hlY2tJblJlcXVlc3QSLAoIY2hlY2tfaW4YASABKAsyFS5tZW1vcy5hcGkudjEuQ2hlY2tJbkID4EECIj0KFERlbGV0ZUNoZWNrSW5SZXF1ZXN0EhIKBWhhYml0GAEgASgJQgPgQQISEQoEZGF0ZRgCIAEoCUID4EECIiMKDkdldFRvZG9SZXF1ZXN0EhEKBG5hbWUYASABKAlCA+BBAiJTChFDcmVhdGVUb2RvUmVxdWVzdBIlCgR0b2RvGAEgASgLMhIubWVtb3MuYXBpLnYxLlRvZG9CA+BBAhIXCgpsb2NhbF9kYXRlGAIgASgJQgPgQQEiiQEKEVVwZGF0ZVRvZG9SZXF1ZXN0EiUKBHRvZG8YASABKAsyEi5tZW1vcy5hcGkudjEuVG9kb0ID4EECEjQKC3VwZGF0ZV9tYXNrGAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLkZpZWxkTWFza0ID4EECEhcKCmxvY2FsX2RhdGUYAyABKAlCA+BBASJUChNQb3N0cG9uZVRvZG9SZXF1ZXN0EhEKBG5hbWUYASABKAlCA+BBAhIRCgRkYXRlGAIgASgJQgPgQQISFwoKbG9jYWxfZGF0ZRgDIAEoCUID4EECIiYKEURlbGV0ZVRvZG9SZXF1ZXN0EhEKBG5hbWUYASABKAlCA+BBAiJIChhDcmVhdGVQbGFubmVyTm90ZVJlcXVlc3QSLAoEbm90ZRgBIAEoCzIZLm1lbW9zLmFwaS52MS5QbGFubmVyTm90ZUID4EECIn4KGFVwZGF0ZVBsYW5uZXJOb3RlUmVxdWVzdBIsCgRub3RlGAEgASgLMhkubWVtb3MuYXBpLnYxLlBsYW5uZXJOb3RlQgPgQQISNAoLdXBkYXRlX21hc2sYAiABKAsyGi5nb29nbGUucHJvdG9idWYuRmllbGRNYXNrQgPgQQIiLQoYRGVsZXRlUGxhbm5lck5vdGVSZXF1ZXN0EhEKBG5hbWUYASABKAlCA+BBAiK+AQoUSW1wb3J0UGxhbm5lclJlcXVlc3QSIwoGaGFiaXRzGAEgAygLMhMubWVtb3MuYXBpLnYxLkhhYml0Ei4KCWNoZWNrX2lucxgCIAMoCzIbLm1lbW9zLmFwaS52MS5JbXBvcnRDaGVja0luEicKBXRvZG9zGAMgAygLMhgubWVtb3MuYXBpLnYxLkltcG9ydFRvZG8SKAoFbm90ZXMYBCADKAsyGS5tZW1vcy5hcGkudjEuUGxhbm5lck5vdGUiQAoNSW1wb3J0Q2hlY2tJbhITCgtoYWJpdF9pbmRleBgBIAEoBRIMCgRkYXRlGAIgASgJEgwKBG5vdGUYAyABKAkiRgoKSW1wb3J0VG9kbxIgCgR0b2RvGAEgASgLMhIubWVtb3MuYXBpLnYxLlRvZG8SFgoOY2xvc2VkX292ZXJkdWUYAiABKAgibAoVSW1wb3J0UGxhbm5lclJlc3BvbnNlEhMKC2hhYml0X2NvdW50GAEgASgFEhYKDmNoZWNrX2luX2NvdW50GAIgASgFEhIKCnRvZG9fY291bnQYAyABKAUSEgoKbm90ZV9jb3VudBgEIAEoBSIuCg9QbGFubmVyU2V0dGluZ3MSGwoOd2Vla19zdGFydF9kYXkYASABKAVCA+BBASIbChlHZXRQbGFubmVyU2V0dGluZ3NSZXF1ZXN0IlQKHFVwZGF0ZVBsYW5uZXJTZXR0aW5nc1JlcXVlc3QSNAoIc2V0dGluZ3MYASABKAsyHS5tZW1vcy5hcGkudjEuUGxhbm5lclNldHRpbmdzQgPgQQIiPwoWR2V0V2Vla1Byb2dyZXNzUmVxdWVzdBIRCgRkYXRlGAEgASgJQgPgQQISEgoFd2Vla3MYAiABKAVCA+BBASJcChdHZXRXZWVrUHJvZ3Jlc3NSZXNwb25zZRIWCg53ZWVrX3N0YXJ0X2RheRgBIAEoBRIpCgV3ZWVrcxgCIAMoCzIaLm1lbW9zLmFwaS52MS5XZWVrUHJvZ3Jlc3Mi5wEKDFdlZWtQcm9ncmVzcxISCgp3ZWVrX3N0YXJ0GAEgASgJEhAKCHdlZWtfZW5kGAIgASgJEhUKDWNvbnRhaW5zX2RhdGUYAyABKAgSEQoJZGF5c19sZWZ0GAQgASgFEiQKBHBsYW4YBSABKAsyFi5tZW1vcy5hcGkudjEuV2Vla1BsYW4SLwoGaGFiaXRzGAYgAygLMh8ubWVtb3MuYXBpLnYxLldlZWtIYWJpdFByb2dyZXNzEjAKC2hhYml0X3RvZG9zGAcgAygLMhsubWVtb3MuYXBpLnYxLldlZWtIYWJpdFRvZG8iZwoIV2Vla1BsYW4SFgoOZWZmZWN0aXZlX2RhdGUYASABKAkSEAoIcmVwbGFjZWQYAiADKAkSMQoJZG9jdW1lbnRzGAMgAygLMh4ubWVtb3MuYXBpLnYxLldlZWtQbGFuRG9jdW1lbnQiLwoQV2Vla1BsYW5Eb2N1bWVudBIMCgRuYW1lGAEgASgJEg0KBXRpdGxlGAIgASgJIsABChFXZWVrSGFiaXRQcm9ncmVzcxINCgVoYWJpdBgBIAEoCRIMCgRpY29uGAIgASgJEg0KBWxhYmVsGAMgASgJEg8KB2luX3BsYW4YBCABKAgSGAoLd2Vla2x5X2dvYWwYBSABKAVIAIgBARIWCg5jaGVja19pbl9jb3VudBgGIAEoBRIsCgljaGVja19pbnMYByADKAsyGS5tZW1vcy5hcGkudjEuV2Vla0NoZWNrSW5CDgoMX3dlZWtseV9nb2FsIjcKC1dlZWtDaGVja0luEgwKBGRhdGUYASABKAkSDAoEbm90ZRgCIAEoCRIMCgR0b2RvGAMgASgJIswBCg1XZWVrSGFiaXRUb2RvEgwKBG5hbWUYASABKAkSDAoEZGF0ZRgCIAEoCRINCgV0aXRsZRgDIAEoCRINCgVoYWJpdBgEIAEoCRIwCgVzdGF0ZRgFIAEoDjIhLm1lbW9zLmFwaS52MS5XZWVrSGFiaXRUb2RvLlN0YXRlIk8KBVN0YXRlEhUKEVNUQVRFX1VOU1BFQ0lGSUVEEAASCgoGQUNUSVZFEAESCAoERE9ORRACEgoKBkZBSUxFRBADEg0KCUNBTkNFTExFRBAEMqMYCg5QbGFubmVyU2VydmljZRJvCgpMaXN0SGFiaXRzEh8ubWVtb3MuYXBpLnYxLkxpc3RIYWJpdHNSZXF1ZXN0GiAubWVtb3MuYXBpLnYxLkxpc3RIYWJpdHNSZXNwb25zZSIegtPkkwIYEhYvYXBpL3YxL3BsYW5uZXIvaGFiaXRzEnMKC0NyZWF0ZUhhYml0EiAubWVtb3MuYXBpLnYxLkNyZWF0ZUhhYml0UmVxdWVzdBoTLm1lbW9zLmFwaS52MS5IYWJpdCIt2kEFaGFiaXSC0+STAh86BWhhYml0IhYvYXBpL3YxL3BsYW5uZXIvaGFiaXRzEo4BCgtVcGRhdGVIYWJpdBIgLm1lbW9zLmFwaS52MS5VcGRhdGVIYWJpdFJlcXVlc3QaEy5tZW1vcy5hcGkudjEuSGFiaXQiSNpBEWhhYml0LHVwZGF0ZV9tYXNrgtPkkwIuOgVoYWJpdDIlL2FwaS92MS97aGFiaXQubmFtZT1wbGFubmVyL2hhYml0cy8qfRKLAQoRTGlzdEhhYml0VmVyc2lvbnMSJi5tZW1vcy5hcGkudjEuTGlzdEhhYml0VmVyc2lvbnNSZXF1ZXN0GicubWVtb3MuYXBpLnYxLkxpc3RIYWJpdFZlcnNpb25zUmVzcG9uc2UiJYLT5JMCHxIdL2FwaS92MS9wbGFubmVyL2hhYml0VmVyc2lvbnMSgAEKEFVwZGF0ZUhhYml0RHJhZnQSJS5tZW1vcy5hcGkudjEuVXBkYXRlSGFiaXREcmFmdFJlcXVlc3QaGi5tZW1vcy5hcGkudjEuSGFiaXRWZXJzaW9uIimC0+STAiM6BWRyYWZ0MhovYXBpL3YxL3BsYW5uZXIvaGFiaXREcmFmdBJ1ChBEZWxldGVIYWJpdERyYWZ0EiUubWVtb3MuYXBpLnYxLkRlbGV0ZUhhYml0RHJhZnRSZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5IiKC0+STAhwqGi9hcGkvdjEvcGxhbm5lci9oYWJpdERyYWZ0EoMBChBFbmFibGVIYWJpdERyYWZ0EiUubWVtb3MuYXBpLnYxLkVuYWJsZUhhYml0RHJhZnRSZXF1ZXN0GhoubWVtb3MuYXBpLnYxLkhhYml0VmVyc2lvbiIsgtPkkwImOgEqIiEvYXBpL3YxL3BsYW5uZXIvaGFiaXREcmFmdDplbmFibGUSiAEKEkxpc3RQbGFubmVyRW50cmllcxInLm1lbW9zLmFwaS52MS5MaXN0UGxhbm5lckVudHJpZXNSZXF1ZXN0GigubWVtb3MuYXBpLnYxLkxpc3RQbGFubmVyRW50cmllc1Jlc3BvbnNlIh+C0+STAhkSFy9hcGkvdjEvcGxhbm5lci9lbnRyaWVzEoQBCg9HZXRXZWVrUHJvZ3Jlc3MSJC5tZW1vcy5hcGkudjEuR2V0V2Vla1Byb2dyZXNzUmVxdWVzdBolLm1lbW9zLmFwaS52MS5HZXRXZWVrUHJvZ3Jlc3NSZXNwb25zZSIkgtPkkwIeEhwvYXBpL3YxL3BsYW5uZXIvd2Vla1Byb2dyZXNzEnsKDUxpc3RPcGVuVG9kb3MSIi5tZW1vcy5hcGkudjEuTGlzdE9wZW5Ub2Rvc1JlcXVlc3QaIy5tZW1vcy5hcGkudjEuTGlzdE9wZW5Ub2Rvc1Jlc3BvbnNlIiGC0+STAhsSGS9hcGkvdjEvcGxhbm5lci9vcGVuVG9kb3MSdwoMTGlzdFRvZG9UYWdzEiEubWVtb3MuYXBpLnYxLkxpc3RUb2RvVGFnc1JlcXVlc3QaIi5tZW1vcy5hcGkudjEuTGlzdFRvZG9UYWdzUmVzcG9uc2UiIILT5JMCGhIYL2FwaS92MS9wbGFubmVyL3RvZG9UYWdzEnsKClNldENoZWNrSW4SHy5tZW1vcy5hcGkudjEuU2V0Q2hlY2tJblJlcXVlc3QaFS5tZW1vcy5hcGkudjEuQ2hlY2tJbiI12kEIY2hlY2tfaW6C0+STAiQ6CGNoZWNrX2luIhgvYXBpL3YxL3BsYW5uZXIvY2hlY2tJbnMSbQoNRGVsZXRlQ2hlY2tJbhIiLm1lbW9zLmFwaS52MS5EZWxldGVDaGVja0luUmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eSIggtPkkwIaKhgvYXBpL3YxL3BsYW5uZXIvY2hlY2tJbnMSagoHR2V0VG9kbxIcLm1lbW9zLmFwaS52MS5HZXRUb2RvUmVxdWVzdBoSLm1lbW9zLmFwaS52MS5Ub2RvIi3aQQRuYW1lgtPkkwIgEh4vYXBpL3YxL3tuYW1lPXBsYW5uZXIvdG9kb3MvKn0SbQoKQ3JlYXRlVG9kbxIfLm1lbW9zLmFwaS52MS5DcmVhdGVUb2RvUmVxdWVzdBoSLm1lbW9zLmFwaS52MS5Ub2RvIiraQQR0b2RvgtPkkwIdOgR0b2RvIhUvYXBpL3YxL3BsYW5uZXIvdG9kb3MShwEKClVwZGF0ZVRvZG8SHy5tZW1vcy5hcGkudjEuVXBkYXRlVG9kb1JlcXVlc3QaEi5tZW1vcy5hcGkudjEuVG9kbyJE2kEQdG9kbyx1cGRhdGVfbWFza4LT5JMCKzoEdG9kbzIjL2FwaS92MS97dG9kby5uYW1lPXBsYW5uZXIvdG9kb3MvKn0ShQEKDFBvc3Rwb25lVG9kbxIhLm1lbW9zLmFwaS52MS5Qb3N0cG9uZVRvZG9SZXF1ZXN0GhIubWVtb3MuYXBpLnYxLlRvZG8iPtpBCW5hbWUsZGF0ZYLT5JMCLDoBKiInL2FwaS92MS97bmFtZT1wbGFubmVyL3RvZG9zLyp9OnBvc3Rwb25lEnQKCkRlbGV0ZVRvZG8SHy5tZW1vcy5hcGkudjEuRGVsZXRlVG9kb1JlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkiLdpBBG5hbWWC0+STAiAqHi9hcGkvdjEve25hbWU9cGxhbm5lci90b2Rvcy8qfRKCAQoRQ3JlYXRlUGxhbm5lck5vdGUSJi5tZW1vcy5hcGkudjEuQ3JlYXRlUGxhbm5lck5vdGVSZXF1ZXN0GhkubWVtb3MuYXBpLnYxLlBsYW5uZXJOb3RlIiraQQRub3RlgtPkkwIdOgRub3RlIhUvYXBpL3YxL3BsYW5uZXIvbm90ZXMSnAEKEVVwZGF0ZVBsYW5uZXJOb3RlEiYubWVtb3MuYXBpLnYxLlVwZGF0ZVBsYW5uZXJOb3RlUmVxdWVzdBoZLm1lbW9zLmFwaS52MS5QbGFubmVyTm90ZSJE2kEQbm90ZSx1cGRhdGVfbWFza4LT5JMCKzoEbm90ZTIjL2FwaS92MS97bm90ZS5uYW1lPXBsYW5uZXIvbm90ZXMvKn0SggEKEURlbGV0ZVBsYW5uZXJOb3RlEiYubWVtb3MuYXBpLnYxLkRlbGV0ZVBsYW5uZXJOb3RlUmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eSIt2kEEbmFtZYLT5JMCICoeL2FwaS92MS97bmFtZT1wbGFubmVyL25vdGVzLyp9En4KEkdldFBsYW5uZXJTZXR0aW5ncxInLm1lbW9zLmFwaS52MS5HZXRQbGFubmVyU2V0dGluZ3NSZXF1ZXN0Gh0ubWVtb3MuYXBpLnYxLlBsYW5uZXJTZXR0aW5ncyIggtPkkwIaEhgvYXBpL3YxL3BsYW5uZXIvc2V0dGluZ3MSjgEKFVVwZGF0ZVBsYW5uZXJTZXR0aW5ncxIqLm1lbW9zLmFwaS52MS5VcGRhdGVQbGFubmVyU2V0dGluZ3NSZXF1ZXN0Gh0ubWVtb3MuYXBpLnYxLlBsYW5uZXJTZXR0aW5ncyIqgtPkkwIkOghzZXR0aW5nczIYL2FwaS92MS9wbGFubmVyL3NldHRpbmdzEnsKDUltcG9ydFBsYW5uZXISIi5tZW1vcy5hcGkudjEuSW1wb3J0UGxhbm5lclJlcXVlc3QaIy5tZW1vcy5hcGkudjEuSW1wb3J0UGxhbm5lclJlc3BvbnNlIiGC0+STAhs6ASoiFi9hcGkvdjEvcGxhbm5lcjppbXBvcnRCqwEKEGNvbS5tZW1vcy5hcGkudjFCE1BsYW5uZXJTZXJ2aWNlUHJvdG9QAVowZ2l0aHViLmNvbS91c2VtZW1vcy9tZW1vcy9wcm90by9nZW4vYXBpL3YxO2FwaXYxogIDTUFYqgIMTWVtb3MuQXBpLlYxygIMTWVtb3NcQXBpXFYx4gIYTWVtb3NcQXBpXFYxXEdQQk1ldGFkYXRh6gIOTWVtb3M6OkFwaTo6VjFiBnByb3RvMw", [file_google_api_annotations, file_google_api_client, file_google_api_field_behavior, file_google_api_resource, file_google_protobuf_empty, file_google_protobuf_field_mask, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message memos.api.v1.Habit
@@ -1058,6 +1058,423 @@ export const ImportPlannerResponseSchema: GenMessage<ImportPlannerResponse> = /*
   messageDesc(file_api_v1_planner_service, 34);
 
 /**
+ * PlannerSettings are the caller's planner preferences kept on the server, so
+ * every device and every API caller see the same ones.
+ *
+ * @generated from message memos.api.v1.PlannerSettings
+ */
+export type PlannerSettings = Message<"memos.api.v1.PlannerSettings"> & {
+  /**
+   * The day planner weeks start on: 1 = Monday … 7 = Sunday, or 0 to follow
+   * the instance's week start.
+   *
+   * @generated from field: int32 week_start_day = 1;
+   */
+  weekStartDay: number;
+};
+
+/**
+ * Describes the message memos.api.v1.PlannerSettings.
+ * Use `create(PlannerSettingsSchema)` to create a new message.
+ */
+export const PlannerSettingsSchema: GenMessage<PlannerSettings> = /*@__PURE__*/
+  messageDesc(file_api_v1_planner_service, 35);
+
+/**
+ * @generated from message memos.api.v1.GetPlannerSettingsRequest
+ */
+export type GetPlannerSettingsRequest = Message<"memos.api.v1.GetPlannerSettingsRequest"> & {
+};
+
+/**
+ * Describes the message memos.api.v1.GetPlannerSettingsRequest.
+ * Use `create(GetPlannerSettingsRequestSchema)` to create a new message.
+ */
+export const GetPlannerSettingsRequestSchema: GenMessage<GetPlannerSettingsRequest> = /*@__PURE__*/
+  messageDesc(file_api_v1_planner_service, 36);
+
+/**
+ * @generated from message memos.api.v1.UpdatePlannerSettingsRequest
+ */
+export type UpdatePlannerSettingsRequest = Message<"memos.api.v1.UpdatePlannerSettingsRequest"> & {
+  /**
+   * @generated from field: memos.api.v1.PlannerSettings settings = 1;
+   */
+  settings?: PlannerSettings | undefined;
+};
+
+/**
+ * Describes the message memos.api.v1.UpdatePlannerSettingsRequest.
+ * Use `create(UpdatePlannerSettingsRequestSchema)` to create a new message.
+ */
+export const UpdatePlannerSettingsRequestSchema: GenMessage<UpdatePlannerSettingsRequest> = /*@__PURE__*/
+  messageDesc(file_api_v1_planner_service, 37);
+
+/**
+ * @generated from message memos.api.v1.GetWeekProgressRequest
+ */
+export type GetWeekProgressRequest = Message<"memos.api.v1.GetWeekProgressRequest"> & {
+  /**
+   * The caller's local today, YYYY-MM-DD. Its week comes first.
+   *
+   * @generated from field: string date = 1;
+   */
+  date: string;
+
+  /**
+   * How many weeks to return, counting back from the week of `date`: 1 to 12.
+   * 1 when unset.
+   *
+   * @generated from field: int32 weeks = 2;
+   */
+  weeks: number;
+};
+
+/**
+ * Describes the message memos.api.v1.GetWeekProgressRequest.
+ * Use `create(GetWeekProgressRequestSchema)` to create a new message.
+ */
+export const GetWeekProgressRequestSchema: GenMessage<GetWeekProgressRequest> = /*@__PURE__*/
+  messageDesc(file_api_v1_planner_service, 38);
+
+/**
+ * @generated from message memos.api.v1.GetWeekProgressResponse
+ */
+export type GetWeekProgressResponse = Message<"memos.api.v1.GetWeekProgressResponse"> & {
+  /**
+   * The day weeks start on, 1 = Monday … 7 = Sunday: the caller's planner
+   * setting, or the instance's week start when the setting follows it.
+   *
+   * @generated from field: int32 week_start_day = 1;
+   */
+  weekStartDay: number;
+
+  /**
+   * The week of `date` first, then each week before it.
+   *
+   * @generated from field: repeated memos.api.v1.WeekProgress weeks = 2;
+   */
+  weeks: WeekProgress[];
+};
+
+/**
+ * Describes the message memos.api.v1.GetWeekProgressResponse.
+ * Use `create(GetWeekProgressResponseSchema)` to create a new message.
+ */
+export const GetWeekProgressResponseSchema: GenMessage<GetWeekProgressResponse> = /*@__PURE__*/
+  messageDesc(file_api_v1_planner_service, 39);
+
+/**
+ * WeekProgress is one week of a habit plan: what was planned and what was done.
+ *
+ * @generated from message memos.api.v1.WeekProgress
+ */
+export type WeekProgress = Message<"memos.api.v1.WeekProgress"> & {
+  /**
+   * First and last day of the week, YYYY-MM-DD.
+   *
+   * @generated from field: string week_start = 1;
+   */
+  weekStart: string;
+
+  /**
+   * @generated from field: string week_end = 2;
+   */
+  weekEnd: string;
+
+  /**
+   * Whether the request's `date` falls in this week.
+   *
+   * @generated from field: bool contains_date = 3;
+   */
+  containsDate: boolean;
+
+  /**
+   * Days left in the week counting `date` itself; 0 for an earlier week.
+   *
+   * @generated from field: int32 days_left = 4;
+   */
+  daysLeft: number;
+
+  /**
+   * The plan the week is measured against: the one in effect on its last day.
+   * Unset for a week before the first plan.
+   *
+   * @generated from field: memos.api.v1.WeekPlan plan = 5;
+   */
+  plan?: WeekPlan | undefined;
+
+  /**
+   * The plan's habits in plan order, then any other habit checked in during
+   * the week.
+   *
+   * @generated from field: repeated memos.api.v1.WeekHabitProgress habits = 6;
+   */
+  habits: WeekHabitProgress[];
+
+  /**
+   * The week's habit todos, by date.
+   *
+   * @generated from field: repeated memos.api.v1.WeekHabitTodo habit_todos = 7;
+   */
+  habitTodos: WeekHabitTodo[];
+};
+
+/**
+ * Describes the message memos.api.v1.WeekProgress.
+ * Use `create(WeekProgressSchema)` to create a new message.
+ */
+export const WeekProgressSchema: GenMessage<WeekProgress> = /*@__PURE__*/
+  messageDesc(file_api_v1_planner_service, 40);
+
+/**
+ * WeekPlan is a habit plan (a habit version). Plans have no names: the app
+ * labels one by the day it took effect.
+ *
+ * @generated from message memos.api.v1.WeekPlan
+ */
+export type WeekPlan = Message<"memos.api.v1.WeekPlan"> & {
+  /**
+   * The day the plan took effect, YYYY-MM-DD, or empty for the plan in effect
+   * from the very beginning.
+   *
+   * @generated from field: string effective_date = 1;
+   */
+  effectiveDate: string;
+
+  /**
+   * When the plan changed during the week: the effective dates of the plans
+   * in effect earlier in the week, earliest first ("" for the very first).
+   * The whole week is still measured against this plan, the last one.
+   *
+   * @generated from field: repeated string replaced = 2;
+   */
+  replaced: string[];
+
+  /**
+   * The plan's linked documents, in display order.
+   *
+   * @generated from field: repeated memos.api.v1.WeekPlanDocument documents = 3;
+   */
+  documents: WeekPlanDocument[];
+};
+
+/**
+ * Describes the message memos.api.v1.WeekPlan.
+ * Use `create(WeekPlanSchema)` to create a new message.
+ */
+export const WeekPlanSchema: GenMessage<WeekPlan> = /*@__PURE__*/
+  messageDesc(file_api_v1_planner_service, 41);
+
+/**
+ * @generated from message memos.api.v1.WeekPlanDocument
+ */
+export type WeekPlanDocument = Message<"memos.api.v1.WeekPlanDocument"> & {
+  /**
+   * Format: memos/{memo}
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * The document's title; empty when the caller cannot read it.
+   *
+   * @generated from field: string title = 2;
+   */
+  title: string;
+};
+
+/**
+ * Describes the message memos.api.v1.WeekPlanDocument.
+ * Use `create(WeekPlanDocumentSchema)` to create a new message.
+ */
+export const WeekPlanDocumentSchema: GenMessage<WeekPlanDocument> = /*@__PURE__*/
+  messageDesc(file_api_v1_planner_service, 42);
+
+/**
+ * @generated from message memos.api.v1.WeekHabitProgress
+ */
+export type WeekHabitProgress = Message<"memos.api.v1.WeekHabitProgress"> & {
+  /**
+   * Format: planner/habits/{habit}
+   *
+   * @generated from field: string habit = 1;
+   */
+  habit: string;
+
+  /**
+   * The habit's icon: the emoji its title starts with.
+   *
+   * @generated from field: string icon = 2;
+   */
+  icon: string;
+
+  /**
+   * The rest of the title, possibly empty.
+   *
+   * @generated from field: string label = 3;
+   */
+  label: string;
+
+  /**
+   * Whether the week's plan includes the habit.
+   *
+   * @generated from field: bool in_plan = 4;
+   */
+  inPlan: boolean;
+
+  /**
+   * Check-ins a week the plan aims for. Unset when the plan sets no goal for
+   * the habit, or does not include it.
+   *
+   * @generated from field: optional int32 weekly_goal = 5;
+   */
+  weeklyGoal?: number | undefined;
+
+  /**
+   * How many days of the week the habit was checked in, by hand or by
+   * completing a habit todo. Can exceed weekly_goal.
+   *
+   * @generated from field: int32 check_in_count = 6;
+   */
+  checkInCount: number;
+
+  /**
+   * The check-ins, by date.
+   *
+   * @generated from field: repeated memos.api.v1.WeekCheckIn check_ins = 7;
+   */
+  checkIns: WeekCheckIn[];
+};
+
+/**
+ * Describes the message memos.api.v1.WeekHabitProgress.
+ * Use `create(WeekHabitProgressSchema)` to create a new message.
+ */
+export const WeekHabitProgressSchema: GenMessage<WeekHabitProgress> = /*@__PURE__*/
+  messageDesc(file_api_v1_planner_service, 43);
+
+/**
+ * @generated from message memos.api.v1.WeekCheckIn
+ */
+export type WeekCheckIn = Message<"memos.api.v1.WeekCheckIn"> & {
+  /**
+   * Format: YYYY-MM-DD.
+   *
+   * @generated from field: string date = 1;
+   */
+  date: string;
+
+  /**
+   * @generated from field: string note = 2;
+   */
+  note: string;
+
+  /**
+   * The todo whose completion made the check-in, or empty for one checked in
+   * by hand. Format: planner/todos/{todo}
+   *
+   * @generated from field: string todo = 3;
+   */
+  todo: string;
+};
+
+/**
+ * Describes the message memos.api.v1.WeekCheckIn.
+ * Use `create(WeekCheckInSchema)` to create a new message.
+ */
+export const WeekCheckInSchema: GenMessage<WeekCheckIn> = /*@__PURE__*/
+  messageDesc(file_api_v1_planner_service, 44);
+
+/**
+ * @generated from message memos.api.v1.WeekHabitTodo
+ */
+export type WeekHabitTodo = Message<"memos.api.v1.WeekHabitTodo"> & {
+  /**
+   * Format: planner/todos/{todo}
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * Format: YYYY-MM-DD.
+   *
+   * @generated from field: string date = 2;
+   */
+  date: string;
+
+  /**
+   * @generated from field: string title = 3;
+   */
+  title: string;
+
+  /**
+   * Format: planner/habits/{habit}
+   *
+   * @generated from field: string habit = 4;
+   */
+  habit: string;
+
+  /**
+   * Worked out against the request's `date` as today.
+   *
+   * @generated from field: memos.api.v1.WeekHabitTodo.State state = 5;
+   */
+  state: WeekHabitTodo_State;
+};
+
+/**
+ * Describes the message memos.api.v1.WeekHabitTodo.
+ * Use `create(WeekHabitTodoSchema)` to create a new message.
+ */
+export const WeekHabitTodoSchema: GenMessage<WeekHabitTodo> = /*@__PURE__*/
+  messageDesc(file_api_v1_planner_service, 45);
+
+/**
+ * @generated from enum memos.api.v1.WeekHabitTodo.State
+ */
+export enum WeekHabitTodo_State {
+  /**
+   * @generated from enum value: STATE_UNSPECIFIED = 0;
+   */
+  STATE_UNSPECIFIED = 0,
+
+  /**
+   * Not done yet, and its day is today or later.
+   *
+   * @generated from enum value: ACTIVE = 1;
+   */
+  ACTIVE = 1,
+
+  /**
+   * Done on its day, which checked in its habit.
+   *
+   * @generated from enum value: DONE = 2;
+   */
+  DONE = 2,
+
+  /**
+   * Its day passed without it being done.
+   *
+   * @generated from enum value: FAILED = 3;
+   */
+  FAILED = 3,
+
+  /**
+   * @generated from enum value: CANCELLED = 4;
+   */
+  CANCELLED = 4,
+}
+
+/**
+ * Describes the enum memos.api.v1.WeekHabitTodo.State.
+ */
+export const WeekHabitTodo_StateSchema: GenEnum<WeekHabitTodo_State> = /*@__PURE__*/
+  enumDesc(file_api_v1_planner_service, 45, 0);
+
+/**
  * PlannerService keeps the caller's habits, daily check-ins, todos and notes.
  *
  * Planner data is personal: every RPC reads and writes the authenticated user's
@@ -1157,6 +1574,24 @@ export const PlannerService: GenService<{
     methodKind: "unary";
     input: typeof ListPlannerEntriesRequestSchema;
     output: typeof ListPlannerEntriesResponseSchema;
+  },
+  /**
+   * GetWeekProgress reports how the caller's habit plan went, week by week:
+   * the week containing `date` and, with `weeks`, the weeks before it. Weeks
+   * start on the caller's planner setting (week_start_day), so they split the
+   * same way as in the app. Each week is measured against one plan, the one in
+   * effect on its last day, and a habit's count includes check-ins made by
+   * completing habit todos, as the app's "2/3" does.
+   *
+   * It reports facts only: what was planned and what was checked in. Whether a
+   * week passed is for the caller to judge.
+   *
+   * @generated from rpc memos.api.v1.PlannerService.GetWeekProgress
+   */
+  getWeekProgress: {
+    methodKind: "unary";
+    input: typeof GetWeekProgressRequestSchema;
+    output: typeof GetWeekProgressResponseSchema;
   },
   /**
    * ListOpenTodos returns every active todo, dated or not, ordered by date with
@@ -1286,6 +1721,26 @@ export const PlannerService: GenService<{
     methodKind: "unary";
     input: typeof DeletePlannerNoteRequestSchema;
     output: typeof EmptySchema;
+  },
+  /**
+   * GetPlannerSettings returns the caller's planner settings.
+   *
+   * @generated from rpc memos.api.v1.PlannerService.GetPlannerSettings
+   */
+  getPlannerSettings: {
+    methodKind: "unary";
+    input: typeof GetPlannerSettingsRequestSchema;
+    output: typeof PlannerSettingsSchema;
+  },
+  /**
+   * UpdatePlannerSettings replaces the caller's planner settings.
+   *
+   * @generated from rpc memos.api.v1.PlannerService.UpdatePlannerSettings
+   */
+  updatePlannerSettings: {
+    methodKind: "unary";
+    input: typeof UpdatePlannerSettingsRequestSchema;
+    output: typeof PlannerSettingsSchema;
   },
   /**
    * ImportPlanner writes a whole planner in one transaction: the one-time backfill

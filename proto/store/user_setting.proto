@@ -31,6 +31,8 @@ message UserSetting {
     SECRET_KEY = 11;
     // The custom items on the mobile app's "Me" page.
     ME_ITEMS = 12;
+    // Planner preferences shared by every device and API caller.
+    PLANNER = 13;
   }
 
   int32 user_id = 1;
@@ -47,6 +49,7 @@ message UserSetting {
     RagSearchUserSetting rag_search = 12;
     SecretKeyUserSetting secret_key = 13;
     MeItemsUserSetting me_items = 14;
+    PlannerUserSetting planner = 15;
   }
 }
 
@@ -272,4 +275,12 @@ message WebhooksUserSetting {
     string signing_secret = 4;
   }
   repeated Webhook webhooks = 1;
+}
+
+// PlannerUserSetting holds the planner preferences the server needs to know, so
+// that the app and API callers split weeks the same way.
+message PlannerUserSetting {
+  // The day planner weeks start on: 1 = Monday … 7 = Sunday, or 0 to follow the
+  // instance's week start.
+  int32 week_start_day = 1;
 }

@@ -58,6 +58,9 @@ const (
 	// PlannerServiceListPlannerEntriesProcedure is the fully-qualified name of the PlannerService's
 	// ListPlannerEntries RPC.
 	PlannerServiceListPlannerEntriesProcedure = "/memos.api.v1.PlannerService/ListPlannerEntries"
+	// PlannerServiceGetWeekProgressProcedure is the fully-qualified name of the PlannerService's
+	// GetWeekProgress RPC.
+	PlannerServiceGetWeekProgressProcedure = "/memos.api.v1.PlannerService/GetWeekProgress"
 	// PlannerServiceListOpenTodosProcedure is the fully-qualified name of the PlannerService's
 	// ListOpenTodos RPC.
 	PlannerServiceListOpenTodosProcedure = "/memos.api.v1.PlannerService/ListOpenTodos"
@@ -93,6 +96,12 @@ const (
 	// PlannerServiceDeletePlannerNoteProcedure is the fully-qualified name of the PlannerService's
 	// DeletePlannerNote RPC.
 	PlannerServiceDeletePlannerNoteProcedure = "/memos.api.v1.PlannerService/DeletePlannerNote"
+	// PlannerServiceGetPlannerSettingsProcedure is the fully-qualified name of the PlannerService's
+	// GetPlannerSettings RPC.
+	PlannerServiceGetPlannerSettingsProcedure = "/memos.api.v1.PlannerService/GetPlannerSettings"
+	// PlannerServiceUpdatePlannerSettingsProcedure is the fully-qualified name of the PlannerService's
+	// UpdatePlannerSettings RPC.
+	PlannerServiceUpdatePlannerSettingsProcedure = "/memos.api.v1.PlannerService/UpdatePlannerSettings"
 	// PlannerServiceImportPlannerProcedure is the fully-qualified name of the PlannerService's
 	// ImportPlanner RPC.
 	PlannerServiceImportPlannerProcedure = "/memos.api.v1.PlannerService/ImportPlanner"
@@ -123,6 +132,16 @@ type PlannerServiceClient interface {
 	// ListPlannerEntries returns everything dated within an inclusive range:
 	// check-ins, todos of any status, and notes. Undated todos are not included.
 	ListPlannerEntries(context.Context, *connect.Request[v1.ListPlannerEntriesRequest]) (*connect.Response[v1.ListPlannerEntriesResponse], error)
+	// GetWeekProgress reports how the caller's habit plan went, week by week:
+	// the week containing `date` and, with `weeks`, the weeks before it. Weeks
+	// start on the caller's planner setting (week_start_day), so they split the
+	// same way as in the app. Each week is measured against one plan, the one in
+	// effect on its last day, and a habit's count includes check-ins made by
+	// completing habit todos, as the app's "2/3" does.
+	//
+	// It reports facts only: what was planned and what was checked in. Whether a
+	// week passed is for the caller to judge.
+	GetWeekProgress(context.Context, *connect.Request[v1.GetWeekProgressRequest]) (*connect.Response[v1.GetWeekProgressResponse], error)
 	// ListOpenTodos returns every active todo, dated or not, ordered by date with
 	// undated ones last.
 	ListOpenTodos(context.Context, *connect.Request[v1.ListOpenTodosRequest]) (*connect.Response[v1.ListOpenTodosResponse], error)
@@ -156,6 +175,10 @@ type PlannerServiceClient interface {
 	UpdatePlannerNote(context.Context, *connect.Request[v1.UpdatePlannerNoteRequest]) (*connect.Response[v1.PlannerNote], error)
 	// DeletePlannerNote deletes a note.
 	DeletePlannerNote(context.Context, *connect.Request[v1.DeletePlannerNoteRequest]) (*connect.Response[emptypb.Empty], error)
+	// GetPlannerSettings returns the caller's planner settings.
+	GetPlannerSettings(context.Context, *connect.Request[v1.GetPlannerSettingsRequest]) (*connect.Response[v1.PlannerSettings], error)
+	// UpdatePlannerSettings replaces the caller's planner settings.
+	UpdatePlannerSettings(context.Context, *connect.Request[v1.UpdatePlannerSettingsRequest]) (*connect.Response[v1.PlannerSettings], error)
 	// ImportPlanner writes a whole planner in one transaction: the one-time backfill
 	// from calendar blocks. It only runs into an empty planner and fails with
 	// FAILED_PRECONDITION when the caller already has any planner data.
@@ -219,6 +242,12 @@ func NewPlannerServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			httpClient,
 			baseURL+PlannerServiceListPlannerEntriesProcedure,
 			connect.WithSchema(plannerServiceMethods.ByName("ListPlannerEntries")),
+			connect.WithClientOptions(opts...),
+		),
+		getWeekProgress: connect.NewClient[v1.GetWeekProgressRequest, v1.GetWeekProgressResponse](
+			httpClient,
+			baseURL+PlannerServiceGetWeekProgressProcedure,
+			connect.WithSchema(plannerServiceMethods.ByName("GetWeekProgress")),
 			connect.WithClientOptions(opts...),
 		),
 		listOpenTodos: connect.NewClient[v1.ListOpenTodosRequest, v1.ListOpenTodosResponse](
@@ -293,6 +322,18 @@ func NewPlannerServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(plannerServiceMethods.ByName("DeletePlannerNote")),
 			connect.WithClientOptions(opts...),
 		),
+		getPlannerSettings: connect.NewClient[v1.GetPlannerSettingsRequest, v1.PlannerSettings](
+			httpClient,
+			baseURL+PlannerServiceGetPlannerSettingsProcedure,
+			connect.WithSchema(plannerServiceMethods.ByName("GetPlannerSettings")),
+			connect.WithClientOptions(opts...),
+		),
+		updatePlannerSettings: connect.NewClient[v1.UpdatePlannerSettingsRequest, v1.PlannerSettings](
+			httpClient,
+			baseURL+PlannerServiceUpdatePlannerSettingsProcedure,
+			connect.WithSchema(plannerServiceMethods.ByName("UpdatePlannerSettings")),
+			connect.WithClientOptions(opts...),
+		),
 		importPlanner: connect.NewClient[v1.ImportPlannerRequest, v1.ImportPlannerResponse](
 			httpClient,
 			baseURL+PlannerServiceImportPlannerProcedure,
@@ -304,27 +345,30 @@ func NewPlannerServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // plannerServiceClient implements PlannerServiceClient.
 type plannerServiceClient struct {
-	listHabits         *connect.Client[v1.ListHabitsRequest, v1.ListHabitsResponse]
-	createHabit        *connect.Client[v1.CreateHabitRequest, v1.Habit]
-	updateHabit        *connect.Client[v1.UpdateHabitRequest, v1.Habit]
-	listHabitVersions  *connect.Client[v1.ListHabitVersionsRequest, v1.ListHabitVersionsResponse]
-	updateHabitDraft   *connect.Client[v1.UpdateHabitDraftRequest, v1.HabitVersion]
-	deleteHabitDraft   *connect.Client[v1.DeleteHabitDraftRequest, emptypb.Empty]
-	enableHabitDraft   *connect.Client[v1.EnableHabitDraftRequest, v1.HabitVersion]
-	listPlannerEntries *connect.Client[v1.ListPlannerEntriesRequest, v1.ListPlannerEntriesResponse]
-	listOpenTodos      *connect.Client[v1.ListOpenTodosRequest, v1.ListOpenTodosResponse]
-	listTodoTags       *connect.Client[v1.ListTodoTagsRequest, v1.ListTodoTagsResponse]
-	setCheckIn         *connect.Client[v1.SetCheckInRequest, v1.CheckIn]
-	deleteCheckIn      *connect.Client[v1.DeleteCheckInRequest, emptypb.Empty]
-	getTodo            *connect.Client[v1.GetTodoRequest, v1.Todo]
-	createTodo         *connect.Client[v1.CreateTodoRequest, v1.Todo]
-	updateTodo         *connect.Client[v1.UpdateTodoRequest, v1.Todo]
-	postponeTodo       *connect.Client[v1.PostponeTodoRequest, v1.Todo]
-	deleteTodo         *connect.Client[v1.DeleteTodoRequest, emptypb.Empty]
-	createPlannerNote  *connect.Client[v1.CreatePlannerNoteRequest, v1.PlannerNote]
-	updatePlannerNote  *connect.Client[v1.UpdatePlannerNoteRequest, v1.PlannerNote]
-	deletePlannerNote  *connect.Client[v1.DeletePlannerNoteRequest, emptypb.Empty]
-	importPlanner      *connect.Client[v1.ImportPlannerRequest, v1.ImportPlannerResponse]
+	listHabits            *connect.Client[v1.ListHabitsRequest, v1.ListHabitsResponse]
+	createHabit           *connect.Client[v1.CreateHabitRequest, v1.Habit]
+	updateHabit           *connect.Client[v1.UpdateHabitRequest, v1.Habit]
+	listHabitVersions     *connect.Client[v1.ListHabitVersionsRequest, v1.ListHabitVersionsResponse]
+	updateHabitDraft      *connect.Client[v1.UpdateHabitDraftRequest, v1.HabitVersion]
+	deleteHabitDraft      *connect.Client[v1.DeleteHabitDraftRequest, emptypb.Empty]
+	enableHabitDraft      *connect.Client[v1.EnableHabitDraftRequest, v1.HabitVersion]
+	listPlannerEntries    *connect.Client[v1.ListPlannerEntriesRequest, v1.ListPlannerEntriesResponse]
+	getWeekProgress       *connect.Client[v1.GetWeekProgressRequest, v1.GetWeekProgressResponse]
+	listOpenTodos         *connect.Client[v1.ListOpenTodosRequest, v1.ListOpenTodosResponse]
+	listTodoTags          *connect.Client[v1.ListTodoTagsRequest, v1.ListTodoTagsResponse]
+	setCheckIn            *connect.Client[v1.SetCheckInRequest, v1.CheckIn]
+	deleteCheckIn         *connect.Client[v1.DeleteCheckInRequest, emptypb.Empty]
+	getTodo               *connect.Client[v1.GetTodoRequest, v1.Todo]
+	createTodo            *connect.Client[v1.CreateTodoRequest, v1.Todo]
+	updateTodo            *connect.Client[v1.UpdateTodoRequest, v1.Todo]
+	postponeTodo          *connect.Client[v1.PostponeTodoRequest, v1.Todo]
+	deleteTodo            *connect.Client[v1.DeleteTodoRequest, emptypb.Empty]
+	createPlannerNote     *connect.Client[v1.CreatePlannerNoteRequest, v1.PlannerNote]
+	updatePlannerNote     *connect.Client[v1.UpdatePlannerNoteRequest, v1.PlannerNote]
+	deletePlannerNote     *connect.Client[v1.DeletePlannerNoteRequest, emptypb.Empty]
+	getPlannerSettings    *connect.Client[v1.GetPlannerSettingsRequest, v1.PlannerSettings]
+	updatePlannerSettings *connect.Client[v1.UpdatePlannerSettingsRequest, v1.PlannerSettings]
+	importPlanner         *connect.Client[v1.ImportPlannerRequest, v1.ImportPlannerResponse]
 }
 
 // ListHabits calls memos.api.v1.PlannerService.ListHabits.
@@ -365,6 +409,11 @@ func (c *plannerServiceClient) EnableHabitDraft(ctx context.Context, req *connec
 // ListPlannerEntries calls memos.api.v1.PlannerService.ListPlannerEntries.
 func (c *plannerServiceClient) ListPlannerEntries(ctx context.Context, req *connect.Request[v1.ListPlannerEntriesRequest]) (*connect.Response[v1.ListPlannerEntriesResponse], error) {
 	return c.listPlannerEntries.CallUnary(ctx, req)
+}
+
+// GetWeekProgress calls memos.api.v1.PlannerService.GetWeekProgress.
+func (c *plannerServiceClient) GetWeekProgress(ctx context.Context, req *connect.Request[v1.GetWeekProgressRequest]) (*connect.Response[v1.GetWeekProgressResponse], error) {
+	return c.getWeekProgress.CallUnary(ctx, req)
 }
 
 // ListOpenTodos calls memos.api.v1.PlannerService.ListOpenTodos.
@@ -427,6 +476,16 @@ func (c *plannerServiceClient) DeletePlannerNote(ctx context.Context, req *conne
 	return c.deletePlannerNote.CallUnary(ctx, req)
 }
 
+// GetPlannerSettings calls memos.api.v1.PlannerService.GetPlannerSettings.
+func (c *plannerServiceClient) GetPlannerSettings(ctx context.Context, req *connect.Request[v1.GetPlannerSettingsRequest]) (*connect.Response[v1.PlannerSettings], error) {
+	return c.getPlannerSettings.CallUnary(ctx, req)
+}
+
+// UpdatePlannerSettings calls memos.api.v1.PlannerService.UpdatePlannerSettings.
+func (c *plannerServiceClient) UpdatePlannerSettings(ctx context.Context, req *connect.Request[v1.UpdatePlannerSettingsRequest]) (*connect.Response[v1.PlannerSettings], error) {
+	return c.updatePlannerSettings.CallUnary(ctx, req)
+}
+
 // ImportPlanner calls memos.api.v1.PlannerService.ImportPlanner.
 func (c *plannerServiceClient) ImportPlanner(ctx context.Context, req *connect.Request[v1.ImportPlannerRequest]) (*connect.Response[v1.ImportPlannerResponse], error) {
 	return c.importPlanner.CallUnary(ctx, req)
@@ -457,6 +516,16 @@ type PlannerServiceHandler interface {
 	// ListPlannerEntries returns everything dated within an inclusive range:
 	// check-ins, todos of any status, and notes. Undated todos are not included.
 	ListPlannerEntries(context.Context, *connect.Request[v1.ListPlannerEntriesRequest]) (*connect.Response[v1.ListPlannerEntriesResponse], error)
+	// GetWeekProgress reports how the caller's habit plan went, week by week:
+	// the week containing `date` and, with `weeks`, the weeks before it. Weeks
+	// start on the caller's planner setting (week_start_day), so they split the
+	// same way as in the app. Each week is measured against one plan, the one in
+	// effect on its last day, and a habit's count includes check-ins made by
+	// completing habit todos, as the app's "2/3" does.
+	//
+	// It reports facts only: what was planned and what was checked in. Whether a
+	// week passed is for the caller to judge.
+	GetWeekProgress(context.Context, *connect.Request[v1.GetWeekProgressRequest]) (*connect.Response[v1.GetWeekProgressResponse], error)
 	// ListOpenTodos returns every active todo, dated or not, ordered by date with
 	// undated ones last.
 	ListOpenTodos(context.Context, *connect.Request[v1.ListOpenTodosRequest]) (*connect.Response[v1.ListOpenTodosResponse], error)
@@ -490,6 +559,10 @@ type PlannerServiceHandler interface {
 	UpdatePlannerNote(context.Context, *connect.Request[v1.UpdatePlannerNoteRequest]) (*connect.Response[v1.PlannerNote], error)
 	// DeletePlannerNote deletes a note.
 	DeletePlannerNote(context.Context, *connect.Request[v1.DeletePlannerNoteRequest]) (*connect.Response[emptypb.Empty], error)
+	// GetPlannerSettings returns the caller's planner settings.
+	GetPlannerSettings(context.Context, *connect.Request[v1.GetPlannerSettingsRequest]) (*connect.Response[v1.PlannerSettings], error)
+	// UpdatePlannerSettings replaces the caller's planner settings.
+	UpdatePlannerSettings(context.Context, *connect.Request[v1.UpdatePlannerSettingsRequest]) (*connect.Response[v1.PlannerSettings], error)
 	// ImportPlanner writes a whole planner in one transaction: the one-time backfill
 	// from calendar blocks. It only runs into an empty planner and fails with
 	// FAILED_PRECONDITION when the caller already has any planner data.
@@ -549,6 +622,12 @@ func NewPlannerServiceHandler(svc PlannerServiceHandler, opts ...connect.Handler
 		PlannerServiceListPlannerEntriesProcedure,
 		svc.ListPlannerEntries,
 		connect.WithSchema(plannerServiceMethods.ByName("ListPlannerEntries")),
+		connect.WithHandlerOptions(opts...),
+	)
+	plannerServiceGetWeekProgressHandler := connect.NewUnaryHandler(
+		PlannerServiceGetWeekProgressProcedure,
+		svc.GetWeekProgress,
+		connect.WithSchema(plannerServiceMethods.ByName("GetWeekProgress")),
 		connect.WithHandlerOptions(opts...),
 	)
 	plannerServiceListOpenTodosHandler := connect.NewUnaryHandler(
@@ -623,6 +702,18 @@ func NewPlannerServiceHandler(svc PlannerServiceHandler, opts ...connect.Handler
 		connect.WithSchema(plannerServiceMethods.ByName("DeletePlannerNote")),
 		connect.WithHandlerOptions(opts...),
 	)
+	plannerServiceGetPlannerSettingsHandler := connect.NewUnaryHandler(
+		PlannerServiceGetPlannerSettingsProcedure,
+		svc.GetPlannerSettings,
+		connect.WithSchema(plannerServiceMethods.ByName("GetPlannerSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	plannerServiceUpdatePlannerSettingsHandler := connect.NewUnaryHandler(
+		PlannerServiceUpdatePlannerSettingsProcedure,
+		svc.UpdatePlannerSettings,
+		connect.WithSchema(plannerServiceMethods.ByName("UpdatePlannerSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
 	plannerServiceImportPlannerHandler := connect.NewUnaryHandler(
 		PlannerServiceImportPlannerProcedure,
 		svc.ImportPlanner,
@@ -647,6 +738,8 @@ func NewPlannerServiceHandler(svc PlannerServiceHandler, opts ...connect.Handler
 			plannerServiceEnableHabitDraftHandler.ServeHTTP(w, r)
 		case PlannerServiceListPlannerEntriesProcedure:
 			plannerServiceListPlannerEntriesHandler.ServeHTTP(w, r)
+		case PlannerServiceGetWeekProgressProcedure:
+			plannerServiceGetWeekProgressHandler.ServeHTTP(w, r)
 		case PlannerServiceListOpenTodosProcedure:
 			plannerServiceListOpenTodosHandler.ServeHTTP(w, r)
 		case PlannerServiceListTodoTagsProcedure:
@@ -671,6 +764,10 @@ func NewPlannerServiceHandler(svc PlannerServiceHandler, opts ...connect.Handler
 			plannerServiceUpdatePlannerNoteHandler.ServeHTTP(w, r)
 		case PlannerServiceDeletePlannerNoteProcedure:
 			plannerServiceDeletePlannerNoteHandler.ServeHTTP(w, r)
+		case PlannerServiceGetPlannerSettingsProcedure:
+			plannerServiceGetPlannerSettingsHandler.ServeHTTP(w, r)
+		case PlannerServiceUpdatePlannerSettingsProcedure:
+			plannerServiceUpdatePlannerSettingsHandler.ServeHTTP(w, r)
 		case PlannerServiceImportPlannerProcedure:
 			plannerServiceImportPlannerHandler.ServeHTTP(w, r)
 		default:
@@ -712,6 +809,10 @@ func (UnimplementedPlannerServiceHandler) EnableHabitDraft(context.Context, *con
 
 func (UnimplementedPlannerServiceHandler) ListPlannerEntries(context.Context, *connect.Request[v1.ListPlannerEntriesRequest]) (*connect.Response[v1.ListPlannerEntriesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.ListPlannerEntries is not implemented"))
+}
+
+func (UnimplementedPlannerServiceHandler) GetWeekProgress(context.Context, *connect.Request[v1.GetWeekProgressRequest]) (*connect.Response[v1.GetWeekProgressResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.GetWeekProgress is not implemented"))
 }
 
 func (UnimplementedPlannerServiceHandler) ListOpenTodos(context.Context, *connect.Request[v1.ListOpenTodosRequest]) (*connect.Response[v1.ListOpenTodosResponse], error) {
@@ -760,6 +861,14 @@ func (UnimplementedPlannerServiceHandler) UpdatePlannerNote(context.Context, *co
 
 func (UnimplementedPlannerServiceHandler) DeletePlannerNote(context.Context, *connect.Request[v1.DeletePlannerNoteRequest]) (*connect.Response[emptypb.Empty], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.DeletePlannerNote is not implemented"))
+}
+
+func (UnimplementedPlannerServiceHandler) GetPlannerSettings(context.Context, *connect.Request[v1.GetPlannerSettingsRequest]) (*connect.Response[v1.PlannerSettings], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.GetPlannerSettings is not implemented"))
+}
+
+func (UnimplementedPlannerServiceHandler) UpdatePlannerSettings(context.Context, *connect.Request[v1.UpdatePlannerSettingsRequest]) (*connect.Response[v1.PlannerSettings], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.UpdatePlannerSettings is not implemented"))
 }
 
 func (UnimplementedPlannerServiceHandler) ImportPlanner(context.Context, *connect.Request[v1.ImportPlannerRequest]) (*connect.Response[v1.ImportPlannerResponse], error) {

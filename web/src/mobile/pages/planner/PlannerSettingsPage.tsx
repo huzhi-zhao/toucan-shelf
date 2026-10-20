@@ -15,9 +15,9 @@ import {
   localToday,
   PLANNER_MAX_UPDATE_DAYS_DEFAULT,
   PLANNER_MAX_UPDATE_DAYS_KEY,
-  PLANNER_WEEK_START_KEY,
   versionLabel,
 } from "../../lib/planner";
+import { usePlannerWeekStart } from "../../lib/plannerWeekStart";
 import { usePref } from "../../lib/storage";
 import { docRoute, habitVersionRoute, MOBILE_ROUTES } from "../../routes";
 
@@ -43,7 +43,7 @@ export default function PlannerSettingsPage() {
   const back = useBack(MOBILE_ROUTES.PLAN);
   const backText = useBackLabel() ?? COPY.planner.title;
   const go = useGo(COPY.plannerSettings.title);
-  const [weekStart, setWeekStart] = usePref(PLANNER_WEEK_START_KEY, 0);
+  const [weekStart, setWeekStart] = usePlannerWeekStart();
   const [maxUpdateDays, setMaxUpdateDays] = usePref(PLANNER_MAX_UPDATE_DAYS_KEY, PLANNER_MAX_UPDATE_DAYS_DEFAULT);
   const today = localToday();
   const { data: habits = [] } = useHabits();

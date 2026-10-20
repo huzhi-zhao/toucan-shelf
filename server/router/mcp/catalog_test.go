@@ -21,6 +21,7 @@ func TestCuratedOperationIDsAreTheKnowledgeBaseSet(t *testing.T) {
 		"MemoService_UpdateMemo",
 		"AttachmentService_GetDownloadUrl",
 		"AuthService_GetCurrentUser",
+		"PlannerService_GetWeekProgress",
 	}, curatedOperationIDs)
 
 	// Deliberately excluded: deleting documents, and the social/scratch-note
@@ -38,6 +39,39 @@ func TestCuratedOperationIDsAreTheKnowledgeBaseSet(t *testing.T) {
 	} {
 		require.NotContains(t, curatedOperationIDs, operationID)
 	}
+}
+
+func TestPlannerIsReadOnlyOverMCP(t *testing.T) {
+	// The planner is personal data that the app writes; over MCP it is only
+	// reported on. Any other planner operation would let an agent change it.
+	for _, operationID := range curatedOperationIDs {
+		if operationID != "PlannerService_GetWeekProgress" {
+			require.NotContains(t, operationID, "PlannerService_")
+		}
+	}
+
+	spec, err := loadOpenAPISpec("../../../proto/gen/openapi.yaml")
+	require.NoError(t, err)
+	registry, err := buildOperationRegistry(spec)
+	require.NoError(t, err)
+	tools, _, err := buildCuratedTools(registry)
+	require.NoError(t, err)
+	var tool *sdkmcp.Tool
+	for _, candidate := range tools {
+		if candidate.Name == "planner_get_week_progress" {
+			tool = candidate
+		}
+	}
+	require.NotNil(t, tool)
+	require.True(t, tool.Annotations.ReadOnlyHint)
+	require.Equal(t, "GET", tool.Meta["method"])
+	require.Contains(t, tool.Description, "facts only")
+
+	// Resident context: keep the tool's definition small (see ADR 0020).
+	encoded, err := json.Marshal(tool)
+	require.NoError(t, err)
+	t.Logf("planner_get_week_progress definition: %d bytes", len(encoded))
+	require.Less(t, len(encoded), 8*1024)
 }
 
 func TestCuratedOperationIDsStayMemoFocused(t *testing.T) {

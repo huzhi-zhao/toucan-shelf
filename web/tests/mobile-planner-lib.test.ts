@@ -146,8 +146,19 @@ describe("habit versions", () => {
     expect(habitVersionOn(versions, "2026-10-19")?.effectiveDate).toBe("");
     expect(habitVersionOn(versions, "2026-10-20")?.effectiveDate).toBe("2026-10-20");
     expect(habitVersionOn([version("2026-10-20")], "2026-10-19")).toBeUndefined();
-    expect(weeklyGoalOn(versions, "planner/habits/a", "2026-10-21")).toBe(1);
-    expect(weeklyGoalOn(versions, "planner/habits/b", "2026-10-21")).toBe(0);
+    expect(weeklyGoalOn(versions, "planner/habits/a", "2026-10-21", 1)).toBe(1);
+    expect(weeklyGoalOn(versions, "planner/habits/b", "2026-10-21", 1)).toBe(0);
+  });
+
+  it("measures a whole week against the plan in effect on its last day", () => {
+    // The plan changed on Tuesday 10-20: from Monday, Monday 10-19 is in its week and takes the new goals too.
+    expect(weeklyGoalOn(versions, "planner/habits/a", "2026-10-19", 1)).toBe(1);
+    expect(weeklyGoalOn(versions, "planner/habits/b", "2026-10-19", 1)).toBe(0);
+    // The week before keeps the old ones.
+    expect(weeklyGoalOn(versions, "planner/habits/b", "2026-10-15", 1)).toBe(1);
+    // From Tuesday, 10-19 ends the old plan's last week.
+    expect(weeklyGoalOn(versions, "planner/habits/a", "2026-10-19", 2)).toBe(0);
+    expect(weeklyGoalOn(versions, "planner/habits/b", "2026-10-19", 2)).toBe(1);
   });
 
   it("lays each day's dots out by its version, without gaps", () => {
