@@ -422,8 +422,10 @@ CREATE INDEX idx_site_publication_link_target_memo_id ON site_publication_link(t
 -- Dates are 'YYYY-MM-DD' text in the user's phone-local calendar; the server
 -- never converts them. A todo's date may be '' (no date).
 
--- planner_habit is one long-running habit the user checks in against.
--- archived  1 hides it from new check-ins while keeping its history visible.
+-- planner_habit is one long-running habit the user checks in against. Habits are
+-- never deleted: they form a pool, and planner_habit_version picks which are in use.
+-- archived  no longer used; versions decide what is in use (kept for old data).
+-- color     index into the calendar palette (8 colours); the habit keeps it for good.
 CREATE TABLE planner_habit (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   uid        TEXT    NOT NULL UNIQUE,
@@ -432,10 +434,25 @@ CREATE TABLE planner_habit (
   position   INTEGER NOT NULL DEFAULT 0,
   archived   INTEGER NOT NULL DEFAULT 0,
   created_ts BIGINT  NOT NULL DEFAULT (strftime('%s', 'now')),
-  updated_ts BIGINT  NOT NULL DEFAULT (strftime('%s', 'now'))
+  updated_ts BIGINT  NOT NULL DEFAULT (strftime('%s', 'now')),
+  color      INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX idx_planner_habit_creator_id ON planner_habit(creator_id);
+
+-- planner_habit_version is the set of habits in use from effective_date on, until
+-- the next version. effective_date is 'YYYY-MM-DD', or '' for "from the very
+-- beginning". entries is a JSON array of {"habit_id", "weekly_goal"} in calendar
+-- order, at most five; weekly_goal 0 means none.
+CREATE TABLE planner_habit_version (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  creator_id     INTEGER NOT NULL,
+  effective_date TEXT    NOT NULL,
+  entries        TEXT    NOT NULL DEFAULT '[]',
+  created_ts     BIGINT  NOT NULL DEFAULT (strftime('%s', 'now')),
+  updated_ts     BIGINT  NOT NULL DEFAULT (strftime('%s', 'now')),
+  UNIQUE(creator_id, effective_date)
+);
 
 -- planner_check_in records that a habit was kept on a day. One per habit per day.
 -- todo_id  the todo whose completion made the check-in, or 0 for one checked in by hand.

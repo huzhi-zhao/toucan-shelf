@@ -1,28 +1,29 @@
 import dayjs from "dayjs";
 import { List, ListButton, ListItem, Navbar, NavbarBackLink, Page, Preloader, Sheet, Toast, Toggle } from "konsta/react";
-import { CheckIcon, ExternalLinkIcon } from "lucide-react";
+import { ExternalLinkIcon } from "lucide-react";
 import { type FormEvent, type RefObject, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import {
-  useDeleteTodo,
-  useHabits,
-  useOpenTodos,
-  usePlannerEntries,
-  usePostponeTodo,
-  useTodo,
-  useTodoTags,
-  useUpdateTodo,
-} from "@/hooks/usePlannerQueries";
+import { useDeleteTodo, useHabits, usePostponeTodo, useTodo, useTodoTags, useUpdateTodo } from "@/hooks/usePlannerQueries";
 import { cn } from "@/lib/utils";
-import { type Habit, type Todo, Todo_Status } from "@/types/proto/api/v1/planner_service_pb";
+import { type Todo, Todo_Status } from "@/types/proto/api/v1/planner_service_pb";
 import DangerListButton from "../../components/DangerListButton";
 import DocPickerSheet from "../../components/DocPickerSheet";
 import { LinkedDocsList } from "../../components/LinkedDocs";
+import TodoNoteField from "../../components/planner/TodoNoteField";
 import SectionTitle from "../../components/SectionTitle";
 import { COPY } from "../../copy";
 import { useBlurOnClose } from "../../lib/keyboard";
 import { useBack, useBackLabel, useGo } from "../../lib/nav";
-import { isOverdue, localToday, postponeChoices } from "../../lib/planner";
+import {
+  isDateEditable,
+  isFailed,
+  isOverdue,
+  localToday,
+  PLANNER_MAX_UPDATE_DAYS_DEFAULT,
+  PLANNER_MAX_UPDATE_DAYS_KEY,
+  postponeChoices,
+} from "../../lib/planner";
+import { usePref } from "../../lib/storage";
 import { docRoute, MOBILE_ROUTES, todoNameFromUid } from "../../routes";
 
 const EDITABLE_FIELDS = ["title", "note", "url"] as const;
@@ -35,8 +36,9 @@ const isWebLink = (value: string) => /^https?:\/\/\S+$/i.test(value.trim());
  * and an external link. Text fields save when they lose focus; the rest at once.
  * Closing happens here too — cancelling asks for the reason first — and so does postponing,
  * which moves the date but keeps the original one and counts (requirement §2.3).
- * A todo can name a habit to check in when it is done; once it has, it can only be deleted
- * (requirement §2.4.1).
+ * A habit todo (requirement §2.4.2 §5) is for its own day: it is completed that day, checking in its habit,
+ * or backfilled within the "N days" limit; past it, it has failed and can only be deleted. It is not
+ * postponed and its date and habit do not change. Once it has checked in, it can only be deleted.
  */
 export default function TodoPage() {
   const { uid = "" } = useParams();
@@ -74,8 +76,8 @@ export default function TodoPage() {
   const { data: usedTags = [] } = useTodoTags();
   const [postponeOpen, setPostponeOpen] = useState(false);
   const postponeTodo = usePostponeTodo();
-  const [habitOpen, setHabitOpen] = useState(false);
   const { data: habits = [] } = useHabits();
+  const [maxUpdateDays] = usePref(PLANNER_MAX_UPDATE_DAYS_KEY, PLANNER_MAX_UPDATE_DAYS_DEFAULT);
   useBlurOnClose(cancelOpen || postponeOpen || pickerOpen || tagOpen);
 
   const postpone = (date: string) => {
@@ -85,7 +87,7 @@ export default function TodoPage() {
   };
 
   const save = (
-    changes: Partial<Pick<Todo, "title" | "date" | "status" | "cancelReason" | "important" | "tag" | "note" | "memos" | "url" | "habit">>,
+    changes: Partial<Pick<Todo, "title" | "date" | "status" | "cancelReason" | "important" | "tag" | "note" | "memos" | "url">>,
   ) => updateTodo.mutate({ name, changes, localDate: today }, { onError: () => flash(COPY.planner.failed) });
 
   const commitText = (field: EditableField) => {
@@ -139,15 +141,22 @@ export default function TodoPage() {
   // Completing it checked in its habit: it stays done, and only deleting it undoes that.
   const settled = todo.checkInDate !== "";
   const linkedHabit = habits.find((habit) => habit.name === todo.habit);
+  const isHabitTodo = todo.habit !== "";
+  const failed = isFailed(todo, today);
+  // A failed habit todo can still be done late, by a backfill, within the days check-ins stay editable.
+  const canBackfill = failed && isDateEditable(todo.date, today, maxUpdateDays);
+  const notYet = isHabitTodo && todo.date > today;
   const closedOn = todo.closeTime ? dayjs(Number(todo.closeTime.seconds) * 1000).format("YYYY-MM-DD") : "";
   const statusLabel =
     todo.status === Todo_Status.DONE
       ? COPY.todo.done
       : todo.status === Todo_Status.CANCELLED
         ? COPY.todo.cancelled
-        : overdue
-          ? COPY.todo.overdue
-          : COPY.todo.active;
+        : failed
+          ? COPY.todo.failed
+          : overdue
+            ? COPY.todo.overdue
+            : COPY.todo.active;
   const inputClass = "w-full bg-transparent outline-none text-[17px] py-0.5";
 
   return (
@@ -169,12 +178,16 @@ export default function TodoPage() {
         <ListItem
           title={COPY.todo.date}
           after={
-            <input
-              type="date"
-              value={todo.date}
-              onChange={(event) => save({ date: event.target.value })}
-              className={cn("bg-transparent text-right outline-none", overdue && "text-red-500")}
-            />
+            isHabitTodo ? (
+              <span>{todo.date ? `${dayjs(todo.date).format("M/D")} ${COPY.planner.weekdays[dayjs(todo.date).day()]}` : ""}</span>
+            ) : (
+              <input
+                type="date"
+                value={todo.date}
+                onChange={(event) => save({ date: event.target.value })}
+                className={cn("bg-transparent text-right outline-none", overdue && "text-red-500")}
+              />
+            )
           }
         />
         <ListItem
@@ -191,33 +204,22 @@ export default function TodoPage() {
             if (usedTags.length === 0) tagInputRef.current?.focus({ preventScroll: true });
           }}
         />
-        <ListItem
-          link={!closed}
-          chevron={!closed}
-          title={COPY.todo.habit}
-          after={
-            linkedHabit ? (
+        {linkedHabit && (
+          <ListItem
+            title={COPY.todo.habit}
+            after={
               <span>
-                {linkedHabit.title}
+                🔗 {linkedHabit.title}
                 {settled && <span className="ml-1.5 text-[13px]">· {COPY.todo.checkedIn(dayjs(todo.checkInDate).format("M/D"))}</span>}
               </span>
-            ) : (
-              <span className="text-black/30 dark:text-white/30">{COPY.todo.noHabit}</span>
-            )
-          }
-          onClick={() => !closed && setHabitOpen(true)}
-        />
+            }
+          />
+        )}
       </List>
 
       <SectionTitle>{COPY.todo.note}</SectionTitle>
       <div className="mx-4 rounded-xl bg-white dark:bg-[#1c1c1e] p-3">
-        <textarea
-          rows={4}
-          value={drafts.note}
-          onChange={(event) => setDrafts((d) => ({ ...d, note: event.target.value }))}
-          onBlur={() => commitText("note")}
-          className="w-full bg-transparent outline-none resize-none text-[16px]"
-        />
+        <TodoNoteField value={drafts.note} onChange={(note) => setDrafts((d) => ({ ...d, note }))} onCommit={() => commitText("note")} />
       </div>
 
       <SectionTitle>{COPY.todo.doc}</SectionTitle>
@@ -271,13 +273,21 @@ export default function TodoPage() {
         </div>
       )}
       {settled && <div className="mx-4 mb-2 text-[13px] text-black/50 dark:text-white/50">{COPY.todo.settled}</div>}
+      {failed && <div className="mx-4 mb-2 text-[13px] text-black/50 dark:text-white/50">{COPY.todo.failedHint(canBackfill)}</div>}
+      {notYet && !closed && <div className="mx-4 mb-2 text-[13px] text-black/50 dark:text-white/50">{COPY.todo.notYet}</div>}
       <List strongIos insetIos dividersIos className="!my-0">
         {settled ? null : closed ? (
           <ListButton onClick={() => save({ status: Todo_Status.ACTIVE })}>{COPY.todo.reopen}</ListButton>
+        ) : failed ? (
+          canBackfill && <ListButton onClick={() => save({ status: Todo_Status.DONE })}>{COPY.todo.backfill}</ListButton>
         ) : (
           <>
-            <ListButton onClick={() => save({ status: Todo_Status.DONE })}>{COPY.todo.complete}</ListButton>
-            {todo.date && <ListButton onClick={() => setPostponeOpen(true)}>{COPY.todo.postpone}</ListButton>}
+            {!notYet && (
+              <ListButton onClick={() => save({ status: Todo_Status.DONE })}>
+                {isHabitTodo && linkedHabit ? COPY.todo.completeAndCheckIn : COPY.todo.complete}
+              </ListButton>
+            )}
+            {todo.date && !isHabitTodo && <ListButton onClick={() => setPostponeOpen(true)}>{COPY.todo.postpone}</ListButton>}
             <DangerListButton
               onClick={() => {
                 setReason("");
@@ -350,18 +360,6 @@ export default function TodoPage() {
         </List>
       </Sheet>
 
-      <HabitSheet
-        opened={habitOpen}
-        todo={todo}
-        habits={habits}
-        today={today}
-        onClose={() => setHabitOpen(false)}
-        onPick={(habit) => {
-          if (habit !== todo.habit) save({ habit });
-          setHabitOpen(false);
-        }}
-      />
-
       <TagSheet
         opened={tagOpen}
         current={todo.tag}
@@ -388,75 +386,6 @@ export default function TodoPage() {
         {toast}
       </Toast>
     </Page>
-  );
-}
-
-/**
- * Picks the habit a todo checks in when it is done. A habit is not available when another open todo
- * already holds it, or when it is checked in today already (requirement §2.4.1): completing this todo
- * could not check it in then.
- */
-function HabitSheet({
-  opened,
-  todo,
-  habits,
-  today,
-  onClose,
-  onPick,
-}: {
-  opened: boolean;
-  todo: Todo;
-  habits: Habit[];
-  today: string;
-  onClose: () => void;
-  onPick: (habit: string) => void;
-}) {
-  const { data: openTodos = [] } = useOpenTodos();
-  const { data: todayEntries } = usePlannerEntries(today, today);
-  const unavailable = (habit: Habit) => {
-    if (habit.name === todo.habit) return "";
-    const holder = openTodos.find((other) => other.habit === habit.name && other.name !== todo.name);
-    if (holder) return COPY.todo.habitHeldBy(holder.title);
-    if (todayEntries?.checkIns.some((checkIn) => checkIn.habit === habit.name && checkIn.date === today))
-      return COPY.todo.habitCheckedToday;
-    return "";
-  };
-  const choices = habits.filter((habit) => !habit.archived);
-
-  return (
-    <Sheet className="pb-safe w-full rounded-t-2xl" opened={opened} onBackdropClick={onClose}>
-      <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-black/15 dark:bg-white/20" />
-      <div className="px-4 pt-3 text-[15px] font-semibold">{COPY.todo.pickHabit}</div>
-      <div className="px-4 pt-1 text-[13px] text-black/45 dark:text-white/45">{COPY.todo.pickHabitHint}</div>
-      <List strongIos insetIos dividersIos className="!my-3 max-h-[60vh] overflow-y-auto">
-        <ListItem
-          link
-          chevron={false}
-          title={COPY.todo.noHabit}
-          after={!todo.habit && <CheckIcon className="w-4 h-4 text-primary" />}
-          onClick={() => onPick("")}
-        />
-        {choices.map((habit) => {
-          const reason = unavailable(habit);
-          return (
-            <ListItem
-              key={habit.name}
-              link={!reason}
-              chevron={false}
-              title={<span className={cn(reason && "text-black/35 dark:text-white/35")}>{habit.title}</span>}
-              after={
-                habit.name === todo.habit ? (
-                  <CheckIcon className="w-4 h-4 text-primary" />
-                ) : (
-                  reason && <span className="text-[13px] text-black/35 dark:text-white/35">{reason}</span>
-                )
-              }
-              onClick={() => !reason && onPick(habit.name)}
-            />
-          );
-        })}
-      </List>
-    </Sheet>
   );
 }
 

@@ -34,6 +34,8 @@ func TestPlannerHabitsAndCheckIns(t *testing.T) {
 	second, err := ts.Service.CreateHabit(userCtx, &v1pb.CreateHabitRequest{Habit: &v1pb.Habit{Title: "💪运动"}})
 	require.NoError(t, err)
 	require.Greater(t, second.Position, first.Position, "new habits go last")
+	require.NotEqual(t, first.Color, second.Color, "a new habit gets a color of its own")
+	useHabits(t, ts, userCtx, "2026-01-01", first.Name)
 
 	_, err = ts.Service.SetCheckIn(userCtx, &v1pb.SetCheckInRequest{CheckIn: &v1pb.CheckIn{Habit: first.Name, Date: "2026-10-16", Note: "15"}})
 	require.NoError(t, err)
@@ -49,13 +51,14 @@ func TestPlannerHabitsAndCheckIns(t *testing.T) {
 	_, err = ts.Service.SetCheckIn(userCtx, &v1pb.SetCheckInRequest{CheckIn: &v1pb.CheckIn{Habit: first.Name, Date: "2026/10/16"}})
 	requireCode(t, err, codes.InvalidArgument)
 
-	_, err = ts.Service.UpdateHabit(userCtx, &v1pb.UpdateHabitRequest{
-		Habit:      &v1pb.Habit{Name: second.Name, Archived: true},
-		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"archived"}},
-	})
-	require.NoError(t, err)
+	// Only a habit in the day's version takes check-ins, and habits are no longer archived.
 	_, err = ts.Service.SetCheckIn(userCtx, &v1pb.SetCheckInRequest{CheckIn: &v1pb.CheckIn{Habit: second.Name, Date: "2026-10-16"}})
 	requireCode(t, err, codes.FailedPrecondition)
+	_, err = ts.Service.UpdateHabit(userCtx, &v1pb.UpdateHabitRequest{
+		Habit:      &v1pb.Habit{Name: second.Name},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"archived"}},
+	})
+	requireCode(t, err, codes.InvalidArgument)
 
 	_, err = ts.Service.DeleteCheckIn(userCtx, &v1pb.DeleteCheckInRequest{Habit: first.Name, Date: "2026-10-16"})
 	require.NoError(t, err)
@@ -360,6 +363,16 @@ func TestPlannerImport(t *testing.T) {
 	require.Equal(t, int32(3), response.TodoCount)
 	require.Equal(t, int32(1), response.NoteCount)
 
+	// The imported habits are in use from the very beginning, each in its own color.
+	versions, err := ts.Service.ListHabitVersions(userCtx, &v1pb.ListHabitVersionsRequest{})
+	require.NoError(t, err)
+	require.Len(t, versions.Versions, 1)
+	require.Empty(t, versions.Versions[0].EffectiveDate)
+	require.Len(t, versions.Versions[0].Entries, 2)
+	habits, err := ts.Service.ListHabits(userCtx, &v1pb.ListHabitsRequest{})
+	require.NoError(t, err)
+	require.NotEqual(t, habits.Habits[0].Color, habits.Habits[1].Color)
+
 	entries, err := ts.Service.ListPlannerEntries(userCtx, &v1pb.ListPlannerEntriesRequest{StartDate: "2026-07-01", EndDate: "2026-10-31"})
 	require.NoError(t, err)
 	require.Len(t, entries.CheckIns, 2)
@@ -411,6 +424,7 @@ func TestPlannerNoFutureCheckIns(t *testing.T) {
 	userCtx := ts.CreateUserContext(ctx, user.ID)
 	habit, err := ts.Service.CreateHabit(userCtx, &v1pb.CreateHabitRequest{Habit: &v1pb.Habit{Title: "冥想"}})
 	require.NoError(t, err)
+	useHabits(t, ts, userCtx, "2026-01-01", habit.Name)
 
 	// Noon UTC on the 17th: UTC+14 is already on the 18th, nowhere has reached the 19th.
 	ts.Service.Clock = func() time.Time { return time.Date(2026, 10, 17, 12, 0, 0, 0, time.UTC) }
@@ -423,7 +437,124 @@ func TestPlannerNoFutureCheckIns(t *testing.T) {
 	requireCode(t, checkIn("2026-10-19"), codes.InvalidArgument)
 }
 
-func TestTodoChecksInLinkedHabit(t *testing.T) {
+// useHabits sets the habit version taking effect on date, as if set that very day.
+func useHabits(t *testing.T, ts *TestService, ctx context.Context, date string, habits ...string) *v1pb.HabitVersion {
+	t.Helper()
+	version, err := ts.Service.SetHabitVersion(ctx, &v1pb.SetHabitVersionRequest{Version: habitVersion(date, habits...), LocalDate: date})
+	require.NoError(t, err)
+	return version
+}
+
+func habitVersion(date string, habits ...string) *v1pb.HabitVersion {
+	version := &v1pb.HabitVersion{EffectiveDate: date}
+	for _, habit := range habits {
+		version.Entries = append(version.Entries, &v1pb.HabitVersionEntry{Habit: habit})
+	}
+	return version
+}
+
+func TestHabitVersions(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestService(t)
+	defer ts.Cleanup()
+	user, err := ts.CreateRegularUser(ctx, "planner")
+	require.NoError(t, err)
+	userCtx := ts.CreateUserContext(ctx, user.ID)
+	ts.Service.Clock = func() time.Time { return time.Date(2026, 10, 18, 12, 0, 0, 0, time.UTC) }
+	const today = "2026-10-18"
+
+	habits := make([]*v1pb.Habit, 7)
+	names := make([]string, 7)
+	for i := range habits {
+		habits[i], err = ts.Service.CreateHabit(userCtx, &v1pb.CreateHabitRequest{Habit: &v1pb.Habit{Title: string(rune('a' + i))}})
+		require.NoError(t, err)
+		names[i] = habits[i].Name
+	}
+	set := func(version *v1pb.HabitVersion, unlink bool) (*v1pb.HabitVersion, error) {
+		return ts.Service.SetHabitVersion(userCtx, &v1pb.SetHabitVersionRequest{Version: version, LocalDate: today, UnlinkTodos: unlink})
+	}
+
+	t.Run("a version is checked", func(t *testing.T) {
+		_, err := set(habitVersion("2026-10-17", names[0]), false)
+		requireCode(t, err, codes.InvalidArgument) // takes effect in the past
+		_, err = set(habitVersion("", names[0]), false)
+		requireCode(t, err, codes.InvalidArgument)
+		_, err = set(habitVersion(today, names[:6]...), false)
+		requireCode(t, err, codes.InvalidArgument) // more than five
+		_, err = set(habitVersion(today, names[0], names[0]), false)
+		requireCode(t, err, codes.InvalidArgument)
+		goal := habitVersion(today, names[0])
+		goal.Entries[0].WeeklyGoal = 8
+		_, err = set(goal, false)
+		requireCode(t, err, codes.InvalidArgument)
+	})
+
+	// The first eight habits get the eight colors, so habits 0..6 differ.
+	version := habitVersion(today, names[0], names[1])
+	version.Entries[1].WeeklyGoal = 3
+	saved, err := set(version, false)
+	require.NoError(t, err)
+	require.Equal(t, int32(3), saved.Entries[1].WeeklyGoal)
+
+	// Two habits of the same color cannot share a version, nor can a habit take a color its versions use.
+	_, err = ts.Service.UpdateHabit(userCtx, &v1pb.UpdateHabitRequest{
+		Habit: &v1pb.Habit{Name: names[1], Color: habits[0].Color}, UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"color"}},
+	})
+	requireCode(t, err, codes.FailedPrecondition)
+	recolored, err := ts.Service.UpdateHabit(userCtx, &v1pb.UpdateHabitRequest{
+		Habit: &v1pb.Habit{Name: names[6], Color: habits[0].Color}, UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"color"}},
+	})
+	require.NoError(t, err)
+	require.Equal(t, habits[0].Color, recolored.Color)
+	_, err = set(habitVersion("2026-10-25", names[0], names[6]), false)
+	requireCode(t, err, codes.InvalidArgument)
+
+	// A new habit takes a color the latest version does not use.
+	fresh, err := ts.Service.CreateHabit(userCtx, &v1pb.CreateHabitRequest{Habit: &v1pb.Habit{Title: "new"}})
+	require.NoError(t, err)
+	require.NotEqual(t, habits[0].Color, fresh.Color)
+	require.NotEqual(t, habits[1].Color, fresh.Color)
+
+	// A habit todo on the 22nd for habit 1, then a version from the 20th without it.
+	todo, err := ts.Service.CreateTodo(userCtx, &v1pb.CreateTodoRequest{Todo: &v1pb.Todo{Title: "b", Date: "2026-10-22", Habit: names[1]}, LocalDate: today})
+	require.NoError(t, err)
+	_, err = set(habitVersion("2026-10-20", names[0]), false)
+	requireCode(t, err, codes.FailedPrecondition)
+	_, err = set(habitVersion("2026-10-20", names[0]), true)
+	require.NoError(t, err)
+	unlinked, err := ts.Service.GetTodo(userCtx, &v1pb.GetTodoRequest{Name: todo.Name})
+	require.NoError(t, err)
+	require.Empty(t, unlinked.Habit, "the todo became a plain one")
+
+	// Setting the same date again replaces that version.
+	_, err = set(habitVersion("2026-10-20", names[2], names[0]), false)
+	require.NoError(t, err)
+	list, err := ts.Service.ListHabitVersions(userCtx, &v1pb.ListHabitVersionsRequest{})
+	require.NoError(t, err)
+	require.Len(t, list.Versions, 2)
+	require.Equal(t, today, list.Versions[0].EffectiveDate)
+	require.Equal(t, "2026-10-20", list.Versions[1].EffectiveDate)
+	require.Equal(t, names[2], list.Versions[1].Entries[0].Habit, "entries keep their order")
+
+	// A version in effect stays; one to come can go, unless its habit todos rely on it.
+	_, err = ts.Service.DeleteHabitVersion(userCtx, &v1pb.DeleteHabitVersionRequest{EffectiveDate: today, LocalDate: today})
+	requireCode(t, err, codes.FailedPrecondition)
+	_, err = ts.Service.CreateTodo(userCtx, &v1pb.CreateTodoRequest{Todo: &v1pb.Todo{Title: "c", Date: "2026-10-21", Habit: names[2]}, LocalDate: today})
+	require.NoError(t, err)
+	_, err = ts.Service.DeleteHabitVersion(userCtx, &v1pb.DeleteHabitVersionRequest{EffectiveDate: "2026-10-20", LocalDate: today})
+	requireCode(t, err, codes.FailedPrecondition)
+	_, err = set(habitVersion("2026-10-20", names[0], names[2]), false)
+	require.NoError(t, err)
+	_, err = set(habitVersion("2026-10-23", names[0]), true)
+	require.NoError(t, err)
+	_, err = ts.Service.DeleteHabitVersion(userCtx, &v1pb.DeleteHabitVersionRequest{EffectiveDate: "2026-10-23", LocalDate: today})
+	require.NoError(t, err)
+	list, err = ts.Service.ListHabitVersions(userCtx, &v1pb.ListHabitVersionsRequest{})
+	require.NoError(t, err)
+	require.Len(t, list.Versions, 2)
+}
+
+func TestHabitTodos(t *testing.T) {
 	ctx := context.Background()
 	ts := NewTestService(t)
 	defer ts.Cleanup()
@@ -431,100 +562,110 @@ func TestTodoChecksInLinkedHabit(t *testing.T) {
 	require.NoError(t, err)
 	userCtx := ts.CreateUserContext(ctx, user.ID)
 	const today = "2026-10-18"
+	// The server's clock runs ahead, so that check-ins in the days below are not refused as future ones.
+	ts.Service.Clock = func() time.Time { return time.Date(2026, 10, 25, 12, 0, 0, 0, time.UTC) }
 
 	run, err := ts.Service.CreateHabit(userCtx, &v1pb.CreateHabitRequest{Habit: &v1pb.Habit{Title: "💪运动"}})
 	require.NoError(t, err)
 	read, err := ts.Service.CreateHabit(userCtx, &v1pb.CreateHabitRequest{Habit: &v1pb.Habit{Title: "📖阅读"}})
 	require.NoError(t, err)
-	newTodo := func(title string) *v1pb.Todo {
-		todo, err := ts.Service.CreateTodo(userCtx, &v1pb.CreateTodoRequest{Todo: &v1pb.Todo{Title: title, Date: "2026-10-16"}})
+	idle, err := ts.Service.CreateHabit(userCtx, &v1pb.CreateHabitRequest{Habit: &v1pb.Habit{Title: "😴"}})
+	require.NoError(t, err)
+	useHabits(t, ts, userCtx, "2026-10-01", run.Name, read.Name)
+
+	create := func(title, date, habit, localDate string) (*v1pb.Todo, error) {
+		return ts.Service.CreateTodo(userCtx, &v1pb.CreateTodoRequest{Todo: &v1pb.Todo{Title: title, Date: date, Habit: habit}, LocalDate: localDate})
+	}
+	update := func(todo *v1pb.Todo, localDate string, paths ...string) (*v1pb.Todo, error) {
+		return ts.Service.UpdateTodo(userCtx, &v1pb.UpdateTodoRequest{Todo: todo, UpdateMask: &fieldmaskpb.FieldMask{Paths: paths}, LocalDate: localDate})
+	}
+	complete := func(todo *v1pb.Todo, localDate string) (*v1pb.Todo, error) {
+		return update(&v1pb.Todo{Name: todo.Name, Status: v1pb.Todo_DONE}, localDate, "status")
+	}
+	checkIns := func(date string) []*v1pb.CheckIn {
+		entries, err := ts.Service.ListPlannerEntries(userCtx, &v1pb.ListPlannerEntriesRequest{StartDate: date, EndDate: date})
 		require.NoError(t, err)
-		return todo
-	}
-	update := func(todo *v1pb.Todo, paths ...string) (*v1pb.Todo, error) {
-		return ts.Service.UpdateTodo(userCtx, &v1pb.UpdateTodoRequest{
-			Todo: todo, UpdateMask: &fieldmaskpb.FieldMask{Paths: paths}, LocalDate: today,
-		})
-	}
-	link := func(todo *v1pb.Todo, habit string) (*v1pb.Todo, error) {
-		return update(&v1pb.Todo{Name: todo.Name, Habit: habit}, "habit")
+		return entries.CheckIns
 	}
 
-	tenK := newTodo("跑 10 公里")
-	linked, err := link(tenK, run.Name)
+	t.Run("creating is checked", func(t *testing.T) {
+		_, err := create("x", "2026-10-20", run.Name, "")
+		requireCode(t, err, codes.InvalidArgument) // needs the caller's day
+		_, err = create("x", "", run.Name, today)
+		requireCode(t, err, codes.InvalidArgument) // needs a date
+		_, err = create("x", "2026-10-17", run.Name, today)
+		requireCode(t, err, codes.InvalidArgument) // not for the past
+		_, err = create("x", "2026-10-20", idle.Name, today)
+		requireCode(t, err, codes.FailedPrecondition) // not in use
+	})
+
+	tenK, err := create("跑 10 公里", "2026-10-20", run.Name, today)
 	require.NoError(t, err)
-	require.Equal(t, run.Name, linked.Habit)
+	require.Equal(t, run.Name, tenK.Habit)
+	_, err = create("跑 5 公里", "2026-10-20", run.Name, today)
+	requireCode(t, err, codes.AlreadyExists) // one per habit per day
 
-	// One open todo per habit, so completing it can always check in.
-	fiveK := newTodo("跑 5 公里")
-	_, err = link(fiveK, run.Name)
+	// A habit todo keeps its day: no moving, no postponing, no completing ahead of it, no relinking.
+	_, err = update(&v1pb.Todo{Name: tenK.Name, Date: "2026-10-21"}, today, "date")
+	requireCode(t, err, codes.FailedPrecondition)
+	_, err = ts.Service.PostponeTodo(userCtx, &v1pb.PostponeTodoRequest{Name: tenK.Name, Date: "2026-10-21", LocalDate: today})
+	requireCode(t, err, codes.FailedPrecondition)
+	_, err = complete(tenK, today)
+	requireCode(t, err, codes.FailedPrecondition)
+	_, err = update(&v1pb.Todo{Name: tenK.Name, Habit: read.Name}, today, "habit")
+	requireCode(t, err, codes.InvalidArgument)
+
+	// While it is open, the habit is checked in that day only by completing it.
+	_, err = ts.Service.SetCheckIn(userCtx, &v1pb.SetCheckInRequest{CheckIn: &v1pb.CheckIn{Habit: run.Name, Date: "2026-10-20"}})
 	requireCode(t, err, codes.FailedPrecondition)
 
-	// A habit already checked in today cannot be linked.
-	_, err = ts.Service.SetCheckIn(userCtx, &v1pb.SetCheckInRequest{CheckIn: &v1pb.CheckIn{Habit: read.Name, Date: today}})
+	// Done on its day: checked in that day, noted with the title.
+	done, err := complete(tenK, "2026-10-20")
 	require.NoError(t, err)
-	_, err = link(fiveK, read.Name)
-	requireCode(t, err, codes.FailedPrecondition)
+	require.Equal(t, "2026-10-20", done.CheckInDate)
+	made := checkIns("2026-10-20")
+	require.Len(t, made, 1)
+	require.Equal(t, "跑 10 公里", made[0].Note)
+	require.Equal(t, tenK.Name, made[0].Todo)
 
-	// Completing checks the habit in on the caller's day, not the todo's date, noted with the title.
-	done, err := update(&v1pb.Todo{Name: tenK.Name, Status: v1pb.Todo_DONE}, "status")
+	// Settled: no reopening or cancelling, its check-in is its own; deleting takes both.
+	_, err = update(&v1pb.Todo{Name: tenK.Name, Status: v1pb.Todo_ACTIVE}, today, "status")
+	requireCode(t, err, codes.FailedPrecondition)
+	_, err = update(&v1pb.Todo{Name: tenK.Name, Status: v1pb.Todo_CANCELLED, CancelReason: "不跑了"}, today, "status", "cancel_reason")
+	requireCode(t, err, codes.FailedPrecondition)
+	_, err = ts.Service.DeleteCheckIn(userCtx, &v1pb.DeleteCheckInRequest{Habit: run.Name, Date: "2026-10-20"})
+	requireCode(t, err, codes.FailedPrecondition)
+	_, err = update(&v1pb.Todo{Name: tenK.Name, Note: "配速 6 分"}, today, "note")
 	require.NoError(t, err)
-	require.Equal(t, today, done.CheckInDate)
-	entries, err := ts.Service.ListPlannerEntries(userCtx, &v1pb.ListPlannerEntriesRequest{StartDate: today, EndDate: today})
-	require.NoError(t, err)
-	var made *v1pb.CheckIn
-	for _, checkIn := range entries.CheckIns {
-		if checkIn.Habit == run.Name {
-			made = checkIn
-		}
-	}
-	require.NotNil(t, made)
-	require.Equal(t, "跑 10 公里", made.Note)
-	require.Equal(t, tenK.Name, made.Todo)
-
-	// The check-in belongs to the todo: it cannot be changed or removed on its own.
-	_, err = ts.Service.SetCheckIn(userCtx, &v1pb.SetCheckInRequest{CheckIn: &v1pb.CheckIn{Habit: run.Name, Date: today, Note: "改"}})
-	requireCode(t, err, codes.FailedPrecondition)
-	_, err = ts.Service.DeleteCheckIn(userCtx, &v1pb.DeleteCheckInRequest{Habit: run.Name, Date: today})
-	requireCode(t, err, codes.FailedPrecondition)
-
-	// The todo can no longer be reopened, cancelled or relinked; other fields still change.
-	_, err = update(&v1pb.Todo{Name: tenK.Name, Status: v1pb.Todo_ACTIVE}, "status")
-	requireCode(t, err, codes.FailedPrecondition)
-	_, err = update(&v1pb.Todo{Name: tenK.Name, Status: v1pb.Todo_CANCELLED, CancelReason: "不跑了"}, "status", "cancel_reason")
-	requireCode(t, err, codes.FailedPrecondition)
-	_, err = link(tenK, "")
-	requireCode(t, err, codes.FailedPrecondition)
-	_, err = update(&v1pb.Todo{Name: tenK.Name, Note: "配速 6 分"}, "note")
-	require.NoError(t, err)
-
-	// Deleting the todo removes its check-in too.
 	_, err = ts.Service.DeleteTodo(userCtx, &v1pb.DeleteTodoRequest{Name: tenK.Name})
 	require.NoError(t, err)
-	entries, err = ts.Service.ListPlannerEntries(userCtx, &v1pb.ListPlannerEntriesRequest{StartDate: today, EndDate: today})
-	require.NoError(t, err)
-	require.Len(t, entries.CheckIns, 1, "only the reading check-in is left")
+	require.Empty(t, checkIns("2026-10-20"))
 
-	// The habit is free again. If it gets archived before the todo is done, the todo just closes and
-	// stays reopenable.
-	linked, err = link(fiveK, run.Name)
+	// A habit already checked in that day takes no habit todo.
+	_, err = ts.Service.SetCheckIn(userCtx, &v1pb.SetCheckInRequest{CheckIn: &v1pb.CheckIn{Habit: read.Name, Date: today}})
 	require.NoError(t, err)
-	_, err = ts.Service.UpdateHabit(userCtx, &v1pb.UpdateHabitRequest{
-		Habit: &v1pb.Habit{Name: run.Name, Archived: true}, UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"archived"}},
-	})
-	require.NoError(t, err)
-	done, err = update(&v1pb.Todo{Name: linked.Name, Status: v1pb.Todo_DONE}, "status")
-	require.NoError(t, err)
-	require.Empty(t, done.CheckInDate)
-	_, err = update(&v1pb.Todo{Name: linked.Name, Status: v1pb.Todo_ACTIVE}, "status")
-	require.NoError(t, err)
-
-	// An archived habit cannot be linked, and linking needs the caller's day.
-	_, err = link(newTodo("散步"), run.Name)
+	_, err = create("读书", today, read.Name, today)
 	requireCode(t, err, codes.FailedPrecondition)
-	writeUp := newTodo("写周记")
-	_, err = ts.Service.UpdateTodo(userCtx, &v1pb.UpdateTodoRequest{
-		Todo: &v1pb.Todo{Name: writeUp.Name, Habit: read.Name}, UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"habit"}},
+
+	// Missed and done later: the backfill checks in on the todo's own day.
+	late, err := create("读 30 页", "2026-10-19", read.Name, today)
+	require.NoError(t, err)
+	done, err = complete(late, "2026-10-21")
+	require.NoError(t, err)
+	require.Equal(t, "2026-10-19", done.CheckInDate)
+	require.Len(t, checkIns("2026-10-19"), 1)
+
+	// A habit dropped by a later version: the todo, unlinked when the version came, closes without a check-in.
+	walk, err := create("散步", "2026-10-22", run.Name, today)
+	require.NoError(t, err)
+	_, err = ts.Service.SetHabitVersion(userCtx, &v1pb.SetHabitVersionRequest{
+		Version: habitVersion("2026-10-21", read.Name), LocalDate: today, UnlinkTodos: true,
 	})
-	requireCode(t, err, codes.InvalidArgument)
+	require.NoError(t, err)
+	done, err = complete(walk, "2026-10-22")
+	require.NoError(t, err)
+	require.Empty(t, done.Habit)
+	require.Empty(t, done.CheckInDate)
+	_, err = ts.Service.SetCheckIn(userCtx, &v1pb.SetCheckInRequest{CheckIn: &v1pb.CheckIn{Habit: run.Name, Date: "2026-10-22"}})
+	requireCode(t, err, codes.FailedPrecondition)
 }

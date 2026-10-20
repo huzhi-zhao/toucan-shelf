@@ -14,6 +14,7 @@ export const MOBILE_ROUTES = {
   PLAN: "/plan",
   PLAN_SETTINGS: "/plan/settings",
   PLAN_IMPORT: "/plan/import",
+  PLAN_VERSION: "/plan/settings/version",
   SEARCH: "/search",
   ME: "/me",
   ME_SETTINGS: "/me/settings",
@@ -46,6 +47,10 @@ export const todoRoute = (todoName: string): string => `/plan/todo/${encodeURICo
 
 /** `planner/todos/{uid}` from the detail page's `:uid`. */
 export const todoNameFromUid = (uid: string): string => `planner/todos/${uid}`;
+
+/** The habit version page: revising from today on, or, with a date, editing the version not yet in effect then. */
+export const habitVersionRoute = (effectiveDate?: string): string =>
+  effectiveDate ? `/plan/settings/version?date=${encodeURIComponent(effectiveDate)}` : "/plan/settings/version";
 
 /** A "Me" page item's edit page; `new` adds one. */
 export const meItemRoute = (id: string): string => `/me/item/${encodeURIComponent(id)}`;

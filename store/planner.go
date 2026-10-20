@@ -22,6 +22,9 @@ const (
 	PlannerTodoCancelled = "cancelled"
 )
 
+// PlannerMaxHabitsPerVersion is how many habits a version holds: the calendar has five dot places a day.
+const PlannerMaxHabitsPerVersion = 5
+
 // ErrPlannerNotEmpty is returned by ImportPlanner when the user already has
 // planner data: an import is a one-time backfill and must not run twice.
 var ErrPlannerNotEmpty = errors.New("planner already has data")
@@ -30,18 +33,40 @@ var ErrPlannerNotEmpty = errors.New("planner already has data")
 // should add already exists: the habit was checked in that day.
 var ErrPlannerCheckInTaken = errors.New("habit already checked in on that day")
 
-// PlannerHabit is a long-running habit the user checks in against.
+// PlannerHabit is a long-running habit the user checks in against. Habits are never deleted: they
+// form a pool, and PlannerHabitVersion decides which of them are in use on a day.
 type PlannerHabit struct {
 	ID        int32
 	UID       string
 	CreatorID int32
 	Name      string
-	// Position orders habits; it also decides each habit's colour on the calendar.
+	// Position is the order habits were created in; versions carry the calendar order now.
 	Position int32
-	// Archived hides the habit from new check-ins; its history stays visible.
-	Archived  bool
+	// Archived is no longer used: versions decide what is in use. Kept for old data and imports.
+	Archived bool
+	// Color is an index into the calendar palette. The habit keeps it on every day.
+	Color     int32
 	CreatedTs int64
 	UpdatedTs int64
+}
+
+// PlannerHabitVersion is the set of habits in use from EffectiveDate on, until the next version.
+type PlannerHabitVersion struct {
+	ID        int32
+	CreatorID int32
+	// EffectiveDate is "YYYY-MM-DD", or "" for the very beginning.
+	EffectiveDate string
+	// Entries are the habits in calendar order, at most five.
+	Entries   []PlannerHabitVersionEntry
+	CreatedTs int64
+	UpdatedTs int64
+}
+
+// PlannerHabitVersionEntry is one habit in a version.
+type PlannerHabitVersionEntry struct {
+	HabitID int32 `json:"habit_id"`
+	// WeeklyGoal is how many check-ins a week the habit aims for; 0 for none.
+	WeeklyGoal int32 `json:"weekly_goal"`
 }
 
 // FindPlannerHabit filters habits. Callers always scope by CreatorID.
@@ -57,6 +82,7 @@ type UpdatePlannerHabit struct {
 	Name     *string
 	Position *int32
 	Archived *bool
+	Color    *int32
 }
 
 // PlannerCheckIn records that a habit was kept on a day. There is at most one
@@ -222,6 +248,22 @@ func (s *Store) GetPlannerHabit(ctx context.Context, find *FindPlannerHabit) (*P
 // UpdatePlannerHabit changes a habit and returns it.
 func (s *Store) UpdatePlannerHabit(ctx context.Context, update *UpdatePlannerHabit) (*PlannerHabit, error) {
 	return s.driver.UpdatePlannerHabit(ctx, update)
+}
+
+// ListPlannerHabitVersions returns a user's habit versions by effective date, earliest first.
+func (s *Store) ListPlannerHabitVersions(ctx context.Context, creatorID int32) ([]*PlannerHabitVersion, error) {
+	return s.driver.ListPlannerHabitVersions(ctx, creatorID)
+}
+
+// UpsertPlannerHabitVersion writes the version for its effective date, replacing one already there, and in
+// the same transaction unlinks the given todos from their habits (they become plain todos).
+func (s *Store) UpsertPlannerHabitVersion(ctx context.Context, version *PlannerHabitVersion, unlinkTodoIDs []int32) (*PlannerHabitVersion, error) {
+	return s.driver.UpsertPlannerHabitVersion(ctx, version, unlinkTodoIDs)
+}
+
+// DeletePlannerHabitVersion removes a user's version for an effective date, if any.
+func (s *Store) DeletePlannerHabitVersion(ctx context.Context, creatorID int32, effectiveDate string) error {
+	return s.driver.DeletePlannerHabitVersion(ctx, creatorID, effectiveDate)
 }
 
 // UpsertPlannerCheckIn records a check-in, replacing the note of an existing one

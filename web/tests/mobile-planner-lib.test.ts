@@ -4,21 +4,29 @@ import {
   buildCalendarData,
   convertCalendarBlock,
   groupOpenTodos,
+  habitTodoLabel,
+  habitVersionOn,
   IMPORT_CANCEL_REASON,
   isDateEditable,
+  isFailed,
   isOverdue,
   localToday,
   monthRange,
+  postponeChoices,
   readCalendarView,
   saveCalendarView,
-  postponeChoices,
   todosForDay,
   todosNotShown,
+  weeklyCheckIns,
+  weeklyGoalOn,
+  weekRange,
 } from "@/mobile/lib/planner";
 import { todoNameFromUid, todoRoute } from "@/mobile/routes";
 import {
   CheckInSchema,
   HabitSchema,
+  type HabitVersion,
+  HabitVersionSchema,
   ListPlannerEntriesResponseSchema,
   PlannerNoteSchema,
   type Todo,
@@ -66,7 +74,10 @@ describe("dates", () => {
 
 describe("todo lists", () => {
   it("groups open todos by date", () => {
-    const groups = groupOpenTodos([todo("late", "2026-10-01"), todo("now", "2026-10-17"), todo("soon", "2026-10-20"), todo("any", "")], "2026-10-17");
+    const groups = groupOpenTodos(
+      [todo("late", "2026-10-01"), todo("now", "2026-10-17"), todo("soon", "2026-10-20"), todo("any", "")],
+      "2026-10-17",
+    );
     expect(groups.overdue.map((t) => t.title)).toEqual(["late"]);
     expect(groups.today.map((t) => t.title)).toEqual(["now"]);
     expect(groups.upcoming.map((t) => t.title)).toEqual(["soon"]);
@@ -96,13 +107,17 @@ describe("todo lists", () => {
 
 describe("calendar data", () => {
   it("draws check-ins as event dots, todos as tasks and notes as plain items", () => {
-    const habits = [create(HabitSchema, { name: "planner/habits/a", title: "冥想" }), create(HabitSchema, { name: "planner/habits/b", title: "运动" })];
+    const habits = [
+      create(HabitSchema, { name: "planner/habits/a", title: "冥想", color: 0 }),
+      create(HabitSchema, { name: "planner/habits/b", title: "运动", color: 1 }),
+    ];
+    const versions = [version("", "planner/habits/a", "planner/habits/b")];
     const entries = create(ListPlannerEntriesResponseSchema, {
       checkIns: [create(CheckInSchema, { habit: "planner/habits/b", date: "2026-10-02", note: "走路" })],
       todos: [todo("作业", "2026-10-02", Todo_Status.DONE)],
       notes: [create(PlannerNoteSchema, { name: "planner/notes/n", date: "2026-10-02", content: "记一笔" })],
     });
-    const data = buildCalendarData(habits, entries);
+    const data = buildCalendarData(habits, versions, entries, { startDate: "2026-09-24", endDate: "2026-11-07" });
     expect(data.events).toEqual(["冥想", "运动"]);
     expect(data.eventsByDate["2026-10-02"]).toEqual(["运动"]);
     expect(data.itemCounts["2026-10-02"]).toBe(3);
@@ -111,6 +126,49 @@ describe("calendar data", () => {
       { text: "作业", marker: "x", checked: true },
       { text: "记一笔" },
     ]);
+  });
+});
+
+const version = (effectiveDate: string, ...habits: string[]): HabitVersion =>
+  create(HabitVersionSchema, { effectiveDate, entries: habits.map((habit, i) => ({ habit, weeklyGoal: i })) });
+
+describe("habit versions", () => {
+  const habits = ["a", "b", "c"].map((id, i) => create(HabitSchema, { name: `planner/habits/${id}`, title: id, color: i }));
+  const versions = [version("", "planner/habits/a", "planner/habits/b"), version("2026-10-20", "planner/habits/c", "planner/habits/a")];
+
+  it("uses the latest version effective on the day", () => {
+    expect(habitVersionOn(versions, "2026-10-19")?.effectiveDate).toBe("");
+    expect(habitVersionOn(versions, "2026-10-20")?.effectiveDate).toBe("2026-10-20");
+    expect(habitVersionOn([version("2026-10-20")], "2026-10-19")).toBeUndefined();
+    expect(weeklyGoalOn(versions, "planner/habits/a", "2026-10-21")).toBe(1);
+    expect(weeklyGoalOn(versions, "planner/habits/b", "2026-10-21")).toBe(0);
+  });
+
+  it("lays each day's dots out by its version, without gaps", () => {
+    const data = buildCalendarData(habits, versions, undefined, { startDate: "2026-09-24", endDate: "2026-11-07" });
+    expect(data.slotsOf("2026-10-19")).toEqual(["a", "b"]);
+    expect(data.slotsOf("2026-10-20")).toEqual(["c", "a"]);
+    expect(data.events).toEqual(["a", "b", "c"]);
+    // A month after the change lists only the habits in use then.
+    expect(buildCalendarData(habits, versions, undefined, { startDate: "2026-11-24", endDate: "2027-01-07" }).events).toEqual(["c", "a"]);
+  });
+
+  it("counts a habit's check-ins in the week of a day", () => {
+    expect(weekRange("2026-10-22", 1)).toEqual({ startDate: "2026-10-19", endDate: "2026-10-25" });
+    expect(weekRange("2026-10-22", 7)).toEqual({ startDate: "2026-10-18", endDate: "2026-10-24" });
+    const checkIns = ["2026-10-18", "2026-10-19", "2026-10-21"].map((date) => create(CheckInSchema, { habit: "planner/habits/a", date }));
+    expect(weeklyCheckIns(checkIns, "planner/habits/a", "2026-10-22", 1)).toBe(2);
+    expect(weeklyCheckIns(checkIns, "planner/habits/a", "2026-10-22", 7)).toBe(3);
+    expect(habitTodoLabel("🚶", 3, 2)).toBe("🚶 3/2");
+    expect(habitTodoLabel("🚶", 3, 0)).toBe("🚶");
+  });
+
+  it("fails a habit todo past its day instead of making it overdue", () => {
+    const habitTodo = create(TodoSchema, { title: "走", date: "2026-10-16", status: Todo_Status.ACTIVE, habit: "planner/habits/a" });
+    expect(isFailed(habitTodo, "2026-10-17")).toBe(true);
+    expect(isOverdue(habitTodo, "2026-10-17")).toBe(false);
+    expect(isFailed(habitTodo, "2026-10-16")).toBe(false);
+    expect(isFailed(todo("plain", "2026-10-16"), "2026-10-17")).toBe(false);
   });
 });
 

@@ -22,12 +22,14 @@ option go_package = "gen/api/v1";
 // stores them as given and never converts time zones; where it needs "today" it
 // takes the caller's local date from the request.
 service PlannerService {
-  // ListHabits returns the caller's habits, archived ones included, by position.
+  // ListHabits returns the caller's whole habit pool, in creation order. Which
+  // habits are in use on a day is decided by habit versions.
   rpc ListHabits(ListHabitsRequest) returns (ListHabitsResponse) {
     option (google.api.http) = {get: "/api/v1/planner/habits"};
   }
 
-  // CreateHabit adds a habit after the existing ones.
+  // CreateHabit adds a habit to the pool, with a colour no habit of the latest
+  // version uses. It is in use only once a version includes it.
   rpc CreateHabit(CreateHabitRequest) returns (Habit) {
     option (google.api.http) = {
       post: "/api/v1/planner/habits"
@@ -36,13 +38,32 @@ service PlannerService {
     option (google.api.method_signature) = "habit";
   }
 
-  // UpdateHabit renames, reorders, archives or restores a habit.
+  // UpdateHabit renames a habit or changes its colour, on every day at once.
   rpc UpdateHabit(UpdateHabitRequest) returns (Habit) {
     option (google.api.http) = {
       patch: "/api/v1/{habit.name=planner/habits/*}"
       body: "habit"
     };
     option (google.api.method_signature) = "habit,update_mask";
+  }
+
+  // ListHabitVersions returns the caller's habit versions, earliest first.
+  rpc ListHabitVersions(ListHabitVersionsRequest) returns (ListHabitVersionsResponse) {
+    option (google.api.http) = {get: "/api/v1/planner/habitVersions"};
+  }
+
+  // SetHabitVersion writes the version for its effective date, which must not be
+  // before the caller's local date; one already there is replaced.
+  rpc SetHabitVersion(SetHabitVersionRequest) returns (HabitVersion) {
+    option (google.api.http) = {
+      post: "/api/v1/planner/habitVersions"
+      body: "*"
+    };
+  }
+
+  // DeleteHabitVersion removes a version that has not taken effect yet.
+  rpc DeleteHabitVersion(DeleteHabitVersionRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {delete: "/api/v1/planner/habitVersions"};
   }
 
   // ListPlannerEntries returns everything dated within an inclusive range:
@@ -176,12 +197,40 @@ message Habit {
   // on the calendar.
   int32 position = 3 [(google.api.field_behavior) = OPTIONAL];
 
-  // An archived habit takes no new check-ins; its history stays.
-  bool archived = 4 [(google.api.field_behavior) = OPTIONAL];
+  // Deprecated: habit versions decide which habits are in use. Read only.
+  bool archived = 4 [
+    deprecated = true,
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ];
 
   google.protobuf.Timestamp create_time = 5 [(google.api.field_behavior) = OUTPUT_ONLY];
 
   google.protobuf.Timestamp update_time = 6 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Index into the calendar palette, 0 to 7. The habit has this colour on every day.
+  int32 color = 7 [(google.api.field_behavior) = OPTIONAL];
+}
+
+// HabitVersion is the set of habits in use from effective_date on, until the
+// next version: the habits that can be checked in, in calendar order.
+message HabitVersion {
+  // YYYY-MM-DD, or empty for "from the very beginning".
+  string effective_date = 1;
+
+  // At most five, each habit once, no two of the same colour.
+  repeated HabitVersionEntry entries = 2;
+
+  google.protobuf.Timestamp create_time = 3 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  google.protobuf.Timestamp update_time = 4 [(google.api.field_behavior) = OUTPUT_ONLY];
+}
+
+message HabitVersionEntry {
+  // Format: planner/habits/{habit}
+  string habit = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Check-ins a week the habit aims for, 0 to 7; 0 for none.
+  int32 weekly_goal = 2 [(google.api.field_behavior) = OPTIONAL];
 }
 
 // CheckIn records that a habit was kept on a day. There is at most one per
@@ -269,8 +318,9 @@ message Todo {
   // The linked documents, in display order. Format: memos/{memo}
   repeated string memos = 17 [(google.api.field_behavior) = OPTIONAL];
 
-  // The habit checked in, on the caller's local date, when the todo is done; empty
-  // for none. Set through UpdateTodo. Format: planner/habits/{habit}
+  // For a habit todo, the habit it checks in on its date when done; empty for a
+  // plain todo. Set only at creation, and cleared when a version drops the habit.
+  // Format: planner/habits/{habit}
   string habit = 18 [(google.api.field_behavior) = OPTIONAL];
 
   // The day of the check-in the todo's completion made, YYYY-MM-DD, or empty for
@@ -303,6 +353,31 @@ message PlannerNote {
 
 message ListHabitsRequest {}
 
+message ListHabitVersionsRequest {}
+
+message ListHabitVersionsResponse {
+  repeated HabitVersion versions = 1;
+}
+
+message SetHabitVersionRequest {
+  HabitVersion version = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // The caller's local date, YYYY-MM-DD.
+  string local_date = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // Must be set when the version drops a habit that still has open habit todos
+  // on or after its effective date: those become plain todos.
+  bool unlink_todos = 3 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message DeleteHabitVersionRequest {
+  // YYYY-MM-DD; must be after local_date.
+  string effective_date = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // The caller's local date, YYYY-MM-DD.
+  string local_date = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
 message ListHabitsResponse {
   repeated Habit habits = 1;
 }
@@ -314,7 +389,7 @@ message CreateHabitRequest {
 message UpdateHabitRequest {
   Habit habit = 1 [(google.api.field_behavior) = REQUIRED];
 
-  // Supported paths: title, position, archived.
+  // Supported paths: title, color, position.
   google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = REQUIRED];
 }
 
@@ -366,19 +441,22 @@ message GetTodoRequest {
 
 message CreateTodoRequest {
   Todo todo = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // The caller's local date, YYYY-MM-DD. Required for a habit todo, which can be
+  // for today or later only.
+  string local_date = 2 [(google.api.field_behavior) = OPTIONAL];
 }
 
 message UpdateTodoRequest {
   Todo todo = 1 [(google.api.field_behavior) = REQUIRED];
 
   // Supported paths: title, date, status, cancel_reason, important, tag, note,
-  // memos, url, habit, and the deprecated memo.
+  // memos, url, and the deprecated memo. A habit todo keeps its date.
   google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = REQUIRED];
 
-  // The caller's local date, YYYY-MM-DD. Required when closing a todo, since
-  // whether it was closed overdue depends on the user's day, not the server's,
-  // and so is the day a linked habit is checked in. Also required when linking a
-  // habit, which must not be checked in on that day already.
+  // The caller's local date, YYYY-MM-DD. Required when closing a todo: whether it
+  // was closed overdue depends on the user's day, not the server's. A habit todo
+  // can be completed on its date or after (a late check-in), never before.
   string local_date = 3 [(google.api.field_behavior) = OPTIONAL];
 }
 

@@ -294,3 +294,55 @@ func TestPlannerTodoChecksInItsHabit(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, checkIns)
 }
+
+func TestPlannerHabitVersions(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	ts := NewTestingStore(ctx, t)
+	user, err := createTestingHostUser(ctx, ts)
+	require.NoError(t, err)
+
+	walk, err := ts.CreatePlannerHabit(ctx, &store.PlannerHabit{UID: "h-walk", CreatorID: user.ID, Name: "🚶", Color: 3})
+	require.NoError(t, err)
+	require.Equal(t, int32(3), walk.Color)
+	pray, err := ts.CreatePlannerHabit(ctx, &store.PlannerHabit{UID: "h-pray", CreatorID: user.ID, Name: "🙏"})
+	require.NoError(t, err)
+
+	_, err = ts.UpsertPlannerHabitVersion(ctx, &store.PlannerHabitVersion{
+		CreatorID: user.ID, EffectiveDate: "2026-10-27",
+		Entries: []store.PlannerHabitVersionEntry{{HabitID: pray.ID}},
+	}, nil)
+	require.NoError(t, err)
+	_, err = ts.UpsertPlannerHabitVersion(ctx, &store.PlannerHabitVersion{
+		CreatorID: user.ID, EffectiveDate: "",
+		Entries: []store.PlannerHabitVersionEntry{{HabitID: walk.ID, WeeklyGoal: 3}, {HabitID: pray.ID}},
+	}, nil)
+	require.NoError(t, err)
+
+	// Same date again replaces that day's version; a todo can be unlinked in the same step.
+	todo, err := ts.CreatePlannerTodo(ctx, &store.PlannerTodo{
+		UID: "t-walk", CreatorID: user.ID, Title: "🚶", Date: "2026-10-28", Status: store.PlannerTodoActive, HabitID: walk.ID,
+	})
+	require.NoError(t, err)
+	require.Equal(t, walk.ID, todo.HabitID)
+	replaced, err := ts.UpsertPlannerHabitVersion(ctx, &store.PlannerHabitVersion{
+		CreatorID: user.ID, EffectiveDate: "2026-10-27",
+		Entries: []store.PlannerHabitVersionEntry{{HabitID: pray.ID, WeeklyGoal: 7}},
+	}, []int32{todo.ID})
+	require.NoError(t, err)
+	require.Equal(t, int32(7), replaced.Entries[0].WeeklyGoal)
+	unlinked, err := ts.GetPlannerTodo(ctx, &store.FindPlannerTodo{ID: &todo.ID})
+	require.NoError(t, err)
+	require.Zero(t, unlinked.HabitID)
+
+	versions, err := ts.ListPlannerHabitVersions(ctx, user.ID)
+	require.NoError(t, err)
+	require.Len(t, versions, 2)
+	require.Equal(t, "", versions[0].EffectiveDate, "the beginning sorts first")
+	require.Equal(t, []store.PlannerHabitVersionEntry{{HabitID: walk.ID, WeeklyGoal: 3}, {HabitID: pray.ID}}, versions[0].Entries)
+
+	require.NoError(t, ts.DeletePlannerHabitVersion(ctx, user.ID, "2026-10-27"))
+	versions, err = ts.ListPlannerHabitVersions(ctx, user.ID)
+	require.NoError(t, err)
+	require.Len(t, versions, 1)
+}
