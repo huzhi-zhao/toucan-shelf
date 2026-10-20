@@ -438,6 +438,7 @@ CREATE TABLE planner_habit (
 CREATE INDEX idx_planner_habit_creator_id ON planner_habit(creator_id);
 
 -- planner_check_in records that a habit was kept on a day. One per habit per day.
+-- todo_id  the todo whose completion made the check-in, or 0 for one checked in by hand.
 CREATE TABLE planner_check_in (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   creator_id INTEGER NOT NULL,
@@ -446,10 +447,12 @@ CREATE TABLE planner_check_in (
   note       TEXT    NOT NULL DEFAULT '',
   created_ts BIGINT  NOT NULL DEFAULT (strftime('%s', 'now')),
   updated_ts BIGINT  NOT NULL DEFAULT (strftime('%s', 'now')),
+  todo_id    INTEGER NOT NULL DEFAULT 0,
   UNIQUE(habit_id, date)
 );
 
 CREATE INDEX idx_planner_check_in_creator_date ON planner_check_in(creator_id, date);
+CREATE INDEX idx_planner_check_in_todo_id ON planner_check_in(todo_id);
 
 -- planner_todo is a plan made ahead of time.
 -- status          'active' | 'done' | 'cancelled'. "Overdue" is not stored: it is
@@ -460,6 +463,7 @@ CREATE INDEX idx_planner_check_in_creator_date ON planner_check_in(creator_id, d
 -- postpone_count  how many times it has been postponed.
 -- memo_names      JSON array of the linked documents' 'memos/{uid}', in display
 --                 order; '[]' for none. Plain references.
+-- habit_id        the habit to check in when the todo is done, or 0 for none.
 CREATE TABLE planner_todo (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,
   uid            TEXT    NOT NULL UNIQUE,
@@ -478,7 +482,8 @@ CREATE TABLE planner_todo (
   updated_ts     BIGINT  NOT NULL DEFAULT (strftime('%s', 'now')),
   original_date  TEXT    NOT NULL DEFAULT '',
   postpone_count INTEGER NOT NULL DEFAULT 0,
-  memo_names     TEXT    NOT NULL DEFAULT '[]'
+  memo_names     TEXT    NOT NULL DEFAULT '[]',
+  habit_id       INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX idx_planner_todo_creator_status ON planner_todo(creator_id, status);

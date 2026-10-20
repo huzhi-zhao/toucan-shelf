@@ -8,7 +8,6 @@ import {
   ActionsGroup,
   ActionsLabel,
   List,
-  ListButton,
   ListItem,
   Navbar,
   NavbarBackLink,
@@ -24,6 +23,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { flattenSections, type MeItems, type MeSection, meSections, newMeId, useMeItems, useSaveMeItems } from "@/hooks/useMeItems";
 import { cn } from "@/lib/utils";
 import { type UserSetting_MeGroup, UserSetting_MeGroupSchema, type UserSetting_MeItem } from "@/types/proto/api/v1/user_service_pb";
+import DangerListButton from "../components/DangerListButton";
 import SectionTitle from "../components/SectionTitle";
 import { COPY } from "../copy";
 import { useBack, useBackLabel, useGo } from "../lib/nav";
@@ -300,9 +300,7 @@ export default function MeSettingsPage() {
         <ListItem title={COPY.me.homeScreen} text={<span className="whitespace-normal">{COPY.me.homeScreenHint}</span>} />
       </List>
       <List strongIos insetIos className="mt-7">
-        <ListButton className="text-red-500" onClick={signOut}>
-          {COPY.me.signOut}
-        </ListButton>
+        <DangerListButton onClick={signOut}>{COPY.me.signOut}</DangerListButton>
       </List>
 
       <Actions opened={menuOpen} onBackdropClick={() => setMenuOpen(false)}>

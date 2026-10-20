@@ -26,6 +26,10 @@ const (
 // planner data: an import is a one-time backfill and must not run twice.
 var ErrPlannerNotEmpty = errors.New("planner already has data")
 
+// ErrPlannerCheckInTaken is returned by UpdatePlannerTodo when the check-in it
+// should add already exists: the habit was checked in that day.
+var ErrPlannerCheckInTaken = errors.New("habit already checked in on that day")
+
 // PlannerHabit is a long-running habit the user checks in against.
 type PlannerHabit struct {
 	ID        int32
@@ -63,6 +67,10 @@ type PlannerCheckIn struct {
 	HabitID   int32
 	Date      string
 	Note      string
+	// TodoID is the todo whose completion made the check-in, or 0 for one checked in by hand.
+	TodoID int32
+	// TodoUID is that todo's UID, or "". Read-only.
+	TodoUID   string
 	CreatedTs int64
 	UpdatedTs int64
 }
@@ -100,8 +108,14 @@ type PlannerTodo struct {
 	// OriginalDate is the date before the todo's first postponement, or "" if it was never postponed.
 	OriginalDate  string
 	PostponeCount int32
-	CreatedTs     int64
-	UpdatedTs     int64
+	// HabitID is the habit to check in when the todo is done, or 0 for none.
+	HabitID int32
+	// HabitUID is that habit's UID, or "". Read-only.
+	HabitUID string
+	// CheckInDate is the day of the check-in the todo's completion made, or "" for none. Read-only.
+	CheckInDate string
+	CreatedTs   int64
+	UpdatedTs   int64
 }
 
 // FindPlannerTodo filters todos. A date bound only matches todos that have a
@@ -111,6 +125,7 @@ type FindPlannerTodo struct {
 	UID       *string
 	CreatorID *int32
 	Status    *string
+	HabitID   *int32
 	StartDate string
 	EndDate   string
 }
@@ -118,6 +133,10 @@ type FindPlannerTodo struct {
 // UpdatePlannerTodo changes the given fields of one todo. The API layer owns the
 // status rules (a closed todo has a closed time, a cancelled one a reason); the
 // store writes what it is given.
+//
+// CheckIn, when set, is added in the same transaction, made by this todo: it is
+// how completing a todo checks in its habit. If the habit already has a check-in
+// that day nothing is written and ErrPlannerCheckInTaken is returned.
 type UpdatePlannerTodo struct {
 	ID            int32
 	Title         *string
@@ -133,6 +152,8 @@ type UpdatePlannerTodo struct {
 	URL           *string
 	OriginalDate  *string
 	PostponeCount *int32
+	HabitID       *int32
+	CheckIn       *PlannerCheckIn
 }
 
 // PlannerNote is a plain record of what happened on a day.
@@ -243,7 +264,7 @@ func (s *Store) UpdatePlannerTodo(ctx context.Context, update *UpdatePlannerTodo
 	return s.driver.UpdatePlannerTodo(ctx, update)
 }
 
-// DeletePlannerTodo deletes a todo.
+// DeletePlannerTodo deletes a todo, and the check-in its completion made, if any.
 func (s *Store) DeletePlannerTodo(ctx context.Context, id int32) error {
 	return s.driver.DeletePlannerTodo(ctx, id)
 }

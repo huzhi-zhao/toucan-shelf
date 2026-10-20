@@ -195,6 +195,11 @@ message CheckIn {
 
   // A short remark, e.g. how far one ran.
   string note = 3 [(google.api.field_behavior) = OPTIONAL];
+
+  // The todo whose completion made this check-in, or empty for one checked in
+  // by hand. Such a check-in belongs to the todo: it cannot be changed or
+  // removed on its own, only with the todo. Format: planner/todos/{todo}
+  string todo = 4 [(google.api.field_behavior) = OUTPUT_ONLY];
 }
 
 message Todo {
@@ -263,6 +268,15 @@ message Todo {
 
   // The linked documents, in display order. Format: memos/{memo}
   repeated string memos = 17 [(google.api.field_behavior) = OPTIONAL];
+
+  // The habit checked in, on the caller's local date, when the todo is done; empty
+  // for none. Set through UpdateTodo. Format: planner/habits/{habit}
+  string habit = 18 [(google.api.field_behavior) = OPTIONAL];
+
+  // The day of the check-in the todo's completion made, YYYY-MM-DD, or empty for
+  // none. A todo with one can no longer be reopened, cancelled or relinked, only
+  // deleted, which removes the check-in too.
+  string check_in_date = 19 [(google.api.field_behavior) = OUTPUT_ONLY];
 }
 
 // PlannerNote is a plain record of what happened on a day.
@@ -358,11 +372,13 @@ message UpdateTodoRequest {
   Todo todo = 1 [(google.api.field_behavior) = REQUIRED];
 
   // Supported paths: title, date, status, cancel_reason, important, tag, note,
-  // memos, url, and the deprecated memo.
+  // memos, url, habit, and the deprecated memo.
   google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = REQUIRED];
 
-  // The caller's local date, YYYY-MM-DD. Required when closing a todo: whether
-  // it was closed overdue depends on the user's day, not the server's.
+  // The caller's local date, YYYY-MM-DD. Required when closing a todo, since
+  // whether it was closed overdue depends on the user's day, not the server's,
+  // and so is the day a linked habit is checked in. Also required when linking a
+  // habit, which must not be checked in on that day already.
   string local_date = 3 [(google.api.field_behavior) = OPTIONAL];
 }
 

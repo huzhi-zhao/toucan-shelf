@@ -47,6 +47,11 @@
 
 ### 定了方向、暂不排期
 
+- [ ] **P4：计划打通 Google Tasks** —— 先评估意义和可行性，再定做不做。
+      见 [planner-and-check-in.md §2.7](docs/dev/requirements/planner-and-check-in.md)。
+- [ ] **P4：计划的 MCP 接口** —— 让 agent 能制定和维护待办，要先改 ADR 0010 的八工具白名单。
+      出处同上。
+
 - [ ] **外部资源根（NAS 资源接入）** —— 索引 NAS 上已存在的文件而不要求重新上传，
       产品边界为"引用而非接管"。需求见
       [external-resource-roots.md](docs/dev/requirements/storage/external-resource-roots.md)，
