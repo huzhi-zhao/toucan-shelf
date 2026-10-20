@@ -53,6 +53,30 @@ export const isOverdue = (todo: Pick<Todo, "status" | "date" | "habit">, today: 
 export const isFailed = (todo: Pick<Todo, "status" | "date" | "habit">, today: string): boolean =>
   todo.habit !== "" && todo.status === Todo_Status.ACTIVE && todo.date !== "" && todo.date < today;
 
+const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+const EMOJI = /\p{Extended_Pictographic}|\p{Regional_Indicator}/u;
+
+/**
+ * A habit's icon and name, both read from its title (requirement §2.4.2 §1): a title starts with an emoji,
+ * its icon, and the rest, maybe nothing, is its name ("🚶🏻", "💪运动"). A title not starting with an emoji
+ * (older habits) keeps the whole title as its name and lends its first character as the icon.
+ */
+export function splitHabitTitle(title: string): { icon: string; name: string; hasEmoji: boolean } {
+  const trimmed = title.trim();
+  const first = graphemes.segment(trimmed)[Symbol.iterator]().next().value?.segment ?? "";
+  if (!EMOJI.test(first)) return { icon: first, name: trimmed, hasEmoji: false };
+  return { icon: first, name: trimmed.slice(first.length).trim(), hasEmoji: true };
+}
+
+/** The title a habit is saved under: its icon, then its name if any. */
+export const joinHabitTitle = (icon: string, name: string): string => `${icon.trim()}${name.trim()}`;
+
+/** Whether a typed icon is exactly one emoji. */
+export function isSingleEmoji(icon: string): boolean {
+  const parts = [...graphemes.segment(icon.trim())];
+  return parts.length === 1 && EMOJI.test(parts[0].segment);
+}
+
 /** A habit's dot and chip color: its own palette index, the same on every day. */
 export const habitColor = (habit: Pick<Habit, "color">): string => EVENT_COLORS[habit.color % EVENT_COLORS.length];
 
@@ -145,6 +169,8 @@ export interface CalendarData {
   slotsOf: (date: string) => string[];
   /** A habit's dot color, by title. */
   colorOf: (title: string) => string;
+  /** A habit's icon, by title. */
+  iconOf: (title: string) => string;
   itemsByDate: Record<string, CalendarItem[]>;
   eventsByDate: Record<string, string[]>;
   itemCounts: Record<string, number>;
@@ -175,6 +201,7 @@ export function buildCalendarData(
   });
   const slotsOf = (date: string) => habitsOn(versions, habits, date).map((habit) => habit.title);
   const colorOf = (title: string) => colorByTitle.get(title) ?? "#9ca3af";
+  const iconOf = (title: string) => splitHabitTitle(title).icon;
   const itemsByDate: Record<string, CalendarItem[]> = {};
   const push = (date: string, item: CalendarItem) => {
     if (!itemsByDate[date]) itemsByDate[date] = [];
@@ -199,7 +226,7 @@ export function buildCalendarData(
     const names = slotsOf(date).filter((name) => items.some((item) => item.isEvent && item.text === name));
     if (names.length > 0) eventsByDate[date] = names;
   }
-  return { events, slotsOf, colorOf, itemsByDate, eventsByDate, itemCounts };
+  return { events, slotsOf, colorOf, iconOf, itemsByDate, eventsByDate, itemCounts };
 }
 
 export interface OpenTodoGroups {
