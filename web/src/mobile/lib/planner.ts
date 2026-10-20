@@ -1,10 +1,13 @@
 import { create } from "@bufbuild/protobuf";
 import dayjs from "dayjs";
 import type { VisibleMonth } from "@/components/MemoContent/calendar/defaultVisibleMonth";
+import { EVENT_COLORS } from "@/components/MemoContent/calendar/eventColors";
 import { type CalendarItem, parseCalendarBlock } from "@/components/MemoContent/calendar/parseCalendarBlock";
 import {
+  type CheckIn,
   type Habit,
   HabitSchema,
+  type HabitVersion,
   ImportCheckInSchema,
   type ImportPlannerRequest,
   ImportPlannerRequestSchema,
@@ -36,9 +39,97 @@ export function monthRange(month: VisibleMonth): { startDate: string; endDate: s
   };
 }
 
-/** Active, dated, and the date is before today. Only the client can tell: "today" is the phone's. */
-export const isOverdue = (todo: Pick<Todo, "status" | "date">, today: string): boolean =>
-  todo.status === Todo_Status.ACTIVE && todo.date !== "" && todo.date < today;
+/**
+ * Active, dated, and the date is before today. Only the client can tell: "today" is the phone's. A habit todo
+ * is never overdue: past its day it has failed instead (see isFailed).
+ */
+export const isOverdue = (todo: Pick<Todo, "status" | "date" | "habit">, today: string): boolean =>
+  todo.habit === "" && todo.status === Todo_Status.ACTIVE && todo.date !== "" && todo.date < today;
+
+/**
+ * A habit todo whose day has passed without it being done (requirement §2.4.2 §5). Worked out from the date,
+ * not stored: it leaves the open list, stays on its own day, and can only be backfilled or deleted.
+ */
+export const isFailed = (todo: Pick<Todo, "status" | "date" | "habit">, today: string): boolean =>
+  todo.habit !== "" && todo.status === Todo_Status.ACTIVE && todo.date !== "" && todo.date < today;
+
+/** A habit's dot and chip color: its own palette index, the same on every day. */
+export const habitColor = (habit: Pick<Habit, "color">): string => EVENT_COLORS[habit.color % EVENT_COLORS.length];
+
+/** The version in use on a date: the latest one effective on or before it. `versions` are earliest first. */
+export function habitVersionOn(versions: HabitVersion[], date: string): HabitVersion | undefined {
+  let on: HabitVersion | undefined;
+  for (const version of versions) {
+    if (version.effectiveDate > date) break;
+    on = version;
+  }
+  return on;
+}
+
+/** The habits of the version in use on a date, in its order. */
+export function habitsOn(versions: HabitVersion[], habits: Habit[], date: string): Habit[] {
+  const byName = new Map(habits.map((habit) => [habit.name, habit]));
+  return (habitVersionOn(versions, date)?.entries ?? []).flatMap((entry) => byName.get(entry.habit) ?? []);
+}
+
+/** The versions still in use or to come: the one in use today and every later one. */
+export function liveVersions(versions: HabitVersion[], today: string): HabitVersion[] {
+  const current = habitVersionOn(versions, today);
+  return versions.filter((version) => version === current || version.effectiveDate > today);
+}
+
+/**
+ * The colors a habit cannot take: those of the other habits sharing a live version with it, so one day's
+ * dots stay apart. The server checks the same.
+ */
+export function colorsTakenFor(habit: string, habits: Habit[], versions: HabitVersion[], today: string): Set<number> {
+  const colorOf = new Map(habits.map((h) => [h.name, h.color]));
+  const taken = new Set<number>();
+  for (const version of liveVersions(versions, today)) {
+    if (!version.entries.some((entry) => entry.habit === habit)) continue;
+    for (const entry of version.entries) {
+      const color = colorOf.get(entry.habit);
+      if (entry.habit !== habit && color !== undefined) taken.add(color);
+    }
+  }
+  return taken;
+}
+
+/** A version's name in lists: "最早" for the first, else "10/20 起" (with the year when it is not this one). */
+export function versionLabel(effectiveDate: string, today: string, fromBeginning: string, from: (date: string) => string): string {
+  if (!effectiveDate) return fromBeginning;
+  return from(dayjs(effectiveDate).format(effectiveDate.slice(0, 4) === today.slice(0, 4) ? "M/D" : "YYYY/M/D"));
+}
+
+/** The weekly goal a habit has on a date, 0 for none. */
+export function weeklyGoalOn(versions: HabitVersion[], habit: string, date: string): number {
+  return habitVersionOn(versions, date)?.entries.find((entry) => entry.habit === habit)?.weeklyGoal ?? 0;
+}
+
+/** The week a date falls in, `weekStart` being the grid's 1 = Monday … 7 = Sunday. */
+export function weekRange(date: string, weekStart: number): { startDate: string; endDate: string } {
+  const day = dayjs(date);
+  const start = day.subtract((day.day() - (weekStart % 7) + 7) % 7, "day");
+  return { startDate: start.format("YYYY-MM-DD"), endDate: start.add(6, "day").format("YYYY-MM-DD") };
+}
+
+/** How often a habit was checked in during the week of `date`: directly or by a todo, all count. */
+export function weeklyCheckIns(checkIns: CheckIn[], habit: string, date: string, weekStart: number): number {
+  const { startDate, endDate } = weekRange(date, weekStart);
+  return checkIns.filter((checkIn) => checkIn.habit === habit && checkIn.date >= startDate && checkIn.date <= endDate).length;
+}
+
+/** The habit shown after a habit todo's title: "🚶 2/3", or just "🚶" when its version sets no goal. */
+export function habitTodoLabel(title: string, done: number, goal: number): string {
+  return goal > 0 ? `${title} ${done}/${goal}` : title;
+}
+
+/** The dates spanned by the weeks of the given dates, for loading the check-ins their progress needs. */
+export function weeksSpan(dates: string[], weekStart: number): { startDate: string; endDate: string } | undefined {
+  const sorted = dates.filter(Boolean).sort();
+  if (sorted.length === 0) return undefined;
+  return { startDate: weekRange(sorted[0], weekStart).startDate, endDate: weekRange(sorted[sorted.length - 1], weekStart).endDate };
+}
 
 /** A todo's status as the calendar block's task marker, so the shared grid and checkbox can draw it. */
 export function todoMarker(status: Todo_Status): string {
@@ -48,8 +139,12 @@ export function todoMarker(status: Todo_Status): string {
 }
 
 export interface CalendarData {
-  /** Habit titles by position; the index picks each habit's colour. Archived habits stay so colours never shift. */
+  /** Titles of the habits in use at some point of the range, for the dot filter. */
   events: string[];
+  /** A day's dot slots: the titles of its version's habits, in order. */
+  slotsOf: (date: string) => string[];
+  /** A habit's dot color, by title. */
+  colorOf: (title: string) => string;
   itemsByDate: Record<string, CalendarItem[]>;
   eventsByDate: Record<string, string[]>;
   itemCounts: Record<string, number>;
@@ -58,11 +153,28 @@ export interface CalendarData {
 /**
  * Turns a range of planner entries into what the calendar block's month grid draws,
  * so the planner's calendar is the same grid: check-ins become event dots, todos
- * become tasks (the square dot), notes become plain items.
+ * become tasks (the square dot), notes become plain items. Each day's dots follow the
+ * habit version in use that day (requirement §2.4.2 §2).
  */
-export function buildCalendarData(habits: Habit[], entries: ListPlannerEntriesResponse | undefined): CalendarData {
-  const events = habits.map((habit) => habit.title);
+export function buildCalendarData(
+  habits: Habit[],
+  versions: HabitVersion[],
+  entries: ListPlannerEntriesResponse | undefined,
+  range: { startDate: string; endDate: string },
+): CalendarData {
   const titleOf = new Map(habits.map((habit) => [habit.name, habit.title]));
+  const colorByTitle = new Map(habits.map((habit) => [habit.title, habitColor(habit)]));
+  const events: string[] = [];
+  versions.forEach((version, i) => {
+    const next = versions[i + 1];
+    if (version.effectiveDate > range.endDate || (next && next.effectiveDate <= range.startDate)) return;
+    for (const entry of version.entries) {
+      const title = titleOf.get(entry.habit);
+      if (title && !events.includes(title)) events.push(title);
+    }
+  });
+  const slotsOf = (date: string) => habitsOn(versions, habits, date).map((habit) => habit.title);
+  const colorOf = (title: string) => colorByTitle.get(title) ?? "#9ca3af";
   const itemsByDate: Record<string, CalendarItem[]> = {};
   const push = (date: string, item: CalendarItem) => {
     if (!itemsByDate[date]) itemsByDate[date] = [];
@@ -84,10 +196,10 @@ export function buildCalendarData(habits: Habit[], entries: ListPlannerEntriesRe
   const itemCounts: Record<string, number> = {};
   for (const [date, items] of Object.entries(itemsByDate)) {
     itemCounts[date] = items.length;
-    const names = events.filter((name) => items.some((item) => item.isEvent && item.text === name));
+    const names = slotsOf(date).filter((name) => items.some((item) => item.isEvent && item.text === name));
     if (names.length > 0) eventsByDate[date] = names;
   }
-  return { events, itemsByDate, eventsByDate, itemCounts };
+  return { events, slotsOf, colorOf, itemsByDate, eventsByDate, itemCounts };
 }
 
 export interface OpenTodoGroups {

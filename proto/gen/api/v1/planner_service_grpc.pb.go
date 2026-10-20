@@ -23,6 +23,9 @@ const (
 	PlannerService_ListHabits_FullMethodName         = "/memos.api.v1.PlannerService/ListHabits"
 	PlannerService_CreateHabit_FullMethodName        = "/memos.api.v1.PlannerService/CreateHabit"
 	PlannerService_UpdateHabit_FullMethodName        = "/memos.api.v1.PlannerService/UpdateHabit"
+	PlannerService_ListHabitVersions_FullMethodName  = "/memos.api.v1.PlannerService/ListHabitVersions"
+	PlannerService_SetHabitVersion_FullMethodName    = "/memos.api.v1.PlannerService/SetHabitVersion"
+	PlannerService_DeleteHabitVersion_FullMethodName = "/memos.api.v1.PlannerService/DeleteHabitVersion"
 	PlannerService_ListPlannerEntries_FullMethodName = "/memos.api.v1.PlannerService/ListPlannerEntries"
 	PlannerService_ListOpenTodos_FullMethodName      = "/memos.api.v1.PlannerService/ListOpenTodos"
 	PlannerService_ListTodoTags_FullMethodName       = "/memos.api.v1.PlannerService/ListTodoTags"
@@ -53,12 +56,21 @@ const (
 // stores them as given and never converts time zones; where it needs "today" it
 // takes the caller's local date from the request.
 type PlannerServiceClient interface {
-	// ListHabits returns the caller's habits, archived ones included, by position.
+	// ListHabits returns the caller's whole habit pool, in creation order. Which
+	// habits are in use on a day is decided by habit versions.
 	ListHabits(ctx context.Context, in *ListHabitsRequest, opts ...grpc.CallOption) (*ListHabitsResponse, error)
-	// CreateHabit adds a habit after the existing ones.
+	// CreateHabit adds a habit to the pool, with a colour no habit of the latest
+	// version uses. It is in use only once a version includes it.
 	CreateHabit(ctx context.Context, in *CreateHabitRequest, opts ...grpc.CallOption) (*Habit, error)
-	// UpdateHabit renames, reorders, archives or restores a habit.
+	// UpdateHabit renames a habit or changes its colour, on every day at once.
 	UpdateHabit(ctx context.Context, in *UpdateHabitRequest, opts ...grpc.CallOption) (*Habit, error)
+	// ListHabitVersions returns the caller's habit versions, earliest first.
+	ListHabitVersions(ctx context.Context, in *ListHabitVersionsRequest, opts ...grpc.CallOption) (*ListHabitVersionsResponse, error)
+	// SetHabitVersion writes the version for its effective date, which must not be
+	// before the caller's local date; one already there is replaced.
+	SetHabitVersion(ctx context.Context, in *SetHabitVersionRequest, opts ...grpc.CallOption) (*HabitVersion, error)
+	// DeleteHabitVersion removes a version that has not taken effect yet.
+	DeleteHabitVersion(ctx context.Context, in *DeleteHabitVersionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// ListPlannerEntries returns everything dated within an inclusive range:
 	// check-ins, todos of any status, and notes. Undated todos are not included.
 	ListPlannerEntries(ctx context.Context, in *ListPlannerEntriesRequest, opts ...grpc.CallOption) (*ListPlannerEntriesResponse, error)
@@ -133,6 +145,36 @@ func (c *plannerServiceClient) UpdateHabit(ctx context.Context, in *UpdateHabitR
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Habit)
 	err := c.cc.Invoke(ctx, PlannerService_UpdateHabit_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plannerServiceClient) ListHabitVersions(ctx context.Context, in *ListHabitVersionsRequest, opts ...grpc.CallOption) (*ListHabitVersionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListHabitVersionsResponse)
+	err := c.cc.Invoke(ctx, PlannerService_ListHabitVersions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plannerServiceClient) SetHabitVersion(ctx context.Context, in *SetHabitVersionRequest, opts ...grpc.CallOption) (*HabitVersion, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(HabitVersion)
+	err := c.cc.Invoke(ctx, PlannerService_SetHabitVersion_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plannerServiceClient) DeleteHabitVersion(ctx context.Context, in *DeleteHabitVersionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PlannerService_DeleteHabitVersion_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -293,12 +335,21 @@ func (c *plannerServiceClient) ImportPlanner(ctx context.Context, in *ImportPlan
 // stores them as given and never converts time zones; where it needs "today" it
 // takes the caller's local date from the request.
 type PlannerServiceServer interface {
-	// ListHabits returns the caller's habits, archived ones included, by position.
+	// ListHabits returns the caller's whole habit pool, in creation order. Which
+	// habits are in use on a day is decided by habit versions.
 	ListHabits(context.Context, *ListHabitsRequest) (*ListHabitsResponse, error)
-	// CreateHabit adds a habit after the existing ones.
+	// CreateHabit adds a habit to the pool, with a colour no habit of the latest
+	// version uses. It is in use only once a version includes it.
 	CreateHabit(context.Context, *CreateHabitRequest) (*Habit, error)
-	// UpdateHabit renames, reorders, archives or restores a habit.
+	// UpdateHabit renames a habit or changes its colour, on every day at once.
 	UpdateHabit(context.Context, *UpdateHabitRequest) (*Habit, error)
+	// ListHabitVersions returns the caller's habit versions, earliest first.
+	ListHabitVersions(context.Context, *ListHabitVersionsRequest) (*ListHabitVersionsResponse, error)
+	// SetHabitVersion writes the version for its effective date, which must not be
+	// before the caller's local date; one already there is replaced.
+	SetHabitVersion(context.Context, *SetHabitVersionRequest) (*HabitVersion, error)
+	// DeleteHabitVersion removes a version that has not taken effect yet.
+	DeleteHabitVersion(context.Context, *DeleteHabitVersionRequest) (*emptypb.Empty, error)
 	// ListPlannerEntries returns everything dated within an inclusive range:
 	// check-ins, todos of any status, and notes. Undated todos are not included.
 	ListPlannerEntries(context.Context, *ListPlannerEntriesRequest) (*ListPlannerEntriesResponse, error)
@@ -357,6 +408,15 @@ func (UnimplementedPlannerServiceServer) CreateHabit(context.Context, *CreateHab
 }
 func (UnimplementedPlannerServiceServer) UpdateHabit(context.Context, *UpdateHabitRequest) (*Habit, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateHabit not implemented")
+}
+func (UnimplementedPlannerServiceServer) ListHabitVersions(context.Context, *ListHabitVersionsRequest) (*ListHabitVersionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListHabitVersions not implemented")
+}
+func (UnimplementedPlannerServiceServer) SetHabitVersion(context.Context, *SetHabitVersionRequest) (*HabitVersion, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetHabitVersion not implemented")
+}
+func (UnimplementedPlannerServiceServer) DeleteHabitVersion(context.Context, *DeleteHabitVersionRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteHabitVersion not implemented")
 }
 func (UnimplementedPlannerServiceServer) ListPlannerEntries(context.Context, *ListPlannerEntriesRequest) (*ListPlannerEntriesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListPlannerEntries not implemented")
@@ -471,6 +531,60 @@ func _PlannerService_UpdateHabit_Handler(srv interface{}, ctx context.Context, d
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PlannerServiceServer).UpdateHabit(ctx, req.(*UpdateHabitRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlannerService_ListHabitVersions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListHabitVersionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlannerServiceServer).ListHabitVersions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlannerService_ListHabitVersions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlannerServiceServer).ListHabitVersions(ctx, req.(*ListHabitVersionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlannerService_SetHabitVersion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetHabitVersionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlannerServiceServer).SetHabitVersion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlannerService_SetHabitVersion_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlannerServiceServer).SetHabitVersion(ctx, req.(*SetHabitVersionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlannerService_DeleteHabitVersion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteHabitVersionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlannerServiceServer).DeleteHabitVersion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlannerService_DeleteHabitVersion_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlannerServiceServer).DeleteHabitVersion(ctx, req.(*DeleteHabitVersionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -745,6 +859,18 @@ var PlannerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateHabit",
 			Handler:    _PlannerService_UpdateHabit_Handler,
+		},
+		{
+			MethodName: "ListHabitVersions",
+			Handler:    _PlannerService_ListHabitVersions_Handler,
+		},
+		{
+			MethodName: "SetHabitVersion",
+			Handler:    _PlannerService_SetHabitVersion_Handler,
+		},
+		{
+			MethodName: "DeleteHabitVersion",
+			Handler:    _PlannerService_DeleteHabitVersion_Handler,
 		},
 		{
 			MethodName: "ListPlannerEntries",

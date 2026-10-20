@@ -1,15 +1,24 @@
-import { List, ListButton, ListItem, Navbar, NavbarBackLink, Page, Radio, Sheet, Stepper, Toast } from "konsta/react";
+import { List, ListButton, ListItem, Navbar, NavbarBackLink, Page, Radio, Stepper, Toast } from "konsta/react";
 import { type ReactNode, useState } from "react";
-import { getEventColorByName } from "@/components/MemoContent/calendar/eventColors";
-import { useCreateHabit, useHabits, useUpdateHabit } from "@/hooks/usePlannerQueries";
+import { useHabits, useHabitVersions, useUpdateHabit } from "@/hooks/usePlannerQueries";
 import type { Habit } from "@/types/proto/api/v1/planner_service_pb";
+import HabitEditSheet from "../../components/planner/HabitEditSheet";
 import SectionTitle from "../../components/SectionTitle";
 import { COPY } from "../../copy";
 import { useBlurOnClose } from "../../lib/keyboard";
 import { useBack, useBackLabel, useGo } from "../../lib/nav";
-import { PLANNER_MAX_UPDATE_DAYS_DEFAULT, PLANNER_MAX_UPDATE_DAYS_KEY, PLANNER_WEEK_START_KEY } from "../../lib/planner";
+import {
+  colorsTakenFor,
+  habitColor,
+  habitVersionOn,
+  localToday,
+  PLANNER_MAX_UPDATE_DAYS_DEFAULT,
+  PLANNER_MAX_UPDATE_DAYS_KEY,
+  PLANNER_WEEK_START_KEY,
+  versionLabel,
+} from "../../lib/planner";
 import { usePref } from "../../lib/storage";
-import { MOBILE_ROUTES } from "../../routes";
+import { habitVersionRoute, MOBILE_ROUTES } from "../../routes";
 
 // 0 follows the instance setting; otherwise the calendar grid's 1 = Monday … 7 = Sunday.
 const WEEK_START_OPTIONS = [
@@ -25,21 +34,26 @@ const Hint = ({ children }: { children: ReactNode }) => (
   <p className="px-8 mt-2 text-[13px] leading-snug text-black/45 dark:text-white/45">{children}</p>
 );
 
-/** Planner preferences on this phone, and the habit list (requirement §2.2, §2.4). */
+/**
+ * Planner preferences on this phone, and the habits (requirement §2.2, §2.4.2 §8): the version in use today,
+ * a way to revise it, and every version so far, which is where past habits are seen.
+ */
 export default function PlannerSettingsPage() {
   const back = useBack(MOBILE_ROUTES.PLAN);
   const backText = useBackLabel() ?? COPY.planner.title;
   const go = useGo(COPY.plannerSettings.title);
   const [weekStart, setWeekStart] = usePref(PLANNER_WEEK_START_KEY, 0);
   const [maxUpdateDays, setMaxUpdateDays] = usePref(PLANNER_MAX_UPDATE_DAYS_KEY, PLANNER_MAX_UPDATE_DAYS_DEFAULT);
+  const today = localToday();
   const { data: habits = [] } = useHabits();
-  const createHabit = useCreateHabit();
+  const { data: versions = [] } = useHabitVersions();
   const updateHabit = useUpdateHabit();
-  const titles = habits.map((habit) => habit.title);
+  const habitByName = new Map(habits.map((habit) => [habit.name, habit]));
+  const current = habitVersionOn(versions, today);
+  const label = (effectiveDate: string) =>
+    versionLabel(effectiveDate, today, COPY.plannerSettings.fromBeginning, COPY.plannerSettings.from);
 
-  // The habit sheet edits one habit, or creates one when `editing` is null.
-  const [editing, setEditing] = useState<Habit | null>();
-  const [draft, setDraft] = useState("");
+  const [editing, setEditing] = useState<Habit>();
   useBlurOnClose(editing !== undefined);
   const [toast, setToast] = useState("");
   const fail = () => {
@@ -47,22 +61,12 @@ export default function PlannerSettingsPage() {
     setTimeout(() => setToast(""), 2000);
   };
 
-  const openHabit = (habit: Habit | null) => {
-    setDraft(habit?.title ?? "");
-    setEditing(habit);
-  };
-
-  const saveHabit = () => {
-    const title = draft.trim();
-    if (!title) return;
-    if (editing) updateHabit.mutate({ name: editing.name, title }, { onError: fail });
-    else createHabit.mutate(title, { onError: fail });
-    setEditing(undefined);
-  };
-
-  const toggleArchived = () => {
+  const saveHabit = ({ title, color }: { title: string; color?: number }) => {
     if (!editing) return;
-    updateHabit.mutate({ name: editing.name, archived: !editing.archived }, { onError: fail });
+    updateHabit.mutate(
+      { name: editing.name, title: title !== editing.title ? title : undefined, color: color !== editing.color ? color : undefined },
+      { onError: fail },
+    );
     setEditing(undefined);
   };
 
@@ -101,55 +105,60 @@ export default function PlannerSettingsPage() {
       </List>
       <Hint>{COPY.plannerSettings.maxUpdateDaysHint}</Hint>
 
-      <SectionTitle>{COPY.plannerSettings.habits}</SectionTitle>
+      <SectionTitle>
+        {current ? COPY.plannerSettings.currentVersion(label(current.effectiveDate)) : COPY.plannerSettings.habits}
+      </SectionTitle>
       <List strongIos insetIos dividersIos className="!my-0">
-        {habits.map((habit) => (
-          <ListItem
-            key={habit.name}
-            link
-            media={<span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: getEventColorByName(habit.title, titles) }} />}
-            title={<span className={habit.archived ? "text-black/40 dark:text-white/40" : ""}>{habit.title}</span>}
-            after={habit.archived ? COPY.plannerSettings.archived : undefined}
-            onClick={() => openHabit(habit)}
-          />
-        ))}
-        <ListButton onClick={() => openHabit(null)}>{COPY.plannerSettings.newHabit}</ListButton>
+        {current?.entries.map((entry) => {
+          const habit = habitByName.get(entry.habit);
+          if (!habit) return null;
+          return (
+            <ListItem
+              key={entry.habit}
+              link
+              media={<span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: habitColor(habit) }} />}
+              title={habit.title}
+              after={COPY.plannerSettings.weeklyGoal(entry.weeklyGoal)}
+              onClick={() => setEditing(habit)}
+            />
+          );
+        })}
+        <ListButton onClick={() => go(habitVersionRoute())}>{COPY.plannerSettings.revise}</ListButton>
       </List>
-      <Hint>{COPY.plannerSettings.habitsHint}</Hint>
+      <Hint>{current ? COPY.plannerSettings.versionHint : COPY.plannerSettings.noVersion}</Hint>
+
+      {versions.length > 0 && (
+        <>
+          <SectionTitle>{COPY.plannerSettings.history}</SectionTitle>
+          <List strongIos insetIos dividersIos className="!my-0">
+            {[...versions].reverse().map((version) => {
+              const pending = version.effectiveDate > today;
+              const titles = version.entries.map((entry) => habitByName.get(entry.habit)?.title).filter(Boolean);
+              return (
+                <ListItem
+                  key={version.effectiveDate}
+                  link
+                  title={label(version.effectiveDate)}
+                  after={pending ? COPY.plannerSettings.notYetInEffect : undefined}
+                  text={<span className="whitespace-normal">{titles.join(" · ")}</span>}
+                  onClick={() => go(habitVersionRoute(version.effectiveDate || "-"))}
+                />
+              );
+            })}
+          </List>
+        </>
+      )}
 
       <List strongIos insetIos className="mt-8">
         <ListItem link title={COPY.plannerSettings.import} onClick={() => go(MOBILE_ROUTES.PLAN_IMPORT)} />
       </List>
 
-      <Sheet className="pb-safe w-full rounded-t-2xl" opened={editing !== undefined} onBackdropClick={() => setEditing(undefined)}>
-        <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-black/15 dark:bg-white/20" />
-        <div className="px-4 pt-3">
-          <div className="text-[15px] font-semibold mb-2">{editing ? editing.title : COPY.plannerSettings.newHabit}</div>
-          <input
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            placeholder={COPY.plannerSettings.habitTitle}
-            className="w-full rounded-xl bg-black/5 dark:bg-white/10 px-3 py-2.5 text-[16px] outline-none"
-          />
-          <div className="flex justify-between py-3">
-            {editing ? (
-              <button type="button" className="text-[16px] text-red-500" onClick={toggleArchived}>
-                {editing.archived ? COPY.plannerSettings.restore : COPY.plannerSettings.archive}
-              </button>
-            ) : (
-              <span />
-            )}
-            <button
-              type="button"
-              className="text-[16px] font-semibold text-primary disabled:opacity-40"
-              disabled={!draft.trim()}
-              onClick={saveHabit}
-            >
-              {COPY.planner.save}
-            </button>
-          </div>
-        </div>
-      </Sheet>
+      <HabitEditSheet
+        habit={editing}
+        takenColors={editing ? colorsTakenFor(editing.name, habits, versions, today) : new Set()}
+        onClose={() => setEditing(undefined)}
+        onSave={saveHabit}
+      />
 
       <Toast position="center" opened={toast !== ""}>
         {toast}

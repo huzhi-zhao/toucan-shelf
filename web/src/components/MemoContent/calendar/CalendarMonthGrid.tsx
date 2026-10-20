@@ -26,6 +26,8 @@ interface CalendarMonthGridProps {
   weekStartDay?: number; // 1=周一 …… 6=周六、7=周日；省略时用实例设置
   selectedDate?: string;
   onSelectDate: (date: string) => void;
+  slotsOf?: (date: string) => string[]; // 某天的圆点位；省略时每天都是 events 前 5 个
+  colorOf?: (name: string) => string; // event 的颜色；省略时按 events 下标取色
 }
 
 const toMonthString = (month: VisibleMonth) => formatMonth(new Date(month.year, month.month, 1));
@@ -46,6 +48,8 @@ export const CalendarMonthGrid = ({
   weekStartDay,
   selectedDate,
   onSelectDate,
+  slotsOf,
+  colorOf,
 }: CalendarMonthGridProps) => {
   const t = useTranslate();
   const { generalSetting } = useInstance();
@@ -173,6 +177,8 @@ export const CalendarMonthGrid = ({
             dayEvents={(eventsByDate[day.date] ?? []).filter((name) => visibleDots.has(name))}
             events={events}
             showTaskDot={showTaskDot && visibleDots.has(TASKS_DOT_KEY)}
+            slots={slotsOf?.(day.date)}
+            colorOf={colorOf}
             onClick={day.isCurrentMonth ? onSelectDate : undefined}
           />
         ))}

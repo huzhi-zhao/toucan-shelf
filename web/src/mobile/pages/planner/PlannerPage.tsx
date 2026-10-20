@@ -4,13 +4,13 @@ import { LinkIcon, PlusIcon, Settings2Icon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarMonthGrid } from "@/components/MemoContent/calendar/CalendarMonthGrid";
 import { defaultVisibleMonth, type VisibleMonth } from "@/components/MemoContent/calendar/defaultVisibleMonth";
-import { getEventColorByName } from "@/components/MemoContent/calendar/eventColors";
 import { useInstance } from "@/contexts/InstanceContext";
 import {
   useCreatePlannerNote,
   useCreateTodo,
   useDeletePlannerNote,
   useHabits,
+  useHabitVersions,
   useOpenTodos,
   usePlannerEntries,
   useSetCheckIn,
@@ -27,7 +27,11 @@ import { useGo, usePageScroll } from "../../lib/nav";
 import {
   buildCalendarData,
   groupOpenTodos,
+  habitColor,
+  habitsOn,
+  habitTodoLabel,
   isDateEditable,
+  isFailed,
   localToday,
   monthRange,
   PLANNER_MAX_UPDATE_DAYS_DEFAULT,
@@ -37,11 +41,17 @@ import {
   saveCalendarView,
   todosForDay,
   todosNotShown,
+  weeklyCheckIns,
+  weeklyGoalOn,
+  weeksSpan,
 } from "../../lib/planner";
 import { usePref } from "../../lib/storage";
 import { MOBILE_ROUTES, todoRoute } from "../../routes";
 
 type AddKind = "todo" | "note";
+
+/** The sheets a habit chip opens (requirement §2.4.2 §4): check in, choose between that and a todo, or make the todo. */
+type HabitSheet = { habit: Habit; kind: "checkIn" | "choice" | "todo"; confirming?: boolean };
 
 /** Sunday-based offset (instance setting) → the grid's 1 = Monday … 7 = Sunday. */
 const weekStartFromOffset = (offset: number) => (offset === 0 ? 7 : offset);
@@ -70,9 +80,10 @@ export default function PlannerPage() {
   useEffect(() => saveCalendarView({ month, selectedDate, weekStartOverride }, today), [month, selectedDate, weekStartOverride, today]);
   const range = monthRange(month);
   const { data: habits = [] } = useHabits();
+  const { data: versions = [] } = useHabitVersions();
   const { data: entries } = usePlannerEntries(range.startDate, range.endDate);
   const { data: openTodos = [] } = useOpenTodos();
-  const calendar = useMemo(() => buildCalendarData(habits, entries), [habits, entries]);
+  const calendar = useMemo(() => buildCalendarData(habits, versions, entries, monthRange(month)), [habits, versions, entries, month]);
 
   const setCheckIn = useSetCheckIn();
   const createTodo = useCreateTodo();
@@ -94,22 +105,40 @@ export default function PlannerPage() {
   const todosOfDay = todosForDay(selectedDate, today, entries?.todos ?? [], openTodos);
   // The list below the calendar skips what the selected day shows: with today selected, today's and the
   // overdue todos are already listed right above.
-  const listedTodos = todosNotShown(openTodos, todosOfDay);
+  // A failed habit todo leaves the list: it stays only on its own day (requirement §2.4.2 §5).
+  const listedTodos = todosNotShown(
+    openTodos.filter((todo) => !isFailed(todo, today)),
+    todosOfDay,
+  );
   const groups = groupOpenTodos(listedTodos, today);
   const notesOfDay = (entries?.notes ?? []).filter((note) => note.date === selectedDate);
-  const activeHabits = habits.filter((habit) => !habit.archived);
-  const habitTitles = new Map(habits.map((habit) => [habit.name, habit.title]));
+  const habitsOfDay = habitsOn(versions, habits, selectedDate);
+  const habitByName = new Map(habits.map((habit) => [habit.name, habit]));
+
+  // A habit todo shows its habit's check-ins in the week of its date, counted from the default week start,
+  // not this visit's toggle. Those weeks can reach past the month on screen, so they load on their own.
+  const habitTodoDates = [...todosOfDay, ...listedTodos].filter((todo) => todo.habit !== "").map((todo) => todo.date || today);
+  const weeks = weeksSpan(habitTodoDates, resolvedDefault) ?? range;
+  const { data: weekEntries } = usePlannerEntries(weeks.startDate, weeks.endDate);
+  const habitLabel = (todo: Todo) => {
+    const habit = habitByName.get(todo.habit);
+    if (!habit) return undefined;
+    const date = todo.date || today;
+    const done = weeklyCheckIns(weekEntries?.checkIns ?? [], todo.habit, date, resolvedDefault);
+    return habitTodoLabel(habit.title, done, weeklyGoalOn(versions, todo.habit, date));
+  };
 
   // Sheets.
   const [addKind, setAddKind] = useState<AddKind>();
   const [draft, setDraft] = useState("");
-  // The check-in sheet keeps what it shows while it slides away, so it does not flip to the other mode
-  // as the new check-in lands.
-  const [checkInSheet, setCheckInSheet] = useState<{ habit: Habit; confirming: boolean }>();
-  const [checkInOpen, setCheckInOpen] = useState(false);
+  // A habit sheet keeps what it shows while it slides away, so it does not flip to another mode as the new
+  // check-in or todo lands.
+  const [habitSheet, setHabitSheet] = useState<HabitSheet>();
+  const [habitSheetOpen, setHabitSheetOpen] = useState<HabitSheet["kind"]>();
   const [noteTarget, setNoteTarget] = useState<PlannerNote>();
   const addInputRef = useRef<HTMLTextAreaElement>(null);
-  useBlurOnClose(addKind !== undefined || checkInOpen || noteTarget !== undefined);
+  const habitTodoInputRef = useRef<HTMLInputElement>(null);
+  useBlurOnClose(addKind !== undefined || habitSheetOpen !== undefined || noteTarget !== undefined);
 
   const toggleTodo = (todo: Todo) => {
     // A todo that checked in its habit stays done (requirement §2.4.1).
@@ -119,27 +148,44 @@ export default function PlannerPage() {
   };
   const openTodo = (todo: Todo) => go(todoRoute(todo.name));
 
-  // The todo a habit chip leads to instead of the check-in sheet (requirement §2.4.1): the one whose
-  // completion made the day's check-in, or, today, the open todo that will check it in when done.
+  // The habit's todo on the selected day, whatever its status: there is at most one.
+  const habitTodoOfDay = (habit: Habit) => (entries?.todos ?? []).find((todo) => todo.habit === habit.name && todo.date === selectedDate);
+
+  // The todo a chip opens instead of a sheet: the one whose completion made the day's check-in, or the
+  // habit todo of the day that is to make it (completing, backfilling, or deleting a failed one).
   const todoOfHabit = (habit: Habit) => {
     const checkIn = checkInsOfDay.get(habit.name);
-    if (checkIn) return checkIn.todo;
-    return selectedDate === today ? openTodos.find((todo) => todo.habit === habit.name)?.name : undefined;
+    if (checkIn) return checkIn.todo || undefined;
+    return habitTodoOfDay(habit)?.name;
   };
 
-  // Tapping a habit opens its sheet either way: one not checked in yet asks to confirm (a stray tap in the
-  // chip row must not record a check-in), with room for a note; one already checked in edits the note or
-  // takes the check-in back. A habit tied to a todo opens that todo instead.
+  const openHabitSheet = (sheet: HabitSheet) => {
+    setHabitSheet(sheet);
+    setHabitSheetOpen(sheet.kind);
+  };
+  const openCheckIn = (habit: Habit) => {
+    setDraft(checkInsOfDay.get(habit.name)?.note ?? "");
+    openHabitSheet({ habit, kind: "checkIn", confirming: !checkInsOfDay.has(habit.name) });
+  };
+  const openHabitTodo = (habit: Habit) => {
+    setDraft(habit.title);
+    openHabitSheet({ habit, kind: "todo" });
+    // Focus inside the tap so iOS opens the keyboard (see openAdd).
+    habitTodoInputRef.current?.focus({ preventScroll: true });
+  };
+
+  // Requirement §2.4.2 §4. A todo tied to the habit that day opens instead of any sheet. Otherwise: a check-in
+  // already there edits its note or takes it back; a day ahead makes a habit todo; today offers both a check-in
+  // and a todo; a past day only checks in. Checking in asks to confirm, so a stray tap records nothing.
   const tapHabit = (habit: Habit) => {
     const todo = todoOfHabit(habit);
     if (todo) {
       go(todoRoute(todo));
       return;
     }
-    if (!canCheckIn) return;
-    setDraft(checkInsOfDay.get(habit.name)?.note ?? "");
-    setCheckInSheet({ habit, confirming: !checkInsOfDay.has(habit.name) });
-    setCheckInOpen(true);
+    if (isFuture) openHabitTodo(habit);
+    else if (selectedDate === today && !checkInsOfDay.has(habit.name)) openHabitSheet({ habit, kind: "choice" });
+    else if (canCheckIn) openCheckIn(habit);
   };
 
   const openAdd = (kind: AddKind) => {
@@ -169,9 +215,15 @@ export default function PlannerPage() {
   };
 
   const saveCheckInNote = (checked: boolean) => {
-    if (!checkInSheet) return;
-    setCheckIn.mutate({ habit: checkInSheet.habit.name, date: selectedDate, note: draft.trim(), checked }, { onError: fail });
-    setCheckInOpen(false);
+    if (!habitSheet) return;
+    setCheckIn.mutate({ habit: habitSheet.habit.name, date: selectedDate, note: draft.trim(), checked }, { onError: fail });
+    setHabitSheetOpen(undefined);
+  };
+
+  const saveHabitTodo = () => {
+    if (!habitSheet || !draft.trim()) return;
+    createTodo.mutate({ title: draft.trim(), date: selectedDate, habit: habitSheet.habit.name, localDate: today }, { onError: fail });
+    setHabitSheetOpen(undefined);
   };
 
   const saveNote = (remove: boolean) => {
@@ -219,6 +271,8 @@ export default function PlannerPage() {
           // first render here (in a calendar block they come with the text), so remount when
           // they change or every habit's dots would start filtered out.
           key={calendar.events.join("\n")}
+          slotsOf={calendar.slotsOf}
+          colorOf={calendar.colorOf}
           month={month}
           onMonthChange={selectMonth}
           itemCounts={calendar.itemCounts}
@@ -261,13 +315,13 @@ export default function PlannerPage() {
         {dayTitle}
       </SectionTitle>
 
-      {activeHabits.length > 0 ? (
+      {habitsOfDay.length > 0 ? (
         <div className="flex flex-wrap gap-2 px-4 pb-3">
-          {activeHabits.map((habit) => {
+          {habitsOfDay.map((habit) => {
             const checkIn = checkInsOfDay.get(habit.name);
-            const color = getEventColorByName(habit.title, calendar.events);
+            const color = habitColor(habit);
             const linked = Boolean(todoOfHabit(habit));
-            const enabled = canCheckIn || linked;
+            const enabled = canCheckIn || linked || isFuture;
             return (
               <button
                 key={habit.name}
@@ -293,21 +347,16 @@ export default function PlannerPage() {
         <div className="px-4 pb-3 text-[13px] text-black/45 dark:text-white/45">{COPY.planner.noHabits}</div>
       )}
       {!editable && <div className="px-4 pb-2 text-[12px] text-black/40 dark:text-white/40">{COPY.planner.readonlyDay(maxUpdateDays)}</div>}
-      {isFuture && <div className="px-4 pb-2 text-[12px] text-black/40 dark:text-white/40">{COPY.planner.futureCheckIn}</div>}
+      {isFuture && habitsOfDay.length > 0 && (
+        <div className="px-4 pb-2 text-[12px] text-black/40 dark:text-white/40">{COPY.planner.futureCheckIn}</div>
+      )}
 
       {dayIsEmpty ? (
         <div className="px-4 py-3 text-[14px] text-black/40 dark:text-white/40">{COPY.planner.dayEmpty}</div>
       ) : (
         <List strongIos insetIos dividersIos className="!my-0">
           {todosOfDay.map((todo) => (
-            <TodoRow
-              key={todo.name}
-              todo={todo}
-              today={today}
-              habitTitle={habitTitles.get(todo.habit)}
-              onToggle={toggleTodo}
-              onOpen={openTodo}
-            />
+            <TodoRow key={todo.name} todo={todo} today={today} habitLabel={habitLabel(todo)} onToggle={toggleTodo} onOpen={openTodo} />
           ))}
           {notesOfDay.map((note) => (
             <ListItem
@@ -351,7 +400,7 @@ export default function PlannerPage() {
                     todo={todo}
                     today={today}
                     showDate
-                    habitTitle={habitTitles.get(todo.habit)}
+                    habitLabel={habitLabel(todo)}
                     onToggle={toggleTodo}
                     onOpen={openTodo}
                   />
@@ -399,11 +448,72 @@ export default function PlannerPage() {
         </div>
       </Sheet>
 
-      <Sheet className="pb-safe w-full rounded-t-2xl" opened={checkInOpen} onBackdropClick={() => setCheckInOpen(false)}>
+      <Sheet
+        className="pb-safe w-full rounded-t-2xl"
+        opened={habitSheetOpen === "choice"}
+        onBackdropClick={() => setHabitSheetOpen(undefined)}
+      >
+        <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-black/15 dark:bg-white/20" />
+        <div className="px-4 pt-3">
+          <div className="text-[15px] font-semibold">{habitSheet?.habit.title}</div>
+          <div className="text-[13px] text-black/45 dark:text-white/45 mt-0.5">{dayTitle}</div>
+        </div>
+        <List strongIos insetIos dividersIos className="!my-3">
+          <ListItem link chevron={false} title={COPY.planner.directCheckIn} onClick={() => habitSheet && openCheckIn(habitSheet.habit)} />
+          <ListItem
+            link
+            chevron={false}
+            title={COPY.planner.createHabitTodo}
+            footer={COPY.planner.habitTodoHint}
+            onClick={() => habitSheet && openHabitTodo(habitSheet.habit)}
+          />
+        </List>
+      </Sheet>
+
+      <Sheet
+        className="pb-safe w-full rounded-t-2xl"
+        opened={habitSheetOpen === "todo"}
+        onBackdropClick={() => setHabitSheetOpen(undefined)}
+      >
         <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-black/15 dark:bg-white/20" />
         <div className="px-4 pt-3">
           <div className="text-[15px] font-semibold">
-            {checkInSheet?.habit.title} · {checkInSheet?.confirming ? COPY.planner.checkIns : COPY.planner.checkInNote}
+            {habitSheet?.habit.title} · {COPY.planner.createHabitTodo}
+          </div>
+          <div className="text-[13px] text-black/45 dark:text-white/45 mt-0.5 mb-2">{dayTitle}</div>
+          <input
+            ref={habitTodoInputRef}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder={COPY.planner.habitTodoTitle}
+            className="w-full rounded-xl bg-black/5 dark:bg-white/10 px-3 py-2.5 text-[16px] outline-none"
+          />
+          <div className="mt-2 text-[12px] text-black/40 dark:text-white/40">{COPY.planner.habitTodoHint}</div>
+          <div className="flex justify-end gap-4 py-3">
+            <button type="button" className="text-[16px] text-black/50 dark:text-white/50" onClick={() => setHabitSheetOpen(undefined)}>
+              {COPY.planner.cancel}
+            </button>
+            <button
+              type="button"
+              className="text-[16px] font-semibold text-primary disabled:opacity-40"
+              disabled={!draft.trim()}
+              onClick={saveHabitTodo}
+            >
+              {COPY.planner.save}
+            </button>
+          </div>
+        </div>
+      </Sheet>
+
+      <Sheet
+        className="pb-safe w-full rounded-t-2xl"
+        opened={habitSheetOpen === "checkIn"}
+        onBackdropClick={() => setHabitSheetOpen(undefined)}
+      >
+        <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-black/15 dark:bg-white/20" />
+        <div className="px-4 pt-3">
+          <div className="text-[15px] font-semibold">
+            {habitSheet?.habit.title} · {habitSheet?.confirming ? COPY.planner.checkIns : COPY.planner.checkInNote}
           </div>
           <div className="text-[13px] text-black/45 dark:text-white/45 mt-0.5 mb-2">{dayTitle}</div>
           <input
@@ -413,8 +523,8 @@ export default function PlannerPage() {
             className="w-full rounded-xl bg-black/5 dark:bg-white/10 px-3 py-2.5 text-[16px] outline-none"
           />
           <div className="flex justify-between py-3">
-            {checkInSheet?.confirming ? (
-              <button type="button" className="text-[16px] text-black/50 dark:text-white/50" onClick={() => setCheckInOpen(false)}>
+            {habitSheet?.confirming ? (
+              <button type="button" className="text-[16px] text-black/50 dark:text-white/50" onClick={() => setHabitSheetOpen(undefined)}>
                 {COPY.planner.cancel}
               </button>
             ) : (
@@ -423,7 +533,7 @@ export default function PlannerPage() {
               </button>
             )}
             <button type="button" className="text-[16px] font-semibold text-primary" onClick={() => saveCheckInNote(true)}>
-              {checkInSheet?.confirming ? COPY.planner.confirmCheckIn : COPY.planner.save}
+              {habitSheet?.confirming ? COPY.planner.confirmCheckIn : COPY.planner.save}
             </button>
           </div>
         </div>

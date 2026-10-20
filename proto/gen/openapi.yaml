@@ -1892,11 +1892,84 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/v1/planner/habitVersions:
+        get:
+            tags:
+                - PlannerService
+            description: ListHabitVersions returns the caller's habit versions, earliest first.
+            operationId: PlannerService_ListHabitVersions
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListHabitVersionsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        post:
+            tags:
+                - PlannerService
+            description: |-
+                SetHabitVersion writes the version for its effective date, which must not be
+                 before the caller's local date; one already there is replaced.
+            operationId: PlannerService_SetHabitVersion
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/SetHabitVersionRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/HabitVersion'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        delete:
+            tags:
+                - PlannerService
+            description: DeleteHabitVersion removes a version that has not taken effect yet.
+            operationId: PlannerService_DeleteHabitVersion
+            parameters:
+                - name: effectiveDate
+                  in: query
+                  description: YYYY-MM-DD; must be after local_date.
+                  schema:
+                    type: string
+                - name: localDate
+                  in: query
+                  description: The caller's local date, YYYY-MM-DD.
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/planner/habits:
         get:
             tags:
                 - PlannerService
-            description: ListHabits returns the caller's habits, archived ones included, by position.
+            description: |-
+                ListHabits returns the caller's whole habit pool, in creation order. Which
+                 habits are in use on a day is decided by habit versions.
             operationId: PlannerService_ListHabits
             responses:
                 "200":
@@ -1914,7 +1987,9 @@ paths:
         post:
             tags:
                 - PlannerService
-            description: CreateHabit adds a habit after the existing ones.
+            description: |-
+                CreateHabit adds a habit to the pool, with a colour no habit of the latest
+                 version uses. It is in use only once a version includes it.
             operationId: PlannerService_CreateHabit
             requestBody:
                 content:
@@ -2008,6 +2083,14 @@ paths:
                 - PlannerService
             description: CreateTodo adds an active todo.
             operationId: PlannerService_CreateTodo
+            parameters:
+                - name: localDate
+                  in: query
+                  description: |-
+                    The caller's local date, YYYY-MM-DD. Required for a habit todo, which can be
+                     for today or later only.
+                  schema:
+                    type: string
             requestBody:
                 content:
                     application/json:
@@ -5478,8 +5561,9 @@ components:
                          on the calendar.
                     format: int32
                 archived:
+                    readOnly: true
                     type: boolean
-                    description: An archived habit takes no new check-ins; its history stays.
+                    description: 'Deprecated: habit versions decide which habits are in use. Read only.'
                 createTime:
                     readOnly: true
                     type: string
@@ -5488,6 +5572,44 @@ components:
                     readOnly: true
                     type: string
                     format: date-time
+                color:
+                    type: integer
+                    description: Index into the calendar palette, 0 to 7. The habit has this colour on every day.
+                    format: int32
+        HabitVersion:
+            type: object
+            properties:
+                effectiveDate:
+                    type: string
+                    description: YYYY-MM-DD, or empty for "from the very beginning".
+                entries:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/HabitVersionEntry'
+                    description: At most five, each habit once, no two of the same colour.
+                createTime:
+                    readOnly: true
+                    type: string
+                    format: date-time
+                updateTime:
+                    readOnly: true
+                    type: string
+                    format: date-time
+            description: |-
+                HabitVersion is the set of habits in use from effective_date on, until the
+                 next version: the habits that can be checked in, in calendar order.
+        HabitVersionEntry:
+            required:
+                - habit
+            type: object
+            properties:
+                habit:
+                    type: string
+                    description: 'Format: planner/habits/{habit}'
+                weeklyGoal:
+                    type: integer
+                    description: Check-ins a week the habit aims for, 0 to 7; 0 for none.
+                    format: int32
         IdentityProvider:
             required:
                 - type
@@ -5986,6 +6108,13 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/Favorite'
+        ListHabitVersionsResponse:
+            type: object
+            properties:
+                versions:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/HabitVersion'
         ListHabitsResponse:
             type: object
             properties:
@@ -7497,6 +7626,22 @@ components:
             description: |-
                 SecretEnvelope is everything needed to decrypt a secret given the passphrase,
                  and nothing that helps without it. The server treats every field as opaque.
+        SetHabitVersionRequest:
+            required:
+                - version
+                - localDate
+            type: object
+            properties:
+                version:
+                    $ref: '#/components/schemas/HabitVersion'
+                localDate:
+                    type: string
+                    description: The caller's local date, YYYY-MM-DD.
+                unlinkTodos:
+                    type: boolean
+                    description: |-
+                        Must be set when the version drops a habit that still has open habit todos
+                         on or after its effective date: those become plain todos.
         SetMemoAttachmentsRequest:
             required:
                 - name
@@ -7915,8 +8060,9 @@ components:
                 habit:
                     type: string
                     description: |-
-                        The habit checked in, on the caller's local date, when the todo is done; empty
-                         for none. Set through UpdateTodo. Format: planner/habits/{habit}
+                        For a habit todo, the habit it checks in on its date when done; empty for a
+                         plain todo. Set only at creation, and cleared when a version drops the habit.
+                         Format: planner/habits/{habit}
                 checkInDate:
                     readOnly: true
                     type: string

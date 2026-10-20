@@ -5,6 +5,7 @@ import { plannerServiceClient } from "@/connect";
 import {
   CheckInSchema,
   HabitSchema,
+  HabitVersionSchema,
   type ImportPlannerRequest,
   PlannerNoteSchema,
   type Todo,
@@ -18,6 +19,7 @@ import {
 export const plannerKeys = {
   all: ["planner"] as const,
   habits: () => [...plannerKeys.all, "habits"] as const,
+  habitVersions: () => [...plannerKeys.all, "habitVersions"] as const,
   entries: (startDate: string, endDate: string) => [...plannerKeys.all, "entries", startDate, endDate] as const,
   openTodos: () => [...plannerKeys.all, "openTodos"] as const,
   todo: (name?: string) => [...plannerKeys.all, "todo", name] as const,
@@ -28,6 +30,14 @@ export function useHabits() {
   return useQuery({
     queryKey: plannerKeys.habits(),
     queryFn: async () => (await plannerServiceClient.listHabits({})).habits,
+  });
+}
+
+/** Which habits are in use when (requirement §2.4.2), earliest version first. */
+export function useHabitVersions() {
+  return useQuery({
+    queryKey: plannerKeys.habitVersions(),
+    queryFn: async () => (await plannerServiceClient.listHabitVersions({})).versions,
   });
 }
 
@@ -76,16 +86,45 @@ export function useCreateHabit() {
 }
 
 export function useUpdateHabit() {
+  return usePlannerMutation(({ name, title, color }: { name: string; title?: string; color?: number }) => {
+    const paths = [title !== undefined && "title", color !== undefined && "color"].filter((path): path is string => Boolean(path));
+    return plannerServiceClient.updateHabit({
+      habit: create(HabitSchema, { name, title, color }),
+      updateMask: create(FieldMaskSchema, { paths }),
+    });
+  });
+}
+
+/**
+ * Sets the version taking effect on `effectiveDate`, replacing one already set for that day. With
+ * `unlinkTodos`, habit todos it leaves without their habit become plain todos; without it the server
+ * refuses (FailedPrecondition) so the user can be asked first.
+ */
+export function useSetHabitVersion() {
   return usePlannerMutation(
-    ({ name, title, archived, position }: { name: string; title?: string; archived?: boolean; position?: number }) => {
-      const paths = [title !== undefined && "title", archived !== undefined && "archived", position !== undefined && "position"].filter(
-        (path): path is string => Boolean(path),
-      );
-      return plannerServiceClient.updateHabit({
-        habit: create(HabitSchema, { name, title, archived, position }),
-        updateMask: create(FieldMaskSchema, { paths }),
-      });
-    },
+    ({
+      effectiveDate,
+      entries,
+      localDate,
+      unlinkTodos,
+    }: {
+      effectiveDate: string;
+      entries: { habit: string; weeklyGoal: number }[];
+      localDate: string;
+      unlinkTodos?: boolean;
+    }) =>
+      plannerServiceClient.setHabitVersion({
+        version: create(HabitVersionSchema, { effectiveDate, entries }),
+        localDate,
+        unlinkTodos: unlinkTodos ?? false,
+      }),
+  );
+}
+
+/** Deletes a version not yet in effect. */
+export function useDeleteHabitVersion() {
+  return usePlannerMutation(({ effectiveDate, localDate }: { effectiveDate: string; localDate: string }) =>
+    plannerServiceClient.deleteHabitVersion({ effectiveDate, localDate }),
   );
 }
 
@@ -100,13 +139,14 @@ export function useSetCheckIn() {
   });
 }
 
+/** Creates a todo; with `habit`, a habit todo for `date`, which then needs the phone's today as `localDate`. */
 export function useCreateTodo() {
-  return usePlannerMutation(({ title, date }: { title: string; date: string }) =>
-    plannerServiceClient.createTodo({ todo: create(TodoSchema, { title, date }) }),
+  return usePlannerMutation(({ title, date, habit, localDate }: { title: string; date: string; habit?: string; localDate?: string }) =>
+    plannerServiceClient.createTodo({ todo: create(TodoSchema, { title, date, habit: habit ?? "" }), localDate: localDate ?? "" }),
   );
 }
 
-type TodoField = "title" | "date" | "status" | "cancelReason" | "important" | "tag" | "note" | "memos" | "url" | "habit";
+type TodoField = "title" | "date" | "status" | "cancelReason" | "important" | "tag" | "note" | "memos" | "url";
 
 const TODO_MASK_PATHS: Record<TodoField, string> = {
   title: "title",
@@ -118,13 +158,12 @@ const TODO_MASK_PATHS: Record<TodoField, string> = {
   note: "note",
   memos: "memos",
   url: "url",
-  habit: "habit",
 };
 
 /**
  * Changes the given fields of a todo. `localDate` is the phone's today: the server
- * needs it when a change closes the todo, to record whether it was closed overdue
- * and to check in a linked habit, and when it links a habit.
+ * needs it when a change closes the todo, to record whether it was closed overdue,
+ * and to refuse completing a habit todo ahead of its day.
  */
 export function useUpdateTodo() {
   return usePlannerMutation(

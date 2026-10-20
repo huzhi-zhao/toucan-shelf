@@ -1095,6 +1095,30 @@ func (s *ConnectServiceHandler) UpdateHabit(ctx context.Context, req *connect.Re
 	return connect.NewResponse(resp), nil
 }
 
+func (s *ConnectServiceHandler) ListHabitVersions(ctx context.Context, req *connect.Request[v1pb.ListHabitVersionsRequest]) (*connect.Response[v1pb.ListHabitVersionsResponse], error) {
+	resp, err := s.APIV1Service.ListHabitVersions(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) SetHabitVersion(ctx context.Context, req *connect.Request[v1pb.SetHabitVersionRequest]) (*connect.Response[v1pb.HabitVersion], error) {
+	resp, err := s.APIV1Service.SetHabitVersion(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) DeleteHabitVersion(ctx context.Context, req *connect.Request[v1pb.DeleteHabitVersionRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := s.APIV1Service.DeleteHabitVersion(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (s *ConnectServiceHandler) ListPlannerEntries(ctx context.Context, req *connect.Request[v1pb.ListPlannerEntriesRequest]) (*connect.Response[v1pb.ListPlannerEntriesResponse], error) {
 	resp, err := s.APIV1Service.ListPlannerEntries(ctx, req.Msg)
 	if err != nil {

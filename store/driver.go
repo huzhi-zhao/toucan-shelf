@@ -163,6 +163,9 @@ type Driver interface {
 	CreatePlannerHabit(ctx context.Context, create *PlannerHabit) (*PlannerHabit, error)
 	ListPlannerHabits(ctx context.Context, find *FindPlannerHabit) ([]*PlannerHabit, error)
 	UpdatePlannerHabit(ctx context.Context, update *UpdatePlannerHabit) (*PlannerHabit, error)
+	ListPlannerHabitVersions(ctx context.Context, creatorID int32) ([]*PlannerHabitVersion, error)
+	UpsertPlannerHabitVersion(ctx context.Context, version *PlannerHabitVersion, unlinkTodoIDs []int32) (*PlannerHabitVersion, error)
+	DeletePlannerHabitVersion(ctx context.Context, creatorID int32, effectiveDate string) error
 	UpsertPlannerCheckIn(ctx context.Context, upsert *PlannerCheckIn) (*PlannerCheckIn, error)
 	ListPlannerCheckIns(ctx context.Context, find *FindPlannerCheckIn) ([]*PlannerCheckIn, error)
 	DeletePlannerCheckIn(ctx context.Context, habitID int32, date string) error

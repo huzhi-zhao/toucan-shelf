@@ -165,7 +165,7 @@ func convertHabitFromStore(h *store.PlannerHabit) *v1pb.Habit {
 		Name:       habitNamePrefix + h.UID,
 		Title:      h.Name,
 		Position:   h.Position,
-		Archived:   h.Archived,
+		Color:      h.Color,
 		CreateTime: optionalTimestamp(h.CreatedTs),
 		UpdateTime: optionalTimestamp(h.UpdatedTs),
 	}
@@ -320,11 +320,16 @@ func (s *APIV1Service) CreateHabit(ctx context.Context, request *v1pb.CreateHabi
 	for _, habit := range existing {
 		position = max(position, habit.Position+1)
 	}
+	versions, err := s.listHabitVersions(ctx, user)
+	if err != nil {
+		return nil, err
+	}
 	habit, err := s.Store.CreatePlannerHabit(ctx, &store.PlannerHabit{
 		UID:       shortuuid.New(),
 		CreatorID: user.ID,
 		Name:      title,
 		Position:  position,
+		Color:     newHabitColor(existing, versions),
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create habit: %v", err)
@@ -353,10 +358,13 @@ func (s *APIV1Service) UpdateHabit(ctx context.Context, request *v1pb.UpdateHabi
 				return nil, err
 			}
 			update.Name = &title
+		case "color":
+			if err := s.checkHabitColor(ctx, user, habit, request.Habit.Color); err != nil {
+				return nil, err
+			}
+			update.Color = &request.Habit.Color
 		case "position":
 			update.Position = &request.Habit.Position
-		case "archived":
-			update.Archived = &request.Habit.Archived
 		default:
 			return nil, status.Errorf(codes.InvalidArgument, "unsupported update_mask path: %s", path)
 		}
@@ -366,6 +374,62 @@ func (s *APIV1Service) UpdateHabit(ctx context.Context, request *v1pb.UpdateHabi
 		return nil, status.Errorf(codes.Internal, "failed to update habit: %v", err)
 	}
 	return convertHabitFromStore(updated), nil
+}
+
+// newHabitColor picks a color for a new habit: the first one no habit has, else the first the latest
+// version does not use, else the next one round.
+func newHabitColor(habits []*store.PlannerHabit, versions []*store.PlannerHabitVersion) int32 {
+	colorOf := map[int32]int32{}
+	used := map[int32]bool{}
+	for _, habit := range habits {
+		colorOf[habit.ID] = habit.Color
+		used[habit.Color] = true
+	}
+	inLatest := map[int32]bool{}
+	if len(versions) > 0 {
+		for _, entry := range versions[len(versions)-1].Entries {
+			inLatest[colorOf[entry.HabitID]] = true
+		}
+	}
+	for _, taken := range []map[int32]bool{used, inLatest} {
+		for color := int32(0); color < plannerHabitColors; color++ {
+			if !taken[color] {
+				return color
+			}
+		}
+	}
+	return int32(len(habits) % plannerHabitColors)
+}
+
+// checkHabitColor refuses a color out of the palette, or one another habit already has in a version this
+// habit is in, still in use or to come: the dots of one day must tell the habits apart.
+func (s *APIV1Service) checkHabitColor(ctx context.Context, user *store.User, habit *store.PlannerHabit, color int32) error {
+	if color < 0 || color >= plannerHabitColors {
+		return status.Errorf(codes.InvalidArgument, "color must be 0 to %d", plannerHabitColors-1)
+	}
+	habits, err := s.Store.ListPlannerHabits(ctx, &store.FindPlannerHabit{CreatorID: &user.ID})
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to list habits: %v", err)
+	}
+	colorOf := map[int32]int32{}
+	for _, other := range habits {
+		colorOf[other.ID] = other.Color
+	}
+	versions, err := s.listHabitVersions(ctx, user)
+	if err != nil {
+		return err
+	}
+	for _, version := range s.liveHabitVersions(versions) {
+		if !habitVersionHas(version, habit.ID) {
+			continue
+		}
+		for _, entry := range version.Entries {
+			if entry.HabitID != habit.ID && colorOf[entry.HabitID] == color {
+				return status.Errorf(codes.FailedPrecondition, "another habit in the same version has this color")
+			}
+		}
+	}
+	return nil
 }
 
 // Entries.
@@ -466,12 +530,16 @@ func (s *APIV1Service) SetCheckIn(ctx context.Context, request *v1pb.SetCheckInR
 	if err != nil {
 		return nil, err
 	}
-	if habit.Archived {
-		return nil, status.Errorf(codes.FailedPrecondition, "an archived habit takes no new check-ins")
-	}
 	date, err := parsePlannerDate(request.CheckIn.Date, "date", false)
 	if err != nil {
 		return nil, err
+	}
+	inUse, err := s.habitInUse(ctx, user, habit.ID, date)
+	if err != nil {
+		return nil, err
+	}
+	if !inUse {
+		return nil, status.Errorf(codes.FailedPrecondition, "the habit is not in use on %s", date)
 	}
 	// A check-in records what has happened, so it cannot be for a day still ahead. The caller's day is
 	// unknown here; no time zone is past UTC+14, so a later date is in the future everywhere.
@@ -484,6 +552,14 @@ func (s *APIV1Service) SetCheckIn(ctx context.Context, request *v1pb.SetCheckInR
 	}
 	if err := s.refuseTodoCheckIn(ctx, user, habit, date); err != nil {
 		return nil, err
+	}
+	// An open habit todo that day is how the habit gets checked in: completing it does that.
+	todo, err := s.habitTodoOn(ctx, user, habit.ID, date)
+	if err != nil {
+		return nil, err
+	}
+	if todo != nil && todo.Status == store.PlannerTodoActive {
+		return nil, status.Errorf(codes.FailedPrecondition, "the habit has a todo on %s; complete it to check in", date)
 	}
 	checkIn, err := s.Store.UpsertPlannerCheckIn(ctx, &store.PlannerCheckIn{CreatorID: user.ID, HabitID: habit.ID, Date: date, Note: note})
 	if err != nil {
@@ -594,11 +670,54 @@ func (s *APIV1Service) CreateTodo(ctx context.Context, request *v1pb.CreateTodoR
 	}
 	create.UID = shortuuid.New()
 	create.CreatorID = user.ID
+	if request.Todo.Habit != "" {
+		if create.HabitID, err = s.checkNewHabitTodo(ctx, user, request.Todo.Habit, create.Date, request.LocalDate); err != nil {
+			return nil, err
+		}
+	}
 	todo, err := s.Store.CreatePlannerTodo(ctx, create)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create todo: %v", err)
 	}
 	return convertTodoFromStore(todo), nil
+}
+
+// checkNewHabitTodo enforces the habit todo rules on creation and returns the habit's ID: it is for a day
+// from today on when the habit is in use, one per habit per day, and none once the habit is checked in.
+func (s *APIV1Service) checkNewHabitTodo(ctx context.Context, user *store.User, habitName, date, localDate string) (int32, error) {
+	local, err := parsePlannerDate(localDate, "local_date", false)
+	if err != nil {
+		return 0, err
+	}
+	if date == "" || date < local {
+		return 0, status.Errorf(codes.InvalidArgument, "a habit todo is for a date from today on")
+	}
+	habit, err := s.getOwnHabit(ctx, user, habitName)
+	if err != nil {
+		return 0, err
+	}
+	inUse, err := s.habitInUse(ctx, user, habit.ID, date)
+	if err != nil {
+		return 0, err
+	}
+	if !inUse {
+		return 0, status.Errorf(codes.FailedPrecondition, "the habit is not in use on %s", date)
+	}
+	existing, err := s.habitTodoOn(ctx, user, habit.ID, date)
+	if err != nil {
+		return 0, err
+	}
+	if existing != nil {
+		return 0, status.Errorf(codes.AlreadyExists, "the habit already has a todo on %s", date)
+	}
+	checkIns, err := s.Store.ListPlannerCheckIns(ctx, &store.FindPlannerCheckIn{CreatorID: user.ID, HabitID: &habit.ID, StartDate: date, EndDate: date})
+	if err != nil {
+		return 0, status.Errorf(codes.Internal, "failed to get check-in: %v", err)
+	}
+	if len(checkIns) > 0 {
+		return 0, status.Errorf(codes.FailedPrecondition, "the habit is already checked in on %s", date)
+	}
+	return habit.ID, nil
 }
 
 func (s *APIV1Service) UpdateTodo(ctx context.Context, request *v1pb.UpdateTodoRequest) (*v1pb.Todo, error) {
@@ -620,7 +739,6 @@ func (s *APIV1Service) UpdateTodo(ctx context.Context, request *v1pb.UpdateTodoR
 	nextStatus := todo.Status
 	reason := todo.CancelReason
 	reasonInMask := false
-	habitID := todo.HabitID
 	for _, path := range request.UpdateMask.Paths {
 		switch path {
 		case "title":
@@ -629,6 +747,10 @@ func (s *APIV1Service) UpdateTodo(ctx context.Context, request *v1pb.UpdateTodoR
 			}
 			update.Title = &title
 		case "date":
+			// A habit todo is for its day: missed, it fails, and the next try is a new todo.
+			if todo.HabitID != 0 {
+				return nil, status.Errorf(codes.FailedPrecondition, "a habit todo keeps its date")
+			}
 			if date, err = parsePlannerDate(request.Todo.Date, "date", true); err != nil {
 				return nil, err
 			}
@@ -677,93 +799,31 @@ func (s *APIV1Service) UpdateTodo(ctx context.Context, request *v1pb.UpdateTodoR
 				return nil, err
 			}
 			update.URL = &link
-		case "habit":
-			habitID = 0
-			if request.Todo.Habit != "" {
-				habit, err := s.getOwnHabit(ctx, user, request.Todo.Habit)
-				if err != nil {
-					return nil, err
-				}
-				habitID = habit.ID
-			}
-			update.HabitID = &habitID
 		default:
 			return nil, status.Errorf(codes.InvalidArgument, "unsupported update_mask path: %s", path)
 		}
 	}
 
 	// A todo that has checked in its habit is settled: only deleting it, check-in and all, undoes that.
-	if todo.CheckInDate != "" && (nextStatus != todo.Status || habitID != todo.HabitID) {
+	if todo.CheckInDate != "" && nextStatus != todo.Status {
 		return nil, status.Errorf(codes.FailedPrecondition, "this todo checked in its habit; it can only be deleted now")
-	}
-	if habitID != todo.HabitID && habitID != 0 {
-		if err := s.checkTodoHabitLink(ctx, user, todo, habitID, request.LocalDate); err != nil {
-			return nil, err
-		}
 	}
 	if err := s.applyTodoStatus(update, todo, nextStatus, reason, reasonInMask, date, request.LocalDate); err != nil {
 		return nil, err
 	}
-	// Completing checks in the linked habit on the caller's day, noted with the todo's title. An archived
-	// habit takes no new check-ins, so the todo then just closes.
-	if nextStatus == store.PlannerTodoDone && todo.Status != store.PlannerTodoDone && habitID != 0 {
-		habit, err := s.Store.GetPlannerHabit(ctx, &store.FindPlannerHabit{ID: &habitID, CreatorID: &user.ID})
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to get habit: %v", err)
-		}
-		if habit != nil && !habit.Archived {
-			update.CheckIn = &store.PlannerCheckIn{CreatorID: user.ID, HabitID: habit.ID, Date: request.LocalDate, Note: title}
+	if nextStatus == store.PlannerTodoDone && todo.Status != store.PlannerTodoDone && todo.HabitID != 0 {
+		if update.CheckIn, err = s.habitTodoCheckIn(ctx, user, todo, title, request.LocalDate); err != nil {
+			return nil, err
 		}
 	}
 	updated, err := s.Store.UpdatePlannerTodo(ctx, update)
 	if errors.Is(err, store.ErrPlannerCheckInTaken) {
-		return nil, status.Errorf(codes.FailedPrecondition, "the linked habit is already checked in on %s", request.LocalDate)
+		return nil, status.Errorf(codes.FailedPrecondition, "the habit is already checked in on %s", update.CheckIn.Date)
 	}
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to update todo: %v", err)
 	}
 	return convertTodoFromStore(updated), nil
-}
-
-// checkTodoHabitLink enforces who may link a habit: an open todo, to an active habit that no other open
-// todo holds and that is not checked in on the caller's day yet. Otherwise completing the todo could not
-// check the habit in.
-func (s *APIV1Service) checkTodoHabitLink(ctx context.Context, user *store.User, todo *store.PlannerTodo, habitID int32, localDate string) error {
-	if todo.Status != store.PlannerTodoActive {
-		return status.Errorf(codes.FailedPrecondition, "only an open todo can link a habit")
-	}
-	local, err := parsePlannerDate(localDate, "local_date", false)
-	if err != nil {
-		return status.Errorf(codes.InvalidArgument, "linking a habit needs the caller's local_date in YYYY-MM-DD form")
-	}
-	habit, err := s.Store.GetPlannerHabit(ctx, &store.FindPlannerHabit{ID: &habitID, CreatorID: &user.ID})
-	if err != nil {
-		return status.Errorf(codes.Internal, "failed to get habit: %v", err)
-	}
-	if habit == nil {
-		return status.Errorf(codes.NotFound, "habit not found")
-	}
-	if habit.Archived {
-		return status.Errorf(codes.FailedPrecondition, "an archived habit cannot be linked")
-	}
-	active := store.PlannerTodoActive
-	holders, err := s.Store.ListPlannerTodos(ctx, &store.FindPlannerTodo{CreatorID: &user.ID, HabitID: &habitID, Status: &active})
-	if err != nil {
-		return status.Errorf(codes.Internal, "failed to list todos: %v", err)
-	}
-	for _, holder := range holders {
-		if holder.ID != todo.ID {
-			return status.Errorf(codes.FailedPrecondition, "the habit is already linked to another open todo: %s", holder.Title)
-		}
-	}
-	checkIns, err := s.Store.ListPlannerCheckIns(ctx, &store.FindPlannerCheckIn{CreatorID: user.ID, HabitID: &habitID, StartDate: local, EndDate: local})
-	if err != nil {
-		return status.Errorf(codes.Internal, "failed to get check-in: %v", err)
-	}
-	if len(checkIns) > 0 {
-		return status.Errorf(codes.FailedPrecondition, "the habit is already checked in on %s", local)
-	}
-	return nil
 }
 
 // applyTodoStatus enforces the todo rules on an update:
@@ -824,6 +884,9 @@ func (s *APIV1Service) PostponeTodo(ctx context.Context, request *v1pb.PostponeT
 	}
 	if todo.Status != store.PlannerTodoActive || todo.Date == "" {
 		return nil, status.Errorf(codes.FailedPrecondition, "only an active todo with a date can be postponed")
+	}
+	if todo.HabitID != 0 {
+		return nil, status.Errorf(codes.FailedPrecondition, "a habit todo is not postponed; make a new one for the other day")
 	}
 	if date == todo.Date || date < local {
 		return nil, status.Errorf(codes.InvalidArgument, "date must differ from the current one and not be before local_date")
@@ -953,7 +1016,10 @@ func (s *APIV1Service) ImportPlanner(ctx context.Context, request *v1pb.ImportPl
 		if err != nil {
 			return nil, err
 		}
-		data.Habits = append(data.Habits, &store.PlannerHabit{UID: shortuuid.New(), Name: title, Position: int32(i), Archived: habit.GetArchived()})
+		data.Habits = append(data.Habits, &store.PlannerHabit{
+			UID: shortuuid.New(), Name: title, Position: int32(i), Color: int32(i % plannerHabitColors),
+			Archived: habit.GetArchived(), //nolint:staticcheck // an import still says which habits were archived
+		})
 	}
 	seen := map[string]bool{}
 	for _, checkIn := range request.CheckIns {

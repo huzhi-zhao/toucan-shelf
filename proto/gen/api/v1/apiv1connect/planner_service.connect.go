@@ -43,6 +43,15 @@ const (
 	// PlannerServiceUpdateHabitProcedure is the fully-qualified name of the PlannerService's
 	// UpdateHabit RPC.
 	PlannerServiceUpdateHabitProcedure = "/memos.api.v1.PlannerService/UpdateHabit"
+	// PlannerServiceListHabitVersionsProcedure is the fully-qualified name of the PlannerService's
+	// ListHabitVersions RPC.
+	PlannerServiceListHabitVersionsProcedure = "/memos.api.v1.PlannerService/ListHabitVersions"
+	// PlannerServiceSetHabitVersionProcedure is the fully-qualified name of the PlannerService's
+	// SetHabitVersion RPC.
+	PlannerServiceSetHabitVersionProcedure = "/memos.api.v1.PlannerService/SetHabitVersion"
+	// PlannerServiceDeleteHabitVersionProcedure is the fully-qualified name of the PlannerService's
+	// DeleteHabitVersion RPC.
+	PlannerServiceDeleteHabitVersionProcedure = "/memos.api.v1.PlannerService/DeleteHabitVersion"
 	// PlannerServiceListPlannerEntriesProcedure is the fully-qualified name of the PlannerService's
 	// ListPlannerEntries RPC.
 	PlannerServiceListPlannerEntriesProcedure = "/memos.api.v1.PlannerService/ListPlannerEntries"
@@ -88,12 +97,21 @@ const (
 
 // PlannerServiceClient is a client for the memos.api.v1.PlannerService service.
 type PlannerServiceClient interface {
-	// ListHabits returns the caller's habits, archived ones included, by position.
+	// ListHabits returns the caller's whole habit pool, in creation order. Which
+	// habits are in use on a day is decided by habit versions.
 	ListHabits(context.Context, *connect.Request[v1.ListHabitsRequest]) (*connect.Response[v1.ListHabitsResponse], error)
-	// CreateHabit adds a habit after the existing ones.
+	// CreateHabit adds a habit to the pool, with a colour no habit of the latest
+	// version uses. It is in use only once a version includes it.
 	CreateHabit(context.Context, *connect.Request[v1.CreateHabitRequest]) (*connect.Response[v1.Habit], error)
-	// UpdateHabit renames, reorders, archives or restores a habit.
+	// UpdateHabit renames a habit or changes its colour, on every day at once.
 	UpdateHabit(context.Context, *connect.Request[v1.UpdateHabitRequest]) (*connect.Response[v1.Habit], error)
+	// ListHabitVersions returns the caller's habit versions, earliest first.
+	ListHabitVersions(context.Context, *connect.Request[v1.ListHabitVersionsRequest]) (*connect.Response[v1.ListHabitVersionsResponse], error)
+	// SetHabitVersion writes the version for its effective date, which must not be
+	// before the caller's local date; one already there is replaced.
+	SetHabitVersion(context.Context, *connect.Request[v1.SetHabitVersionRequest]) (*connect.Response[v1.HabitVersion], error)
+	// DeleteHabitVersion removes a version that has not taken effect yet.
+	DeleteHabitVersion(context.Context, *connect.Request[v1.DeleteHabitVersionRequest]) (*connect.Response[emptypb.Empty], error)
 	// ListPlannerEntries returns everything dated within an inclusive range:
 	// check-ins, todos of any status, and notes. Undated todos are not included.
 	ListPlannerEntries(context.Context, *connect.Request[v1.ListPlannerEntriesRequest]) (*connect.Response[v1.ListPlannerEntriesResponse], error)
@@ -163,6 +181,24 @@ func NewPlannerServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			httpClient,
 			baseURL+PlannerServiceUpdateHabitProcedure,
 			connect.WithSchema(plannerServiceMethods.ByName("UpdateHabit")),
+			connect.WithClientOptions(opts...),
+		),
+		listHabitVersions: connect.NewClient[v1.ListHabitVersionsRequest, v1.ListHabitVersionsResponse](
+			httpClient,
+			baseURL+PlannerServiceListHabitVersionsProcedure,
+			connect.WithSchema(plannerServiceMethods.ByName("ListHabitVersions")),
+			connect.WithClientOptions(opts...),
+		),
+		setHabitVersion: connect.NewClient[v1.SetHabitVersionRequest, v1.HabitVersion](
+			httpClient,
+			baseURL+PlannerServiceSetHabitVersionProcedure,
+			connect.WithSchema(plannerServiceMethods.ByName("SetHabitVersion")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteHabitVersion: connect.NewClient[v1.DeleteHabitVersionRequest, emptypb.Empty](
+			httpClient,
+			baseURL+PlannerServiceDeleteHabitVersionProcedure,
+			connect.WithSchema(plannerServiceMethods.ByName("DeleteHabitVersion")),
 			connect.WithClientOptions(opts...),
 		),
 		listPlannerEntries: connect.NewClient[v1.ListPlannerEntriesRequest, v1.ListPlannerEntriesResponse](
@@ -257,6 +293,9 @@ type plannerServiceClient struct {
 	listHabits         *connect.Client[v1.ListHabitsRequest, v1.ListHabitsResponse]
 	createHabit        *connect.Client[v1.CreateHabitRequest, v1.Habit]
 	updateHabit        *connect.Client[v1.UpdateHabitRequest, v1.Habit]
+	listHabitVersions  *connect.Client[v1.ListHabitVersionsRequest, v1.ListHabitVersionsResponse]
+	setHabitVersion    *connect.Client[v1.SetHabitVersionRequest, v1.HabitVersion]
+	deleteHabitVersion *connect.Client[v1.DeleteHabitVersionRequest, emptypb.Empty]
 	listPlannerEntries *connect.Client[v1.ListPlannerEntriesRequest, v1.ListPlannerEntriesResponse]
 	listOpenTodos      *connect.Client[v1.ListOpenTodosRequest, v1.ListOpenTodosResponse]
 	listTodoTags       *connect.Client[v1.ListTodoTagsRequest, v1.ListTodoTagsResponse]
@@ -286,6 +325,21 @@ func (c *plannerServiceClient) CreateHabit(ctx context.Context, req *connect.Req
 // UpdateHabit calls memos.api.v1.PlannerService.UpdateHabit.
 func (c *plannerServiceClient) UpdateHabit(ctx context.Context, req *connect.Request[v1.UpdateHabitRequest]) (*connect.Response[v1.Habit], error) {
 	return c.updateHabit.CallUnary(ctx, req)
+}
+
+// ListHabitVersions calls memos.api.v1.PlannerService.ListHabitVersions.
+func (c *plannerServiceClient) ListHabitVersions(ctx context.Context, req *connect.Request[v1.ListHabitVersionsRequest]) (*connect.Response[v1.ListHabitVersionsResponse], error) {
+	return c.listHabitVersions.CallUnary(ctx, req)
+}
+
+// SetHabitVersion calls memos.api.v1.PlannerService.SetHabitVersion.
+func (c *plannerServiceClient) SetHabitVersion(ctx context.Context, req *connect.Request[v1.SetHabitVersionRequest]) (*connect.Response[v1.HabitVersion], error) {
+	return c.setHabitVersion.CallUnary(ctx, req)
+}
+
+// DeleteHabitVersion calls memos.api.v1.PlannerService.DeleteHabitVersion.
+func (c *plannerServiceClient) DeleteHabitVersion(ctx context.Context, req *connect.Request[v1.DeleteHabitVersionRequest]) (*connect.Response[emptypb.Empty], error) {
+	return c.deleteHabitVersion.CallUnary(ctx, req)
 }
 
 // ListPlannerEntries calls memos.api.v1.PlannerService.ListPlannerEntries.
@@ -360,12 +414,21 @@ func (c *plannerServiceClient) ImportPlanner(ctx context.Context, req *connect.R
 
 // PlannerServiceHandler is an implementation of the memos.api.v1.PlannerService service.
 type PlannerServiceHandler interface {
-	// ListHabits returns the caller's habits, archived ones included, by position.
+	// ListHabits returns the caller's whole habit pool, in creation order. Which
+	// habits are in use on a day is decided by habit versions.
 	ListHabits(context.Context, *connect.Request[v1.ListHabitsRequest]) (*connect.Response[v1.ListHabitsResponse], error)
-	// CreateHabit adds a habit after the existing ones.
+	// CreateHabit adds a habit to the pool, with a colour no habit of the latest
+	// version uses. It is in use only once a version includes it.
 	CreateHabit(context.Context, *connect.Request[v1.CreateHabitRequest]) (*connect.Response[v1.Habit], error)
-	// UpdateHabit renames, reorders, archives or restores a habit.
+	// UpdateHabit renames a habit or changes its colour, on every day at once.
 	UpdateHabit(context.Context, *connect.Request[v1.UpdateHabitRequest]) (*connect.Response[v1.Habit], error)
+	// ListHabitVersions returns the caller's habit versions, earliest first.
+	ListHabitVersions(context.Context, *connect.Request[v1.ListHabitVersionsRequest]) (*connect.Response[v1.ListHabitVersionsResponse], error)
+	// SetHabitVersion writes the version for its effective date, which must not be
+	// before the caller's local date; one already there is replaced.
+	SetHabitVersion(context.Context, *connect.Request[v1.SetHabitVersionRequest]) (*connect.Response[v1.HabitVersion], error)
+	// DeleteHabitVersion removes a version that has not taken effect yet.
+	DeleteHabitVersion(context.Context, *connect.Request[v1.DeleteHabitVersionRequest]) (*connect.Response[emptypb.Empty], error)
 	// ListPlannerEntries returns everything dated within an inclusive range:
 	// check-ins, todos of any status, and notes. Undated todos are not included.
 	ListPlannerEntries(context.Context, *connect.Request[v1.ListPlannerEntriesRequest]) (*connect.Response[v1.ListPlannerEntriesResponse], error)
@@ -431,6 +494,24 @@ func NewPlannerServiceHandler(svc PlannerServiceHandler, opts ...connect.Handler
 		PlannerServiceUpdateHabitProcedure,
 		svc.UpdateHabit,
 		connect.WithSchema(plannerServiceMethods.ByName("UpdateHabit")),
+		connect.WithHandlerOptions(opts...),
+	)
+	plannerServiceListHabitVersionsHandler := connect.NewUnaryHandler(
+		PlannerServiceListHabitVersionsProcedure,
+		svc.ListHabitVersions,
+		connect.WithSchema(plannerServiceMethods.ByName("ListHabitVersions")),
+		connect.WithHandlerOptions(opts...),
+	)
+	plannerServiceSetHabitVersionHandler := connect.NewUnaryHandler(
+		PlannerServiceSetHabitVersionProcedure,
+		svc.SetHabitVersion,
+		connect.WithSchema(plannerServiceMethods.ByName("SetHabitVersion")),
+		connect.WithHandlerOptions(opts...),
+	)
+	plannerServiceDeleteHabitVersionHandler := connect.NewUnaryHandler(
+		PlannerServiceDeleteHabitVersionProcedure,
+		svc.DeleteHabitVersion,
+		connect.WithSchema(plannerServiceMethods.ByName("DeleteHabitVersion")),
 		connect.WithHandlerOptions(opts...),
 	)
 	plannerServiceListPlannerEntriesHandler := connect.NewUnaryHandler(
@@ -525,6 +606,12 @@ func NewPlannerServiceHandler(svc PlannerServiceHandler, opts ...connect.Handler
 			plannerServiceCreateHabitHandler.ServeHTTP(w, r)
 		case PlannerServiceUpdateHabitProcedure:
 			plannerServiceUpdateHabitHandler.ServeHTTP(w, r)
+		case PlannerServiceListHabitVersionsProcedure:
+			plannerServiceListHabitVersionsHandler.ServeHTTP(w, r)
+		case PlannerServiceSetHabitVersionProcedure:
+			plannerServiceSetHabitVersionHandler.ServeHTTP(w, r)
+		case PlannerServiceDeleteHabitVersionProcedure:
+			plannerServiceDeleteHabitVersionHandler.ServeHTTP(w, r)
 		case PlannerServiceListPlannerEntriesProcedure:
 			plannerServiceListPlannerEntriesHandler.ServeHTTP(w, r)
 		case PlannerServiceListOpenTodosProcedure:
@@ -572,6 +659,18 @@ func (UnimplementedPlannerServiceHandler) CreateHabit(context.Context, *connect.
 
 func (UnimplementedPlannerServiceHandler) UpdateHabit(context.Context, *connect.Request[v1.UpdateHabitRequest]) (*connect.Response[v1.Habit], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.UpdateHabit is not implemented"))
+}
+
+func (UnimplementedPlannerServiceHandler) ListHabitVersions(context.Context, *connect.Request[v1.ListHabitVersionsRequest]) (*connect.Response[v1.ListHabitVersionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.ListHabitVersions is not implemented"))
+}
+
+func (UnimplementedPlannerServiceHandler) SetHabitVersion(context.Context, *connect.Request[v1.SetHabitVersionRequest]) (*connect.Response[v1.HabitVersion], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.SetHabitVersion is not implemented"))
+}
+
+func (UnimplementedPlannerServiceHandler) DeleteHabitVersion(context.Context, *connect.Request[v1.DeleteHabitVersionRequest]) (*connect.Response[emptypb.Empty], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.DeleteHabitVersion is not implemented"))
 }
 
 func (UnimplementedPlannerServiceHandler) ListPlannerEntries(context.Context, *connect.Request[v1.ListPlannerEntriesRequest]) (*connect.Response[v1.ListPlannerEntriesResponse], error) {
