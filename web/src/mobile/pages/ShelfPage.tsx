@@ -1,4 +1,5 @@
 import { List, ListItem, Navbar, Page, Preloader, Segmented, SegmentedButton } from "konsta/react";
+import { freshnessAt, freshnessClass } from "@/components/Notebook/notebookFreshness";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useWorkspaces } from "@/hooks/useWorkspaceQueries";
 import FavoriteRow from "../components/FavoriteRow";
@@ -21,7 +22,10 @@ export default function ShelfPage() {
   // Hidden knowledge bases never show on the phone, and there is no switch to reveal them (requirement §4).
   const { data: workspaces = [], isPending } = useWorkspaces(false);
   const [recent] = usePref<RecentRead[]>(RECENT_KEY, []);
-  const [view, setView] = usePref<ShelfView>("shelf-view", "cover");
+  // The list is the default (mobile-phase3.md §1). The key changed with that default, so a
+  // choice saved back when covers came first does not keep the old one.
+  const [view, setView] = usePref<ShelfView>("shelf-view-v2", "list");
+  const nowSeconds = Math.floor(Date.now() / 1000);
   const { data: favorites = [] } = useFavorites();
   const pinnedCount = favorites.filter((favorite) => favorite.pinned).length;
   const shelfFavorites = favorites.slice(0, pinnedCount + SHELF_FAVORITES);
@@ -85,7 +89,16 @@ export default function ShelfPage() {
             <ListItem
               key={workspace.name}
               link
-              title={workspace.title}
+              // Tinted by its freshest document, same tiers and hues as the folder list.
+              title={
+                <span
+                  className={freshnessClass(
+                    workspace.lastEditTime ? freshnessAt(Number(workspace.lastEditTime.seconds), nowSeconds) : undefined,
+                  )}
+                >
+                  {workspace.title}
+                </span>
+              }
               media={<span className="block w-7 h-7 rounded-lg" style={{ background: coverColorOf(workspace) }} />}
               onClick={() => go(folderRoute(workspace.name))}
             />

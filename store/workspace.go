@@ -26,6 +26,9 @@ type Workspace struct {
 	// Hidden is a soft delete. Hidden workspaces drop out of list entry points but
 	// stay reachable by UID, which is what makes restoring them possible.
 	Hidden bool
+	// LastMemoUpdatedTs is the latest update of a document in the workspace, leaving
+	// out the trash; 0 for none. Read-only, filled by ListWorkspaces.
+	LastMemoUpdatedTs int64
 }
 
 // FindWorkspace specifies filter criteria for querying workspaces.

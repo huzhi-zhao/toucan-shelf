@@ -30,6 +30,10 @@ const levelForAge = (ageSeconds: number): FreshnessLevel | undefined => {
   return undefined;
 };
 
+/** The tier of one update time, for things scored outside a tree (a knowledge base on the shelf). */
+export const freshnessAt = (updateSeconds: number, nowSeconds: number): FreshnessLevel | undefined =>
+  levelForAge(nowSeconds - updateSeconds);
+
 /**
  * Builds a node-key -> freshness level map for the whole tree.
  *

@@ -8541,6 +8541,14 @@ components:
                     description: |-
                         Whether the workspace is hidden (a soft delete). Hidden workspaces are left
                          out of list responses unless show_hidden is set, but stay readable by name.
+                lastEditTime:
+                    readOnly: true
+                    type: string
+                    description: |-
+                        Output only. When a document in the workspace was last changed, leaving out
+                         the trash. Unset when it has none. Unlike update_time, which tracks the
+                         workspace's own settings.
+                    format: date-time
         WorkspaceFolder:
             required:
                 - path

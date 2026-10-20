@@ -1174,6 +1174,7 @@ func convertWorkspaceFromStore(workspace *store.Workspace, creatorUsername strin
 		FoldersFirst: workspace.FoldersFirst,
 		DisplayOrder: workspace.DisplayOrder,
 		Hidden:       workspace.Hidden,
+		LastEditTime: optionalTimestamp(workspace.LastMemoUpdatedTs),
 	}
 }
 

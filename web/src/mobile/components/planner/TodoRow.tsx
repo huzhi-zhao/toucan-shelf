@@ -11,6 +11,8 @@ interface Props {
   today: string;
   /** Show the date on the right; the day list leaves it out for the day's own todos. */
   showDate?: boolean;
+  /** The title of the habit the todo checks in when done, shown after its own title. */
+  habitTitle?: string;
   /** The round button: complete an active todo, reopen a done one (unless it checked in its habit). */
   onToggle: (todo: Todo) => void;
   onOpen: (todo: Todo) => void;
@@ -21,7 +23,7 @@ interface Props {
  * Overdue todos are red, closed ones muted; cancelling needs a reason, so it lives
  * on the detail page rather than on this row.
  */
-export default function TodoRow({ todo, today, showDate, onToggle, onOpen }: Props) {
+export default function TodoRow({ todo, today, showDate, habitTitle, onToggle, onOpen }: Props) {
   const overdue = isOverdue(todo, today);
   const done = todo.status === Todo_Status.DONE;
   const cancelled = todo.status === Todo_Status.CANCELLED;
@@ -64,6 +66,7 @@ export default function TodoRow({ todo, today, showDate, onToggle, onOpen }: Pro
         <span className={cn("flex items-center gap-1.5", closed && "text-black/40 dark:text-white/40", cancelled && "line-through")}>
           {todo.important && !closed && <StarIcon className="w-3.5 h-3.5 shrink-0 text-amber-500" fill="currentColor" />}
           <span className="whitespace-normal">{todo.title}</span>
+          {habitTitle && <span className="shrink-0 text-[14px]">🔗 {habitTitle}</span>}
         </span>
       }
       after={

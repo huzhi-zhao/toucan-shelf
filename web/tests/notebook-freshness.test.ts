@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildFreshnessMap, freshnessKey } from "@/components/Notebook/notebookFreshness";
+import { buildFreshnessMap, freshnessAt, freshnessKey } from "@/components/Notebook/notebookFreshness";
 import type { WorkspaceTreeNode } from "@/types/proto/api/v1/workspace_service_pb";
 import { WorkspaceTreeNode_NodeType } from "@/types/proto/api/v1/workspace_service_pb";
 
@@ -64,5 +64,14 @@ describe("buildFreshnessMap", () => {
     const stale = folder("archive", [doc("x", 60 * DAY, "archive/x")]);
     const map = buildFreshnessMap([stale], NOW);
     expect(map.has(freshnessKey(stale))).toBe(false);
+  });
+});
+
+describe("freshnessAt", () => {
+  it("scores a single update time with the same tiers as the tree", () => {
+    expect(freshnessAt(NOW - 10 * 60, NOW)).toBe(3);
+    expect(freshnessAt(NOW - 5 * HOUR, NOW)).toBe(2);
+    expect(freshnessAt(NOW - 2 * DAY, NOW)).toBe(1);
+    expect(freshnessAt(NOW - 10 * DAY, NOW)).toBeUndefined();
   });
 });
