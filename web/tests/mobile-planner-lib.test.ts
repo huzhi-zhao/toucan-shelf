@@ -10,11 +10,14 @@ import {
   isDateEditable,
   isFailed,
   isOverdue,
+  isSingleEmoji,
+  joinHabitTitle,
   localToday,
   monthRange,
   postponeChoices,
   readCalendarView,
   saveCalendarView,
+  splitHabitTitle,
   todosForDay,
   todosNotShown,
   weeklyCheckIns,
@@ -169,6 +172,24 @@ describe("habit versions", () => {
     expect(isOverdue(habitTodo, "2026-10-17")).toBe(false);
     expect(isFailed(habitTodo, "2026-10-16")).toBe(false);
     expect(isFailed(todo("plain", "2026-10-16"), "2026-10-17")).toBe(false);
+  });
+});
+
+describe("habit titles", () => {
+  it("reads the icon and the name, which may be empty", () => {
+    expect(splitHabitTitle("🚶🏻")).toEqual({ icon: "🚶🏻", name: "", hasEmoji: true });
+    expect(splitHabitTitle("💪🏼运动")).toEqual({ icon: "💪🏼", name: "运动", hasEmoji: true });
+    expect(splitHabitTitle("👨‍👩‍👧 陪娃")).toEqual({ icon: "👨‍👩‍👧", name: "陪娃", hasEmoji: true });
+    expect(splitHabitTitle("冥想")).toEqual({ icon: "冥", name: "冥想", hasEmoji: false });
+    expect(joinHabitTitle(" 🚶🏻 ", " 走路 ")).toBe("🚶🏻走路");
+  });
+
+  it("takes exactly one emoji as an icon", () => {
+    expect(isSingleEmoji("🚶🏻")).toBe(true);
+    expect(isSingleEmoji("🇨🇳")).toBe(true);
+    expect(isSingleEmoji("🚶🏻💪")).toBe(false);
+    expect(isSingleEmoji("走")).toBe(false);
+    expect(isSingleEmoji("")).toBe(false);
   });
 });
 

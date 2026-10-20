@@ -115,10 +115,11 @@ export default function PlannerPage() {
   const habitsOfDay = habitsOn(versions, habits, selectedDate);
   const habitByName = new Map(habits.map((habit) => [habit.name, habit]));
 
-  // A habit todo shows its habit's check-ins in the week of its date, counted from the default week start,
-  // not this visit's toggle. Those weeks can reach past the month on screen, so they load on their own.
+  // A habit todo shows its habit's check-ins in the week of its date, and a habit not checked in yet those of
+  // the selected day's week, counted from the default week start, not this visit's toggle. Those weeks can
+  // reach past the month on screen, so they load on their own.
   const habitTodoDates = [...todosOfDay, ...listedTodos].filter((todo) => todo.habit !== "").map((todo) => todo.date || today);
-  const weeks = weeksSpan(habitTodoDates, resolvedDefault) ?? range;
+  const weeks = weeksSpan([selectedDate, ...habitTodoDates], resolvedDefault) ?? range;
   const { data: weekEntries } = usePlannerEntries(weeks.startDate, weeks.endDate);
   const habitLabel = (todo: Todo) => {
     const habit = habitByName.get(todo.habit);
@@ -273,6 +274,7 @@ export default function PlannerPage() {
           key={calendar.events.join("\n")}
           slotsOf={calendar.slotsOf}
           colorOf={calendar.colorOf}
+          iconOf={calendar.iconOf}
           month={month}
           onMonthChange={selectMonth}
           itemCounts={calendar.itemCounts}
@@ -322,6 +324,11 @@ export default function PlannerPage() {
             const color = habitColor(habit);
             const linked = Boolean(todoOfHabit(habit));
             const enabled = canCheckIn || linked || isFuture;
+            const goal = weeklyGoalOn(versions, habit.name, selectedDate);
+            const progress =
+              !checkIn && goal > 0
+                ? `${weeklyCheckIns(weekEntries?.checkIns ?? [], habit.name, selectedDate, resolvedDefault)}/${goal}`
+                : "";
             return (
               <button
                 key={habit.name}
@@ -335,8 +342,8 @@ export default function PlannerPage() {
                 )}
                 style={checkIn ? { backgroundColor: color } : undefined}
               >
-                {!checkIn && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />}
                 <span>{habit.title}</span>
+                {progress && <span className="text-[12px] text-black/45 dark:text-white/45">{progress}</span>}
                 {linked && <LinkIcon className={cn("w-3 h-3", checkIn ? "text-white/85" : "text-black/40 dark:text-white/40")} />}
                 {checkIn?.note && <span className="text-white/85 text-[12px] max-w-24 truncate">{checkIn.note}</span>}
               </button>

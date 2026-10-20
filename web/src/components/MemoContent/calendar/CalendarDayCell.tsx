@@ -11,12 +11,13 @@ interface CalendarDayCellProps {
   showTaskDot: boolean; // 是否在日期右侧画"当天有任务"的蓝点
   slots?: string[]; // 当天的 5 个圆点位依次是哪些 event；省略时取 events 前 5 个
   colorOf?: (name: string) => string; // event 的颜色；省略时按它在 events 里的下标取色
+  iconOf?: (name: string) => string; // 给出时不画圆点，改画当天打了卡的 event 的图标，每行三等分、各自居中，从左往右依次排
   onClick?: (date: string) => void;
 }
 
 const MAX_PREVIEW_ITEMS = 2;
 
-export const CalendarDayCell = ({ day, items, dayEvents, events, showTaskDot, slots, colorOf, onClick }: CalendarDayCellProps) => {
+export const CalendarDayCell = ({ day, items, dayEvents, events, showTaskDot, slots, colorOf, iconOf, onClick }: CalendarDayCellProps) => {
   const slotNames = (slots ?? events).slice(0, 5);
   const color = (name: string) => (colorOf ? colorOf(name) : getEventColorByName(name, events));
   const taskItems = items.filter((item) => !item.isEvent);
@@ -57,8 +58,18 @@ export const CalendarDayCell = ({ day, items, dayEvents, events, showTaskDot, sl
         </span>
         {showTaskDot && hasTasks && <span className="h-1 w-1 shrink-0 bg-primary/70" aria-hidden="true" />}
       </div>
+      {/* 图标本身认得出是哪个 event，不必靠位置：只排打了卡的，不留空位；抵消格子内边距，整格宽三等分、各自居中 */}
+      {hasEvents && iconOf && (
+        <div className="-mx-1 mt-auto grid grid-cols-3 text-[11px] md:-mx-1.5 leading-[13px]" aria-hidden="true">
+          {dayEvents.map((name) => (
+            <span key={name} className="text-center" title={isOutside ? undefined : eventTitle(name)}>
+              {iconOf(name)}
+            </span>
+          ))}
+        </div>
+      )}
       {/* 移动端：events 圆点固定分布在 5 等分格中，按 events 定义顺序对号入座 */}
-      {hasEvents && (
+      {hasEvents && !iconOf && (
         <div className="mt-auto grid grid-cols-5 items-center md:hidden" aria-hidden="true">
           {slotNames.map((name) => (
             <div key={name} className="flex items-center justify-center">
@@ -80,7 +91,7 @@ export const CalendarDayCell = ({ day, items, dayEvents, events, showTaskDot, sl
         </div>
       )}
       {/* events 圆点固定分布在 5 等分格中，按 events 定义顺序对号入座，某天未发生的事件留空不占用其他格子 */}
-      {hasEvents && (
+      {hasEvents && !iconOf && (
         <div className="hidden grid-cols-5 items-center md:mt-auto md:grid" aria-hidden="true">
           {slotNames.map((name) => (
             <div key={name} className="flex items-center justify-center">
