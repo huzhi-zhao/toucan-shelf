@@ -241,3 +241,56 @@ func TestPlannerTodoTags(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, tags, "another user's tags are not listed")
 }
+
+func TestPlannerTodoChecksInItsHabit(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	ts := NewTestingStore(ctx, t)
+	user, err := createTestingHostUser(ctx, ts)
+	require.NoError(t, err)
+
+	run, err := ts.CreatePlannerHabit(ctx, &store.PlannerHabit{UID: "h-run", CreatorID: user.ID, Name: "跑步"})
+	require.NoError(t, err)
+	todo, err := ts.CreatePlannerTodo(ctx, &store.PlannerTodo{UID: "t-10k", CreatorID: user.ID, Title: "跑 10 公里", Status: store.PlannerTodoActive})
+	require.NoError(t, err)
+	require.Empty(t, todo.CheckInDate)
+
+	linked, err := ts.UpdatePlannerTodo(ctx, &store.UpdatePlannerTodo{ID: todo.ID, HabitID: &run.ID})
+	require.NoError(t, err)
+	require.Equal(t, run.ID, linked.HabitID)
+	byHabit, err := ts.ListPlannerTodos(ctx, &store.FindPlannerTodo{CreatorID: &user.ID, HabitID: &run.ID})
+	require.NoError(t, err)
+	require.Len(t, byHabit, 1)
+
+	// Completing writes the check-in in the same step, and the todo read back carries its day.
+	done := store.PlannerTodoDone
+	completed, err := ts.UpdatePlannerTodo(ctx, &store.UpdatePlannerTodo{
+		ID: todo.ID, Status: &done,
+		CheckIn: &store.PlannerCheckIn{CreatorID: user.ID, HabitID: run.ID, Date: "2026-10-19", Note: "跑 10 公里"},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "2026-10-19", completed.CheckInDate)
+	checkIns, err := ts.ListPlannerCheckIns(ctx, &store.FindPlannerCheckIn{CreatorID: user.ID})
+	require.NoError(t, err)
+	require.Len(t, checkIns, 1)
+	require.Equal(t, todo.ID, checkIns[0].TodoID)
+	require.Equal(t, "跑 10 公里", checkIns[0].Note)
+
+	// A day already checked in is refused, and nothing of the update is written.
+	other, err := ts.CreatePlannerTodo(ctx, &store.PlannerTodo{UID: "t-5k", CreatorID: user.ID, Title: "跑 5 公里", Status: store.PlannerTodoActive})
+	require.NoError(t, err)
+	_, err = ts.UpdatePlannerTodo(ctx, &store.UpdatePlannerTodo{
+		ID: other.ID, Status: &done,
+		CheckIn: &store.PlannerCheckIn{CreatorID: user.ID, HabitID: run.ID, Date: "2026-10-19", Note: "跑 5 公里"},
+	})
+	require.ErrorIs(t, err, store.ErrPlannerCheckInTaken)
+	unchanged, err := ts.GetPlannerTodo(ctx, &store.FindPlannerTodo{ID: &other.ID})
+	require.NoError(t, err)
+	require.Equal(t, store.PlannerTodoActive, unchanged.Status)
+
+	// Deleting the todo takes its check-in with it.
+	require.NoError(t, ts.DeletePlannerTodo(ctx, todo.ID))
+	checkIns, err = ts.ListPlannerCheckIns(ctx, &store.FindPlannerCheckIn{CreatorID: user.ID})
+	require.NoError(t, err)
+	require.Empty(t, checkIns)
+}

@@ -5,7 +5,6 @@ import {
   ActionsGroup,
   Link,
   List,
-  ListButton,
   ListItem,
   Navbar,
   NavbarBackLink,
@@ -20,6 +19,7 @@ import { useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { newMeId, useMeItems, useSaveMeItems } from "@/hooks/useMeItems";
 import { type UserSetting_MeItem, UserSetting_MeItem_Style, UserSetting_MeItemSchema } from "@/types/proto/api/v1/user_service_pb";
+import DangerListButton from "../components/DangerListButton";
 import DocPickerSheet from "../components/DocPickerSheet";
 import { LinkedDocsList } from "../components/LinkedDocs";
 import MeItemStrip, { MeCard } from "../components/MeItemStrip";
@@ -223,12 +223,9 @@ export default function MeItemPage() {
 
       {!isNew && items && (
         <List strongIos insetIos className="mt-7">
-          <ListButton
-            className="text-red-500"
-            onClick={() => window.confirm(COPY.me.confirmDelete) && save(items.filter((it) => it.id !== id))}
-          >
+          <DangerListButton onClick={() => window.confirm(COPY.me.confirmDelete) && save(items.filter((it) => it.id !== id))}>
             {COPY.me.deleteItem}
-          </ListButton>
+          </DangerListButton>
         </List>
       )}
 

@@ -422,3 +422,109 @@ func TestPlannerNoFutureCheckIns(t *testing.T) {
 	require.NoError(t, checkIn("2026-10-18"))
 	requireCode(t, checkIn("2026-10-19"), codes.InvalidArgument)
 }
+
+func TestTodoChecksInLinkedHabit(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestService(t)
+	defer ts.Cleanup()
+	user, err := ts.CreateRegularUser(ctx, "planner")
+	require.NoError(t, err)
+	userCtx := ts.CreateUserContext(ctx, user.ID)
+	const today = "2026-10-18"
+
+	run, err := ts.Service.CreateHabit(userCtx, &v1pb.CreateHabitRequest{Habit: &v1pb.Habit{Title: "💪运动"}})
+	require.NoError(t, err)
+	read, err := ts.Service.CreateHabit(userCtx, &v1pb.CreateHabitRequest{Habit: &v1pb.Habit{Title: "📖阅读"}})
+	require.NoError(t, err)
+	newTodo := func(title string) *v1pb.Todo {
+		todo, err := ts.Service.CreateTodo(userCtx, &v1pb.CreateTodoRequest{Todo: &v1pb.Todo{Title: title, Date: "2026-10-16"}})
+		require.NoError(t, err)
+		return todo
+	}
+	update := func(todo *v1pb.Todo, paths ...string) (*v1pb.Todo, error) {
+		return ts.Service.UpdateTodo(userCtx, &v1pb.UpdateTodoRequest{
+			Todo: todo, UpdateMask: &fieldmaskpb.FieldMask{Paths: paths}, LocalDate: today,
+		})
+	}
+	link := func(todo *v1pb.Todo, habit string) (*v1pb.Todo, error) {
+		return update(&v1pb.Todo{Name: todo.Name, Habit: habit}, "habit")
+	}
+
+	tenK := newTodo("跑 10 公里")
+	linked, err := link(tenK, run.Name)
+	require.NoError(t, err)
+	require.Equal(t, run.Name, linked.Habit)
+
+	// One open todo per habit, so completing it can always check in.
+	fiveK := newTodo("跑 5 公里")
+	_, err = link(fiveK, run.Name)
+	requireCode(t, err, codes.FailedPrecondition)
+
+	// A habit already checked in today cannot be linked.
+	_, err = ts.Service.SetCheckIn(userCtx, &v1pb.SetCheckInRequest{CheckIn: &v1pb.CheckIn{Habit: read.Name, Date: today}})
+	require.NoError(t, err)
+	_, err = link(fiveK, read.Name)
+	requireCode(t, err, codes.FailedPrecondition)
+
+	// Completing checks the habit in on the caller's day, not the todo's date, noted with the title.
+	done, err := update(&v1pb.Todo{Name: tenK.Name, Status: v1pb.Todo_DONE}, "status")
+	require.NoError(t, err)
+	require.Equal(t, today, done.CheckInDate)
+	entries, err := ts.Service.ListPlannerEntries(userCtx, &v1pb.ListPlannerEntriesRequest{StartDate: today, EndDate: today})
+	require.NoError(t, err)
+	var made *v1pb.CheckIn
+	for _, checkIn := range entries.CheckIns {
+		if checkIn.Habit == run.Name {
+			made = checkIn
+		}
+	}
+	require.NotNil(t, made)
+	require.Equal(t, "跑 10 公里", made.Note)
+	require.Equal(t, tenK.Name, made.Todo)
+
+	// The check-in belongs to the todo: it cannot be changed or removed on its own.
+	_, err = ts.Service.SetCheckIn(userCtx, &v1pb.SetCheckInRequest{CheckIn: &v1pb.CheckIn{Habit: run.Name, Date: today, Note: "改"}})
+	requireCode(t, err, codes.FailedPrecondition)
+	_, err = ts.Service.DeleteCheckIn(userCtx, &v1pb.DeleteCheckInRequest{Habit: run.Name, Date: today})
+	requireCode(t, err, codes.FailedPrecondition)
+
+	// The todo can no longer be reopened, cancelled or relinked; other fields still change.
+	_, err = update(&v1pb.Todo{Name: tenK.Name, Status: v1pb.Todo_ACTIVE}, "status")
+	requireCode(t, err, codes.FailedPrecondition)
+	_, err = update(&v1pb.Todo{Name: tenK.Name, Status: v1pb.Todo_CANCELLED, CancelReason: "不跑了"}, "status", "cancel_reason")
+	requireCode(t, err, codes.FailedPrecondition)
+	_, err = link(tenK, "")
+	requireCode(t, err, codes.FailedPrecondition)
+	_, err = update(&v1pb.Todo{Name: tenK.Name, Note: "配速 6 分"}, "note")
+	require.NoError(t, err)
+
+	// Deleting the todo removes its check-in too.
+	_, err = ts.Service.DeleteTodo(userCtx, &v1pb.DeleteTodoRequest{Name: tenK.Name})
+	require.NoError(t, err)
+	entries, err = ts.Service.ListPlannerEntries(userCtx, &v1pb.ListPlannerEntriesRequest{StartDate: today, EndDate: today})
+	require.NoError(t, err)
+	require.Len(t, entries.CheckIns, 1, "only the reading check-in is left")
+
+	// The habit is free again. If it gets archived before the todo is done, the todo just closes and
+	// stays reopenable.
+	linked, err = link(fiveK, run.Name)
+	require.NoError(t, err)
+	_, err = ts.Service.UpdateHabit(userCtx, &v1pb.UpdateHabitRequest{
+		Habit: &v1pb.Habit{Name: run.Name, Archived: true}, UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"archived"}},
+	})
+	require.NoError(t, err)
+	done, err = update(&v1pb.Todo{Name: linked.Name, Status: v1pb.Todo_DONE}, "status")
+	require.NoError(t, err)
+	require.Empty(t, done.CheckInDate)
+	_, err = update(&v1pb.Todo{Name: linked.Name, Status: v1pb.Todo_ACTIVE}, "status")
+	require.NoError(t, err)
+
+	// An archived habit cannot be linked, and linking needs the caller's day.
+	_, err = link(newTodo("散步"), run.Name)
+	requireCode(t, err, codes.FailedPrecondition)
+	writeUp := newTodo("写周记")
+	_, err = ts.Service.UpdateTodo(userCtx, &v1pb.UpdateTodoRequest{
+		Todo: &v1pb.Todo{Name: writeUp.Name, Habit: read.Name}, UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"habit"}},
+	})
+	requireCode(t, err, codes.InvalidArgument)
+}

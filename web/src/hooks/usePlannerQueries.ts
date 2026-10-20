@@ -106,7 +106,7 @@ export function useCreateTodo() {
   );
 }
 
-type TodoField = "title" | "date" | "status" | "cancelReason" | "important" | "tag" | "note" | "memos" | "url";
+type TodoField = "title" | "date" | "status" | "cancelReason" | "important" | "tag" | "note" | "memos" | "url" | "habit";
 
 const TODO_MASK_PATHS: Record<TodoField, string> = {
   title: "title",
@@ -118,11 +118,13 @@ const TODO_MASK_PATHS: Record<TodoField, string> = {
   note: "note",
   memos: "memos",
   url: "url",
+  habit: "habit",
 };
 
 /**
  * Changes the given fields of a todo. `localDate` is the phone's today: the server
- * needs it when a change closes the todo, to record whether it was closed overdue.
+ * needs it when a change closes the todo, to record whether it was closed overdue
+ * and to check in a linked habit, and when it links a habit.
  */
 export function useUpdateTodo() {
   return usePlannerMutation(

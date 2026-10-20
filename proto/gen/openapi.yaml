@@ -4950,6 +4950,13 @@ components:
                 note:
                     type: string
                     description: A short remark, e.g. how far one ran.
+                todo:
+                    readOnly: true
+                    type: string
+                    description: |-
+                        The todo whose completion made this check-in, or empty for one checked in
+                         by hand. Such a check-in belongs to the todo: it cannot be changed or
+                         removed on its own, only with the todo. Format: planner/todos/{todo}
             description: |-
                 CheckIn records that a habit was kept on a day. There is at most one per
                  habit per day, so it is addressed by the pair rather than by its own name.
@@ -7905,6 +7912,18 @@ components:
                     items:
                         type: string
                     description: 'The linked documents, in display order. Format: memos/{memo}'
+                habit:
+                    type: string
+                    description: |-
+                        The habit checked in, on the caller's local date, when the todo is done; empty
+                         for none. Set through UpdateTodo. Format: planner/habits/{habit}
+                checkInDate:
+                    readOnly: true
+                    type: string
+                    description: |-
+                        The day of the check-in the todo's completion made, YYYY-MM-DD, or empty for
+                         none. A todo with one can no longer be reopened, cancelled or relinked, only
+                         deleted, which removes the check-in too.
         TranscribeRequest:
             required:
                 - audio

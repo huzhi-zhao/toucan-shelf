@@ -11,7 +11,7 @@ interface Props {
   today: string;
   /** Show the date on the right; the day list leaves it out for the day's own todos. */
   showDate?: boolean;
-  /** The round button: complete an active todo, reopen a done one. */
+  /** The round button: complete an active todo, reopen a done one (unless it checked in its habit). */
   onToggle: (todo: Todo) => void;
   onOpen: (todo: Todo) => void;
 }
@@ -26,6 +26,8 @@ export default function TodoRow({ todo, today, showDate, onToggle, onOpen }: Pro
   const done = todo.status === Todo_Status.DONE;
   const cancelled = todo.status === Todo_Status.CANCELLED;
   const closed = done || cancelled;
+  // A todo whose completion checked in its habit cannot be reopened.
+  const settled = done && todo.checkInDate !== "";
   const dateLabel = todo.date ? dayjs(todo.date).format(todo.date.slice(0, 4) === today.slice(0, 4) ? "M/D" : "YYYY/M/D") : "";
 
   return (
@@ -37,7 +39,7 @@ export default function TodoRow({ todo, today, showDate, onToggle, onOpen }: Pro
         <button
           type="button"
           aria-label={done ? COPY.todo.reopen : COPY.todo.complete}
-          disabled={cancelled}
+          disabled={cancelled || settled}
           onClick={(event) => {
             event.stopPropagation();
             onToggle(todo);

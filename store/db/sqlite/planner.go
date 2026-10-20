@@ -17,6 +17,21 @@ type plannerQuerier interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
+// withPlannerTx runs fn in a transaction, committing only if it succeeds.
+func (d *DB) withPlannerTx(ctx context.Context, fn func(tx *sql.Tx) error) error {
+	tx, err := d.db.BeginTx(ctx, nil)
+	if err != nil {
+		return errors.Wrap(err, "failed to begin transaction")
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+	if err := fn(tx); err != nil {
+		return err
+	}
+	return errors.Wrap(tx.Commit(), "failed to commit transaction")
+}
+
 // dateRange appends inclusive bounds on a `date` column. A bounded query never
 // matches the empty date of an undated todo.
 func dateRange(where []string, args []any, start, end string) ([]string, []any) {
@@ -102,16 +117,20 @@ func (d *DB) UpdatePlannerHabit(ctx context.Context, update *store.UpdatePlanner
 
 // Check-ins.
 
-const plannerCheckInColumns = "`id`, `creator_id`, `habit_id`, `date`, `note`, `created_ts`, `updated_ts`"
+// plannerCheckInColumns reads a check-in, with the UID of the todo that made it looked up alongside.
+const plannerCheckInColumns = "`id`, `creator_id`, `habit_id`, `date`, `note`, `todo_id`, " +
+	"COALESCE((SELECT `planner_todo`.`uid` FROM `planner_todo` WHERE `planner_todo`.`id` = `planner_check_in`.`todo_id`), ''), " +
+	"`created_ts`, `updated_ts`"
 
 func scanPlannerCheckIn(row interface{ Scan(...any) error }) (*store.PlannerCheckIn, error) {
 	c := &store.PlannerCheckIn{}
-	if err := row.Scan(&c.ID, &c.CreatorID, &c.HabitID, &c.Date, &c.Note, &c.CreatedTs, &c.UpdatedTs); err != nil {
+	if err := row.Scan(&c.ID, &c.CreatorID, &c.HabitID, &c.Date, &c.Note, &c.TodoID, &c.TodoUID, &c.CreatedTs, &c.UpdatedTs); err != nil {
 		return nil, err
 	}
 	return c, nil
 }
 
+// upsertPlannerCheckIn records a check-in by hand: it never sets, or clears, the todo that made one.
 func upsertPlannerCheckIn(ctx context.Context, q plannerQuerier, upsert *store.PlannerCheckIn) (*store.PlannerCheckIn, error) {
 	stmt := "INSERT INTO `planner_check_in` (`creator_id`, `habit_id`, `date`, `note`) VALUES (?, ?, ?, ?) " +
 		"ON CONFLICT(`habit_id`, `date`) DO UPDATE SET `note` = excluded.`note`, `updated_ts` = strftime('%s', 'now') " +
@@ -156,15 +175,21 @@ func (d *DB) DeletePlannerCheckIn(ctx context.Context, habitID int32, date strin
 
 // Todos.
 
+// plannerTodoColumns reads a todo. Two columns are looked up rather than stored on the todo, so every
+// read carries them: its habit's UID, and the day of the check-in its completion made.
 const plannerTodoColumns = "`id`, `uid`, `creator_id`, `title`, `date`, `status`, `closed_overdue`, `closed_ts`, `cancel_reason`, " +
-	"`important`, `tag`, `note`, `memo_names`, `url`, `original_date`, `postpone_count`, `created_ts`, `updated_ts`"
+	"`important`, `tag`, `note`, `memo_names`, `url`, `original_date`, `postpone_count`, `habit_id`, " +
+	"COALESCE((SELECT `planner_habit`.`uid` FROM `planner_habit` WHERE `planner_habit`.`id` = `planner_todo`.`habit_id`), ''), " +
+	"COALESCE((SELECT `planner_check_in`.`date` FROM `planner_check_in` WHERE `planner_check_in`.`todo_id` = `planner_todo`.`id` LIMIT 1), ''), " +
+	"`created_ts`, `updated_ts`"
 
 func scanPlannerTodo(row interface{ Scan(...any) error }) (*store.PlannerTodo, error) {
 	t := &store.PlannerTodo{}
 	var memoNames string
 	if err := row.Scan(
 		&t.ID, &t.UID, &t.CreatorID, &t.Title, &t.Date, &t.Status, &t.ClosedOverdue, &t.ClosedTs, &t.CancelReason,
-		&t.Important, &t.Tag, &t.Note, &memoNames, &t.URL, &t.OriginalDate, &t.PostponeCount, &t.CreatedTs, &t.UpdatedTs,
+		&t.Important, &t.Tag, &t.Note, &memoNames, &t.URL, &t.OriginalDate, &t.PostponeCount, &t.HabitID, &t.HabitUID, &t.CheckInDate,
+		&t.CreatedTs, &t.UpdatedTs,
 	); err != nil {
 		return nil, err
 	}
@@ -210,6 +235,9 @@ func (d *DB) ListPlannerTodos(ctx context.Context, find *store.FindPlannerTodo) 
 	}
 	if find.Status != nil {
 		where, args = append(where, "`status` = ?"), append(args, *find.Status)
+	}
+	if find.HabitID != nil {
+		where, args = append(where, "`habit_id` = ?"), append(args, *find.HabitID)
 	}
 	where, args = dateRange(where, args, find.StartDate, find.EndDate)
 	// Undated todos sort after every dated one.
@@ -258,6 +286,7 @@ func (d *DB) UpdatePlannerTodo(ctx context.Context, update *store.UpdatePlannerT
 		{"url", update.URL, update.URL != nil},
 		{"original_date", update.OriginalDate, update.OriginalDate != nil},
 		{"postpone_count", update.PostponeCount, update.PostponeCount != nil},
+		{"habit_id", update.HabitID, update.HabitID != nil},
 	}
 	for _, f := range fields {
 		if f.ok {
@@ -266,7 +295,34 @@ func (d *DB) UpdatePlannerTodo(ctx context.Context, update *store.UpdatePlannerT
 	}
 	args = append(args, update.ID)
 	stmt := "UPDATE `planner_todo` SET " + strings.Join(set, ", ") + " WHERE `id` = ? RETURNING " + plannerTodoColumns
-	return scanPlannerTodo(d.db.QueryRowContext(ctx, stmt, args...))
+	if update.CheckIn == nil {
+		return scanPlannerTodo(d.db.QueryRowContext(ctx, stmt, args...))
+	}
+
+	var todo *store.PlannerTodo
+	err := d.withPlannerTx(ctx, func(tx *sql.Tx) error {
+		checkIn := update.CheckIn
+		var taken int
+		if err := tx.QueryRowContext(ctx,
+			"SELECT COUNT(*) FROM `planner_check_in` WHERE `habit_id` = ? AND `date` = ?", checkIn.HabitID, checkIn.Date,
+		).Scan(&taken); err != nil {
+			return errors.Wrap(err, "failed to check the habit's check-in")
+		}
+		if taken > 0 {
+			return store.ErrPlannerCheckInTaken
+		}
+		// The check-in goes in first, so the todo read back below already carries its date.
+		if _, err := tx.ExecContext(ctx,
+			"INSERT INTO `planner_check_in` (`creator_id`, `habit_id`, `date`, `note`, `todo_id`) VALUES (?, ?, ?, ?, ?)",
+			checkIn.CreatorID, checkIn.HabitID, checkIn.Date, checkIn.Note, update.ID,
+		); err != nil {
+			return errors.Wrap(err, "failed to check in")
+		}
+		var err error
+		todo, err = scanPlannerTodo(tx.QueryRowContext(ctx, stmt, args...))
+		return err
+	})
+	return todo, err
 }
 
 // derefPlannerValue unwraps the pointer fields of an update.
@@ -286,8 +342,13 @@ func derefPlannerValue(v any) any {
 }
 
 func (d *DB) DeletePlannerTodo(ctx context.Context, id int32) error {
-	_, err := d.db.ExecContext(ctx, "DELETE FROM `planner_todo` WHERE `id` = ?", id)
-	return err
+	return d.withPlannerTx(ctx, func(tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx, "DELETE FROM `planner_check_in` WHERE `todo_id` = ?", id); err != nil {
+			return errors.Wrap(err, "failed to delete the todo's check-in")
+		}
+		_, err := tx.ExecContext(ctx, "DELETE FROM `planner_todo` WHERE `id` = ?", id)
+		return err
+	})
 }
 
 // plannerTodoTagLimit caps the tag history: enough to choose from, small enough to show at once.

@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 import { Link, List, ListItem, Navbar, Page, Segmented, SegmentedButton, Sheet, Toast } from "konsta/react";
-import { PlusIcon, Settings2Icon } from "lucide-react";
+import { LinkIcon, PlusIcon, Settings2Icon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarMonthGrid } from "@/components/MemoContent/calendar/CalendarMonthGrid";
 import { defaultVisibleMonth, type VisibleMonth } from "@/components/MemoContent/calendar/defaultVisibleMonth";
@@ -111,15 +111,30 @@ export default function PlannerPage() {
   useBlurOnClose(addKind !== undefined || checkInOpen || noteTarget !== undefined);
 
   const toggleTodo = (todo: Todo) => {
+    // A todo that checked in its habit stays done (requirement §2.4.1).
+    if (todo.checkInDate) return;
     const status = todo.status === Todo_Status.DONE ? Todo_Status.ACTIVE : Todo_Status.DONE;
     updateTodo.mutate({ name: todo.name, changes: { status }, localDate: today }, { onError: fail });
   };
   const openTodo = (todo: Todo) => go(todoRoute(todo.name));
 
+  // The todo a habit chip leads to instead of the check-in sheet (requirement §2.4.1): the one whose
+  // completion made the day's check-in, or, today, the open todo that will check it in when done.
+  const todoOfHabit = (habit: Habit) => {
+    const checkIn = checkInsOfDay.get(habit.name);
+    if (checkIn) return checkIn.todo;
+    return selectedDate === today ? openTodos.find((todo) => todo.habit === habit.name)?.name : undefined;
+  };
+
   // Tapping a habit opens its sheet either way: one not checked in yet asks to confirm (a stray tap in the
   // chip row must not record a check-in), with room for a note; one already checked in edits the note or
-  // takes the check-in back.
+  // takes the check-in back. A habit tied to a todo opens that todo instead.
   const tapHabit = (habit: Habit) => {
+    const todo = todoOfHabit(habit);
+    if (todo) {
+      go(todoRoute(todo));
+      return;
+    }
     if (!canCheckIn) return;
     setDraft(checkInsOfDay.get(habit.name)?.note ?? "");
     setCheckInSheet({ habit, confirming: !checkInsOfDay.has(habit.name) });
@@ -250,21 +265,24 @@ export default function PlannerPage() {
           {activeHabits.map((habit) => {
             const checkIn = checkInsOfDay.get(habit.name);
             const color = getEventColorByName(habit.title, calendar.events);
+            const linked = Boolean(todoOfHabit(habit));
+            const enabled = canCheckIn || linked;
             return (
               <button
                 key={habit.name}
                 type="button"
-                disabled={!canCheckIn}
+                disabled={!enabled}
                 onClick={() => tapHabit(habit)}
                 className={cn(
                   "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[14px] border transition-colors",
                   checkIn ? "text-white border-transparent" : "border-black/15 dark:border-white/20 bg-white dark:bg-[#1c1c1e]",
-                  !canCheckIn && "opacity-60",
+                  !enabled && "opacity-60",
                 )}
                 style={checkIn ? { backgroundColor: color } : undefined}
               >
                 {!checkIn && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />}
                 <span>{habit.title}</span>
+                {linked && <LinkIcon className={cn("w-3 h-3", checkIn ? "text-white/85" : "text-black/40 dark:text-white/40")} />}
                 {checkIn?.note && <span className="text-white/85 text-[12px] max-w-24 truncate">{checkIn.note}</span>}
               </button>
             );

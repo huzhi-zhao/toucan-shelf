@@ -202,8 +202,27 @@ func convertTodoFromStore(t *store.PlannerTodo) *v1pb.Todo {
 		Url:           t.URL,
 		OriginalDate:  t.OriginalDate,
 		PostponeCount: t.PostponeCount,
+		Habit:         plannerName(habitNamePrefix, t.HabitUID),
+		CheckInDate:   t.CheckInDate,
 		CreateTime:    plannerTimestamp(t.CreatedTs),
 		UpdateTime:    plannerTimestamp(t.UpdatedTs),
+	}
+}
+
+// plannerName is a resource name, or "" when there is no UID to name.
+func plannerName(prefix, uid string) string {
+	if uid == "" {
+		return ""
+	}
+	return prefix + uid
+}
+
+func convertCheckInFromStore(c *store.PlannerCheckIn, habitUID string) *v1pb.CheckIn {
+	return &v1pb.CheckIn{
+		Habit: habitNamePrefix + habitUID,
+		Date:  c.Date,
+		Note:  c.Note,
+		Todo:  plannerName(todoNamePrefix, c.TodoUID),
 	}
 }
 
@@ -392,11 +411,7 @@ func (s *APIV1Service) ListPlannerEntries(ctx context.Context, request *v1pb.Lis
 
 	response := &v1pb.ListPlannerEntriesResponse{CheckIns: []*v1pb.CheckIn{}, Todos: []*v1pb.Todo{}, Notes: []*v1pb.PlannerNote{}}
 	for _, checkIn := range checkIns {
-		response.CheckIns = append(response.CheckIns, &v1pb.CheckIn{
-			Habit: habitNamePrefix + habitUIDs[checkIn.HabitID],
-			Date:  checkIn.Date,
-			Note:  checkIn.Note,
-		})
+		response.CheckIns = append(response.CheckIns, convertCheckInFromStore(checkIn, habitUIDs[checkIn.HabitID]))
 	}
 	for _, todo := range todos {
 		response.Todos = append(response.Todos, convertTodoFromStore(todo))
@@ -466,11 +481,27 @@ func (s *APIV1Service) SetCheckIn(ctx context.Context, request *v1pb.SetCheckInR
 	if err != nil {
 		return nil, err
 	}
+	if err := s.refuseTodoCheckIn(ctx, user, habit, date); err != nil {
+		return nil, err
+	}
 	checkIn, err := s.Store.UpsertPlannerCheckIn(ctx, &store.PlannerCheckIn{CreatorID: user.ID, HabitID: habit.ID, Date: date, Note: note})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to set check-in: %v", err)
 	}
-	return &v1pb.CheckIn{Habit: habitNamePrefix + habit.UID, Date: checkIn.Date, Note: checkIn.Note}, nil
+	return convertCheckInFromStore(checkIn, habit.UID), nil
+}
+
+// refuseTodoCheckIn fails when the habit's check-in on date was made by a todo: that one belongs to the
+// todo, and changes or goes only with it.
+func (s *APIV1Service) refuseTodoCheckIn(ctx context.Context, user *store.User, habit *store.PlannerHabit, date string) error {
+	existing, err := s.Store.ListPlannerCheckIns(ctx, &store.FindPlannerCheckIn{CreatorID: user.ID, HabitID: &habit.ID, StartDate: date, EndDate: date})
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to get check-in: %v", err)
+	}
+	if len(existing) > 0 && existing[0].TodoID != 0 {
+		return status.Errorf(codes.FailedPrecondition, "this check-in was made by completing a todo; delete the todo to remove it")
+	}
+	return nil
 }
 
 func (s *APIV1Service) DeleteCheckIn(ctx context.Context, request *v1pb.DeleteCheckInRequest) (*emptypb.Empty, error) {
@@ -484,6 +515,9 @@ func (s *APIV1Service) DeleteCheckIn(ctx context.Context, request *v1pb.DeleteCh
 	}
 	date, err := parsePlannerDate(request.Date, "date", false)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.refuseTodoCheckIn(ctx, user, habit, date); err != nil {
 		return nil, err
 	}
 	if err := s.Store.DeletePlannerCheckIn(ctx, habit.ID, date); err != nil {
@@ -580,15 +614,16 @@ func (s *APIV1Service) UpdateTodo(ctx context.Context, request *v1pb.UpdateTodoR
 	}
 
 	update := &store.UpdatePlannerTodo{ID: todo.ID}
+	title := todo.Title
 	date := todo.Date
 	nextStatus := todo.Status
 	reason := todo.CancelReason
 	reasonInMask := false
+	habitID := todo.HabitID
 	for _, path := range request.UpdateMask.Paths {
 		switch path {
 		case "title":
-			title, err := checkPlannerText(request.Todo.Title, "title", plannerMaxTitleLength, true)
-			if err != nil {
+			if title, err = checkPlannerText(request.Todo.Title, "title", plannerMaxTitleLength, true); err != nil {
 				return nil, err
 			}
 			update.Title = &title
@@ -641,19 +676,93 @@ func (s *APIV1Service) UpdateTodo(ctx context.Context, request *v1pb.UpdateTodoR
 				return nil, err
 			}
 			update.URL = &link
+		case "habit":
+			habitID = 0
+			if request.Todo.Habit != "" {
+				habit, err := s.getOwnHabit(ctx, user, request.Todo.Habit)
+				if err != nil {
+					return nil, err
+				}
+				habitID = habit.ID
+			}
+			update.HabitID = &habitID
 		default:
 			return nil, status.Errorf(codes.InvalidArgument, "unsupported update_mask path: %s", path)
 		}
 	}
 
+	// A todo that has checked in its habit is settled: only deleting it, check-in and all, undoes that.
+	if todo.CheckInDate != "" && (nextStatus != todo.Status || habitID != todo.HabitID) {
+		return nil, status.Errorf(codes.FailedPrecondition, "this todo checked in its habit; it can only be deleted now")
+	}
+	if habitID != todo.HabitID && habitID != 0 {
+		if err := s.checkTodoHabitLink(ctx, user, todo, habitID, request.LocalDate); err != nil {
+			return nil, err
+		}
+	}
 	if err := s.applyTodoStatus(update, todo, nextStatus, reason, reasonInMask, date, request.LocalDate); err != nil {
 		return nil, err
 	}
+	// Completing checks in the linked habit on the caller's day, noted with the todo's title. An archived
+	// habit takes no new check-ins, so the todo then just closes.
+	if nextStatus == store.PlannerTodoDone && todo.Status != store.PlannerTodoDone && habitID != 0 {
+		habit, err := s.Store.GetPlannerHabit(ctx, &store.FindPlannerHabit{ID: &habitID, CreatorID: &user.ID})
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to get habit: %v", err)
+		}
+		if habit != nil && !habit.Archived {
+			update.CheckIn = &store.PlannerCheckIn{CreatorID: user.ID, HabitID: habit.ID, Date: request.LocalDate, Note: title}
+		}
+	}
 	updated, err := s.Store.UpdatePlannerTodo(ctx, update)
+	if errors.Is(err, store.ErrPlannerCheckInTaken) {
+		return nil, status.Errorf(codes.FailedPrecondition, "the linked habit is already checked in on %s", request.LocalDate)
+	}
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to update todo: %v", err)
 	}
 	return convertTodoFromStore(updated), nil
+}
+
+// checkTodoHabitLink enforces who may link a habit: an open todo, to an active habit that no other open
+// todo holds and that is not checked in on the caller's day yet. Otherwise completing the todo could not
+// check the habit in.
+func (s *APIV1Service) checkTodoHabitLink(ctx context.Context, user *store.User, todo *store.PlannerTodo, habitID int32, localDate string) error {
+	if todo.Status != store.PlannerTodoActive {
+		return status.Errorf(codes.FailedPrecondition, "only an open todo can link a habit")
+	}
+	local, err := parsePlannerDate(localDate, "local_date", false)
+	if err != nil {
+		return status.Errorf(codes.InvalidArgument, "linking a habit needs the caller's local_date in YYYY-MM-DD form")
+	}
+	habit, err := s.Store.GetPlannerHabit(ctx, &store.FindPlannerHabit{ID: &habitID, CreatorID: &user.ID})
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to get habit: %v", err)
+	}
+	if habit == nil {
+		return status.Errorf(codes.NotFound, "habit not found")
+	}
+	if habit.Archived {
+		return status.Errorf(codes.FailedPrecondition, "an archived habit cannot be linked")
+	}
+	active := store.PlannerTodoActive
+	holders, err := s.Store.ListPlannerTodos(ctx, &store.FindPlannerTodo{CreatorID: &user.ID, HabitID: &habitID, Status: &active})
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to list todos: %v", err)
+	}
+	for _, holder := range holders {
+		if holder.ID != todo.ID {
+			return status.Errorf(codes.FailedPrecondition, "the habit is already linked to another open todo: %s", holder.Title)
+		}
+	}
+	checkIns, err := s.Store.ListPlannerCheckIns(ctx, &store.FindPlannerCheckIn{CreatorID: user.ID, HabitID: &habitID, StartDate: local, EndDate: local})
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to get check-in: %v", err)
+	}
+	if len(checkIns) > 0 {
+		return status.Errorf(codes.FailedPrecondition, "the habit is already checked in on %s", local)
+	}
+	return nil
 }
 
 // applyTodoStatus enforces the todo rules on an update:
