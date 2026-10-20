@@ -83,6 +83,19 @@ service PlannerService {
     option (google.api.http) = {get: "/api/v1/planner/entries"};
   }
 
+  // GetWeekProgress reports how the caller's habit plan went, week by week:
+  // the week containing `date` and, with `weeks`, the weeks before it. Weeks
+  // start on the caller's planner setting (week_start_day), so they split the
+  // same way as in the app. Each week is measured against one plan, the one in
+  // effect on its last day, and a habit's count includes check-ins made by
+  // completing habit todos, as the app's "2/3" does.
+  //
+  // It reports facts only: what was planned and what was checked in. Whether a
+  // week passed is for the caller to judge.
+  rpc GetWeekProgress(GetWeekProgressRequest) returns (GetWeekProgressResponse) {
+    option (google.api.http) = {get: "/api/v1/planner/weekProgress"};
+  }
+
   // ListOpenTodos returns every active todo, dated or not, ordered by date with
   // undated ones last.
   rpc ListOpenTodos(ListOpenTodosRequest) returns (ListOpenTodosResponse) {
@@ -177,6 +190,19 @@ service PlannerService {
   rpc DeletePlannerNote(DeletePlannerNoteRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {delete: "/api/v1/{name=planner/notes/*}"};
     option (google.api.method_signature) = "name";
+  }
+
+  // GetPlannerSettings returns the caller's planner settings.
+  rpc GetPlannerSettings(GetPlannerSettingsRequest) returns (PlannerSettings) {
+    option (google.api.http) = {get: "/api/v1/planner/settings"};
+  }
+
+  // UpdatePlannerSettings replaces the caller's planner settings.
+  rpc UpdatePlannerSettings(UpdatePlannerSettingsRequest) returns (PlannerSettings) {
+    option (google.api.http) = {
+      patch: "/api/v1/planner/settings"
+      body: "settings"
+    };
   }
 
   // ImportPlanner writes a whole planner in one transaction: the one-time backfill
@@ -549,4 +575,147 @@ message ImportPlannerResponse {
   int32 todo_count = 3;
 
   int32 note_count = 4;
+}
+
+// PlannerSettings are the caller's planner preferences kept on the server, so
+// every device and every API caller see the same ones.
+message PlannerSettings {
+  // The day planner weeks start on: 1 = Monday … 7 = Sunday, or 0 to follow
+  // the instance's week start.
+  int32 week_start_day = 1 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message GetPlannerSettingsRequest {}
+
+message UpdatePlannerSettingsRequest {
+  PlannerSettings settings = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetWeekProgressRequest {
+  // The caller's local today, YYYY-MM-DD. Its week comes first.
+  string date = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // How many weeks to return, counting back from the week of `date`: 1 to 12.
+  // 1 when unset.
+  int32 weeks = 2 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message GetWeekProgressResponse {
+  // The day weeks start on, 1 = Monday … 7 = Sunday: the caller's planner
+  // setting, or the instance's week start when the setting follows it.
+  int32 week_start_day = 1;
+
+  // The week of `date` first, then each week before it.
+  repeated WeekProgress weeks = 2;
+}
+
+// WeekProgress is one week of a habit plan: what was planned and what was done.
+message WeekProgress {
+  // First and last day of the week, YYYY-MM-DD.
+  string week_start = 1;
+  string week_end = 2;
+
+  // Whether the request's `date` falls in this week.
+  bool contains_date = 3;
+
+  // Days left in the week counting `date` itself; 0 for an earlier week.
+  int32 days_left = 4;
+
+  // The plan the week is measured against: the one in effect on its last day.
+  // Unset for a week before the first plan.
+  WeekPlan plan = 5;
+
+  // The plan's habits in plan order, then any other habit checked in during
+  // the week.
+  repeated WeekHabitProgress habits = 6;
+
+  // The week's habit todos, by date.
+  repeated WeekHabitTodo habit_todos = 7;
+}
+
+// WeekPlan is a habit plan (a habit version). Plans have no names: the app
+// labels one by the day it took effect.
+message WeekPlan {
+  // The day the plan took effect, YYYY-MM-DD, or empty for the plan in effect
+  // from the very beginning.
+  string effective_date = 1;
+
+  // When the plan changed during the week: the effective dates of the plans
+  // in effect earlier in the week, earliest first ("" for the very first).
+  // The whole week is still measured against this plan, the last one.
+  repeated string replaced = 2;
+
+  // The plan's linked documents, in display order.
+  repeated WeekPlanDocument documents = 3;
+}
+
+message WeekPlanDocument {
+  // Format: memos/{memo}
+  string name = 1;
+
+  // The document's title; empty when the caller cannot read it.
+  string title = 2;
+}
+
+message WeekHabitProgress {
+  // Format: planner/habits/{habit}
+  string habit = 1;
+
+  // The habit's icon: the emoji its title starts with.
+  string icon = 2;
+
+  // The rest of the title, possibly empty.
+  string label = 3;
+
+  // Whether the week's plan includes the habit.
+  bool in_plan = 4;
+
+  // Check-ins a week the plan aims for. Unset when the plan sets no goal for
+  // the habit, or does not include it.
+  optional int32 weekly_goal = 5;
+
+  // How many days of the week the habit was checked in, by hand or by
+  // completing a habit todo. Can exceed weekly_goal.
+  int32 check_in_count = 6;
+
+  // The check-ins, by date.
+  repeated WeekCheckIn check_ins = 7;
+}
+
+message WeekCheckIn {
+  // Format: YYYY-MM-DD.
+  string date = 1;
+
+  string note = 2;
+
+  // The todo whose completion made the check-in, or empty for one checked in
+  // by hand. Format: planner/todos/{todo}
+  string todo = 3;
+}
+
+message WeekHabitTodo {
+  enum State {
+    STATE_UNSPECIFIED = 0;
+    // Not done yet, and its day is today or later.
+    ACTIVE = 1;
+    // Done on its day, which checked in its habit.
+    DONE = 2;
+    // Its day passed without it being done.
+    FAILED = 3;
+    CANCELLED = 4;
+  }
+
+  // Format: planner/todos/{todo}
+  string name = 1;
+
+  // Format: YYYY-MM-DD.
+  string date = 2;
+
+  string title = 3;
+
+  // Format: planner/habits/{habit}
+  string habit = 4;
+
+  // Worked out against the request's `date` as today.
+  State state = 5;
 }

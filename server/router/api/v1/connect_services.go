@@ -1175,6 +1175,30 @@ func (s *ConnectServiceHandler) CreateTodo(ctx context.Context, req *connect.Req
 	return connect.NewResponse(resp), nil
 }
 
+func (s *ConnectServiceHandler) GetWeekProgress(ctx context.Context, req *connect.Request[v1pb.GetWeekProgressRequest]) (*connect.Response[v1pb.GetWeekProgressResponse], error) {
+	resp, err := s.APIV1Service.GetWeekProgress(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) GetPlannerSettings(ctx context.Context, req *connect.Request[v1pb.GetPlannerSettingsRequest]) (*connect.Response[v1pb.PlannerSettings], error) {
+	resp, err := s.APIV1Service.GetPlannerSettings(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) UpdatePlannerSettings(ctx context.Context, req *connect.Request[v1pb.UpdatePlannerSettingsRequest]) (*connect.Response[v1pb.PlannerSettings], error) {
+	resp, err := s.APIV1Service.UpdatePlannerSettings(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (s *ConnectServiceHandler) ListTodoTags(ctx context.Context, req *connect.Request[v1pb.ListTodoTagsRequest]) (*connect.Response[v1pb.ListTodoTagsResponse], error) {
 	resp, err := s.APIV1Service.ListTodoTags(ctx, req.Msg)
 	if err != nil {

@@ -18,8 +18,6 @@ import {
   Todo_Status,
 } from "@/types/proto/api/v1/planner_service_pb";
 
-/** Per-device default week start: 0 follows the instance setting, otherwise 1 = Monday … 7 = Sunday. */
-export const PLANNER_WEEK_START_KEY = "planner.weekStart";
 /** Check-ins and notes older than this many days are read-only (0 = no limit), as `allowMaxUpdateDays` in the calendar block. */
 export const PLANNER_MAX_UPDATE_DAYS_KEY = "planner.maxUpdateDays";
 export const PLANNER_MAX_UPDATE_DAYS_DEFAULT = 7;
@@ -125,9 +123,13 @@ export function versionLabel(effectiveDate: string, today: string, fromBeginning
   return from(dayjs(effectiveDate).format(effectiveDate.slice(0, 4) === today.slice(0, 4) ? "M/D" : "YYYY/M/D"));
 }
 
-/** The weekly goal a habit has on a date, 0 for none. */
-export function weeklyGoalOn(versions: HabitVersion[], habit: string, date: string): number {
-  return habitVersionOn(versions, date)?.entries.find((entry) => entry.habit === habit)?.weeklyGoal ?? 0;
+/**
+ * The weekly goal a habit has in the week of `date`, 0 for none. A whole week is measured against one plan, the one
+ * in effect on its last day, so a plan enabled mid-week sets the goal for every day of it (requirement §2.4.2 §3).
+ */
+export function weeklyGoalOn(versions: HabitVersion[], habit: string, date: string, weekStart: number): number {
+  const { endDate } = weekRange(date, weekStart);
+  return habitVersionOn(versions, endDate)?.entries.find((entry) => entry.habit === habit)?.weeklyGoal ?? 0;
 }
 
 /** The week a date falls in, `weekStart` being the grid's 1 = Monday … 7 = Sunday. */

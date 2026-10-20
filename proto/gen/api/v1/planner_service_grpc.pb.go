@@ -20,27 +20,30 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PlannerService_ListHabits_FullMethodName         = "/memos.api.v1.PlannerService/ListHabits"
-	PlannerService_CreateHabit_FullMethodName        = "/memos.api.v1.PlannerService/CreateHabit"
-	PlannerService_UpdateHabit_FullMethodName        = "/memos.api.v1.PlannerService/UpdateHabit"
-	PlannerService_ListHabitVersions_FullMethodName  = "/memos.api.v1.PlannerService/ListHabitVersions"
-	PlannerService_UpdateHabitDraft_FullMethodName   = "/memos.api.v1.PlannerService/UpdateHabitDraft"
-	PlannerService_DeleteHabitDraft_FullMethodName   = "/memos.api.v1.PlannerService/DeleteHabitDraft"
-	PlannerService_EnableHabitDraft_FullMethodName   = "/memos.api.v1.PlannerService/EnableHabitDraft"
-	PlannerService_ListPlannerEntries_FullMethodName = "/memos.api.v1.PlannerService/ListPlannerEntries"
-	PlannerService_ListOpenTodos_FullMethodName      = "/memos.api.v1.PlannerService/ListOpenTodos"
-	PlannerService_ListTodoTags_FullMethodName       = "/memos.api.v1.PlannerService/ListTodoTags"
-	PlannerService_SetCheckIn_FullMethodName         = "/memos.api.v1.PlannerService/SetCheckIn"
-	PlannerService_DeleteCheckIn_FullMethodName      = "/memos.api.v1.PlannerService/DeleteCheckIn"
-	PlannerService_GetTodo_FullMethodName            = "/memos.api.v1.PlannerService/GetTodo"
-	PlannerService_CreateTodo_FullMethodName         = "/memos.api.v1.PlannerService/CreateTodo"
-	PlannerService_UpdateTodo_FullMethodName         = "/memos.api.v1.PlannerService/UpdateTodo"
-	PlannerService_PostponeTodo_FullMethodName       = "/memos.api.v1.PlannerService/PostponeTodo"
-	PlannerService_DeleteTodo_FullMethodName         = "/memos.api.v1.PlannerService/DeleteTodo"
-	PlannerService_CreatePlannerNote_FullMethodName  = "/memos.api.v1.PlannerService/CreatePlannerNote"
-	PlannerService_UpdatePlannerNote_FullMethodName  = "/memos.api.v1.PlannerService/UpdatePlannerNote"
-	PlannerService_DeletePlannerNote_FullMethodName  = "/memos.api.v1.PlannerService/DeletePlannerNote"
-	PlannerService_ImportPlanner_FullMethodName      = "/memos.api.v1.PlannerService/ImportPlanner"
+	PlannerService_ListHabits_FullMethodName            = "/memos.api.v1.PlannerService/ListHabits"
+	PlannerService_CreateHabit_FullMethodName           = "/memos.api.v1.PlannerService/CreateHabit"
+	PlannerService_UpdateHabit_FullMethodName           = "/memos.api.v1.PlannerService/UpdateHabit"
+	PlannerService_ListHabitVersions_FullMethodName     = "/memos.api.v1.PlannerService/ListHabitVersions"
+	PlannerService_UpdateHabitDraft_FullMethodName      = "/memos.api.v1.PlannerService/UpdateHabitDraft"
+	PlannerService_DeleteHabitDraft_FullMethodName      = "/memos.api.v1.PlannerService/DeleteHabitDraft"
+	PlannerService_EnableHabitDraft_FullMethodName      = "/memos.api.v1.PlannerService/EnableHabitDraft"
+	PlannerService_ListPlannerEntries_FullMethodName    = "/memos.api.v1.PlannerService/ListPlannerEntries"
+	PlannerService_GetWeekProgress_FullMethodName       = "/memos.api.v1.PlannerService/GetWeekProgress"
+	PlannerService_ListOpenTodos_FullMethodName         = "/memos.api.v1.PlannerService/ListOpenTodos"
+	PlannerService_ListTodoTags_FullMethodName          = "/memos.api.v1.PlannerService/ListTodoTags"
+	PlannerService_SetCheckIn_FullMethodName            = "/memos.api.v1.PlannerService/SetCheckIn"
+	PlannerService_DeleteCheckIn_FullMethodName         = "/memos.api.v1.PlannerService/DeleteCheckIn"
+	PlannerService_GetTodo_FullMethodName               = "/memos.api.v1.PlannerService/GetTodo"
+	PlannerService_CreateTodo_FullMethodName            = "/memos.api.v1.PlannerService/CreateTodo"
+	PlannerService_UpdateTodo_FullMethodName            = "/memos.api.v1.PlannerService/UpdateTodo"
+	PlannerService_PostponeTodo_FullMethodName          = "/memos.api.v1.PlannerService/PostponeTodo"
+	PlannerService_DeleteTodo_FullMethodName            = "/memos.api.v1.PlannerService/DeleteTodo"
+	PlannerService_CreatePlannerNote_FullMethodName     = "/memos.api.v1.PlannerService/CreatePlannerNote"
+	PlannerService_UpdatePlannerNote_FullMethodName     = "/memos.api.v1.PlannerService/UpdatePlannerNote"
+	PlannerService_DeletePlannerNote_FullMethodName     = "/memos.api.v1.PlannerService/DeletePlannerNote"
+	PlannerService_GetPlannerSettings_FullMethodName    = "/memos.api.v1.PlannerService/GetPlannerSettings"
+	PlannerService_UpdatePlannerSettings_FullMethodName = "/memos.api.v1.PlannerService/UpdatePlannerSettings"
+	PlannerService_ImportPlanner_FullMethodName         = "/memos.api.v1.PlannerService/ImportPlanner"
 )
 
 // PlannerServiceClient is the client API for PlannerService service.
@@ -80,6 +83,16 @@ type PlannerServiceClient interface {
 	// ListPlannerEntries returns everything dated within an inclusive range:
 	// check-ins, todos of any status, and notes. Undated todos are not included.
 	ListPlannerEntries(ctx context.Context, in *ListPlannerEntriesRequest, opts ...grpc.CallOption) (*ListPlannerEntriesResponse, error)
+	// GetWeekProgress reports how the caller's habit plan went, week by week:
+	// the week containing `date` and, with `weeks`, the weeks before it. Weeks
+	// start on the caller's planner setting (week_start_day), so they split the
+	// same way as in the app. Each week is measured against one plan, the one in
+	// effect on its last day, and a habit's count includes check-ins made by
+	// completing habit todos, as the app's "2/3" does.
+	//
+	// It reports facts only: what was planned and what was checked in. Whether a
+	// week passed is for the caller to judge.
+	GetWeekProgress(ctx context.Context, in *GetWeekProgressRequest, opts ...grpc.CallOption) (*GetWeekProgressResponse, error)
 	// ListOpenTodos returns every active todo, dated or not, ordered by date with
 	// undated ones last.
 	ListOpenTodos(ctx context.Context, in *ListOpenTodosRequest, opts ...grpc.CallOption) (*ListOpenTodosResponse, error)
@@ -113,6 +126,10 @@ type PlannerServiceClient interface {
 	UpdatePlannerNote(ctx context.Context, in *UpdatePlannerNoteRequest, opts ...grpc.CallOption) (*PlannerNote, error)
 	// DeletePlannerNote deletes a note.
 	DeletePlannerNote(ctx context.Context, in *DeletePlannerNoteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// GetPlannerSettings returns the caller's planner settings.
+	GetPlannerSettings(ctx context.Context, in *GetPlannerSettingsRequest, opts ...grpc.CallOption) (*PlannerSettings, error)
+	// UpdatePlannerSettings replaces the caller's planner settings.
+	UpdatePlannerSettings(ctx context.Context, in *UpdatePlannerSettingsRequest, opts ...grpc.CallOption) (*PlannerSettings, error)
 	// ImportPlanner writes a whole planner in one transaction: the one-time backfill
 	// from calendar blocks. It only runs into an empty planner and fails with
 	// FAILED_PRECONDITION when the caller already has any planner data.
@@ -201,6 +218,16 @@ func (c *plannerServiceClient) ListPlannerEntries(ctx context.Context, in *ListP
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListPlannerEntriesResponse)
 	err := c.cc.Invoke(ctx, PlannerService_ListPlannerEntries_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plannerServiceClient) GetWeekProgress(ctx context.Context, in *GetWeekProgressRequest, opts ...grpc.CallOption) (*GetWeekProgressResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetWeekProgressResponse)
+	err := c.cc.Invoke(ctx, PlannerService_GetWeekProgress_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -327,6 +354,26 @@ func (c *plannerServiceClient) DeletePlannerNote(ctx context.Context, in *Delete
 	return out, nil
 }
 
+func (c *plannerServiceClient) GetPlannerSettings(ctx context.Context, in *GetPlannerSettingsRequest, opts ...grpc.CallOption) (*PlannerSettings, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PlannerSettings)
+	err := c.cc.Invoke(ctx, PlannerService_GetPlannerSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plannerServiceClient) UpdatePlannerSettings(ctx context.Context, in *UpdatePlannerSettingsRequest, opts ...grpc.CallOption) (*PlannerSettings, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PlannerSettings)
+	err := c.cc.Invoke(ctx, PlannerService_UpdatePlannerSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *plannerServiceClient) ImportPlanner(ctx context.Context, in *ImportPlannerRequest, opts ...grpc.CallOption) (*ImportPlannerResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ImportPlannerResponse)
@@ -374,6 +421,16 @@ type PlannerServiceServer interface {
 	// ListPlannerEntries returns everything dated within an inclusive range:
 	// check-ins, todos of any status, and notes. Undated todos are not included.
 	ListPlannerEntries(context.Context, *ListPlannerEntriesRequest) (*ListPlannerEntriesResponse, error)
+	// GetWeekProgress reports how the caller's habit plan went, week by week:
+	// the week containing `date` and, with `weeks`, the weeks before it. Weeks
+	// start on the caller's planner setting (week_start_day), so they split the
+	// same way as in the app. Each week is measured against one plan, the one in
+	// effect on its last day, and a habit's count includes check-ins made by
+	// completing habit todos, as the app's "2/3" does.
+	//
+	// It reports facts only: what was planned and what was checked in. Whether a
+	// week passed is for the caller to judge.
+	GetWeekProgress(context.Context, *GetWeekProgressRequest) (*GetWeekProgressResponse, error)
 	// ListOpenTodos returns every active todo, dated or not, ordered by date with
 	// undated ones last.
 	ListOpenTodos(context.Context, *ListOpenTodosRequest) (*ListOpenTodosResponse, error)
@@ -407,6 +464,10 @@ type PlannerServiceServer interface {
 	UpdatePlannerNote(context.Context, *UpdatePlannerNoteRequest) (*PlannerNote, error)
 	// DeletePlannerNote deletes a note.
 	DeletePlannerNote(context.Context, *DeletePlannerNoteRequest) (*emptypb.Empty, error)
+	// GetPlannerSettings returns the caller's planner settings.
+	GetPlannerSettings(context.Context, *GetPlannerSettingsRequest) (*PlannerSettings, error)
+	// UpdatePlannerSettings replaces the caller's planner settings.
+	UpdatePlannerSettings(context.Context, *UpdatePlannerSettingsRequest) (*PlannerSettings, error)
 	// ImportPlanner writes a whole planner in one transaction: the one-time backfill
 	// from calendar blocks. It only runs into an empty planner and fails with
 	// FAILED_PRECONDITION when the caller already has any planner data.
@@ -445,6 +506,9 @@ func (UnimplementedPlannerServiceServer) EnableHabitDraft(context.Context, *Enab
 func (UnimplementedPlannerServiceServer) ListPlannerEntries(context.Context, *ListPlannerEntriesRequest) (*ListPlannerEntriesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListPlannerEntries not implemented")
 }
+func (UnimplementedPlannerServiceServer) GetWeekProgress(context.Context, *GetWeekProgressRequest) (*GetWeekProgressResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetWeekProgress not implemented")
+}
 func (UnimplementedPlannerServiceServer) ListOpenTodos(context.Context, *ListOpenTodosRequest) (*ListOpenTodosResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListOpenTodos not implemented")
 }
@@ -480,6 +544,12 @@ func (UnimplementedPlannerServiceServer) UpdatePlannerNote(context.Context, *Upd
 }
 func (UnimplementedPlannerServiceServer) DeletePlannerNote(context.Context, *DeletePlannerNoteRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeletePlannerNote not implemented")
+}
+func (UnimplementedPlannerServiceServer) GetPlannerSettings(context.Context, *GetPlannerSettingsRequest) (*PlannerSettings, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPlannerSettings not implemented")
+}
+func (UnimplementedPlannerServiceServer) UpdatePlannerSettings(context.Context, *UpdatePlannerSettingsRequest) (*PlannerSettings, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdatePlannerSettings not implemented")
 }
 func (UnimplementedPlannerServiceServer) ImportPlanner(context.Context, *ImportPlannerRequest) (*ImportPlannerResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ImportPlanner not implemented")
@@ -645,6 +715,24 @@ func _PlannerService_ListPlannerEntries_Handler(srv interface{}, ctx context.Con
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PlannerServiceServer).ListPlannerEntries(ctx, req.(*ListPlannerEntriesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlannerService_GetWeekProgress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetWeekProgressRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlannerServiceServer).GetWeekProgress(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlannerService_GetWeekProgress_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlannerServiceServer).GetWeekProgress(ctx, req.(*GetWeekProgressRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -865,6 +953,42 @@ func _PlannerService_DeletePlannerNote_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PlannerService_GetPlannerSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPlannerSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlannerServiceServer).GetPlannerSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlannerService_GetPlannerSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlannerServiceServer).GetPlannerSettings(ctx, req.(*GetPlannerSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlannerService_UpdatePlannerSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdatePlannerSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlannerServiceServer).UpdatePlannerSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlannerService_UpdatePlannerSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlannerServiceServer).UpdatePlannerSettings(ctx, req.(*UpdatePlannerSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PlannerService_ImportPlanner_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ImportPlannerRequest)
 	if err := dec(in); err != nil {
@@ -923,6 +1047,10 @@ var PlannerService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _PlannerService_ListPlannerEntries_Handler,
 		},
 		{
+			MethodName: "GetWeekProgress",
+			Handler:    _PlannerService_GetWeekProgress_Handler,
+		},
+		{
 			MethodName: "ListOpenTodos",
 			Handler:    _PlannerService_ListOpenTodos_Handler,
 		},
@@ -969,6 +1097,14 @@ var PlannerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeletePlannerNote",
 			Handler:    _PlannerService_DeletePlannerNote_Handler,
+		},
+		{
+			MethodName: "GetPlannerSettings",
+			Handler:    _PlannerService_GetPlannerSettings_Handler,
+		},
+		{
+			MethodName: "UpdatePlannerSettings",
+			Handler:    _PlannerService_UpdatePlannerSettings_Handler,
 		},
 		{
 			MethodName: "ImportPlanner",

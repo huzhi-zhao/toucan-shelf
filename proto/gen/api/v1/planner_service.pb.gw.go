@@ -295,6 +295,41 @@ func local_request_PlannerService_ListPlannerEntries_0(ctx context.Context, mars
 	return msg, metadata, err
 }
 
+var filter_PlannerService_GetWeekProgress_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+
+func request_PlannerService_GetWeekProgress_0(ctx context.Context, marshaler runtime.Marshaler, client PlannerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq GetWeekProgressRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PlannerService_GetWeekProgress_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	msg, err := client.GetWeekProgress(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_PlannerService_GetWeekProgress_0(ctx context.Context, marshaler runtime.Marshaler, server PlannerServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq GetWeekProgressRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PlannerService_GetWeekProgress_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	msg, err := server.GetWeekProgress(ctx, &protoReq)
+	return msg, metadata, err
+}
+
 func request_PlannerService_ListOpenTodos_0(ctx context.Context, marshaler runtime.Marshaler, client PlannerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
 		protoReq ListOpenTodosRequest
@@ -791,6 +826,54 @@ func local_request_PlannerService_DeletePlannerNote_0(ctx context.Context, marsh
 	return msg, metadata, err
 }
 
+func request_PlannerService_GetPlannerSettings_0(ctx context.Context, marshaler runtime.Marshaler, client PlannerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq GetPlannerSettingsRequest
+		metadata runtime.ServerMetadata
+	)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	msg, err := client.GetPlannerSettings(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_PlannerService_GetPlannerSettings_0(ctx context.Context, marshaler runtime.Marshaler, server PlannerServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq GetPlannerSettingsRequest
+		metadata runtime.ServerMetadata
+	)
+	msg, err := server.GetPlannerSettings(ctx, &protoReq)
+	return msg, metadata, err
+}
+
+func request_PlannerService_UpdatePlannerSettings_0(ctx context.Context, marshaler runtime.Marshaler, client PlannerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq UpdatePlannerSettingsRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Settings); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	msg, err := client.UpdatePlannerSettings(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_PlannerService_UpdatePlannerSettings_0(ctx context.Context, marshaler runtime.Marshaler, server PlannerServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq UpdatePlannerSettingsRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Settings); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	msg, err := server.UpdatePlannerSettings(ctx, &protoReq)
+	return msg, metadata, err
+}
+
 func request_PlannerService_ImportPlanner_0(ctx context.Context, marshaler runtime.Marshaler, client PlannerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
 		protoReq ImportPlannerRequest
@@ -983,6 +1066,26 @@ func RegisterPlannerServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 			return
 		}
 		forward_PlannerService_ListPlannerEntries_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodGet, pattern_PlannerService_GetWeekProgress_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/memos.api.v1.PlannerService/GetWeekProgress", runtime.WithHTTPPathPattern("/api/v1/planner/weekProgress"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PlannerService_GetWeekProgress_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_PlannerService_GetWeekProgress_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
 	mux.Handle(http.MethodGet, pattern_PlannerService_ListOpenTodos_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
@@ -1224,6 +1327,46 @@ func RegisterPlannerServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		}
 		forward_PlannerService_DeletePlannerNote_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
+	mux.Handle(http.MethodGet, pattern_PlannerService_GetPlannerSettings_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/memos.api.v1.PlannerService/GetPlannerSettings", runtime.WithHTTPPathPattern("/api/v1/planner/settings"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PlannerService_GetPlannerSettings_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_PlannerService_GetPlannerSettings_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodPatch, pattern_PlannerService_UpdatePlannerSettings_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/memos.api.v1.PlannerService/UpdatePlannerSettings", runtime.WithHTTPPathPattern("/api/v1/planner/settings"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PlannerService_UpdatePlannerSettings_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_PlannerService_UpdatePlannerSettings_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
 	mux.Handle(http.MethodPost, pattern_PlannerService_ImportPlanner_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -1419,6 +1562,23 @@ func RegisterPlannerServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 			return
 		}
 		forward_PlannerService_ListPlannerEntries_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodGet, pattern_PlannerService_GetWeekProgress_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/memos.api.v1.PlannerService/GetWeekProgress", runtime.WithHTTPPathPattern("/api/v1/planner/weekProgress"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_PlannerService_GetWeekProgress_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_PlannerService_GetWeekProgress_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
 	mux.Handle(http.MethodGet, pattern_PlannerService_ListOpenTodos_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
@@ -1624,6 +1784,40 @@ func RegisterPlannerServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		}
 		forward_PlannerService_DeletePlannerNote_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
+	mux.Handle(http.MethodGet, pattern_PlannerService_GetPlannerSettings_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/memos.api.v1.PlannerService/GetPlannerSettings", runtime.WithHTTPPathPattern("/api/v1/planner/settings"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_PlannerService_GetPlannerSettings_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_PlannerService_GetPlannerSettings_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodPatch, pattern_PlannerService_UpdatePlannerSettings_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/memos.api.v1.PlannerService/UpdatePlannerSettings", runtime.WithHTTPPathPattern("/api/v1/planner/settings"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_PlannerService_UpdatePlannerSettings_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_PlannerService_UpdatePlannerSettings_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
 	mux.Handle(http.MethodPost, pattern_PlannerService_ImportPlanner_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -1645,49 +1839,55 @@ func RegisterPlannerServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 }
 
 var (
-	pattern_PlannerService_ListHabits_0         = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "habits"}, ""))
-	pattern_PlannerService_CreateHabit_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "habits"}, ""))
-	pattern_PlannerService_UpdateHabit_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 3, 5, 4}, []string{"api", "v1", "planner", "habits", "habit.name"}, ""))
-	pattern_PlannerService_ListHabitVersions_0  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "habitVersions"}, ""))
-	pattern_PlannerService_UpdateHabitDraft_0   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "habitDraft"}, ""))
-	pattern_PlannerService_DeleteHabitDraft_0   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "habitDraft"}, ""))
-	pattern_PlannerService_EnableHabitDraft_0   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "habitDraft"}, "enable"))
-	pattern_PlannerService_ListPlannerEntries_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "entries"}, ""))
-	pattern_PlannerService_ListOpenTodos_0      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "openTodos"}, ""))
-	pattern_PlannerService_ListTodoTags_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "todoTags"}, ""))
-	pattern_PlannerService_SetCheckIn_0         = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "checkIns"}, ""))
-	pattern_PlannerService_DeleteCheckIn_0      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "checkIns"}, ""))
-	pattern_PlannerService_GetTodo_0            = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 3, 5, 4}, []string{"api", "v1", "planner", "todos", "name"}, ""))
-	pattern_PlannerService_CreateTodo_0         = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "todos"}, ""))
-	pattern_PlannerService_UpdateTodo_0         = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 3, 5, 4}, []string{"api", "v1", "planner", "todos", "todo.name"}, ""))
-	pattern_PlannerService_PostponeTodo_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 3, 5, 4}, []string{"api", "v1", "planner", "todos", "name"}, "postpone"))
-	pattern_PlannerService_DeleteTodo_0         = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 3, 5, 4}, []string{"api", "v1", "planner", "todos", "name"}, ""))
-	pattern_PlannerService_CreatePlannerNote_0  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "notes"}, ""))
-	pattern_PlannerService_UpdatePlannerNote_0  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 3, 5, 4}, []string{"api", "v1", "planner", "notes", "note.name"}, ""))
-	pattern_PlannerService_DeletePlannerNote_0  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 3, 5, 4}, []string{"api", "v1", "planner", "notes", "name"}, ""))
-	pattern_PlannerService_ImportPlanner_0      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"api", "v1", "planner"}, "import"))
+	pattern_PlannerService_ListHabits_0            = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "habits"}, ""))
+	pattern_PlannerService_CreateHabit_0           = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "habits"}, ""))
+	pattern_PlannerService_UpdateHabit_0           = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 3, 5, 4}, []string{"api", "v1", "planner", "habits", "habit.name"}, ""))
+	pattern_PlannerService_ListHabitVersions_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "habitVersions"}, ""))
+	pattern_PlannerService_UpdateHabitDraft_0      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "habitDraft"}, ""))
+	pattern_PlannerService_DeleteHabitDraft_0      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "habitDraft"}, ""))
+	pattern_PlannerService_EnableHabitDraft_0      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "habitDraft"}, "enable"))
+	pattern_PlannerService_ListPlannerEntries_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "entries"}, ""))
+	pattern_PlannerService_GetWeekProgress_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "weekProgress"}, ""))
+	pattern_PlannerService_ListOpenTodos_0         = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "openTodos"}, ""))
+	pattern_PlannerService_ListTodoTags_0          = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "todoTags"}, ""))
+	pattern_PlannerService_SetCheckIn_0            = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "checkIns"}, ""))
+	pattern_PlannerService_DeleteCheckIn_0         = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "checkIns"}, ""))
+	pattern_PlannerService_GetTodo_0               = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 3, 5, 4}, []string{"api", "v1", "planner", "todos", "name"}, ""))
+	pattern_PlannerService_CreateTodo_0            = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "todos"}, ""))
+	pattern_PlannerService_UpdateTodo_0            = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 3, 5, 4}, []string{"api", "v1", "planner", "todos", "todo.name"}, ""))
+	pattern_PlannerService_PostponeTodo_0          = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 3, 5, 4}, []string{"api", "v1", "planner", "todos", "name"}, "postpone"))
+	pattern_PlannerService_DeleteTodo_0            = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 3, 5, 4}, []string{"api", "v1", "planner", "todos", "name"}, ""))
+	pattern_PlannerService_CreatePlannerNote_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "notes"}, ""))
+	pattern_PlannerService_UpdatePlannerNote_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 3, 5, 4}, []string{"api", "v1", "planner", "notes", "note.name"}, ""))
+	pattern_PlannerService_DeletePlannerNote_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 3, 5, 4}, []string{"api", "v1", "planner", "notes", "name"}, ""))
+	pattern_PlannerService_GetPlannerSettings_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "settings"}, ""))
+	pattern_PlannerService_UpdatePlannerSettings_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "planner", "settings"}, ""))
+	pattern_PlannerService_ImportPlanner_0         = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"api", "v1", "planner"}, "import"))
 )
 
 var (
-	forward_PlannerService_ListHabits_0         = runtime.ForwardResponseMessage
-	forward_PlannerService_CreateHabit_0        = runtime.ForwardResponseMessage
-	forward_PlannerService_UpdateHabit_0        = runtime.ForwardResponseMessage
-	forward_PlannerService_ListHabitVersions_0  = runtime.ForwardResponseMessage
-	forward_PlannerService_UpdateHabitDraft_0   = runtime.ForwardResponseMessage
-	forward_PlannerService_DeleteHabitDraft_0   = runtime.ForwardResponseMessage
-	forward_PlannerService_EnableHabitDraft_0   = runtime.ForwardResponseMessage
-	forward_PlannerService_ListPlannerEntries_0 = runtime.ForwardResponseMessage
-	forward_PlannerService_ListOpenTodos_0      = runtime.ForwardResponseMessage
-	forward_PlannerService_ListTodoTags_0       = runtime.ForwardResponseMessage
-	forward_PlannerService_SetCheckIn_0         = runtime.ForwardResponseMessage
-	forward_PlannerService_DeleteCheckIn_0      = runtime.ForwardResponseMessage
-	forward_PlannerService_GetTodo_0            = runtime.ForwardResponseMessage
-	forward_PlannerService_CreateTodo_0         = runtime.ForwardResponseMessage
-	forward_PlannerService_UpdateTodo_0         = runtime.ForwardResponseMessage
-	forward_PlannerService_PostponeTodo_0       = runtime.ForwardResponseMessage
-	forward_PlannerService_DeleteTodo_0         = runtime.ForwardResponseMessage
-	forward_PlannerService_CreatePlannerNote_0  = runtime.ForwardResponseMessage
-	forward_PlannerService_UpdatePlannerNote_0  = runtime.ForwardResponseMessage
-	forward_PlannerService_DeletePlannerNote_0  = runtime.ForwardResponseMessage
-	forward_PlannerService_ImportPlanner_0      = runtime.ForwardResponseMessage
+	forward_PlannerService_ListHabits_0            = runtime.ForwardResponseMessage
+	forward_PlannerService_CreateHabit_0           = runtime.ForwardResponseMessage
+	forward_PlannerService_UpdateHabit_0           = runtime.ForwardResponseMessage
+	forward_PlannerService_ListHabitVersions_0     = runtime.ForwardResponseMessage
+	forward_PlannerService_UpdateHabitDraft_0      = runtime.ForwardResponseMessage
+	forward_PlannerService_DeleteHabitDraft_0      = runtime.ForwardResponseMessage
+	forward_PlannerService_EnableHabitDraft_0      = runtime.ForwardResponseMessage
+	forward_PlannerService_ListPlannerEntries_0    = runtime.ForwardResponseMessage
+	forward_PlannerService_GetWeekProgress_0       = runtime.ForwardResponseMessage
+	forward_PlannerService_ListOpenTodos_0         = runtime.ForwardResponseMessage
+	forward_PlannerService_ListTodoTags_0          = runtime.ForwardResponseMessage
+	forward_PlannerService_SetCheckIn_0            = runtime.ForwardResponseMessage
+	forward_PlannerService_DeleteCheckIn_0         = runtime.ForwardResponseMessage
+	forward_PlannerService_GetTodo_0               = runtime.ForwardResponseMessage
+	forward_PlannerService_CreateTodo_0            = runtime.ForwardResponseMessage
+	forward_PlannerService_UpdateTodo_0            = runtime.ForwardResponseMessage
+	forward_PlannerService_PostponeTodo_0          = runtime.ForwardResponseMessage
+	forward_PlannerService_DeleteTodo_0            = runtime.ForwardResponseMessage
+	forward_PlannerService_CreatePlannerNote_0     = runtime.ForwardResponseMessage
+	forward_PlannerService_UpdatePlannerNote_0     = runtime.ForwardResponseMessage
+	forward_PlannerService_DeletePlannerNote_0     = runtime.ForwardResponseMessage
+	forward_PlannerService_GetPlannerSettings_0    = runtime.ForwardResponseMessage
+	forward_PlannerService_UpdatePlannerSettings_0 = runtime.ForwardResponseMessage
+	forward_PlannerService_ImportPlanner_0         = runtime.ForwardResponseMessage
 )

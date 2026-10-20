@@ -182,7 +182,7 @@ export const COPY = {
   plannerSettings: {
     title: "计划设置",
     weekStart: "一周从哪天开始",
-    weekStartHint: "这里是默认值，计划页的日历下面也可以随时切换。",
+    weekStartHint: "这里是默认值，所有设备通用，每周目标和进度都按它分周。计划页的日历下面可以临时切换，只影响日历怎么排。",
     followInstance: "跟随系统设置",
     maxUpdateDays: "允许修改最近几天",
     maxUpdateDaysHint: "超过这个天数的打卡和备忘只能看、不能改，防止误触。待办不受限制。0 表示不限。",

@@ -36,7 +36,6 @@ import {
   monthRange,
   PLANNER_MAX_UPDATE_DAYS_DEFAULT,
   PLANNER_MAX_UPDATE_DAYS_KEY,
-  PLANNER_WEEK_START_KEY,
   readCalendarView,
   saveCalendarView,
   todosForDay,
@@ -45,6 +44,7 @@ import {
   weeklyGoalOn,
   weeksSpan,
 } from "../../lib/planner";
+import { usePlannerWeekStart } from "../../lib/plannerWeekStart";
 import { usePref } from "../../lib/storage";
 import { MOBILE_ROUTES, todoRoute } from "../../routes";
 
@@ -66,7 +66,7 @@ export default function PlannerPage() {
   const go = useGo(COPY.planner.title);
   const today = localToday();
   const { generalSetting } = useInstance();
-  const [defaultWeekStart] = usePref(PLANNER_WEEK_START_KEY, 0);
+  const [defaultWeekStart = 0] = usePlannerWeekStart();
   const [maxUpdateDays] = usePref(PLANNER_MAX_UPDATE_DAYS_KEY, PLANNER_MAX_UPDATE_DAYS_DEFAULT);
   const resolvedDefault = defaultWeekStart || weekStartFromOffset(generalSetting.weekStartDayOffset);
   // Coming back from a todo's page keeps the day, month and week start the calendar was left on.
@@ -126,7 +126,7 @@ export default function PlannerPage() {
     if (!habit) return undefined;
     const date = todo.date || today;
     const done = weeklyCheckIns(weekEntries?.checkIns ?? [], todo.habit, date, resolvedDefault);
-    return habitTodoLabel(habit.title, done, weeklyGoalOn(versions, todo.habit, date));
+    return habitTodoLabel(habit.title, done, weeklyGoalOn(versions, todo.habit, date, resolvedDefault));
   };
 
   // Sheets.
@@ -324,7 +324,7 @@ export default function PlannerPage() {
             const color = habitColor(habit);
             const linked = Boolean(todoOfHabit(habit));
             const enabled = canCheckIn || linked || isFuture;
-            const goal = weeklyGoalOn(versions, habit.name, selectedDate);
+            const goal = weeklyGoalOn(versions, habit.name, selectedDate, resolvedDefault);
             const progress =
               !checkIn && goal > 0
                 ? `${weeklyCheckIns(weekEntries?.checkIns ?? [], habit.name, selectedDate, resolvedDefault)}/${goal}`

@@ -2076,6 +2076,49 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/v1/planner/settings:
+        get:
+            tags:
+                - PlannerService
+            description: GetPlannerSettings returns the caller's planner settings.
+            operationId: PlannerService_GetPlannerSettings
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PlannerSettings'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        patch:
+            tags:
+                - PlannerService
+            description: UpdatePlannerSettings replaces the caller's planner settings.
+            operationId: PlannerService_UpdatePlannerSettings
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/PlannerSettings'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PlannerSettings'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/planner/todoTags:
         get:
             tags:
@@ -2124,6 +2167,48 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Todo'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/planner/weekProgress:
+        get:
+            tags:
+                - PlannerService
+            description: |-
+                GetWeekProgress reports how the caller's habit plan went, week by week:
+                 the week containing `date` and, with `weeks`, the weeks before it. Weeks
+                 start on the caller's planner setting (week_start_day), so they split the
+                 same way as in the app. Each week is measured against one plan, the one in
+                 effect on its last day, and a habit's count includes check-ins made by
+                 completing habit todos, as the app's "2/3" does.
+
+                 It reports facts only: what was planned and what was checked in. Whether a
+                 week passed is for the caller to judge.
+            operationId: PlannerService_GetWeekProgress
+            parameters:
+                - name: date
+                  in: query
+                  description: The caller's local today, YYYY-MM-DD. Its week comes first.
+                  schema:
+                    type: string
+                - name: weeks
+                  in: query
+                  description: |-
+                    How many weeks to return, counting back from the week of `date`: 1 to 12.
+                     1 when unset.
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetWeekProgressResponse'
                 default:
                     description: Default error response
                     content:
@@ -5561,6 +5646,20 @@ components:
                 signingSecret:
                     type: string
                     description: The signing secret, in the Standard Webhooks "whsec_<base64>" form.
+        GetWeekProgressResponse:
+            type: object
+            properties:
+                weekStartDay:
+                    type: integer
+                    description: |-
+                        The day weeks start on, 1 = Monday … 7 = Sunday: the caller's planner
+                         setting, or the instance's week start when the setting follows it.
+                    format: int32
+                weeks:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/WeekProgress'
+                    description: The week of `date` first, then each week before it.
         GetWorkspaceTreeResponse:
             type: object
             properties:
@@ -6961,6 +7060,18 @@ components:
                     type: string
                     format: date-time
             description: PlannerNote is a plain record of what happened on a day.
+        PlannerSettings:
+            type: object
+            properties:
+                weekStartDay:
+                    type: integer
+                    description: |-
+                        The day planner weeks start on: 1 = Monday … 7 = Sunday, or 0 to follow
+                         the instance's week start.
+                    format: int32
+            description: |-
+                PlannerSettings are the caller's planner preferences kept on the server, so
+                 every device and every API caller see the same ones.
         PolishTextRequest:
             required:
                 - text
@@ -8657,6 +8768,142 @@ components:
                     type: boolean
                     description: Whether a signing secret is configured for this webhook.
             description: UserWebhook represents a webhook owned by a user.
+        WeekCheckIn:
+            type: object
+            properties:
+                date:
+                    type: string
+                    description: 'Format: YYYY-MM-DD.'
+                note:
+                    type: string
+                todo:
+                    type: string
+                    description: |-
+                        The todo whose completion made the check-in, or empty for one checked in
+                         by hand. Format: planner/todos/{todo}
+        WeekHabitProgress:
+            type: object
+            properties:
+                habit:
+                    type: string
+                    description: 'Format: planner/habits/{habit}'
+                icon:
+                    type: string
+                    description: 'The habit''s icon: the emoji its title starts with.'
+                label:
+                    type: string
+                    description: The rest of the title, possibly empty.
+                inPlan:
+                    type: boolean
+                    description: Whether the week's plan includes the habit.
+                weeklyGoal:
+                    type: integer
+                    description: |-
+                        Check-ins a week the plan aims for. Unset when the plan sets no goal for
+                         the habit, or does not include it.
+                    format: int32
+                checkInCount:
+                    type: integer
+                    description: |-
+                        How many days of the week the habit was checked in, by hand or by
+                         completing a habit todo. Can exceed weekly_goal.
+                    format: int32
+                checkIns:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/WeekCheckIn'
+                    description: The check-ins, by date.
+        WeekHabitTodo:
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: 'Format: planner/todos/{todo}'
+                date:
+                    type: string
+                    description: 'Format: YYYY-MM-DD.'
+                title:
+                    type: string
+                habit:
+                    type: string
+                    description: 'Format: planner/habits/{habit}'
+                state:
+                    enum:
+                        - STATE_UNSPECIFIED
+                        - ACTIVE
+                        - DONE
+                        - FAILED
+                        - CANCELLED
+                    type: string
+                    description: Worked out against the request's `date` as today.
+                    format: enum
+        WeekPlan:
+            type: object
+            properties:
+                effectiveDate:
+                    type: string
+                    description: |-
+                        The day the plan took effect, YYYY-MM-DD, or empty for the plan in effect
+                         from the very beginning.
+                replaced:
+                    type: array
+                    items:
+                        type: string
+                    description: |-
+                        When the plan changed during the week: the effective dates of the plans
+                         in effect earlier in the week, earliest first ("" for the very first).
+                         The whole week is still measured against this plan, the last one.
+                documents:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/WeekPlanDocument'
+                    description: The plan's linked documents, in display order.
+            description: |-
+                WeekPlan is a habit plan (a habit version). Plans have no names: the app
+                 labels one by the day it took effect.
+        WeekPlanDocument:
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: 'Format: memos/{memo}'
+                title:
+                    type: string
+                    description: The document's title; empty when the caller cannot read it.
+        WeekProgress:
+            type: object
+            properties:
+                weekStart:
+                    type: string
+                    description: First and last day of the week, YYYY-MM-DD.
+                weekEnd:
+                    type: string
+                containsDate:
+                    type: boolean
+                    description: Whether the request's `date` falls in this week.
+                daysLeft:
+                    type: integer
+                    description: Days left in the week counting `date` itself; 0 for an earlier week.
+                    format: int32
+                plan:
+                    allOf:
+                        - $ref: '#/components/schemas/WeekPlan'
+                    description: |-
+                        The plan the week is measured against: the one in effect on its last day.
+                         Unset for a week before the first plan.
+                habits:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/WeekHabitProgress'
+                    description: |-
+                        The plan's habits in plan order, then any other habit checked in during
+                         the week.
+                habitTodos:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/WeekHabitTodo'
+                    description: The week's habit todos, by date.
+            description: 'WeekProgress is one week of a habit plan: what was planned and what was done.'
         Workspace:
             required:
                 - title

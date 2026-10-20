@@ -90,6 +90,7 @@
   待办不受限制，过期多久都能关掉。
 - **允许没有日期的待办**：排在清单最后，日历上不显示。
 - **一周从哪天开始**：有一个默认设置，日历上也可以随时切换。不同的标记看的周期可能不同。
+  （2026-10-20 补充）默认设置存在服务端，所有设备和对外接口共用，见 2.4.3。
 - **"一天"的边界**：按手机当地时间的零点划分。
 - **2026-10-18 补充**：
   - "计划"是第一个 Tab，打开 app 默认进计划页。
@@ -158,6 +159,8 @@
 #### 3. 每周目标
 
 - 目标写在版本里（"🚶 每周 3 次"），不写在习惯上，所以改目标也是修订版本，旧的周按旧目标算。
+- **一周按一个计划算**（2026-10-20 补充）：以这周最后一天生效的计划为准。周三启用新计划，这一整周（包括周一、周二）
+  都按新计划的目标算；之前的周按旧计划。所以同一周里每一天显示的目标都一样。
 - 一周从哪天开始，按计划设置里的默认值，不跟日历下面的临时切换走。
 - 进度 = 那一周里这个习惯的打卡次数，直接打的和待办带出的都算。超额照写，例如"💪 3/2"。
 - 显示在习惯待办那一行（见第 5 小节），按待办自己日期所在的那一周算。没设目标的只显示习惯，不显示数字。
@@ -219,6 +222,97 @@
   - "从最早那天起"：按现在的排序放前 5 个习惯，包括已停用的，保证过去的日历和现在一样；
   - "从上线那天起"：只放没停用的。
 - 这样停用的习惯从上线当天起就不再占位置。
+
+### 2.4.3 每周进度接口（2026-10-20）
+
+toucan-base 的 Discord bot 要当健身监督：按每周进度提醒、周末评分；Claude Code 会话也要能问"这周、这个月履约得怎样"。
+两边都只读。达标判断必须和 app 上显示的一致，所以周怎么划、按哪个计划、怎么计数都由服务端算，调用方不自己拼。
+
+#### 1. 每周第一天挪到服务端
+
+- 计划设置里的"一周从哪天开始"原来存在每台手机本地，服务端不知道。现在存在服务端（用户设置 `PLANNER`），
+  `GET/PATCH /api/v1/planner/settings`，所有设备共用。值：1 = 周一 … 7 = 周日，0 = 跟随实例设置。
+- 老手机上已经选过的值，打开新版时自动上传一次（服务端还是 0 的时候），之后以服务端为准。
+- 日历下面的临时切换不变，只影响日历怎么排，不影响周目标和进度。
+
+#### 2. 接口
+
+`PlannerService.GetWeekProgress`，`GET /api/v1/planner/weekProgress?date=YYYY-MM-DD&weeks=N`。
+
+- `date`：调用方那边的今天。服务端不换算时区，调用方按自己的时区（bot 是温尼伯）算好再传。
+- `weeks`：1～12，默认 1。返回 `date` 所在的周，再往前 N-1 周；第一项是本周，后面依次更早。
+- 返回的每一周：
+  - `weekStart` / `weekEnd`：按服务端的"每周第一天"划分；顶层 `weekStartDay` 是解析后的值（1～7，跟随实例时也给出实际的那天）。
+  - `containsDate`、`daysLeft`：`date` 在不在这一周、这周还剩几天（含 `date` 当天）；更早的周是 false / 0。
+  - `plan`：这周按哪个计划算，规则同 2.4.2 §3（周最后一天生效的那个）。`effectiveDate` 为空表示"从最早开始"的计划；
+    计划没有名字，app 也是按生效日期称呼它。`replaced` 列出这周前几天用过、被它取代的计划的生效日期。
+    `documents` 是计划关联的文档（名字和标题；调用方读不到的文档标题为空）。这周还没有任何计划时没有 `plan`。
+  - `habits`：先按计划顺序列计划里的习惯，再列不在计划里、但这周打过卡的习惯（`inPlan: false`）。
+    每个习惯有 `icon`、`label`（标题去掉图标的部分，可能为空）、`weeklyGoal`（计划没设目标、或习惯不在计划里时没有这个字段）、
+    `checkInCount`（直接打的和待办带出的都算，和 app 的"2/3"一致，超额照写）、`checkIns`（日期、备注、带出它的待办）。
+  - `habitTodos`：这周的习惯待办，按日期：标题、关联习惯、状态。状态 `ACTIVE` / `DONE` / `FAILED` / `CANCELLED`，
+    以 `date` 为今天算：过了日子还没完成就是 `FAILED`（同 2.4.2 §5）。普通待办不在里面。
+- **不做判定**：及格、达标、连续几周这些规则写在知识库的习惯计划文档里（就是 `plan.documents`），随计划版本变，由调用方判断。
+
+返回示例（每周第一天是周一；周三 10/21 启用了新计划，阅读被换下、加了走路）：
+
+```json
+{
+  "weekStartDay": 1,
+  "weeks": [
+    {
+      "weekStart": "2026-10-19",
+      "weekEnd": "2026-10-25",
+      "containsDate": true,
+      "daysLeft": 1,
+      "plan": {
+        "effectiveDate": "2026-10-21",
+        "replaced": ["2026-10-01"],
+        "documents": [{ "name": "memos/abc123", "title": "习惯计划 2026 秋" }]
+      },
+      "habits": [
+        {
+          "habit": "planner/habits/run",
+          "icon": "💪",
+          "label": "运动",
+          "inPlan": true,
+          "weeklyGoal": 2,
+          "checkInCount": 1,
+          "checkIns": [{ "date": "2026-10-23", "note": "跑 5 公里", "todo": "planner/todos/t1" }]
+        },
+        {
+          "habit": "planner/habits/walk",
+          "icon": "🚶🏻",
+          "label": "",
+          "inPlan": true,
+          "checkInCount": 1,
+          "checkIns": [{ "date": "2026-10-22", "note": "", "todo": "" }]
+        },
+        {
+          "habit": "planner/habits/read",
+          "icon": "📖",
+          "label": "阅读",
+          "inPlan": false,
+          "checkInCount": 1,
+          "checkIns": [{ "date": "2026-10-20", "note": "第三章", "todo": "" }]
+        }
+      ],
+      "habitTodos": [
+        { "name": "planner/todos/t1", "date": "2026-10-23", "title": "跑 5 公里", "habit": "planner/habits/run", "state": "DONE" },
+        { "name": "planner/todos/t2", "date": "2026-10-24", "title": "散步", "habit": "planner/habits/walk", "state": "FAILED" }
+      ]
+    }
+  ]
+}
+```
+
+#### 3. 认证与范围
+
+- REST 用个人访问令牌（PAT）：`Authorization: Bearer <PAT>`。返回的是令牌主人自己的计划。
+- PAT 目前没有只读范围，技术上能调所有接口。约定：给 bot 单独建一个 PAT，**bot 只调这一个接口**，不写任何计划数据。
+  只读 PAT 以后单独做。
+- MCP 上是工具 `planner_get_week_progress`，只读，计划的其他操作都不进 MCP。原因和上下文成本见
+  `docs/dev/adr/0020-mcp-planner-week-progress-read-only.md`；agent 怎么用写在 `docs/skill/references/mcp.md` §8。
 
 ### 2.5 KPI
 

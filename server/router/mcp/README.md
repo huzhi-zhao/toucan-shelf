@@ -131,9 +131,10 @@ a personal access token as a bearer credential. Example client config:
 
 ## Tool surface
 
-The server exposes a curated allowlist of **8** operations
+The server exposes a curated allowlist of **10** operations
 (`curatedOperationIDs` in `catalog.go`), scoped to knowledge-base authoring:
-navigate the workspace tree, search, read a document, write one.
+navigate the workspace tree, search, read a document, write one. The one
+exception is a read-only report on the user's habit plan (ADR 0020).
 
 | OpenAPI operation | MCP tool | Purpose |
 | --- | --- | --- |
@@ -144,7 +145,9 @@ navigate the workspace tree, search, read a document, write one.
 | `MemoService_GetMemo` | `memo_get_memo` | Read full content |
 | `MemoService_CreateMemo` | `memo_create_memo` | Create a document |
 | `MemoService_UpdateMemo` | `memo_update_memo` | Replace a document's content |
+| `AttachmentService_GetDownloadUrl` | `attachment_get_download_url` | Short-lived download URL for an attachment the caller can read |
 | `AuthService_GetCurrentUser` | `auth_get_current_user` | Read-only "whoami" — the single allowed auth/identity operation |
+| `PlannerService_GetWeekProgress` | `planner_get_week_progress` | The caller's habit plan week by week, as facts — the only planner operation, read-only |
 
 **Why so few.** The `tools/list` result is injected into the model's context when
 the connection is established and stays resident there; it is not fetched per

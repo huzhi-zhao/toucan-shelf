@@ -10,6 +10,7 @@ import (
 
 // curatedOperationIDs is the MCP tool allowlist, scoped to knowledge-base
 // authoring: navigate the workspace tree, search, read a document, write one.
+// The one exception is a read-only report on the user's habit plan.
 //
 // Keep it small on purpose. The `tools/list` result is injected into the model's
 // context when the connection is established and stays resident there, and these
@@ -36,6 +37,11 @@ var curatedOperationIDs = []string{
 	// The only allowed auth/identity operation: a read-only "whoami" so agents
 	// can resolve the current user.
 	"AuthService_GetCurrentUser",
+	// The only planner operation, and read-only: the caller's habit plan week by
+	// week, as facts (what was planned, what was checked in), never a verdict.
+	// Its schema is a few flat messages, not the Memo component. See
+	// docs/dev/adr/0020-mcp-planner-week-progress-read-only.md.
+	"PlannerService_GetWeekProgress",
 }
 
 type registeredOperation struct {

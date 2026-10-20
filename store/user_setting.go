@@ -483,6 +483,12 @@ func convertUserSettingFromRaw(raw *UserSetting) (*storepb.UserSetting, error) {
 			return nil, errors.Wrap(err, "unmarshal me items user setting")
 		}
 		userSetting.Value = &storepb.UserSetting_MeItems{MeItems: meItemsUserSetting}
+	case storepb.UserSetting_PLANNER:
+		plannerUserSetting := &storepb.PlannerUserSetting{}
+		if err := protojsonUnmarshaler.Unmarshal([]byte(raw.Value), plannerUserSetting); err != nil {
+			return nil, errors.Wrap(err, "unmarshal planner user setting")
+		}
+		userSetting.Value = &storepb.UserSetting_Planner{Planner: plannerUserSetting}
 	default:
 		return nil, nil
 	}
@@ -563,6 +569,12 @@ func convertUserSettingToRaw(userSetting *storepb.UserSetting) (*UserSetting, er
 		value, err := protojson.Marshal(userSetting.GetMeItems())
 		if err != nil {
 			return nil, errors.Wrap(err, "marshal me items user setting")
+		}
+		raw.Value = string(value)
+	case storepb.UserSetting_PLANNER:
+		value, err := protojson.Marshal(userSetting.GetPlanner())
+		if err != nil {
+			return nil, errors.Wrap(err, "marshal planner user setting")
 		}
 		raw.Value = string(value)
 	default:
