@@ -437,10 +437,12 @@ func TestPlannerNoFutureCheckIns(t *testing.T) {
 	requireCode(t, checkIn("2026-10-19"), codes.InvalidArgument)
 }
 
-// useHabits sets the habit version taking effect on date, as if set that very day.
+// useHabits drafts a plan with the habits and enables it on date, as if that day were today.
 func useHabits(t *testing.T, ts *TestService, ctx context.Context, date string, habits ...string) *v1pb.HabitVersion {
 	t.Helper()
-	version, err := ts.Service.SetHabitVersion(ctx, &v1pb.SetHabitVersionRequest{Version: habitVersion(date, habits...), LocalDate: date})
+	_, err := ts.Service.UpdateHabitDraft(ctx, &v1pb.UpdateHabitDraftRequest{Draft: habitVersion("", habits...)})
+	require.NoError(t, err)
+	version, err := ts.Service.EnableHabitDraft(ctx, &v1pb.EnableHabitDraftRequest{LocalDate: date})
 	require.NoError(t, err)
 	return version
 }
@@ -453,7 +455,7 @@ func habitVersion(date string, habits ...string) *v1pb.HabitVersion {
 	return version
 }
 
-func TestHabitVersions(t *testing.T) {
+func TestHabitPlanDrafts(t *testing.T) {
 	ctx := context.Background()
 	ts := NewTestService(t)
 	defer ts.Cleanup()
@@ -470,88 +472,116 @@ func TestHabitVersions(t *testing.T) {
 		require.NoError(t, err)
 		names[i] = habits[i].Name
 	}
-	set := func(version *v1pb.HabitVersion, unlink bool) (*v1pb.HabitVersion, error) {
-		return ts.Service.SetHabitVersion(userCtx, &v1pb.SetHabitVersionRequest{Version: version, LocalDate: today, UnlinkTodos: unlink})
+	save := func(draft *v1pb.HabitVersion) (*v1pb.HabitVersion, error) {
+		return ts.Service.UpdateHabitDraft(userCtx, &v1pb.UpdateHabitDraftRequest{Draft: draft})
+	}
+	enable := func(localDate string, unlink bool) (*v1pb.HabitVersion, error) {
+		return ts.Service.EnableHabitDraft(userCtx, &v1pb.EnableHabitDraftRequest{LocalDate: localDate, UnlinkTodos: unlink})
+	}
+	list := func() *v1pb.ListHabitVersionsResponse {
+		response, err := ts.Service.ListHabitVersions(userCtx, &v1pb.ListHabitVersionsRequest{})
+		require.NoError(t, err)
+		return response
+	}
+	checkIn := func(habit, date string) error {
+		_, err := ts.Service.SetCheckIn(userCtx, &v1pb.SetCheckInRequest{CheckIn: &v1pb.CheckIn{Habit: habit, Date: date}})
+		return err
 	}
 
-	t.Run("a version is checked", func(t *testing.T) {
-		_, err := set(habitVersion("2026-10-17", names[0]), false)
-		requireCode(t, err, codes.InvalidArgument) // takes effect in the past
-		_, err = set(habitVersion("", names[0]), false)
-		requireCode(t, err, codes.InvalidArgument)
-		_, err = set(habitVersion(today, names[:6]...), false)
+	t.Run("a draft is checked", func(t *testing.T) {
+		_, err := save(habitVersion("", names[:6]...))
 		requireCode(t, err, codes.InvalidArgument) // more than five
-		_, err = set(habitVersion(today, names[0], names[0]), false)
+		_, err = save(habitVersion("", names[0], names[0]))
 		requireCode(t, err, codes.InvalidArgument)
-		goal := habitVersion(today, names[0])
+		goal := habitVersion("", names[0])
 		goal.Entries[0].WeeklyGoal = 8
-		_, err = set(goal, false)
+		_, err = save(goal)
+		requireCode(t, err, codes.InvalidArgument)
+		badDoc := habitVersion("", names[0])
+		badDoc.Memos = []string{"not-a-memo"}
+		_, err = save(badDoc)
 		requireCode(t, err, codes.InvalidArgument)
 	})
 
-	// The first eight habits get the eight colors, so habits 0..6 differ.
-	version := habitVersion(today, names[0], names[1])
-	version.Entries[1].WeeklyGoal = 3
-	saved, err := set(version, false)
+	_, err = enable(today, false)
+	requireCode(t, err, codes.NotFound) // nothing drafted yet
+
+	// A draft takes no effect until enabled; then it is in use from that day, documents and all.
+	draft := habitVersion("", names[0], names[1])
+	draft.Entries[1].WeeklyGoal = 3
+	draft.Memos = []string{"memos/plan-a"}
+	saved, err := save(draft)
 	require.NoError(t, err)
 	require.Equal(t, int32(3), saved.Entries[1].WeeklyGoal)
+	require.Empty(t, list().Versions)
+	require.Equal(t, []string{"memos/plan-a"}, list().Draft.Memos)
+	requireCode(t, checkIn(names[0], today), codes.FailedPrecondition)
+	enabled, err := enable(today, false)
+	require.NoError(t, err)
+	require.Equal(t, today, enabled.EffectiveDate)
+	require.Equal(t, []string{"memos/plan-a"}, enabled.Memos)
+	require.Len(t, list().Versions, 1)
+	require.Nil(t, list().Draft, "enabling uses the draft up")
+	require.NoError(t, checkIn(names[0], today))
 
-	// Two habits of the same color cannot share a version, nor can a habit take a color its versions use.
+	// Two habits of the same color cannot share a plan, nor can a habit take a color its plans use.
 	_, err = ts.Service.UpdateHabit(userCtx, &v1pb.UpdateHabitRequest{
 		Habit: &v1pb.Habit{Name: names[1], Color: habits[0].Color}, UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"color"}},
 	})
 	requireCode(t, err, codes.FailedPrecondition)
-	recolored, err := ts.Service.UpdateHabit(userCtx, &v1pb.UpdateHabitRequest{
-		Habit: &v1pb.Habit{Name: names[6], Color: habits[0].Color}, UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"color"}},
-	})
-	require.NoError(t, err)
-	require.Equal(t, habits[0].Color, recolored.Color)
-	_, err = set(habitVersion("2026-10-25", names[0], names[6]), false)
+	recolor := func(habit string, color int32) error {
+		_, err := ts.Service.UpdateHabit(userCtx, &v1pb.UpdateHabitRequest{
+			Habit: &v1pb.Habit{Name: habit, Color: color}, UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"color"}},
+		})
+		return err
+	}
+	require.NoError(t, recolor(names[6], habits[0].Color))
+	_, err = save(habitVersion("", names[0], names[6]))
 	requireCode(t, err, codes.InvalidArgument)
+	// A color changed after the draft was saved is caught when enabling.
+	_, err = save(habitVersion("", names[5], names[6]))
+	require.NoError(t, err)
+	require.NoError(t, recolor(names[5], habits[0].Color))
+	_, err = enable(today, false)
+	requireCode(t, err, codes.FailedPrecondition)
+	require.NoError(t, recolor(names[5], habits[5].Color))
 
-	// A new habit takes a color the latest version does not use.
+	// A new habit takes a color no habit has, or else one the latest plan does not use.
 	fresh, err := ts.Service.CreateHabit(userCtx, &v1pb.CreateHabitRequest{Habit: &v1pb.Habit{Title: "new"}})
 	require.NoError(t, err)
 	require.NotEqual(t, habits[0].Color, fresh.Color)
 	require.NotEqual(t, habits[1].Color, fresh.Color)
 
-	// A habit todo on the 22nd for habit 1, then a version from the 20th without it.
+	// Enabling a plan without habit 1 the next day: its habit todo on the 22nd becomes plain, once agreed to.
 	todo, err := ts.Service.CreateTodo(userCtx, &v1pb.CreateTodoRequest{Todo: &v1pb.Todo{Title: "b", Date: "2026-10-22", Habit: names[1]}, LocalDate: today})
 	require.NoError(t, err)
-	_, err = set(habitVersion("2026-10-20", names[0]), false)
+	_, err = save(habitVersion("", names[0]))
+	require.NoError(t, err)
+	_, err = enable("2026-10-19", false)
 	requireCode(t, err, codes.FailedPrecondition)
-	_, err = set(habitVersion("2026-10-20", names[0]), true)
+	_, err = enable("2026-10-19", true)
 	require.NoError(t, err)
 	unlinked, err := ts.Service.GetTodo(userCtx, &v1pb.GetTodoRequest{Name: todo.Name})
 	require.NoError(t, err)
 	require.Empty(t, unlinked.Habit, "the todo became a plain one")
 
-	// Setting the same date again replaces that version.
-	_, err = set(habitVersion("2026-10-20", names[2], names[0]), false)
+	// Enabling again the same day replaces that day's plan.
+	_, err = save(habitVersion("", names[2], names[0]))
 	require.NoError(t, err)
-	list, err := ts.Service.ListHabitVersions(userCtx, &v1pb.ListHabitVersionsRequest{})
+	_, err = enable("2026-10-19", false)
 	require.NoError(t, err)
-	require.Len(t, list.Versions, 2)
-	require.Equal(t, today, list.Versions[0].EffectiveDate)
-	require.Equal(t, "2026-10-20", list.Versions[1].EffectiveDate)
-	require.Equal(t, names[2], list.Versions[1].Entries[0].Habit, "entries keep their order")
+	versions := list().Versions
+	require.Len(t, versions, 2)
+	require.Equal(t, today, versions[0].EffectiveDate)
+	require.Equal(t, "2026-10-19", versions[1].EffectiveDate)
+	require.Equal(t, names[2], versions[1].Entries[0].Habit, "entries keep their order")
 
-	// A version in effect stays; one to come can go, unless its habit todos rely on it.
-	_, err = ts.Service.DeleteHabitVersion(userCtx, &v1pb.DeleteHabitVersionRequest{EffectiveDate: today, LocalDate: today})
-	requireCode(t, err, codes.FailedPrecondition)
-	_, err = ts.Service.CreateTodo(userCtx, &v1pb.CreateTodoRequest{Todo: &v1pb.Todo{Title: "c", Date: "2026-10-21", Habit: names[2]}, LocalDate: today})
+	// A draft can be thrown away.
+	_, err = save(habitVersion("", names[3]))
 	require.NoError(t, err)
-	_, err = ts.Service.DeleteHabitVersion(userCtx, &v1pb.DeleteHabitVersionRequest{EffectiveDate: "2026-10-20", LocalDate: today})
-	requireCode(t, err, codes.FailedPrecondition)
-	_, err = set(habitVersion("2026-10-20", names[0], names[2]), false)
+	_, err = ts.Service.DeleteHabitDraft(userCtx, &v1pb.DeleteHabitDraftRequest{})
 	require.NoError(t, err)
-	_, err = set(habitVersion("2026-10-23", names[0]), true)
-	require.NoError(t, err)
-	_, err = ts.Service.DeleteHabitVersion(userCtx, &v1pb.DeleteHabitVersionRequest{EffectiveDate: "2026-10-23", LocalDate: today})
-	require.NoError(t, err)
-	list, err = ts.Service.ListHabitVersions(userCtx, &v1pb.ListHabitVersionsRequest{})
-	require.NoError(t, err)
-	require.Len(t, list.Versions, 2)
+	require.Nil(t, list().Draft)
 }
 
 func TestHabitTodos(t *testing.T) {
@@ -658,9 +688,9 @@ func TestHabitTodos(t *testing.T) {
 	// A habit dropped by a later version: the todo, unlinked when the version came, closes without a check-in.
 	walk, err := create("散步", "2026-10-22", run.Name, today)
 	require.NoError(t, err)
-	_, err = ts.Service.SetHabitVersion(userCtx, &v1pb.SetHabitVersionRequest{
-		Version: habitVersion("2026-10-21", read.Name), LocalDate: today, UnlinkTodos: true,
-	})
+	_, err = ts.Service.UpdateHabitDraft(userCtx, &v1pb.UpdateHabitDraftRequest{Draft: habitVersion("", read.Name)})
+	require.NoError(t, err)
+	_, err = ts.Service.EnableHabitDraft(userCtx, &v1pb.EnableHabitDraftRequest{LocalDate: "2026-10-21", UnlinkTodos: true})
 	require.NoError(t, err)
 	done, err = complete(walk, "2026-10-22")
 	require.NoError(t, err)

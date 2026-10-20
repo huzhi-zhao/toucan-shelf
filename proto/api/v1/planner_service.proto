@@ -47,23 +47,34 @@ service PlannerService {
     option (google.api.method_signature) = "habit,update_mask";
   }
 
-  // ListHabitVersions returns the caller's habit versions, earliest first.
+  // ListHabitVersions returns the caller's enabled habit versions, earliest
+  // first, and the draft not yet enabled, if any.
   rpc ListHabitVersions(ListHabitVersionsRequest) returns (ListHabitVersionsResponse) {
     option (google.api.http) = {get: "/api/v1/planner/habitVersions"};
   }
 
-  // SetHabitVersion writes the version for its effective date, which must not be
-  // before the caller's local date; one already there is replaced.
-  rpc SetHabitVersion(SetHabitVersionRequest) returns (HabitVersion) {
+  // UpdateHabitDraft writes the caller's habit plan draft, creating it or
+  // replacing the one there. A draft does not take effect until enabled.
+  rpc UpdateHabitDraft(UpdateHabitDraftRequest) returns (HabitVersion) {
     option (google.api.http) = {
-      post: "/api/v1/planner/habitVersions"
-      body: "*"
+      patch: "/api/v1/planner/habitDraft"
+      body: "draft"
     };
   }
 
-  // DeleteHabitVersion removes a version that has not taken effect yet.
-  rpc DeleteHabitVersion(DeleteHabitVersionRequest) returns (google.protobuf.Empty) {
-    option (google.api.http) = {delete: "/api/v1/planner/habitVersions"};
+  // DeleteHabitDraft discards the caller's habit plan draft.
+  rpc DeleteHabitDraft(DeleteHabitDraftRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {delete: "/api/v1/planner/habitDraft"};
+  }
+
+  // EnableHabitDraft turns the draft into the version in use from the caller's
+  // local date on. A version enabled earlier that day is replaced. Once enabled,
+  // a version never changes.
+  rpc EnableHabitDraft(EnableHabitDraftRequest) returns (HabitVersion) {
+    option (google.api.http) = {
+      post: "/api/v1/planner/habitDraft:enable"
+      body: "*"
+    };
   }
 
   // ListPlannerEntries returns everything dated within an inclusive range:
@@ -211,14 +222,19 @@ message Habit {
   int32 color = 7 [(google.api.field_behavior) = OPTIONAL];
 }
 
-// HabitVersion is the set of habits in use from effective_date on, until the
-// next version: the habits that can be checked in, in calendar order.
+// HabitVersion is a habit plan. Enabled, it is the set of habits in use from
+// effective_date on, until the next version: the habits that can be checked in,
+// in calendar order. The draft has the same shape and no date.
 message HabitVersion {
-  // YYYY-MM-DD, or empty for "from the very beginning".
+  // YYYY-MM-DD, the day it was enabled, or empty for "from the very beginning"
+  // (and for the draft).
   string effective_date = 1;
 
   // At most five, each habit once, no two of the same colour.
   repeated HabitVersionEntry entries = 2;
+
+  // The linked documents, in display order. Format: memos/{memo}
+  repeated string memos = 5 [(google.api.field_behavior) = OPTIONAL];
 
   google.protobuf.Timestamp create_time = 3 [(google.api.field_behavior) = OUTPUT_ONLY];
 
@@ -357,25 +373,25 @@ message ListHabitVersionsRequest {}
 
 message ListHabitVersionsResponse {
   repeated HabitVersion versions = 1;
+
+  // The plan not yet enabled; unset when there is none.
+  HabitVersion draft = 2;
 }
 
-message SetHabitVersionRequest {
-  HabitVersion version = 1 [(google.api.field_behavior) = REQUIRED];
-
-  // The caller's local date, YYYY-MM-DD.
-  string local_date = 2 [(google.api.field_behavior) = REQUIRED];
-
-  // Must be set when the version drops a habit that still has open habit todos
-  // on or after its effective date: those become plain todos.
-  bool unlink_todos = 3 [(google.api.field_behavior) = OPTIONAL];
+message UpdateHabitDraftRequest {
+  // effective_date is ignored: a draft takes the day it is enabled.
+  HabitVersion draft = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
-message DeleteHabitVersionRequest {
-  // YYYY-MM-DD; must be after local_date.
-  string effective_date = 1 [(google.api.field_behavior) = REQUIRED];
+message DeleteHabitDraftRequest {}
 
-  // The caller's local date, YYYY-MM-DD.
-  string local_date = 2 [(google.api.field_behavior) = REQUIRED];
+message EnableHabitDraftRequest {
+  // The caller's local date, YYYY-MM-DD: the version takes effect on it.
+  string local_date = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Must be set when the draft drops a habit that still has open habit todos
+  // from local_date on: those become plain todos.
+  bool unlink_todos = 2 [(google.api.field_behavior) = OPTIONAL];
 }
 
 message ListHabitsResponse {

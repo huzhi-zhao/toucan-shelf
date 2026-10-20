@@ -121,34 +121,53 @@ func (d *DB) UpdatePlannerHabit(ctx context.Context, update *store.UpdatePlanner
 
 // Habit versions.
 
-const plannerHabitVersionColumns = "`id`, `creator_id`, `effective_date`, `entries`, `created_ts`, `updated_ts`"
+const plannerHabitVersionColumns = "`id`, `creator_id`, `effective_date`, `entries`, `memo_names`, `created_ts`, `updated_ts`"
 
-func scanPlannerHabitVersion(row interface{ Scan(...any) error }) (*store.PlannerHabitVersion, error) {
-	v := &store.PlannerHabitVersion{}
-	var entries string
-	if err := row.Scan(&v.ID, &v.CreatorID, &v.EffectiveDate, &entries, &v.CreatedTs, &v.UpdatedTs); err != nil {
-		return nil, err
+// decodePlanEntries reads a plan's `entries` and `memo_names` JSON.
+func decodePlanEntries(entries, memoNames string) ([]store.PlannerHabitVersionEntry, []string, error) {
+	decodedEntries := []store.PlannerHabitVersionEntry{}
+	if err := json.Unmarshal([]byte(entries), &decodedEntries); err != nil {
+		return nil, nil, errors.Wrap(err, "failed to read the habit plan's entries")
 	}
-	v.Entries = []store.PlannerHabitVersionEntry{}
-	if err := json.Unmarshal([]byte(entries), &v.Entries); err != nil {
-		return nil, errors.Wrap(err, "failed to read the habit version's entries")
+	decodedMemos := []string{}
+	if err := json.Unmarshal([]byte(memoNames), &decodedMemos); err != nil {
+		return nil, nil, errors.Wrap(err, "failed to read the habit plan's documents")
 	}
-	return v, nil
+	return decodedEntries, decodedMemos, nil
 }
 
-func upsertPlannerHabitVersion(ctx context.Context, q plannerQuerier, version *store.PlannerHabitVersion) (*store.PlannerHabitVersion, error) {
-	entries := version.Entries
+func encodePlanEntries(entries []store.PlannerHabitVersionEntry) (string, error) {
 	if entries == nil {
 		entries = []store.PlannerHabitVersionEntry{}
 	}
 	encoded, err := json.Marshal(entries)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to encode the habit version's entries")
+		return "", errors.Wrap(err, "failed to encode the habit plan's entries")
 	}
-	stmt := "INSERT INTO `planner_habit_version` (`creator_id`, `effective_date`, `entries`) VALUES (?, ?, ?) " +
-		"ON CONFLICT(`creator_id`, `effective_date`) DO UPDATE SET `entries` = excluded.`entries`, `updated_ts` = strftime('%s', 'now') " +
+	return string(encoded), nil
+}
+
+func scanPlannerHabitVersion(row interface{ Scan(...any) error }) (*store.PlannerHabitVersion, error) {
+	v := &store.PlannerHabitVersion{}
+	var entries, memoNames string
+	if err := row.Scan(&v.ID, &v.CreatorID, &v.EffectiveDate, &entries, &memoNames, &v.CreatedTs, &v.UpdatedTs); err != nil {
+		return nil, err
+	}
+	var err error
+	v.Entries, v.MemoNames, err = decodePlanEntries(entries, memoNames)
+	return v, err
+}
+
+func upsertPlannerHabitVersion(ctx context.Context, q plannerQuerier, version *store.PlannerHabitVersion) (*store.PlannerHabitVersion, error) {
+	entries, err := encodePlanEntries(version.Entries)
+	if err != nil {
+		return nil, err
+	}
+	stmt := "INSERT INTO `planner_habit_version` (`creator_id`, `effective_date`, `entries`, `memo_names`) VALUES (?, ?, ?, ?) " +
+		"ON CONFLICT(`creator_id`, `effective_date`) DO UPDATE SET `entries` = excluded.`entries`, " +
+		"`memo_names` = excluded.`memo_names`, `updated_ts` = strftime('%s', 'now') " +
 		"RETURNING " + plannerHabitVersionColumns
-	return scanPlannerHabitVersion(q.QueryRowContext(ctx, stmt, version.CreatorID, version.EffectiveDate, string(encoded)))
+	return scanPlannerHabitVersion(q.QueryRowContext(ctx, stmt, version.CreatorID, version.EffectiveDate, entries, encodeMemoNames(version.MemoNames)))
 }
 
 func (d *DB) ListPlannerHabitVersions(ctx context.Context, creatorID int32) ([]*store.PlannerHabitVersion, error) {
@@ -172,16 +191,23 @@ func (d *DB) ListPlannerHabitVersions(ctx context.Context, creatorID int32) ([]*
 	return list, rows.Err()
 }
 
+func unlinkPlannerTodos(ctx context.Context, tx *sql.Tx, creatorID int32, todoIDs []int32) error {
+	for _, id := range todoIDs {
+		if _, err := tx.ExecContext(ctx,
+			"UPDATE `planner_todo` SET `habit_id` = 0, `updated_ts` = strftime('%s', 'now') WHERE `id` = ? AND `creator_id` = ?",
+			id, creatorID,
+		); err != nil {
+			return errors.Wrap(err, "failed to unlink todo")
+		}
+	}
+	return nil
+}
+
 func (d *DB) UpsertPlannerHabitVersion(ctx context.Context, version *store.PlannerHabitVersion, unlinkTodoIDs []int32) (*store.PlannerHabitVersion, error) {
 	var written *store.PlannerHabitVersion
 	err := d.withPlannerTx(ctx, func(tx *sql.Tx) error {
-		for _, id := range unlinkTodoIDs {
-			if _, err := tx.ExecContext(ctx,
-				"UPDATE `planner_todo` SET `habit_id` = 0, `updated_ts` = strftime('%s', 'now') WHERE `id` = ? AND `creator_id` = ?",
-				id, version.CreatorID,
-			); err != nil {
-				return errors.Wrap(err, "failed to unlink todo")
-			}
+		if err := unlinkPlannerTodos(ctx, tx, version.CreatorID, unlinkTodoIDs); err != nil {
+			return err
 		}
 		var err error
 		written, err = upsertPlannerHabitVersion(ctx, tx, version)
@@ -190,9 +216,78 @@ func (d *DB) UpsertPlannerHabitVersion(ctx context.Context, version *store.Plann
 	return written, err
 }
 
-func (d *DB) DeletePlannerHabitVersion(ctx context.Context, creatorID int32, effectiveDate string) error {
-	_, err := d.db.ExecContext(ctx, "DELETE FROM `planner_habit_version` WHERE `creator_id` = ? AND `effective_date` = ?", creatorID, effectiveDate)
+// Habit plan drafts.
+
+const plannerHabitDraftColumns = "`creator_id`, `entries`, `memo_names`, `created_ts`, `updated_ts`"
+
+func scanPlannerHabitDraft(row interface{ Scan(...any) error }) (*store.PlannerHabitDraft, error) {
+	draft := &store.PlannerHabitDraft{}
+	var entries, memoNames string
+	if err := row.Scan(&draft.CreatorID, &entries, &memoNames, &draft.CreatedTs, &draft.UpdatedTs); err != nil {
+		return nil, err
+	}
+	var err error
+	draft.Entries, draft.MemoNames, err = decodePlanEntries(entries, memoNames)
+	return draft, err
+}
+
+func getPlannerHabitDraft(ctx context.Context, q plannerQuerier, creatorID int32) (*store.PlannerHabitDraft, error) {
+	draft, err := scanPlannerHabitDraft(q.QueryRowContext(ctx,
+		"SELECT "+plannerHabitDraftColumns+" FROM `planner_habit_draft` WHERE `creator_id` = ?", creatorID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	return draft, err
+}
+
+func (d *DB) GetPlannerHabitDraft(ctx context.Context, creatorID int32) (*store.PlannerHabitDraft, error) {
+	return getPlannerHabitDraft(ctx, d.db, creatorID)
+}
+
+func (d *DB) UpsertPlannerHabitDraft(ctx context.Context, draft *store.PlannerHabitDraft) (*store.PlannerHabitDraft, error) {
+	entries, err := encodePlanEntries(draft.Entries)
+	if err != nil {
+		return nil, err
+	}
+	stmt := "INSERT INTO `planner_habit_draft` (`creator_id`, `entries`, `memo_names`) VALUES (?, ?, ?) " +
+		"ON CONFLICT(`creator_id`) DO UPDATE SET `entries` = excluded.`entries`, `memo_names` = excluded.`memo_names`, " +
+		"`updated_ts` = strftime('%s', 'now') RETURNING " + plannerHabitDraftColumns
+	return scanPlannerHabitDraft(d.db.QueryRowContext(ctx, stmt, draft.CreatorID, entries, encodeMemoNames(draft.MemoNames)))
+}
+
+func (d *DB) DeletePlannerHabitDraft(ctx context.Context, creatorID int32) error {
+	_, err := d.db.ExecContext(ctx, "DELETE FROM `planner_habit_draft` WHERE `creator_id` = ?", creatorID)
 	return err
+}
+
+func (d *DB) EnablePlannerHabitDraft(ctx context.Context, creatorID int32, effectiveDate string, unlinkTodoIDs []int32) (*store.PlannerHabitVersion, error) {
+	var enabled *store.PlannerHabitVersion
+	err := d.withPlannerTx(ctx, func(tx *sql.Tx) error {
+		draft, err := getPlannerHabitDraft(ctx, tx, creatorID)
+		if err != nil {
+			return err
+		}
+		if draft == nil {
+			return store.ErrPlannerNoDraft
+		}
+		if _, err := tx.ExecContext(ctx,
+			"DELETE FROM `planner_habit_version` WHERE `creator_id` = ? AND `effective_date` > ?", creatorID, effectiveDate,
+		); err != nil {
+			return errors.Wrap(err, "failed to drop later habit versions")
+		}
+		if err := unlinkPlannerTodos(ctx, tx, creatorID, unlinkTodoIDs); err != nil {
+			return err
+		}
+		enabled, err = upsertPlannerHabitVersion(ctx, tx, &store.PlannerHabitVersion{
+			CreatorID: creatorID, EffectiveDate: effectiveDate, Entries: draft.Entries, MemoNames: draft.MemoNames,
+		})
+		if err != nil {
+			return err
+		}
+		_, err = tx.ExecContext(ctx, "DELETE FROM `planner_habit_draft` WHERE `creator_id` = ?", creatorID)
+		return err
+	})
+	return enabled, err
 }
 
 // Check-ins.
@@ -603,7 +698,7 @@ func (d *DB) ImportPlanner(ctx context.Context, data *store.PlannerImport) error
 // deletePlannerDataTx removes all of a user's planner data. It is personal, so
 // unlike documents it is never transferred to another account.
 func deletePlannerDataTx(ctx context.Context, tx *sql.Tx, userID int32) error {
-	for _, table := range []string{"planner_check_in", "planner_habit", "planner_habit_version", "planner_todo", "planner_note"} {
+	for _, table := range []string{"planner_check_in", "planner_habit", "planner_habit_version", "planner_habit_draft", "planner_todo", "planner_note"} {
 		if _, err := tx.ExecContext(ctx, "DELETE FROM `"+table+"` WHERE `creator_id` = ?", userID); err != nil {
 			return errors.Wrapf(err, "failed to delete %s", table)
 		}

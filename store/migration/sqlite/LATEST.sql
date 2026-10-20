@@ -440,10 +440,12 @@ CREATE TABLE planner_habit (
 
 CREATE INDEX idx_planner_habit_creator_id ON planner_habit(creator_id);
 
--- planner_habit_version is the set of habits in use from effective_date on, until
--- the next version. effective_date is 'YYYY-MM-DD', or '' for "from the very
--- beginning". entries is a JSON array of {"habit_id", "weekly_goal"} in calendar
--- order, at most five; weekly_goal 0 means none.
+-- planner_habit_version is an enabled habit plan: the set of habits in use from
+-- effective_date on, until the next version. effective_date is 'YYYY-MM-DD' (the
+-- day it was enabled), or '' for "from the very beginning". entries is a JSON
+-- array of {"habit_id", "weekly_goal"} in calendar order, at most five;
+-- weekly_goal 0 means none. memo_names is a JSON array of the linked documents'
+-- 'memos/{uid}'. An enabled version never changes.
 CREATE TABLE planner_habit_version (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,
   creator_id     INTEGER NOT NULL,
@@ -451,7 +453,18 @@ CREATE TABLE planner_habit_version (
   entries        TEXT    NOT NULL DEFAULT '[]',
   created_ts     BIGINT  NOT NULL DEFAULT (strftime('%s', 'now')),
   updated_ts     BIGINT  NOT NULL DEFAULT (strftime('%s', 'now')),
+  memo_names     TEXT    NOT NULL DEFAULT '[]',
   UNIQUE(creator_id, effective_date)
+);
+
+-- planner_habit_draft is a user's one habit plan not yet enabled, laid out like
+-- planner_habit_version without a date.
+CREATE TABLE planner_habit_draft (
+  creator_id INTEGER PRIMARY KEY,
+  entries    TEXT    NOT NULL DEFAULT '[]',
+  memo_names TEXT    NOT NULL DEFAULT '[]',
+  created_ts BIGINT  NOT NULL DEFAULT (strftime('%s', 'now')),
+  updated_ts BIGINT  NOT NULL DEFAULT (strftime('%s', 'now'))
 );
 
 -- planner_check_in records that a habit was kept on a day. One per habit per day.

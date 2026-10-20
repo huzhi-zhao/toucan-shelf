@@ -29,6 +29,9 @@ const PlannerMaxHabitsPerVersion = 5
 // planner data: an import is a one-time backfill and must not run twice.
 var ErrPlannerNotEmpty = errors.New("planner already has data")
 
+// ErrPlannerNoDraft is returned by EnablePlannerHabitDraft when the user has no draft to enable.
+var ErrPlannerNoDraft = errors.New("no habit plan draft")
+
 // ErrPlannerCheckInTaken is returned by UpdatePlannerTodo when the check-in it
 // should add already exists: the habit was checked in that day.
 var ErrPlannerCheckInTaken = errors.New("habit already checked in on that day")
@@ -50,14 +53,26 @@ type PlannerHabit struct {
 	UpdatedTs int64
 }
 
-// PlannerHabitVersion is the set of habits in use from EffectiveDate on, until the next version.
+// PlannerHabitVersion is an enabled habit plan: the set of habits in use from EffectiveDate on, until the
+// next version. It never changes once enabled.
 type PlannerHabitVersion struct {
 	ID        int32
 	CreatorID int32
-	// EffectiveDate is "YYYY-MM-DD", or "" for the very beginning.
+	// EffectiveDate is "YYYY-MM-DD", the day it was enabled, or "" for the very beginning.
 	EffectiveDate string
 	// Entries are the habits in calendar order, at most five.
+	Entries []PlannerHabitVersionEntry
+	// MemoNames are the linked documents, "memos/{uid}", in display order.
+	MemoNames []string
+	CreatedTs int64
+	UpdatedTs int64
+}
+
+// PlannerHabitDraft is a user's one habit plan not yet enabled: a version without a date, free to change.
+type PlannerHabitDraft struct {
+	CreatorID int32
 	Entries   []PlannerHabitVersionEntry
+	MemoNames []string
 	CreatedTs int64
 	UpdatedTs int64
 }
@@ -261,9 +276,27 @@ func (s *Store) UpsertPlannerHabitVersion(ctx context.Context, version *PlannerH
 	return s.driver.UpsertPlannerHabitVersion(ctx, version, unlinkTodoIDs)
 }
 
-// DeletePlannerHabitVersion removes a user's version for an effective date, if any.
-func (s *Store) DeletePlannerHabitVersion(ctx context.Context, creatorID int32, effectiveDate string) error {
-	return s.driver.DeletePlannerHabitVersion(ctx, creatorID, effectiveDate)
+// GetPlannerHabitDraft returns a user's habit plan draft, or nil when there is none.
+func (s *Store) GetPlannerHabitDraft(ctx context.Context, creatorID int32) (*PlannerHabitDraft, error) {
+	return s.driver.GetPlannerHabitDraft(ctx, creatorID)
+}
+
+// UpsertPlannerHabitDraft writes a user's habit plan draft, replacing the one there.
+func (s *Store) UpsertPlannerHabitDraft(ctx context.Context, draft *PlannerHabitDraft) (*PlannerHabitDraft, error) {
+	return s.driver.UpsertPlannerHabitDraft(ctx, draft)
+}
+
+// DeletePlannerHabitDraft removes a user's habit plan draft, if any.
+func (s *Store) DeletePlannerHabitDraft(ctx context.Context, creatorID int32) error {
+	return s.driver.DeletePlannerHabitDraft(ctx, creatorID)
+}
+
+// EnablePlannerHabitDraft turns the user's draft into the version effective on effectiveDate, in one
+// transaction: a version already on that date is replaced, any later one (set ahead of time before plans
+// were drafted) is dropped, the given todos are unlinked from their habits, and the draft is gone. It returns
+// ErrPlannerNoDraft when there is no draft.
+func (s *Store) EnablePlannerHabitDraft(ctx context.Context, creatorID int32, effectiveDate string, unlinkTodoIDs []int32) (*PlannerHabitVersion, error) {
+	return s.driver.EnablePlannerHabitDraft(ctx, creatorID, effectiveDate, unlinkTodoIDs)
 }
 
 // UpsertPlannerCheckIn records a check-in, replacing the note of an existing one

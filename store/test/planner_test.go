@@ -341,8 +341,32 @@ func TestPlannerHabitVersions(t *testing.T) {
 	require.Equal(t, "", versions[0].EffectiveDate, "the beginning sorts first")
 	require.Equal(t, []store.PlannerHabitVersionEntry{{HabitID: walk.ID, WeeklyGoal: 3}, {HabitID: pray.ID}}, versions[0].Entries)
 
-	require.NoError(t, ts.DeletePlannerHabitVersion(ctx, user.ID, "2026-10-27"))
+
+	// A draft is enabled on a day: it replaces that day's version, drops later ones, and is gone.
+	_, err = ts.EnablePlannerHabitDraft(ctx, user.ID, "2026-10-20", nil)
+	require.ErrorIs(t, err, store.ErrPlannerNoDraft)
+	none, err := ts.GetPlannerHabitDraft(ctx, user.ID)
+	require.NoError(t, err)
+	require.Nil(t, none)
+	_, err = ts.UpsertPlannerHabitDraft(ctx, &store.PlannerHabitDraft{CreatorID: user.ID, Entries: []store.PlannerHabitVersionEntry{{HabitID: pray.ID}}})
+	require.NoError(t, err)
+	draft, err := ts.UpsertPlannerHabitDraft(ctx, &store.PlannerHabitDraft{
+		CreatorID: user.ID, Entries: []store.PlannerHabitVersionEntry{{HabitID: walk.ID, WeeklyGoal: 2}}, MemoNames: []string{"memos/plan"},
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"memos/plan"}, draft.MemoNames)
+	enabled, err := ts.EnablePlannerHabitDraft(ctx, user.ID, "2026-10-20", nil)
+	require.NoError(t, err)
+	require.Equal(t, "2026-10-20", enabled.EffectiveDate)
+	require.Equal(t, []string{"memos/plan"}, enabled.MemoNames)
 	versions, err = ts.ListPlannerHabitVersions(ctx, user.ID)
 	require.NoError(t, err)
-	require.Len(t, versions, 1)
+	require.Len(t, versions, 2, "the version set for the 27th is dropped")
+	require.Equal(t, "2026-10-20", versions[1].EffectiveDate)
+	require.Empty(t, versions[0].MemoNames)
+	gone, err := ts.GetPlannerHabitDraft(ctx, user.ID)
+	require.NoError(t, err)
+	require.Nil(t, gone)
+
+	require.NoError(t, ts.DeletePlannerHabitDraft(ctx, user.ID))
 }
