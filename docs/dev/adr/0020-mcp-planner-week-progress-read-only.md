@@ -27,11 +27,14 @@ app 上的"2/3"对不上。所以由服务端算，做成一个接口 `PlannerSe
 - 计划是个人数据，由人在手机上写。agent 替人打卡就是在造假，收益为零。
 - 这个工具的用途是"汇报事实"，不是"执行计划"。只读也让它不需要 `mcp:write` scope，只读连接就能用。
 - 接口本身不判及格、达标。规则写在知识库的习惯计划文档里，随计划版本变；接口只把计划关联的文档
-  （名字和标题）带出来，判断交给调用方。工具描述里明说"facts only"，免得模型把计数当成评分。
+  （名字和标题）和这周的备忘带出来，判断交给调用方。工具描述里明说"facts only"，免得模型把计数当成评分。
 
-上下文成本：`planner_get_week_progress` 的完整定义（描述 + input schema + output schema）约 **5.1 KB**，
+上下文成本：`planner_get_week_progress` 的完整定义（描述 + input schema + output schema）约 **5.3 KB**，
 input schema 只有 0.3 KB（`date`、`weeks` 两个参数）。加入前 9 个工具合计约 115 KB（大头是
-`memo_create_memo` / `memo_update_memo`，各约 33 KB），加入后约 120 KB，增量约 4%。
+`memo_create_memo` / `memo_update_memo`，各约 33 KB），加入后约 121 KB，增量约 5%。
+（最初是 5.1 KB；2026-10-20 每周加了备忘 `notes`，output schema 多一个两字段的消息，+0.35 KB。
+加它是因为计划规定记了"病""旅行 到 …"时 bot 要暂停提醒，而 bot 只调这一个接口。备忘原样返回，
+接口不解析，仍然只给事实。）
 `TestPlannerIsReadOnlyOverMCP` 把这个工具的定义钉在 8 KB 以内，并断言它是 GET、只读、计划只有这一个操作进 MCP。
 
 `serverInstructions` 不加内容：工具名和描述已经说清用途，按 0010 的原则，常驻文字只放模型推不出来的东西。

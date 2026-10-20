@@ -134,7 +134,7 @@ func (x WeekHabitTodo_State) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use WeekHabitTodo_State.Descriptor instead.
 func (WeekHabitTodo_State) EnumDescriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{45, 0}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{46, 0}
 }
 
 type Habit struct {
@@ -2441,7 +2441,9 @@ type WeekProgress struct {
 	// the week.
 	Habits []*WeekHabitProgress `protobuf:"bytes,6,rep,name=habits,proto3" json:"habits,omitempty"`
 	// The week's habit todos, by date.
-	HabitTodos    []*WeekHabitTodo `protobuf:"bytes,7,rep,name=habit_todos,json=habitTodos,proto3" json:"habit_todos,omitempty"`
+	HabitTodos []*WeekHabitTodo `protobuf:"bytes,7,rep,name=habit_todos,json=habitTodos,proto3" json:"habit_todos,omitempty"`
+	// The week's notes, by date.
+	Notes         []*WeekNote `protobuf:"bytes,8,rep,name=notes,proto3" json:"notes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2521,6 +2523,13 @@ func (x *WeekProgress) GetHabits() []*WeekHabitProgress {
 func (x *WeekProgress) GetHabitTodos() []*WeekHabitTodo {
 	if x != nil {
 		return x.HabitTodos
+	}
+	return nil
+}
+
+func (x *WeekProgress) GetNotes() []*WeekNote {
+	if x != nil {
+		return x.Notes
 	}
 	return nil
 }
@@ -2811,6 +2820,60 @@ func (x *WeekCheckIn) GetTodo() string {
 	return ""
 }
 
+// WeekNote is a note written on a day of the week, e.g. that one was ill or away.
+type WeekNote struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Format: YYYY-MM-DD.
+	Date          string `protobuf:"bytes,1,opt,name=date,proto3" json:"date,omitempty"`
+	Content       string `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WeekNote) Reset() {
+	*x = WeekNote{}
+	mi := &file_api_v1_planner_service_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WeekNote) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WeekNote) ProtoMessage() {}
+
+func (x *WeekNote) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_planner_service_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WeekNote.ProtoReflect.Descriptor instead.
+func (*WeekNote) Descriptor() ([]byte, []int) {
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *WeekNote) GetDate() string {
+	if x != nil {
+		return x.Date
+	}
+	return ""
+}
+
+func (x *WeekNote) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
 type WeekHabitTodo struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Format: planner/todos/{todo}
@@ -2828,7 +2891,7 @@ type WeekHabitTodo struct {
 
 func (x *WeekHabitTodo) Reset() {
 	*x = WeekHabitTodo{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[45]
+	mi := &file_api_v1_planner_service_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2840,7 +2903,7 @@ func (x *WeekHabitTodo) String() string {
 func (*WeekHabitTodo) ProtoMessage() {}
 
 func (x *WeekHabitTodo) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[45]
+	mi := &file_api_v1_planner_service_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2853,7 +2916,7 @@ func (x *WeekHabitTodo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WeekHabitTodo.ProtoReflect.Descriptor instead.
 func (*WeekHabitTodo) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{45}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *WeekHabitTodo) GetName() string {
@@ -3062,7 +3125,7 @@ const file_api_v1_planner_service_proto_rawDesc = "" +
 	"\x05weeks\x18\x02 \x01(\x05B\x03\xe0A\x01R\x05weeks\"q\n" +
 	"\x17GetWeekProgressResponse\x12$\n" +
 	"\x0eweek_start_day\x18\x01 \x01(\x05R\fweekStartDay\x120\n" +
-	"\x05weeks\x18\x02 \x03(\v2\x1a.memos.api.v1.WeekProgressR\x05weeks\"\xad\x02\n" +
+	"\x05weeks\x18\x02 \x03(\v2\x1a.memos.api.v1.WeekProgressR\x05weeks\"\xdb\x02\n" +
 	"\fWeekProgress\x12\x1d\n" +
 	"\n" +
 	"week_start\x18\x01 \x01(\tR\tweekStart\x12\x19\n" +
@@ -3072,7 +3135,8 @@ const file_api_v1_planner_service_proto_rawDesc = "" +
 	"\x04plan\x18\x05 \x01(\v2\x16.memos.api.v1.WeekPlanR\x04plan\x127\n" +
 	"\x06habits\x18\x06 \x03(\v2\x1f.memos.api.v1.WeekHabitProgressR\x06habits\x12<\n" +
 	"\vhabit_todos\x18\a \x03(\v2\x1b.memos.api.v1.WeekHabitTodoR\n" +
-	"habitTodos\"\x8b\x01\n" +
+	"habitTodos\x12,\n" +
+	"\x05notes\x18\b \x03(\v2\x16.memos.api.v1.WeekNoteR\x05notes\"\x8b\x01\n" +
 	"\bWeekPlan\x12%\n" +
 	"\x0eeffective_date\x18\x01 \x01(\tR\reffectiveDate\x12\x1a\n" +
 	"\breplaced\x18\x02 \x03(\tR\breplaced\x12<\n" +
@@ -3093,7 +3157,10 @@ const file_api_v1_planner_service_proto_rawDesc = "" +
 	"\vWeekCheckIn\x12\x12\n" +
 	"\x04date\x18\x01 \x01(\tR\x04date\x12\x12\n" +
 	"\x04note\x18\x02 \x01(\tR\x04note\x12\x12\n" +
-	"\x04todo\x18\x03 \x01(\tR\x04todo\"\xed\x01\n" +
+	"\x04todo\x18\x03 \x01(\tR\x04todo\"8\n" +
+	"\bWeekNote\x12\x12\n" +
+	"\x04date\x18\x01 \x01(\tR\x04date\x12\x18\n" +
+	"\acontent\x18\x02 \x01(\tR\acontent\"\xed\x01\n" +
 	"\rWeekHabitTodo\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04date\x18\x02 \x01(\tR\x04date\x12\x14\n" +
@@ -3153,7 +3220,7 @@ func file_api_v1_planner_service_proto_rawDescGZIP() []byte {
 }
 
 var file_api_v1_planner_service_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_api_v1_planner_service_proto_msgTypes = make([]protoimpl.MessageInfo, 46)
+var file_api_v1_planner_service_proto_msgTypes = make([]protoimpl.MessageInfo, 47)
 var file_api_v1_planner_service_proto_goTypes = []any{
 	(Todo_Status)(0),                     // 0: memos.api.v1.Todo.Status
 	(WeekHabitTodo_State)(0),             // 1: memos.api.v1.WeekHabitTodo.State
@@ -3202,30 +3269,31 @@ var file_api_v1_planner_service_proto_goTypes = []any{
 	(*WeekPlanDocument)(nil),             // 44: memos.api.v1.WeekPlanDocument
 	(*WeekHabitProgress)(nil),            // 45: memos.api.v1.WeekHabitProgress
 	(*WeekCheckIn)(nil),                  // 46: memos.api.v1.WeekCheckIn
-	(*WeekHabitTodo)(nil),                // 47: memos.api.v1.WeekHabitTodo
-	(*timestamppb.Timestamp)(nil),        // 48: google.protobuf.Timestamp
-	(*fieldmaskpb.FieldMask)(nil),        // 49: google.protobuf.FieldMask
-	(*emptypb.Empty)(nil),                // 50: google.protobuf.Empty
+	(*WeekNote)(nil),                     // 47: memos.api.v1.WeekNote
+	(*WeekHabitTodo)(nil),                // 48: memos.api.v1.WeekHabitTodo
+	(*timestamppb.Timestamp)(nil),        // 49: google.protobuf.Timestamp
+	(*fieldmaskpb.FieldMask)(nil),        // 50: google.protobuf.FieldMask
+	(*emptypb.Empty)(nil),                // 51: google.protobuf.Empty
 }
 var file_api_v1_planner_service_proto_depIdxs = []int32{
-	48, // 0: memos.api.v1.Habit.create_time:type_name -> google.protobuf.Timestamp
-	48, // 1: memos.api.v1.Habit.update_time:type_name -> google.protobuf.Timestamp
+	49, // 0: memos.api.v1.Habit.create_time:type_name -> google.protobuf.Timestamp
+	49, // 1: memos.api.v1.Habit.update_time:type_name -> google.protobuf.Timestamp
 	4,  // 2: memos.api.v1.HabitVersion.entries:type_name -> memos.api.v1.HabitVersionEntry
-	48, // 3: memos.api.v1.HabitVersion.create_time:type_name -> google.protobuf.Timestamp
-	48, // 4: memos.api.v1.HabitVersion.update_time:type_name -> google.protobuf.Timestamp
+	49, // 3: memos.api.v1.HabitVersion.create_time:type_name -> google.protobuf.Timestamp
+	49, // 4: memos.api.v1.HabitVersion.update_time:type_name -> google.protobuf.Timestamp
 	0,  // 5: memos.api.v1.Todo.status:type_name -> memos.api.v1.Todo.Status
-	48, // 6: memos.api.v1.Todo.close_time:type_name -> google.protobuf.Timestamp
-	48, // 7: memos.api.v1.Todo.create_time:type_name -> google.protobuf.Timestamp
-	48, // 8: memos.api.v1.Todo.update_time:type_name -> google.protobuf.Timestamp
-	48, // 9: memos.api.v1.PlannerNote.create_time:type_name -> google.protobuf.Timestamp
-	48, // 10: memos.api.v1.PlannerNote.update_time:type_name -> google.protobuf.Timestamp
+	49, // 6: memos.api.v1.Todo.close_time:type_name -> google.protobuf.Timestamp
+	49, // 7: memos.api.v1.Todo.create_time:type_name -> google.protobuf.Timestamp
+	49, // 8: memos.api.v1.Todo.update_time:type_name -> google.protobuf.Timestamp
+	49, // 9: memos.api.v1.PlannerNote.create_time:type_name -> google.protobuf.Timestamp
+	49, // 10: memos.api.v1.PlannerNote.update_time:type_name -> google.protobuf.Timestamp
 	3,  // 11: memos.api.v1.ListHabitVersionsResponse.versions:type_name -> memos.api.v1.HabitVersion
 	3,  // 12: memos.api.v1.ListHabitVersionsResponse.draft:type_name -> memos.api.v1.HabitVersion
 	3,  // 13: memos.api.v1.UpdateHabitDraftRequest.draft:type_name -> memos.api.v1.HabitVersion
 	2,  // 14: memos.api.v1.ListHabitsResponse.habits:type_name -> memos.api.v1.Habit
 	2,  // 15: memos.api.v1.CreateHabitRequest.habit:type_name -> memos.api.v1.Habit
 	2,  // 16: memos.api.v1.UpdateHabitRequest.habit:type_name -> memos.api.v1.Habit
-	49, // 17: memos.api.v1.UpdateHabitRequest.update_mask:type_name -> google.protobuf.FieldMask
+	50, // 17: memos.api.v1.UpdateHabitRequest.update_mask:type_name -> google.protobuf.FieldMask
 	5,  // 18: memos.api.v1.ListPlannerEntriesResponse.check_ins:type_name -> memos.api.v1.CheckIn
 	6,  // 19: memos.api.v1.ListPlannerEntriesResponse.todos:type_name -> memos.api.v1.Todo
 	7,  // 20: memos.api.v1.ListPlannerEntriesResponse.notes:type_name -> memos.api.v1.PlannerNote
@@ -3233,10 +3301,10 @@ var file_api_v1_planner_service_proto_depIdxs = []int32{
 	5,  // 22: memos.api.v1.SetCheckInRequest.check_in:type_name -> memos.api.v1.CheckIn
 	6,  // 23: memos.api.v1.CreateTodoRequest.todo:type_name -> memos.api.v1.Todo
 	6,  // 24: memos.api.v1.UpdateTodoRequest.todo:type_name -> memos.api.v1.Todo
-	49, // 25: memos.api.v1.UpdateTodoRequest.update_mask:type_name -> google.protobuf.FieldMask
+	50, // 25: memos.api.v1.UpdateTodoRequest.update_mask:type_name -> google.protobuf.FieldMask
 	7,  // 26: memos.api.v1.CreatePlannerNoteRequest.note:type_name -> memos.api.v1.PlannerNote
 	7,  // 27: memos.api.v1.UpdatePlannerNoteRequest.note:type_name -> memos.api.v1.PlannerNote
-	49, // 28: memos.api.v1.UpdatePlannerNoteRequest.update_mask:type_name -> google.protobuf.FieldMask
+	50, // 28: memos.api.v1.UpdatePlannerNoteRequest.update_mask:type_name -> google.protobuf.FieldMask
 	2,  // 29: memos.api.v1.ImportPlannerRequest.habits:type_name -> memos.api.v1.Habit
 	34, // 30: memos.api.v1.ImportPlannerRequest.check_ins:type_name -> memos.api.v1.ImportCheckIn
 	35, // 31: memos.api.v1.ImportPlannerRequest.todos:type_name -> memos.api.v1.ImportTodo
@@ -3246,63 +3314,64 @@ var file_api_v1_planner_service_proto_depIdxs = []int32{
 	42, // 35: memos.api.v1.GetWeekProgressResponse.weeks:type_name -> memos.api.v1.WeekProgress
 	43, // 36: memos.api.v1.WeekProgress.plan:type_name -> memos.api.v1.WeekPlan
 	45, // 37: memos.api.v1.WeekProgress.habits:type_name -> memos.api.v1.WeekHabitProgress
-	47, // 38: memos.api.v1.WeekProgress.habit_todos:type_name -> memos.api.v1.WeekHabitTodo
-	44, // 39: memos.api.v1.WeekPlan.documents:type_name -> memos.api.v1.WeekPlanDocument
-	46, // 40: memos.api.v1.WeekHabitProgress.check_ins:type_name -> memos.api.v1.WeekCheckIn
-	1,  // 41: memos.api.v1.WeekHabitTodo.state:type_name -> memos.api.v1.WeekHabitTodo.State
-	8,  // 42: memos.api.v1.PlannerService.ListHabits:input_type -> memos.api.v1.ListHabitsRequest
-	15, // 43: memos.api.v1.PlannerService.CreateHabit:input_type -> memos.api.v1.CreateHabitRequest
-	16, // 44: memos.api.v1.PlannerService.UpdateHabit:input_type -> memos.api.v1.UpdateHabitRequest
-	9,  // 45: memos.api.v1.PlannerService.ListHabitVersions:input_type -> memos.api.v1.ListHabitVersionsRequest
-	11, // 46: memos.api.v1.PlannerService.UpdateHabitDraft:input_type -> memos.api.v1.UpdateHabitDraftRequest
-	12, // 47: memos.api.v1.PlannerService.DeleteHabitDraft:input_type -> memos.api.v1.DeleteHabitDraftRequest
-	13, // 48: memos.api.v1.PlannerService.EnableHabitDraft:input_type -> memos.api.v1.EnableHabitDraftRequest
-	17, // 49: memos.api.v1.PlannerService.ListPlannerEntries:input_type -> memos.api.v1.ListPlannerEntriesRequest
-	40, // 50: memos.api.v1.PlannerService.GetWeekProgress:input_type -> memos.api.v1.GetWeekProgressRequest
-	19, // 51: memos.api.v1.PlannerService.ListOpenTodos:input_type -> memos.api.v1.ListOpenTodosRequest
-	21, // 52: memos.api.v1.PlannerService.ListTodoTags:input_type -> memos.api.v1.ListTodoTagsRequest
-	23, // 53: memos.api.v1.PlannerService.SetCheckIn:input_type -> memos.api.v1.SetCheckInRequest
-	24, // 54: memos.api.v1.PlannerService.DeleteCheckIn:input_type -> memos.api.v1.DeleteCheckInRequest
-	25, // 55: memos.api.v1.PlannerService.GetTodo:input_type -> memos.api.v1.GetTodoRequest
-	26, // 56: memos.api.v1.PlannerService.CreateTodo:input_type -> memos.api.v1.CreateTodoRequest
-	27, // 57: memos.api.v1.PlannerService.UpdateTodo:input_type -> memos.api.v1.UpdateTodoRequest
-	28, // 58: memos.api.v1.PlannerService.PostponeTodo:input_type -> memos.api.v1.PostponeTodoRequest
-	29, // 59: memos.api.v1.PlannerService.DeleteTodo:input_type -> memos.api.v1.DeleteTodoRequest
-	30, // 60: memos.api.v1.PlannerService.CreatePlannerNote:input_type -> memos.api.v1.CreatePlannerNoteRequest
-	31, // 61: memos.api.v1.PlannerService.UpdatePlannerNote:input_type -> memos.api.v1.UpdatePlannerNoteRequest
-	32, // 62: memos.api.v1.PlannerService.DeletePlannerNote:input_type -> memos.api.v1.DeletePlannerNoteRequest
-	38, // 63: memos.api.v1.PlannerService.GetPlannerSettings:input_type -> memos.api.v1.GetPlannerSettingsRequest
-	39, // 64: memos.api.v1.PlannerService.UpdatePlannerSettings:input_type -> memos.api.v1.UpdatePlannerSettingsRequest
-	33, // 65: memos.api.v1.PlannerService.ImportPlanner:input_type -> memos.api.v1.ImportPlannerRequest
-	14, // 66: memos.api.v1.PlannerService.ListHabits:output_type -> memos.api.v1.ListHabitsResponse
-	2,  // 67: memos.api.v1.PlannerService.CreateHabit:output_type -> memos.api.v1.Habit
-	2,  // 68: memos.api.v1.PlannerService.UpdateHabit:output_type -> memos.api.v1.Habit
-	10, // 69: memos.api.v1.PlannerService.ListHabitVersions:output_type -> memos.api.v1.ListHabitVersionsResponse
-	3,  // 70: memos.api.v1.PlannerService.UpdateHabitDraft:output_type -> memos.api.v1.HabitVersion
-	50, // 71: memos.api.v1.PlannerService.DeleteHabitDraft:output_type -> google.protobuf.Empty
-	3,  // 72: memos.api.v1.PlannerService.EnableHabitDraft:output_type -> memos.api.v1.HabitVersion
-	18, // 73: memos.api.v1.PlannerService.ListPlannerEntries:output_type -> memos.api.v1.ListPlannerEntriesResponse
-	41, // 74: memos.api.v1.PlannerService.GetWeekProgress:output_type -> memos.api.v1.GetWeekProgressResponse
-	20, // 75: memos.api.v1.PlannerService.ListOpenTodos:output_type -> memos.api.v1.ListOpenTodosResponse
-	22, // 76: memos.api.v1.PlannerService.ListTodoTags:output_type -> memos.api.v1.ListTodoTagsResponse
-	5,  // 77: memos.api.v1.PlannerService.SetCheckIn:output_type -> memos.api.v1.CheckIn
-	50, // 78: memos.api.v1.PlannerService.DeleteCheckIn:output_type -> google.protobuf.Empty
-	6,  // 79: memos.api.v1.PlannerService.GetTodo:output_type -> memos.api.v1.Todo
-	6,  // 80: memos.api.v1.PlannerService.CreateTodo:output_type -> memos.api.v1.Todo
-	6,  // 81: memos.api.v1.PlannerService.UpdateTodo:output_type -> memos.api.v1.Todo
-	6,  // 82: memos.api.v1.PlannerService.PostponeTodo:output_type -> memos.api.v1.Todo
-	50, // 83: memos.api.v1.PlannerService.DeleteTodo:output_type -> google.protobuf.Empty
-	7,  // 84: memos.api.v1.PlannerService.CreatePlannerNote:output_type -> memos.api.v1.PlannerNote
-	7,  // 85: memos.api.v1.PlannerService.UpdatePlannerNote:output_type -> memos.api.v1.PlannerNote
-	50, // 86: memos.api.v1.PlannerService.DeletePlannerNote:output_type -> google.protobuf.Empty
-	37, // 87: memos.api.v1.PlannerService.GetPlannerSettings:output_type -> memos.api.v1.PlannerSettings
-	37, // 88: memos.api.v1.PlannerService.UpdatePlannerSettings:output_type -> memos.api.v1.PlannerSettings
-	36, // 89: memos.api.v1.PlannerService.ImportPlanner:output_type -> memos.api.v1.ImportPlannerResponse
-	66, // [66:90] is the sub-list for method output_type
-	42, // [42:66] is the sub-list for method input_type
-	42, // [42:42] is the sub-list for extension type_name
-	42, // [42:42] is the sub-list for extension extendee
-	0,  // [0:42] is the sub-list for field type_name
+	48, // 38: memos.api.v1.WeekProgress.habit_todos:type_name -> memos.api.v1.WeekHabitTodo
+	47, // 39: memos.api.v1.WeekProgress.notes:type_name -> memos.api.v1.WeekNote
+	44, // 40: memos.api.v1.WeekPlan.documents:type_name -> memos.api.v1.WeekPlanDocument
+	46, // 41: memos.api.v1.WeekHabitProgress.check_ins:type_name -> memos.api.v1.WeekCheckIn
+	1,  // 42: memos.api.v1.WeekHabitTodo.state:type_name -> memos.api.v1.WeekHabitTodo.State
+	8,  // 43: memos.api.v1.PlannerService.ListHabits:input_type -> memos.api.v1.ListHabitsRequest
+	15, // 44: memos.api.v1.PlannerService.CreateHabit:input_type -> memos.api.v1.CreateHabitRequest
+	16, // 45: memos.api.v1.PlannerService.UpdateHabit:input_type -> memos.api.v1.UpdateHabitRequest
+	9,  // 46: memos.api.v1.PlannerService.ListHabitVersions:input_type -> memos.api.v1.ListHabitVersionsRequest
+	11, // 47: memos.api.v1.PlannerService.UpdateHabitDraft:input_type -> memos.api.v1.UpdateHabitDraftRequest
+	12, // 48: memos.api.v1.PlannerService.DeleteHabitDraft:input_type -> memos.api.v1.DeleteHabitDraftRequest
+	13, // 49: memos.api.v1.PlannerService.EnableHabitDraft:input_type -> memos.api.v1.EnableHabitDraftRequest
+	17, // 50: memos.api.v1.PlannerService.ListPlannerEntries:input_type -> memos.api.v1.ListPlannerEntriesRequest
+	40, // 51: memos.api.v1.PlannerService.GetWeekProgress:input_type -> memos.api.v1.GetWeekProgressRequest
+	19, // 52: memos.api.v1.PlannerService.ListOpenTodos:input_type -> memos.api.v1.ListOpenTodosRequest
+	21, // 53: memos.api.v1.PlannerService.ListTodoTags:input_type -> memos.api.v1.ListTodoTagsRequest
+	23, // 54: memos.api.v1.PlannerService.SetCheckIn:input_type -> memos.api.v1.SetCheckInRequest
+	24, // 55: memos.api.v1.PlannerService.DeleteCheckIn:input_type -> memos.api.v1.DeleteCheckInRequest
+	25, // 56: memos.api.v1.PlannerService.GetTodo:input_type -> memos.api.v1.GetTodoRequest
+	26, // 57: memos.api.v1.PlannerService.CreateTodo:input_type -> memos.api.v1.CreateTodoRequest
+	27, // 58: memos.api.v1.PlannerService.UpdateTodo:input_type -> memos.api.v1.UpdateTodoRequest
+	28, // 59: memos.api.v1.PlannerService.PostponeTodo:input_type -> memos.api.v1.PostponeTodoRequest
+	29, // 60: memos.api.v1.PlannerService.DeleteTodo:input_type -> memos.api.v1.DeleteTodoRequest
+	30, // 61: memos.api.v1.PlannerService.CreatePlannerNote:input_type -> memos.api.v1.CreatePlannerNoteRequest
+	31, // 62: memos.api.v1.PlannerService.UpdatePlannerNote:input_type -> memos.api.v1.UpdatePlannerNoteRequest
+	32, // 63: memos.api.v1.PlannerService.DeletePlannerNote:input_type -> memos.api.v1.DeletePlannerNoteRequest
+	38, // 64: memos.api.v1.PlannerService.GetPlannerSettings:input_type -> memos.api.v1.GetPlannerSettingsRequest
+	39, // 65: memos.api.v1.PlannerService.UpdatePlannerSettings:input_type -> memos.api.v1.UpdatePlannerSettingsRequest
+	33, // 66: memos.api.v1.PlannerService.ImportPlanner:input_type -> memos.api.v1.ImportPlannerRequest
+	14, // 67: memos.api.v1.PlannerService.ListHabits:output_type -> memos.api.v1.ListHabitsResponse
+	2,  // 68: memos.api.v1.PlannerService.CreateHabit:output_type -> memos.api.v1.Habit
+	2,  // 69: memos.api.v1.PlannerService.UpdateHabit:output_type -> memos.api.v1.Habit
+	10, // 70: memos.api.v1.PlannerService.ListHabitVersions:output_type -> memos.api.v1.ListHabitVersionsResponse
+	3,  // 71: memos.api.v1.PlannerService.UpdateHabitDraft:output_type -> memos.api.v1.HabitVersion
+	51, // 72: memos.api.v1.PlannerService.DeleteHabitDraft:output_type -> google.protobuf.Empty
+	3,  // 73: memos.api.v1.PlannerService.EnableHabitDraft:output_type -> memos.api.v1.HabitVersion
+	18, // 74: memos.api.v1.PlannerService.ListPlannerEntries:output_type -> memos.api.v1.ListPlannerEntriesResponse
+	41, // 75: memos.api.v1.PlannerService.GetWeekProgress:output_type -> memos.api.v1.GetWeekProgressResponse
+	20, // 76: memos.api.v1.PlannerService.ListOpenTodos:output_type -> memos.api.v1.ListOpenTodosResponse
+	22, // 77: memos.api.v1.PlannerService.ListTodoTags:output_type -> memos.api.v1.ListTodoTagsResponse
+	5,  // 78: memos.api.v1.PlannerService.SetCheckIn:output_type -> memos.api.v1.CheckIn
+	51, // 79: memos.api.v1.PlannerService.DeleteCheckIn:output_type -> google.protobuf.Empty
+	6,  // 80: memos.api.v1.PlannerService.GetTodo:output_type -> memos.api.v1.Todo
+	6,  // 81: memos.api.v1.PlannerService.CreateTodo:output_type -> memos.api.v1.Todo
+	6,  // 82: memos.api.v1.PlannerService.UpdateTodo:output_type -> memos.api.v1.Todo
+	6,  // 83: memos.api.v1.PlannerService.PostponeTodo:output_type -> memos.api.v1.Todo
+	51, // 84: memos.api.v1.PlannerService.DeleteTodo:output_type -> google.protobuf.Empty
+	7,  // 85: memos.api.v1.PlannerService.CreatePlannerNote:output_type -> memos.api.v1.PlannerNote
+	7,  // 86: memos.api.v1.PlannerService.UpdatePlannerNote:output_type -> memos.api.v1.PlannerNote
+	51, // 87: memos.api.v1.PlannerService.DeletePlannerNote:output_type -> google.protobuf.Empty
+	37, // 88: memos.api.v1.PlannerService.GetPlannerSettings:output_type -> memos.api.v1.PlannerSettings
+	37, // 89: memos.api.v1.PlannerService.UpdatePlannerSettings:output_type -> memos.api.v1.PlannerSettings
+	36, // 90: memos.api.v1.PlannerService.ImportPlanner:output_type -> memos.api.v1.ImportPlannerResponse
+	67, // [67:91] is the sub-list for method output_type
+	43, // [43:67] is the sub-list for method input_type
+	43, // [43:43] is the sub-list for extension type_name
+	43, // [43:43] is the sub-list for extension extendee
+	0,  // [0:43] is the sub-list for field type_name
 }
 
 func init() { file_api_v1_planner_service_proto_init() }
@@ -3317,7 +3386,7 @@ func file_api_v1_planner_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_v1_planner_service_proto_rawDesc), len(file_api_v1_planner_service_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   46,
+			NumMessages:   47,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

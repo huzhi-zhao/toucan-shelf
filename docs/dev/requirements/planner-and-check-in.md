@@ -252,6 +252,9 @@ toucan-base 的 Discord bot 要当健身监督：按每周进度提醒、周末�
     `checkInCount`（直接打的和待办带出的都算，和 app 的"2/3"一致，超额照写）、`checkIns`（日期、备注、带出它的待办）。
   - `habitTodos`：这周的习惯待办，按日期：标题、关联习惯、状态。状态 `ACTIVE` / `DONE` / `FAILED` / `CANCELLED`，
     以 `date` 为今天算：过了日子还没完成就是 `FAILED`（同 2.4.2 §5）。普通待办不在里面。
+  - `notes`（2026-10-20 补充）：这周的备忘，每条 `date`、`content`，按日期排，同一天按记的先后。
+    原因：习惯计划规定记了"病"或"旅行 到 YYYY-MM-DD"的备忘时 bot 要暂停提醒，而 bot 只调这一个接口。
+    备忘原样返回，接口不解析内容；怎么读由调用方按计划文档的规则来。
 - **不做判定**：及格、达标、连续几周这些规则写在知识库的习惯计划文档里（就是 `plan.documents`），随计划版本变，由调用方判断。
 
 返回示例（每周第一天是周一；周三 10/21 启用了新计划，阅读被换下、加了走路）：
@@ -300,6 +303,10 @@ toucan-base 的 Discord bot 要当健身监督：按每周进度提醒、周末�
       "habitTodos": [
         { "name": "planner/todos/t1", "date": "2026-10-23", "title": "跑 5 公里", "habit": "planner/habits/run", "state": "DONE" },
         { "name": "planner/todos/t2", "date": "2026-10-24", "title": "散步", "habit": "planner/habits/walk", "state": "FAILED" }
+      ],
+      "notes": [
+        { "date": "2026-10-20", "content": "病" },
+        { "date": "2026-10-24", "content": "旅行 到 2026-10-27" }
       ]
     }
   ]

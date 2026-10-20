@@ -18,8 +18,8 @@ import (
 
 // Week progress is the planner's read-only report for callers outside the app: a reminder bot, an agent asked
 // "how did this week go". Weeks split on the caller's planner setting and each is measured against the plan in
-// effect on its last day, the same rules the app's "2/3" follows, so the two never disagree. It reports facts;
-// judging a week is the caller's business. See planner-and-check-in.md §2.4.3.
+// effect on its last day, the same rules the app's "2/3" follows, so the two never disagree. It reports facts,
+// the week's notes among them; judging a week is the caller's business. See planner-and-check-in.md §2.4.3.
 
 // plannerMaxProgressWeeks caps GetWeekProgress: enough for "eight weeks in a row".
 const plannerMaxProgressWeeks = 12
@@ -146,6 +146,12 @@ func (s *APIV1Service) GetWeekProgress(ctx context.Context, request *v1pb.GetWee
 		return nil, status.Errorf(codes.Internal, "failed to list todos: %v", err)
 	}
 	slices.SortStableFunc(todos, func(a, b *store.PlannerTodo) int { return cmp.Compare(a.Date, b.Date) })
+	// Notes say why a week went as it did ("ill", "away until …"), which the caller may weigh in its verdict.
+	notes, err := s.Store.ListPlannerNotes(ctx, &store.FindPlannerNote{CreatorID: &user.ID, StartDate: rangeStart, EndDate: rangeEnd})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list notes: %v", err)
+	}
+	slices.SortStableFunc(notes, func(a, b *store.PlannerNote) int { return cmp.Compare(a.Date, b.Date) })
 
 	documents := map[string]*v1pb.WeekPlanDocument{}
 	response := &v1pb.GetWeekProgressResponse{WeekStartDay: weekStart, Weeks: []*v1pb.WeekProgress{}}
@@ -157,6 +163,7 @@ func (s *APIV1Service) GetWeekProgress(ctx context.Context, request *v1pb.GetWee
 			WeekEnd:    end,
 			Habits:     []*v1pb.WeekHabitProgress{},
 			HabitTodos: []*v1pb.WeekHabitTodo{},
+			Notes:      []*v1pb.WeekNote{},
 		}
 		if i == 0 {
 			week.ContainsDate = true
@@ -218,6 +225,11 @@ func (s *APIV1Service) GetWeekProgress(ctx context.Context, request *v1pb.GetWee
 				Habit: plannerName(habitNamePrefix, todo.HabitUID),
 				State: habitTodoState(todo, date),
 			})
+		}
+		for _, note := range notes {
+			if note.Date >= start && note.Date <= end {
+				week.Notes = append(week.Notes, &v1pb.WeekNote{Date: note.Date, Content: note.Content})
+			}
 		}
 		response.Weeks = append(response.Weeks, week)
 	}

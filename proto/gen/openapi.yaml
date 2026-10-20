@@ -2185,8 +2185,8 @@ paths:
                  effect on its last day, and a habit's count includes check-ins made by
                  completing habit todos, as the app's "2/3" does.
 
-                 It reports facts only: what was planned and what was checked in. Whether a
-                 week passed is for the caller to judge.
+                 It reports facts only: what was planned, what was checked in, and the
+                 week's notes. Whether a week passed is for the caller to judge.
             operationId: PlannerService_GetWeekProgress
             parameters:
                 - name: date
@@ -8837,6 +8837,15 @@ components:
                     type: string
                     description: Worked out against the request's `date` as today.
                     format: enum
+        WeekNote:
+            type: object
+            properties:
+                date:
+                    type: string
+                    description: 'Format: YYYY-MM-DD.'
+                content:
+                    type: string
+            description: WeekNote is a note written on a day of the week, e.g. that one was ill or away.
         WeekPlan:
             type: object
             properties:
@@ -8903,6 +8912,11 @@ components:
                     items:
                         $ref: '#/components/schemas/WeekHabitTodo'
                     description: The week's habit todos, by date.
+                notes:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/WeekNote'
+                    description: The week's notes, by date.
             description: 'WeekProgress is one week of a habit plan: what was planned and what was done.'
         Workspace:
             required:
