@@ -48,6 +48,13 @@ export const todoRoute = (todoName: string): string => `/plan/todo/${encodeURICo
 /** `planner/todos/{uid}` from the detail page's `:uid`. */
 export const todoNameFromUid = (uid: string): string => `planner/todos/${uid}`;
 
+/** A check-in's page — its note, workout and who made it — by habit (`planner/habits/{uid}`) and day. */
+export const checkInRoute = (habitName: string, date: string): string =>
+  `/plan/checkin/${encodeURIComponent(habitName.replace(/^planner\/habits\//, ""))}/${date}`;
+
+/** `planner/habits/{uid}` from the check-in page's `:uid`. */
+export const habitNameFromUid = (uid: string): string => `planner/habits/${uid}`;
+
 /** The habit version page: revising from today on, or, with a date, editing the version not yet in effect then. */
 export const habitVersionRoute = (effectiveDate?: string): string =>
   effectiveDate ? `/plan/settings/version?date=${encodeURIComponent(effectiveDate)}` : "/plan/settings/version";

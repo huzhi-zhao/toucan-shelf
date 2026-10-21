@@ -212,7 +212,13 @@ func (s *APIV1Service) GetWeekProgress(ctx context.Context, request *v1pb.GetWee
 				continue
 			}
 			p.CheckInCount++
-			p.CheckIns = append(p.CheckIns, &v1pb.WeekCheckIn{Date: checkIn.Date, Note: checkIn.Note, Todo: plannerName(todoNamePrefix, checkIn.TodoUID)})
+			p.CheckIns = append(p.CheckIns, &v1pb.WeekCheckIn{
+				Date:    checkIn.Date,
+				Note:    checkIn.Note,
+				Todo:    plannerName(todoNamePrefix, checkIn.TodoUID),
+				Source:  checkInSourceFromStore[checkIn.Source],
+				Workout: convertWorkoutFromStore(checkIn.Workout),
+			})
 		}
 		for _, todo := range todos {
 			if todo.HabitID == 0 || todo.Date < start || todo.Date > end {

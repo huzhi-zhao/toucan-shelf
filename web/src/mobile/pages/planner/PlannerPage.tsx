@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 import { Link, List, ListItem, Navbar, Page, Segmented, SegmentedButton, Sheet, Toast } from "konsta/react";
-import { LinkIcon, PlusIcon, Settings2Icon } from "lucide-react";
+import { BotIcon, LinkIcon, PlusIcon, Settings2Icon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarMonthGrid } from "@/components/MemoContent/calendar/CalendarMonthGrid";
 import { defaultVisibleMonth, type VisibleMonth } from "@/components/MemoContent/calendar/defaultVisibleMonth";
@@ -18,7 +18,7 @@ import {
   useUpdateTodo,
 } from "@/hooks/usePlannerQueries";
 import { cn } from "@/lib/utils";
-import { type Habit, type PlannerNote, type Todo, Todo_Status } from "@/types/proto/api/v1/planner_service_pb";
+import { CheckIn_Source, type Habit, type PlannerNote, type Todo, Todo_Status } from "@/types/proto/api/v1/planner_service_pb";
 import TodoRow from "../../components/planner/TodoRow";
 import SectionTitle from "../../components/SectionTitle";
 import { COPY } from "../../copy";
@@ -46,7 +46,7 @@ import {
 } from "../../lib/planner";
 import { usePlannerWeekStart } from "../../lib/plannerWeekStart";
 import { usePref } from "../../lib/storage";
-import { MOBILE_ROUTES, todoRoute } from "../../routes";
+import { checkInRoute, MOBILE_ROUTES, todoRoute } from "../../routes";
 
 type AddKind = "todo" | "note";
 
@@ -179,6 +179,12 @@ export default function PlannerPage() {
   // already there edits its note or takes it back; a day ahead makes a habit todo; today offers both a check-in
   // and a todo; a past day only checks in. Checking in asks to confirm, so a stray tap records nothing.
   const tapHabit = (habit: Habit) => {
+    // A check-in with a workout, or one a bot made, opens its own page: the exercises and who made it (§2.4.4).
+    const checkIn = checkInsOfDay.get(habit.name);
+    if (checkIn && (checkIn.workout || checkIn.source === CheckIn_Source.AGENT)) {
+      go(checkInRoute(habit.name, selectedDate));
+      return;
+    }
     const todo = todoOfHabit(habit);
     if (todo) {
       go(todoRoute(todo));
@@ -323,7 +329,8 @@ export default function PlannerPage() {
             const checkIn = checkInsOfDay.get(habit.name);
             const color = habitColor(habit);
             const linked = Boolean(todoOfHabit(habit));
-            const enabled = canCheckIn || linked || isFuture;
+            const byAgent = checkIn?.source === CheckIn_Source.AGENT;
+            const enabled = canCheckIn || linked || isFuture || Boolean(checkIn?.workout) || byAgent;
             const goal = weeklyGoalOn(versions, habit.name, selectedDate, resolvedDefault);
             const progress =
               !checkIn && goal > 0
@@ -345,6 +352,7 @@ export default function PlannerPage() {
                 <span>{habit.title}</span>
                 {progress && <span className="text-[12px] text-black/45 dark:text-white/45">{progress}</span>}
                 {linked && <LinkIcon className={cn("w-3 h-3", checkIn ? "text-white/85" : "text-black/40 dark:text-white/40")} />}
+                {byAgent && <BotIcon className="w-3.5 h-3.5 text-white/85" aria-label={COPY.checkIn.sources.AGENT} />}
                 {checkIn?.note && <span className="text-white/85 text-[12px] max-w-24 truncate">{checkIn.note}</span>}
               </button>
             );
@@ -522,7 +530,21 @@ export default function PlannerPage() {
           <div className="text-[15px] font-semibold">
             {habitSheet?.habit.title} · {habitSheet?.confirming ? COPY.planner.checkIns : COPY.planner.checkInNote}
           </div>
-          <div className="text-[13px] text-black/45 dark:text-white/45 mt-0.5 mb-2">{dayTitle}</div>
+          <div className="flex items-baseline justify-between mt-0.5 mb-2">
+            <span className="text-[13px] text-black/45 dark:text-white/45">{dayTitle}</span>
+            {habitSheet && !habitSheet.confirming && (
+              <button
+                type="button"
+                className="text-[14px] text-primary"
+                onClick={() => {
+                  setHabitSheetOpen(undefined);
+                  go(checkInRoute(habitSheet.habit.name, selectedDate));
+                }}
+              >
+                {COPY.checkIn.workout} ›
+              </button>
+            )}
+          </div>
           <input
             value={draft}
             onChange={(event) => setDraft(event.target.value)}

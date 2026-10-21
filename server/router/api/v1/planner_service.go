@@ -220,10 +220,12 @@ func plannerName(prefix, uid string) string {
 
 func convertCheckInFromStore(c *store.PlannerCheckIn, habitUID string) *v1pb.CheckIn {
 	return &v1pb.CheckIn{
-		Habit: habitNamePrefix + habitUID,
-		Date:  c.Date,
-		Note:  c.Note,
-		Todo:  plannerName(todoNamePrefix, c.TodoUID),
+		Habit:   habitNamePrefix + habitUID,
+		Date:    c.Date,
+		Note:    c.Note,
+		Todo:    plannerName(todoNamePrefix, c.TodoUID),
+		Source:  checkInSourceFromStore[c.Source],
+		Workout: convertWorkoutFromStore(c.Workout),
 	}
 }
 
@@ -550,35 +552,93 @@ func (s *APIV1Service) SetCheckIn(ctx context.Context, request *v1pb.SetCheckInR
 	if err != nil {
 		return nil, err
 	}
-	if err := s.refuseTodoCheckIn(ctx, user, habit, date); err != nil {
+	setWorkout := request.CheckIn.Workout != nil
+	workout, err := plannerWorkoutFromRequest(request.CheckIn.Workout)
+	if err != nil {
 		return nil, err
 	}
-	// An open habit todo that day is how the habit gets checked in: completing it does that.
+	agent := plannerAgent(ctx)
+
+	existing, err := s.checkInOn(ctx, user, habit.ID, date)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		// The note is the maker's: a todo's check-in carries the todo's, and an agent changes only its own. The
+		// workout is detail anyone may add, so a request that sets one keeps the note it cannot change.
+		if reason := checkInNoteLocked(existing, agent); reason != "" && note != existing.Note {
+			if !setWorkout {
+				return nil, status.Errorf(codes.FailedPrecondition, "%s", reason)
+			}
+			note = existing.Note
+		}
+		if !setWorkout {
+			workout = existing.Workout
+		}
+		existing.Note, existing.Workout = note, workout
+		checkIn, err := s.Store.UpsertPlannerCheckIn(ctx, existing)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to set check-in: %v", err)
+		}
+		return convertCheckInFromStore(checkIn, habit.UID), nil
+	}
+
+	// An open habit todo that day is how the habit gets checked in: completing it does that. In the app the
+	// user ticks the todo; an agent reporting the session completes it on their behalf.
 	todo, err := s.habitTodoOn(ctx, user, habit.ID, date)
 	if err != nil {
 		return nil, err
 	}
 	if todo != nil && todo.Status == store.PlannerTodoActive {
-		return nil, status.Errorf(codes.FailedPrecondition, "the habit has a todo on %s; complete it to check in", date)
+		if !agent {
+			return nil, status.Errorf(codes.FailedPrecondition, "the habit has a todo on %s; complete it to check in", date)
+		}
+		return s.completeHabitTodoAsAgent(ctx, user, habit, todo, note, workout)
 	}
-	checkIn, err := s.Store.UpsertPlannerCheckIn(ctx, &store.PlannerCheckIn{CreatorID: user.ID, HabitID: habit.ID, Date: date, Note: note})
+	checkIn, err := s.Store.UpsertPlannerCheckIn(ctx, &store.PlannerCheckIn{
+		CreatorID: user.ID, HabitID: habit.ID, Date: date, Note: note, Source: plannerCheckInSourceFor(ctx), Workout: workout,
+	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to set check-in: %v", err)
 	}
 	return convertCheckInFromStore(checkIn, habit.UID), nil
 }
 
-// refuseTodoCheckIn fails when the habit's check-in on date was made by a todo: that one belongs to the
-// todo, and changes or goes only with it.
-func (s *APIV1Service) refuseTodoCheckIn(ctx context.Context, user *store.User, habit *store.PlannerHabit, date string) error {
-	existing, err := s.Store.ListPlannerCheckIns(ctx, &store.FindPlannerCheckIn{CreatorID: user.ID, HabitID: &habit.ID, StartDate: date, EndDate: date})
+// checkInNoteLocked says why the caller cannot change an existing check-in's note, or "" when it can.
+func checkInNoteLocked(existing *store.PlannerCheckIn, agent bool) string {
+	if agent && existing.Source != store.PlannerCheckInAgent {
+		return "this check-in was made in the app; an agent can only set its workout"
+	}
+	if !agent && existing.TodoID != 0 && existing.Source != store.PlannerCheckInAgent {
+		return "this check-in was made by completing a todo; delete the todo to remove it"
+	}
+	return ""
+}
+
+// completeHabitTodoAsAgent completes the habit todo due that day with an agent's check-in, which carries the
+// workout and, without a note of its own, the todo's title.
+func (s *APIV1Service) completeHabitTodoAsAgent(ctx context.Context, user *store.User, habit *store.PlannerHabit, todo *store.PlannerTodo, note string, workout *store.PlannerWorkout) (*v1pb.CheckIn, error) {
+	if note == "" {
+		note = todo.Title
+	}
+	done, closedSec, overdue, reason := store.PlannerTodoDone, s.now().Unix(), false, ""
+	_, err := s.Store.UpdatePlannerTodo(ctx, &store.UpdatePlannerTodo{
+		ID: todo.ID, Status: &done, ClosedTs: &closedSec, ClosedOverdue: &overdue, CancelReason: &reason,
+		CheckIn: &store.PlannerCheckIn{
+			CreatorID: user.ID, HabitID: habit.ID, Date: todo.Date, Note: note, Source: store.PlannerCheckInAgent, Workout: workout,
+		},
+	})
+	if errors.Is(err, store.ErrPlannerCheckInTaken) {
+		return nil, status.Errorf(codes.FailedPrecondition, "the habit is already checked in on %s", todo.Date)
+	}
 	if err != nil {
-		return status.Errorf(codes.Internal, "failed to get check-in: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to complete the habit todo: %v", err)
 	}
-	if len(existing) > 0 && existing[0].TodoID != 0 {
-		return status.Errorf(codes.FailedPrecondition, "this check-in was made by completing a todo; delete the todo to remove it")
+	checkIn, err := s.checkInOn(ctx, user, habit.ID, todo.Date)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	return convertCheckInFromStore(checkIn, habit.UID), nil
 }
 
 func (s *APIV1Service) DeleteCheckIn(ctx context.Context, request *v1pb.DeleteCheckInRequest) (*emptypb.Empty, error) {
@@ -594,8 +654,25 @@ func (s *APIV1Service) DeleteCheckIn(ctx context.Context, request *v1pb.DeleteCh
 	if err != nil {
 		return nil, err
 	}
-	if err := s.refuseTodoCheckIn(ctx, user, habit, date); err != nil {
-		return nil, err
+	existing, err := s.checkInOn(ctx, user, habit.ID, date)
+	if err != nil || existing == nil {
+		return &emptypb.Empty{}, err
+	}
+	if plannerAgent(ctx) && existing.Source != store.PlannerCheckInAgent {
+		return nil, status.Errorf(codes.PermissionDenied, "an agent can only remove check-ins an agent made")
+	}
+	if existing.TodoID != 0 {
+		if existing.Source != store.PlannerCheckInAgent {
+			return nil, status.Errorf(codes.FailedPrecondition, "this check-in was made by completing a todo; delete the todo to remove it")
+		}
+		// An agent completed the todo with this check-in: undoing it reopens the todo.
+		active, closedTs, overdue, reason := store.PlannerTodoActive, int64(0), false, ""
+		if _, err := s.Store.UpdatePlannerTodo(ctx, &store.UpdatePlannerTodo{
+			ID: existing.TodoID, Status: &active, ClosedTs: &closedTs, ClosedOverdue: &overdue, CancelReason: &reason, DropCheckIn: true,
+		}); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to reopen the habit todo: %v", err)
+		}
+		return &emptypb.Empty{}, nil
 	}
 	if err := s.Store.DeletePlannerCheckIn(ctx, habit.ID, date); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete check-in: %v", err)
@@ -814,6 +891,9 @@ func (s *APIV1Service) UpdateTodo(ctx context.Context, request *v1pb.UpdateTodoR
 	if nextStatus == store.PlannerTodoDone && todo.Status != store.PlannerTodoDone && todo.HabitID != 0 {
 		if update.CheckIn, err = s.habitTodoCheckIn(ctx, user, todo, title, request.LocalDate); err != nil {
 			return nil, err
+		}
+		if update.CheckIn != nil && plannerAgent(ctx) {
+			update.CheckIn.Source = store.PlannerCheckInAgent
 		}
 	}
 	updated, err := s.Store.UpdatePlannerTodo(ctx, update)

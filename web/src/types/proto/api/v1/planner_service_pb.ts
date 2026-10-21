@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file api/v1/planner_service.proto.
  */
 export const file_api_v1_planner_service: GenFile = /*@__PURE__*/
-  fileDesc("ChxhcGkvdjEvcGxhbm5lcl9zZXJ2aWNlLnByb3RvEgxtZW1vcy5hcGkudjEingIKBUhhYml0EhEKBG5hbWUYASABKAlCA+BBCBISCgV0aXRsZRgCIAEoCUID4EECEhUKCHBvc2l0aW9uGAMgASgFQgPgQQESFwoIYXJjaGl2ZWQYBCABKAhCBRgB4EEDEjQKC2NyZWF0ZV90aW1lGAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEjQKC3VwZGF0ZV90aW1lGAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEhIKBWNvbG9yGAcgASgFQgPgQQE6PupBOwoSbWVtb3MuYXBpLnYxL0hhYml0EhZwbGFubmVyL2hhYml0cy97aGFiaXR9KgZoYWJpdHMyBWhhYml0ItgBCgxIYWJpdFZlcnNpb24SFgoOZWZmZWN0aXZlX2RhdGUYASABKAkSMAoHZW50cmllcxgCIAMoCzIfLm1lbW9zLmFwaS52MS5IYWJpdFZlcnNpb25FbnRyeRISCgVtZW1vcxgFIAMoCUID4EEBEjQKC2NyZWF0ZV90aW1lGAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEjQKC3VwZGF0ZV90aW1lGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDIkEKEUhhYml0VmVyc2lvbkVudHJ5EhIKBWhhYml0GAEgASgJQgPgQQISGAoLd2Vla2x5X2dvYWwYAiABKAVCA+BBASJWCgdDaGVja0luEhIKBWhhYml0GAEgASgJQgPgQQISEQoEZGF0ZRgCIAEoCUID4EECEhEKBG5vdGUYAyABKAlCA+BBARIRCgR0b2RvGAQgASgJQgPgQQMirQUKBFRvZG8SEQoEbmFtZRgBIAEoCUID4EEIEhIKBXRpdGxlGAIgASgJQgPgQQISEQoEZGF0ZRgDIAEoCUID4EEBEi4KBnN0YXR1cxgEIAEoDjIZLm1lbW9zLmFwaS52MS5Ub2RvLlN0YXR1c0ID4EEBEhsKDmNsb3NlZF9vdmVyZHVlGAUgASgIQgPgQQMSMwoKY2xvc2VfdGltZRgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCA+BBAxIaCg1jYW5jZWxfcmVhc29uGAcgASgJQgPgQQESFgoJaW1wb3J0YW50GAggASgIQgPgQQESEAoDdGFnGAkgASgJQgPgQQESEQoEbm90ZRgKIAEoCUID4EEBEhMKBG1lbW8YCyABKAlCBRgB4EEBEhAKA3VybBgMIAEoCUID4EEBEjQKC2NyZWF0ZV90aW1lGA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEjQKC3VwZGF0ZV90aW1lGA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEhoKDW9yaWdpbmFsX2RhdGUYDyABKAlCA+BBAxIbCg5wb3N0cG9uZV9jb3VudBgQIAEoBUID4EEDEhIKBW1lbW9zGBEgAygJQgPgQQESEgoFaGFiaXQYEiABKAlCA+BBARIaCg1jaGVja19pbl9kYXRlGBMgASgJQgPgQQMiRQoGU3RhdHVzEhYKElNUQVRVU19VTlNQRUNJRklFRBAAEgoKBkFDVElWRRABEggKBERPTkUQAhINCglDQU5DRUxMRUQQAzo56kE2ChFtZW1vcy5hcGkudjEvVG9kbxIUcGxhbm5lci90b2Rvcy97dG9kb30qBXRvZG9zMgR0b2RvIoUCCgtQbGFubmVyTm90ZRIRCgRuYW1lGAEgASgJQgPgQQgSEQoEZGF0ZRgCIAEoCUID4EECEhQKB2NvbnRlbnQYAyABKAlCA+BBAhI0CgtjcmVhdGVfdGltZRgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCA+BBAxI0Cgt1cGRhdGVfdGltZRgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCA+BBAzpO6kFLChhtZW1vcy5hcGkudjEvUGxhbm5lck5vdGUSFHBsYW5uZXIvbm90ZXMve25vdGV9KgxwbGFubmVyTm90ZXMyC3BsYW5uZXJOb3RlIhMKEUxpc3RIYWJpdHNSZXF1ZXN0IhoKGExpc3RIYWJpdFZlcnNpb25zUmVxdWVzdCJ0ChlMaXN0SGFiaXRWZXJzaW9uc1Jlc3BvbnNlEiwKCHZlcnNpb25zGAEgAygLMhoubWVtb3MuYXBpLnYxLkhhYml0VmVyc2lvbhIpCgVkcmFmdBgCIAEoCzIaLm1lbW9zLmFwaS52MS5IYWJpdFZlcnNpb24iSQoXVXBkYXRlSGFiaXREcmFmdFJlcXVlc3QSLgoFZHJhZnQYASABKAsyGi5tZW1vcy5hcGkudjEuSGFiaXRWZXJzaW9uQgPgQQIiGQoXRGVsZXRlSGFiaXREcmFmdFJlcXVlc3QiTQoXRW5hYmxlSGFiaXREcmFmdFJlcXVlc3QSFwoKbG9jYWxfZGF0ZRgBIAEoCUID4EECEhkKDHVubGlua190b2RvcxgCIAEoCEID4EEBIjkKEkxpc3RIYWJpdHNSZXNwb25zZRIjCgZoYWJpdHMYASADKAsyEy5tZW1vcy5hcGkudjEuSGFiaXQiPQoSQ3JlYXRlSGFiaXRSZXF1ZXN0EicKBWhhYml0GAEgASgLMhMubWVtb3MuYXBpLnYxLkhhYml0QgPgQQIicwoSVXBkYXRlSGFiaXRSZXF1ZXN0EicKBWhhYml0GAEgASgLMhMubWVtb3MuYXBpLnYxLkhhYml0QgPgQQISNAoLdXBkYXRlX21hc2sYAiABKAsyGi5nb29nbGUucHJvdG9idWYuRmllbGRNYXNrQgPgQQIiSwoZTGlzdFBsYW5uZXJFbnRyaWVzUmVxdWVzdBIXCgpzdGFydF9kYXRlGAEgASgJQgPgQQISFQoIZW5kX2RhdGUYAiABKAlCA+BBAiKTAQoaTGlzdFBsYW5uZXJFbnRyaWVzUmVzcG9uc2USKAoJY2hlY2tfaW5zGAEgAygLMhUubWVtb3MuYXBpLnYxLkNoZWNrSW4SIQoFdG9kb3MYAiADKAsyEi5tZW1vcy5hcGkudjEuVG9kbxIoCgVub3RlcxgDIAMoCzIZLm1lbW9zLmFwaS52MS5QbGFubmVyTm90ZSIWChRMaXN0T3BlblRvZG9zUmVxdWVzdCI6ChVMaXN0T3BlblRvZG9zUmVzcG9uc2USIQoFdG9kb3MYASADKAsyEi5tZW1vcy5hcGkudjEuVG9kbyIVChNMaXN0VG9kb1RhZ3NSZXF1ZXN0IiQKFExpc3RUb2RvVGFnc1Jlc3BvbnNlEgwKBHRhZ3MYASADKAkiQQoRU2V0Q2hlY2tJblJlcXVlc3QSLAoIY2hlY2tfaW4YASABKAsyFS5tZW1vcy5hcGkudjEuQ2hlY2tJbkID4EECIj0KFERlbGV0ZUNoZWNrSW5SZXF1ZXN0EhIKBWhhYml0GAEgASgJQgPgQQISEQoEZGF0ZRgCIAEoCUID4EECIiMKDkdldFRvZG9SZXF1ZXN0EhEKBG5hbWUYASABKAlCA+BBAiJTChFDcmVhdGVUb2RvUmVxdWVzdBIlCgR0b2RvGAEgASgLMhIubWVtb3MuYXBpLnYxLlRvZG9CA+BBAhIXCgpsb2NhbF9kYXRlGAIgASgJQgPgQQEiiQEKEVVwZGF0ZVRvZG9SZXF1ZXN0EiUKBHRvZG8YASABKAsyEi5tZW1vcy5hcGkudjEuVG9kb0ID4EECEjQKC3VwZGF0ZV9tYXNrGAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLkZpZWxkTWFza0ID4EECEhcKCmxvY2FsX2RhdGUYAyABKAlCA+BBASJUChNQb3N0cG9uZVRvZG9SZXF1ZXN0EhEKBG5hbWUYASABKAlCA+BBAhIRCgRkYXRlGAIgASgJQgPgQQISFwoKbG9jYWxfZGF0ZRgDIAEoCUID4EECIiYKEURlbGV0ZVRvZG9SZXF1ZXN0EhEKBG5hbWUYASABKAlCA+BBAiJIChhDcmVhdGVQbGFubmVyTm90ZVJlcXVlc3QSLAoEbm90ZRgBIAEoCzIZLm1lbW9zLmFwaS52MS5QbGFubmVyTm90ZUID4EECIn4KGFVwZGF0ZVBsYW5uZXJOb3RlUmVxdWVzdBIsCgRub3RlGAEgASgLMhkubWVtb3MuYXBpLnYxLlBsYW5uZXJOb3RlQgPgQQISNAoLdXBkYXRlX21hc2sYAiABKAsyGi5nb29nbGUucHJvdG9idWYuRmllbGRNYXNrQgPgQQIiLQoYRGVsZXRlUGxhbm5lck5vdGVSZXF1ZXN0EhEKBG5hbWUYASABKAlCA+BBAiK+AQoUSW1wb3J0UGxhbm5lclJlcXVlc3QSIwoGaGFiaXRzGAEgAygLMhMubWVtb3MuYXBpLnYxLkhhYml0Ei4KCWNoZWNrX2lucxgCIAMoCzIbLm1lbW9zLmFwaS52MS5JbXBvcnRDaGVja0luEicKBXRvZG9zGAMgAygLMhgubWVtb3MuYXBpLnYxLkltcG9ydFRvZG8SKAoFbm90ZXMYBCADKAsyGS5tZW1vcy5hcGkudjEuUGxhbm5lck5vdGUiQAoNSW1wb3J0Q2hlY2tJbhITCgtoYWJpdF9pbmRleBgBIAEoBRIMCgRkYXRlGAIgASgJEgwKBG5vdGUYAyABKAkiRgoKSW1wb3J0VG9kbxIgCgR0b2RvGAEgASgLMhIubWVtb3MuYXBpLnYxLlRvZG8SFgoOY2xvc2VkX292ZXJkdWUYAiABKAgibAoVSW1wb3J0UGxhbm5lclJlc3BvbnNlEhMKC2hhYml0X2NvdW50GAEgASgFEhYKDmNoZWNrX2luX2NvdW50GAIgASgFEhIKCnRvZG9fY291bnQYAyABKAUSEgoKbm90ZV9jb3VudBgEIAEoBSIuCg9QbGFubmVyU2V0dGluZ3MSGwoOd2Vla19zdGFydF9kYXkYASABKAVCA+BBASIbChlHZXRQbGFubmVyU2V0dGluZ3NSZXF1ZXN0IlQKHFVwZGF0ZVBsYW5uZXJTZXR0aW5nc1JlcXVlc3QSNAoIc2V0dGluZ3MYASABKAsyHS5tZW1vcy5hcGkudjEuUGxhbm5lclNldHRpbmdzQgPgQQIiPwoWR2V0V2Vla1Byb2dyZXNzUmVxdWVzdBIRCgRkYXRlGAEgASgJQgPgQQISEgoFd2Vla3MYAiABKAVCA+BBASJcChdHZXRXZWVrUHJvZ3Jlc3NSZXNwb25zZRIWCg53ZWVrX3N0YXJ0X2RheRgBIAEoBRIpCgV3ZWVrcxgCIAMoCzIaLm1lbW9zLmFwaS52MS5XZWVrUHJvZ3Jlc3MijgIKDFdlZWtQcm9ncmVzcxISCgp3ZWVrX3N0YXJ0GAEgASgJEhAKCHdlZWtfZW5kGAIgASgJEhUKDWNvbnRhaW5zX2RhdGUYAyABKAgSEQoJZGF5c19sZWZ0GAQgASgFEiQKBHBsYW4YBSABKAsyFi5tZW1vcy5hcGkudjEuV2Vla1BsYW4SLwoGaGFiaXRzGAYgAygLMh8ubWVtb3MuYXBpLnYxLldlZWtIYWJpdFByb2dyZXNzEjAKC2hhYml0X3RvZG9zGAcgAygLMhsubWVtb3MuYXBpLnYxLldlZWtIYWJpdFRvZG8SJQoFbm90ZXMYCCADKAsyFi5tZW1vcy5hcGkudjEuV2Vla05vdGUiZwoIV2Vla1BsYW4SFgoOZWZmZWN0aXZlX2RhdGUYASABKAkSEAoIcmVwbGFjZWQYAiADKAkSMQoJZG9jdW1lbnRzGAMgAygLMh4ubWVtb3MuYXBpLnYxLldlZWtQbGFuRG9jdW1lbnQiLwoQV2Vla1BsYW5Eb2N1bWVudBIMCgRuYW1lGAEgASgJEg0KBXRpdGxlGAIgASgJIsABChFXZWVrSGFiaXRQcm9ncmVzcxINCgVoYWJpdBgBIAEoCRIMCgRpY29uGAIgASgJEg0KBWxhYmVsGAMgASgJEg8KB2luX3BsYW4YBCABKAgSGAoLd2Vla2x5X2dvYWwYBSABKAVIAIgBARIWCg5jaGVja19pbl9jb3VudBgGIAEoBRIsCgljaGVja19pbnMYByADKAsyGS5tZW1vcy5hcGkudjEuV2Vla0NoZWNrSW5CDgoMX3dlZWtseV9nb2FsIjcKC1dlZWtDaGVja0luEgwKBGRhdGUYASABKAkSDAoEbm90ZRgCIAEoCRIMCgR0b2RvGAMgASgJIikKCFdlZWtOb3RlEgwKBGRhdGUYASABKAkSDwoHY29udGVudBgCIAEoCSLMAQoNV2Vla0hhYml0VG9kbxIMCgRuYW1lGAEgASgJEgwKBGRhdGUYAiABKAkSDQoFdGl0bGUYAyABKAkSDQoFaGFiaXQYBCABKAkSMAoFc3RhdGUYBSABKA4yIS5tZW1vcy5hcGkudjEuV2Vla0hhYml0VG9kby5TdGF0ZSJPCgVTdGF0ZRIVChFTVEFURV9VTlNQRUNJRklFRBAAEgoKBkFDVElWRRABEggKBERPTkUQAhIKCgZGQUlMRUQQAxINCglDQU5DRUxMRUQQBDKjGAoOUGxhbm5lclNlcnZpY2USbwoKTGlzdEhhYml0cxIfLm1lbW9zLmFwaS52MS5MaXN0SGFiaXRzUmVxdWVzdBogLm1lbW9zLmFwaS52MS5MaXN0SGFiaXRzUmVzcG9uc2UiHoLT5JMCGBIWL2FwaS92MS9wbGFubmVyL2hhYml0cxJzCgtDcmVhdGVIYWJpdBIgLm1lbW9zLmFwaS52MS5DcmVhdGVIYWJpdFJlcXVlc3QaEy5tZW1vcy5hcGkudjEuSGFiaXQiLdpBBWhhYml0gtPkkwIfOgVoYWJpdCIWL2FwaS92MS9wbGFubmVyL2hhYml0cxKOAQoLVXBkYXRlSGFiaXQSIC5tZW1vcy5hcGkudjEuVXBkYXRlSGFiaXRSZXF1ZXN0GhMubWVtb3MuYXBpLnYxLkhhYml0IkjaQRFoYWJpdCx1cGRhdGVfbWFza4LT5JMCLjoFaGFiaXQyJS9hcGkvdjEve2hhYml0Lm5hbWU9cGxhbm5lci9oYWJpdHMvKn0SiwEKEUxpc3RIYWJpdFZlcnNpb25zEiYubWVtb3MuYXBpLnYxLkxpc3RIYWJpdFZlcnNpb25zUmVxdWVzdBonLm1lbW9zLmFwaS52MS5MaXN0SGFiaXRWZXJzaW9uc1Jlc3BvbnNlIiWC0+STAh8SHS9hcGkvdjEvcGxhbm5lci9oYWJpdFZlcnNpb25zEoABChBVcGRhdGVIYWJpdERyYWZ0EiUubWVtb3MuYXBpLnYxLlVwZGF0ZUhhYml0RHJhZnRSZXF1ZXN0GhoubWVtb3MuYXBpLnYxLkhhYml0VmVyc2lvbiIpgtPkkwIjOgVkcmFmdDIaL2FwaS92MS9wbGFubmVyL2hhYml0RHJhZnQSdQoQRGVsZXRlSGFiaXREcmFmdBIlLm1lbW9zLmFwaS52MS5EZWxldGVIYWJpdERyYWZ0UmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eSIigtPkkwIcKhovYXBpL3YxL3BsYW5uZXIvaGFiaXREcmFmdBKDAQoQRW5hYmxlSGFiaXREcmFmdBIlLm1lbW9zLmFwaS52MS5FbmFibGVIYWJpdERyYWZ0UmVxdWVzdBoaLm1lbW9zLmFwaS52MS5IYWJpdFZlcnNpb24iLILT5JMCJjoBKiIhL2FwaS92MS9wbGFubmVyL2hhYml0RHJhZnQ6ZW5hYmxlEogBChJMaXN0UGxhbm5lckVudHJpZXMSJy5tZW1vcy5hcGkudjEuTGlzdFBsYW5uZXJFbnRyaWVzUmVxdWVzdBooLm1lbW9zLmFwaS52MS5MaXN0UGxhbm5lckVudHJpZXNSZXNwb25zZSIfgtPkkwIZEhcvYXBpL3YxL3BsYW5uZXIvZW50cmllcxKEAQoPR2V0V2Vla1Byb2dyZXNzEiQubWVtb3MuYXBpLnYxLkdldFdlZWtQcm9ncmVzc1JlcXVlc3QaJS5tZW1vcy5hcGkudjEuR2V0V2Vla1Byb2dyZXNzUmVzcG9uc2UiJILT5JMCHhIcL2FwaS92MS9wbGFubmVyL3dlZWtQcm9ncmVzcxJ7Cg1MaXN0T3BlblRvZG9zEiIubWVtb3MuYXBpLnYxLkxpc3RPcGVuVG9kb3NSZXF1ZXN0GiMubWVtb3MuYXBpLnYxLkxpc3RPcGVuVG9kb3NSZXNwb25zZSIhgtPkkwIbEhkvYXBpL3YxL3BsYW5uZXIvb3BlblRvZG9zEncKDExpc3RUb2RvVGFncxIhLm1lbW9zLmFwaS52MS5MaXN0VG9kb1RhZ3NSZXF1ZXN0GiIubWVtb3MuYXBpLnYxLkxpc3RUb2RvVGFnc1Jlc3BvbnNlIiCC0+STAhoSGC9hcGkvdjEvcGxhbm5lci90b2RvVGFncxJ7CgpTZXRDaGVja0luEh8ubWVtb3MuYXBpLnYxLlNldENoZWNrSW5SZXF1ZXN0GhUubWVtb3MuYXBpLnYxLkNoZWNrSW4iNdpBCGNoZWNrX2lugtPkkwIkOghjaGVja19pbiIYL2FwaS92MS9wbGFubmVyL2NoZWNrSW5zEm0KDURlbGV0ZUNoZWNrSW4SIi5tZW1vcy5hcGkudjEuRGVsZXRlQ2hlY2tJblJlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkiIILT5JMCGioYL2FwaS92MS9wbGFubmVyL2NoZWNrSW5zEmoKB0dldFRvZG8SHC5tZW1vcy5hcGkudjEuR2V0VG9kb1JlcXVlc3QaEi5tZW1vcy5hcGkudjEuVG9kbyIt2kEEbmFtZYLT5JMCIBIeL2FwaS92MS97bmFtZT1wbGFubmVyL3RvZG9zLyp9Em0KCkNyZWF0ZVRvZG8SHy5tZW1vcy5hcGkudjEuQ3JlYXRlVG9kb1JlcXVlc3QaEi5tZW1vcy5hcGkudjEuVG9kbyIq2kEEdG9kb4LT5JMCHToEdG9kbyIVL2FwaS92MS9wbGFubmVyL3RvZG9zEocBCgpVcGRhdGVUb2RvEh8ubWVtb3MuYXBpLnYxLlVwZGF0ZVRvZG9SZXF1ZXN0GhIubWVtb3MuYXBpLnYxLlRvZG8iRNpBEHRvZG8sdXBkYXRlX21hc2uC0+STAis6BHRvZG8yIy9hcGkvdjEve3RvZG8ubmFtZT1wbGFubmVyL3RvZG9zLyp9EoUBCgxQb3N0cG9uZVRvZG8SIS5tZW1vcy5hcGkudjEuUG9zdHBvbmVUb2RvUmVxdWVzdBoSLm1lbW9zLmFwaS52MS5Ub2RvIj7aQQluYW1lLGRhdGWC0+STAiw6ASoiJy9hcGkvdjEve25hbWU9cGxhbm5lci90b2Rvcy8qfTpwb3N0cG9uZRJ0CgpEZWxldGVUb2RvEh8ubWVtb3MuYXBpLnYxLkRlbGV0ZVRvZG9SZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5Ii3aQQRuYW1lgtPkkwIgKh4vYXBpL3YxL3tuYW1lPXBsYW5uZXIvdG9kb3MvKn0SggEKEUNyZWF0ZVBsYW5uZXJOb3RlEiYubWVtb3MuYXBpLnYxLkNyZWF0ZVBsYW5uZXJOb3RlUmVxdWVzdBoZLm1lbW9zLmFwaS52MS5QbGFubmVyTm90ZSIq2kEEbm90ZYLT5JMCHToEbm90ZSIVL2FwaS92MS9wbGFubmVyL25vdGVzEpwBChFVcGRhdGVQbGFubmVyTm90ZRImLm1lbW9zLmFwaS52MS5VcGRhdGVQbGFubmVyTm90ZVJlcXVlc3QaGS5tZW1vcy5hcGkudjEuUGxhbm5lck5vdGUiRNpBEG5vdGUsdXBkYXRlX21hc2uC0+STAis6BG5vdGUyIy9hcGkvdjEve25vdGUubmFtZT1wbGFubmVyL25vdGVzLyp9EoIBChFEZWxldGVQbGFubmVyTm90ZRImLm1lbW9zLmFwaS52MS5EZWxldGVQbGFubmVyTm90ZVJlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkiLdpBBG5hbWWC0+STAiAqHi9hcGkvdjEve25hbWU9cGxhbm5lci9ub3Rlcy8qfRJ+ChJHZXRQbGFubmVyU2V0dGluZ3MSJy5tZW1vcy5hcGkudjEuR2V0UGxhbm5lclNldHRpbmdzUmVxdWVzdBodLm1lbW9zLmFwaS52MS5QbGFubmVyU2V0dGluZ3MiIILT5JMCGhIYL2FwaS92MS9wbGFubmVyL3NldHRpbmdzEo4BChVVcGRhdGVQbGFubmVyU2V0dGluZ3MSKi5tZW1vcy5hcGkudjEuVXBkYXRlUGxhbm5lclNldHRpbmdzUmVxdWVzdBodLm1lbW9zLmFwaS52MS5QbGFubmVyU2V0dGluZ3MiKoLT5JMCJDoIc2V0dGluZ3MyGC9hcGkvdjEvcGxhbm5lci9zZXR0aW5ncxJ7Cg1JbXBvcnRQbGFubmVyEiIubWVtb3MuYXBpLnYxLkltcG9ydFBsYW5uZXJSZXF1ZXN0GiMubWVtb3MuYXBpLnYxLkltcG9ydFBsYW5uZXJSZXNwb25zZSIhgtPkkwIbOgEqIhYvYXBpL3YxL3BsYW5uZXI6aW1wb3J0QqsBChBjb20ubWVtb3MuYXBpLnYxQhNQbGFubmVyU2VydmljZVByb3RvUAFaMGdpdGh1Yi5jb20vdXNlbWVtb3MvbWVtb3MvcHJvdG8vZ2VuL2FwaS92MTthcGl2MaICA01BWKoCDE1lbW9zLkFwaS5WMcoCDE1lbW9zXEFwaVxWMeICGE1lbW9zXEFwaVxWMVxHUEJNZXRhZGF0YeoCDk1lbW9zOjpBcGk6OlYxYgZwcm90bzM", [file_google_api_annotations, file_google_api_client, file_google_api_field_behavior, file_google_api_resource, file_google_protobuf_empty, file_google_protobuf_field_mask, file_google_protobuf_timestamp]);
+  fileDesc("ChxhcGkvdjEvcGxhbm5lcl9zZXJ2aWNlLnByb3RvEgxtZW1vcy5hcGkudjEingIKBUhhYml0EhEKBG5hbWUYASABKAlCA+BBCBISCgV0aXRsZRgCIAEoCUID4EECEhUKCHBvc2l0aW9uGAMgASgFQgPgQQESFwoIYXJjaGl2ZWQYBCABKAhCBRgB4EEDEjQKC2NyZWF0ZV90aW1lGAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEjQKC3VwZGF0ZV90aW1lGAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEhIKBWNvbG9yGAcgASgFQgPgQQE6PupBOwoSbWVtb3MuYXBpLnYxL0hhYml0EhZwbGFubmVyL2hhYml0cy97aGFiaXR9KgZoYWJpdHMyBWhhYml0ItgBCgxIYWJpdFZlcnNpb24SFgoOZWZmZWN0aXZlX2RhdGUYASABKAkSMAoHZW50cmllcxgCIAMoCzIfLm1lbW9zLmFwaS52MS5IYWJpdFZlcnNpb25FbnRyeRISCgVtZW1vcxgFIAMoCUID4EEBEjQKC2NyZWF0ZV90aW1lGAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDEjQKC3VwZGF0ZV90aW1lGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEID4EEDIkEKEUhhYml0VmVyc2lvbkVudHJ5EhIKBWhhYml0GAEgASgJQgPgQQISGAoLd2Vla2x5X2dvYWwYAiABKAVCA+BBASL5AQoHQ2hlY2tJbhISCgVoYWJpdBgBIAEoCUID4EECEhEKBGRhdGUYAiABKAlCA+BBAhIRCgRub3RlGAMgASgJQgPgQQESEQoEdG9kbxgEIAEoCUID4EEDEjEKBnNvdXJjZRgFIAEoDjIcLm1lbW9zLmFwaS52MS5DaGVja0luLlNvdXJjZUID4EEDEisKB3dvcmtvdXQYBiABKAsyFS5tZW1vcy5hcGkudjEuV29ya291dEID4EEBIkEKBlNvdXJjZRIWChJTT1VSQ0VfVU5TUEVDSUZJRUQQABIKCgZNQU5VQUwQARIICgRUT0RPEAISCQoFQUdFTlQQAyJ5CgdXb3Jrb3V0EiIKEGR1cmF0aW9uX21pbnV0ZXMYASABKAFCA+BBAUgAiAEBEjUKCWV4ZXJjaXNlcxgCIAMoCzIdLm1lbW9zLmFwaS52MS5Xb3Jrb3V0RXhlcmNpc2VCA+BBAUITChFfZHVyYXRpb25fbWludXRlcyLdAQoPV29ya291dEV4ZXJjaXNlEhEKBG5hbWUYASABKAlCA+BBAhIWCgllcXVpcG1lbnQYAiABKAlCA+BBARIbCgl3ZWlnaHRfa2cYAyABKAFCA+BBAUgAiAEBEhEKBHJlcHMYBCADKAVCA+BBARIiChBkdXJhdGlvbl9taW51dGVzGAUgASgBQgPgQQFIAYgBARIVCghzZXR0aW5ncxgGIAEoCUID4EEBEhEKBG5vdGUYByABKAlCA+BBAUIMCgpfd2VpZ2h0X2tnQhMKEV9kdXJhdGlvbl9taW51dGVzIq0FCgRUb2RvEhEKBG5hbWUYASABKAlCA+BBCBISCgV0aXRsZRgCIAEoCUID4EECEhEKBGRhdGUYAyABKAlCA+BBARIuCgZzdGF0dXMYBCABKA4yGS5tZW1vcy5hcGkudjEuVG9kby5TdGF0dXNCA+BBARIbCg5jbG9zZWRfb3ZlcmR1ZRgFIAEoCEID4EEDEjMKCmNsb3NlX3RpbWUYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgPgQQMSGgoNY2FuY2VsX3JlYXNvbhgHIAEoCUID4EEBEhYKCWltcG9ydGFudBgIIAEoCEID4EEBEhAKA3RhZxgJIAEoCUID4EEBEhEKBG5vdGUYCiABKAlCA+BBARITCgRtZW1vGAsgASgJQgUYAeBBARIQCgN1cmwYDCABKAlCA+BBARI0CgtjcmVhdGVfdGltZRgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCA+BBAxI0Cgt1cGRhdGVfdGltZRgOIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCA+BBAxIaCg1vcmlnaW5hbF9kYXRlGA8gASgJQgPgQQMSGwoOcG9zdHBvbmVfY291bnQYECABKAVCA+BBAxISCgVtZW1vcxgRIAMoCUID4EEBEhIKBWhhYml0GBIgASgJQgPgQQESGgoNY2hlY2tfaW5fZGF0ZRgTIAEoCUID4EEDIkUKBlN0YXR1cxIWChJTVEFUVVNfVU5TUEVDSUZJRUQQABIKCgZBQ1RJVkUQARIICgRET05FEAISDQoJQ0FOQ0VMTEVEEAM6OepBNgoRbWVtb3MuYXBpLnYxL1RvZG8SFHBsYW5uZXIvdG9kb3Mve3RvZG99KgV0b2RvczIEdG9kbyKFAgoLUGxhbm5lck5vdGUSEQoEbmFtZRgBIAEoCUID4EEIEhEKBGRhdGUYAiABKAlCA+BBAhIUCgdjb250ZW50GAMgASgJQgPgQQISNAoLY3JlYXRlX3RpbWUYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgPgQQMSNAoLdXBkYXRlX3RpbWUYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgPgQQM6TupBSwoYbWVtb3MuYXBpLnYxL1BsYW5uZXJOb3RlEhRwbGFubmVyL25vdGVzL3tub3RlfSoMcGxhbm5lck5vdGVzMgtwbGFubmVyTm90ZSITChFMaXN0SGFiaXRzUmVxdWVzdCIaChhMaXN0SGFiaXRWZXJzaW9uc1JlcXVlc3QidAoZTGlzdEhhYml0VmVyc2lvbnNSZXNwb25zZRIsCgh2ZXJzaW9ucxgBIAMoCzIaLm1lbW9zLmFwaS52MS5IYWJpdFZlcnNpb24SKQoFZHJhZnQYAiABKAsyGi5tZW1vcy5hcGkudjEuSGFiaXRWZXJzaW9uIkkKF1VwZGF0ZUhhYml0RHJhZnRSZXF1ZXN0Ei4KBWRyYWZ0GAEgASgLMhoubWVtb3MuYXBpLnYxLkhhYml0VmVyc2lvbkID4EECIhkKF0RlbGV0ZUhhYml0RHJhZnRSZXF1ZXN0Ik0KF0VuYWJsZUhhYml0RHJhZnRSZXF1ZXN0EhcKCmxvY2FsX2RhdGUYASABKAlCA+BBAhIZCgx1bmxpbmtfdG9kb3MYAiABKAhCA+BBASI5ChJMaXN0SGFiaXRzUmVzcG9uc2USIwoGaGFiaXRzGAEgAygLMhMubWVtb3MuYXBpLnYxLkhhYml0Ij0KEkNyZWF0ZUhhYml0UmVxdWVzdBInCgVoYWJpdBgBIAEoCzITLm1lbW9zLmFwaS52MS5IYWJpdEID4EECInMKElVwZGF0ZUhhYml0UmVxdWVzdBInCgVoYWJpdBgBIAEoCzITLm1lbW9zLmFwaS52MS5IYWJpdEID4EECEjQKC3VwZGF0ZV9tYXNrGAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLkZpZWxkTWFza0ID4EECIksKGUxpc3RQbGFubmVyRW50cmllc1JlcXVlc3QSFwoKc3RhcnRfZGF0ZRgBIAEoCUID4EECEhUKCGVuZF9kYXRlGAIgASgJQgPgQQIikwEKGkxpc3RQbGFubmVyRW50cmllc1Jlc3BvbnNlEigKCWNoZWNrX2lucxgBIAMoCzIVLm1lbW9zLmFwaS52MS5DaGVja0luEiEKBXRvZG9zGAIgAygLMhIubWVtb3MuYXBpLnYxLlRvZG8SKAoFbm90ZXMYAyADKAsyGS5tZW1vcy5hcGkudjEuUGxhbm5lck5vdGUiFgoUTGlzdE9wZW5Ub2Rvc1JlcXVlc3QiOgoVTGlzdE9wZW5Ub2Rvc1Jlc3BvbnNlEiEKBXRvZG9zGAEgAygLMhIubWVtb3MuYXBpLnYxLlRvZG8iFQoTTGlzdFRvZG9UYWdzUmVxdWVzdCIkChRMaXN0VG9kb1RhZ3NSZXNwb25zZRIMCgR0YWdzGAEgAygJIkEKEVNldENoZWNrSW5SZXF1ZXN0EiwKCGNoZWNrX2luGAEgASgLMhUubWVtb3MuYXBpLnYxLkNoZWNrSW5CA+BBAiI9ChREZWxldGVDaGVja0luUmVxdWVzdBISCgVoYWJpdBgBIAEoCUID4EECEhEKBGRhdGUYAiABKAlCA+BBAiKEAQoTTGlzdFdvcmtvdXRzUmVxdWVzdBIXCgpzdGFydF9kYXRlGAEgASgJQgPgQQESFQoIZW5kX2RhdGUYAiABKAlCA+BBARISCgVoYWJpdBgDIAEoCUID4EEBEhUKCGV4ZXJjaXNlGAQgASgJQgPgQQESEgoFbGltaXQYBSABKAVCA+BBASJAChRMaXN0V29ya291dHNSZXNwb25zZRIoCgljaGVja19pbnMYASADKAsyFS5tZW1vcy5hcGkudjEuQ2hlY2tJbiIjCg5HZXRUb2RvUmVxdWVzdBIRCgRuYW1lGAEgASgJQgPgQQIiUwoRQ3JlYXRlVG9kb1JlcXVlc3QSJQoEdG9kbxgBIAEoCzISLm1lbW9zLmFwaS52MS5Ub2RvQgPgQQISFwoKbG9jYWxfZGF0ZRgCIAEoCUID4EEBIokBChFVcGRhdGVUb2RvUmVxdWVzdBIlCgR0b2RvGAEgASgLMhIubWVtb3MuYXBpLnYxLlRvZG9CA+BBAhI0Cgt1cGRhdGVfbWFzaxgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5GaWVsZE1hc2tCA+BBAhIXCgpsb2NhbF9kYXRlGAMgASgJQgPgQQEiVAoTUG9zdHBvbmVUb2RvUmVxdWVzdBIRCgRuYW1lGAEgASgJQgPgQQISEQoEZGF0ZRgCIAEoCUID4EECEhcKCmxvY2FsX2RhdGUYAyABKAlCA+BBAiImChFEZWxldGVUb2RvUmVxdWVzdBIRCgRuYW1lGAEgASgJQgPgQQIiSAoYQ3JlYXRlUGxhbm5lck5vdGVSZXF1ZXN0EiwKBG5vdGUYASABKAsyGS5tZW1vcy5hcGkudjEuUGxhbm5lck5vdGVCA+BBAiJ+ChhVcGRhdGVQbGFubmVyTm90ZVJlcXVlc3QSLAoEbm90ZRgBIAEoCzIZLm1lbW9zLmFwaS52MS5QbGFubmVyTm90ZUID4EECEjQKC3VwZGF0ZV9tYXNrGAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLkZpZWxkTWFza0ID4EECIi0KGERlbGV0ZVBsYW5uZXJOb3RlUmVxdWVzdBIRCgRuYW1lGAEgASgJQgPgQQIivgEKFEltcG9ydFBsYW5uZXJSZXF1ZXN0EiMKBmhhYml0cxgBIAMoCzITLm1lbW9zLmFwaS52MS5IYWJpdBIuCgljaGVja19pbnMYAiADKAsyGy5tZW1vcy5hcGkudjEuSW1wb3J0Q2hlY2tJbhInCgV0b2RvcxgDIAMoCzIYLm1lbW9zLmFwaS52MS5JbXBvcnRUb2RvEigKBW5vdGVzGAQgAygLMhkubWVtb3MuYXBpLnYxLlBsYW5uZXJOb3RlIkAKDUltcG9ydENoZWNrSW4SEwoLaGFiaXRfaW5kZXgYASABKAUSDAoEZGF0ZRgCIAEoCRIMCgRub3RlGAMgASgJIkYKCkltcG9ydFRvZG8SIAoEdG9kbxgBIAEoCzISLm1lbW9zLmFwaS52MS5Ub2RvEhYKDmNsb3NlZF9vdmVyZHVlGAIgASgIImwKFUltcG9ydFBsYW5uZXJSZXNwb25zZRITCgtoYWJpdF9jb3VudBgBIAEoBRIWCg5jaGVja19pbl9jb3VudBgCIAEoBRISCgp0b2RvX2NvdW50GAMgASgFEhIKCm5vdGVfY291bnQYBCABKAUiLgoPUGxhbm5lclNldHRpbmdzEhsKDndlZWtfc3RhcnRfZGF5GAEgASgFQgPgQQEiGwoZR2V0UGxhbm5lclNldHRpbmdzUmVxdWVzdCJUChxVcGRhdGVQbGFubmVyU2V0dGluZ3NSZXF1ZXN0EjQKCHNldHRpbmdzGAEgASgLMh0ubWVtb3MuYXBpLnYxLlBsYW5uZXJTZXR0aW5nc0ID4EECIj8KFkdldFdlZWtQcm9ncmVzc1JlcXVlc3QSEQoEZGF0ZRgBIAEoCUID4EECEhIKBXdlZWtzGAIgASgFQgPgQQEiXAoXR2V0V2Vla1Byb2dyZXNzUmVzcG9uc2USFgoOd2Vla19zdGFydF9kYXkYASABKAUSKQoFd2Vla3MYAiADKAsyGi5tZW1vcy5hcGkudjEuV2Vla1Byb2dyZXNzIo4CCgxXZWVrUHJvZ3Jlc3MSEgoKd2Vla19zdGFydBgBIAEoCRIQCgh3ZWVrX2VuZBgCIAEoCRIVCg1jb250YWluc19kYXRlGAMgASgIEhEKCWRheXNfbGVmdBgEIAEoBRIkCgRwbGFuGAUgASgLMhYubWVtb3MuYXBpLnYxLldlZWtQbGFuEi8KBmhhYml0cxgGIAMoCzIfLm1lbW9zLmFwaS52MS5XZWVrSGFiaXRQcm9ncmVzcxIwCgtoYWJpdF90b2RvcxgHIAMoCzIbLm1lbW9zLmFwaS52MS5XZWVrSGFiaXRUb2RvEiUKBW5vdGVzGAggAygLMhYubWVtb3MuYXBpLnYxLldlZWtOb3RlImcKCFdlZWtQbGFuEhYKDmVmZmVjdGl2ZV9kYXRlGAEgASgJEhAKCHJlcGxhY2VkGAIgAygJEjEKCWRvY3VtZW50cxgDIAMoCzIeLm1lbW9zLmFwaS52MS5XZWVrUGxhbkRvY3VtZW50Ii8KEFdlZWtQbGFuRG9jdW1lbnQSDAoEbmFtZRgBIAEoCRINCgV0aXRsZRgCIAEoCSLAAQoRV2Vla0hhYml0UHJvZ3Jlc3MSDQoFaGFiaXQYASABKAkSDAoEaWNvbhgCIAEoCRINCgVsYWJlbBgDIAEoCRIPCgdpbl9wbGFuGAQgASgIEhgKC3dlZWtseV9nb2FsGAUgASgFSACIAQESFgoOY2hlY2tfaW5fY291bnQYBiABKAUSLAoJY2hlY2tfaW5zGAcgAygLMhkubWVtb3MuYXBpLnYxLldlZWtDaGVja0luQg4KDF93ZWVrbHlfZ29hbCKNAQoLV2Vla0NoZWNrSW4SDAoEZGF0ZRgBIAEoCRIMCgRub3RlGAIgASgJEgwKBHRvZG8YAyABKAkSLAoGc291cmNlGAQgASgOMhwubWVtb3MuYXBpLnYxLkNoZWNrSW4uU291cmNlEiYKB3dvcmtvdXQYBSABKAsyFS5tZW1vcy5hcGkudjEuV29ya291dCIpCghXZWVrTm90ZRIMCgRkYXRlGAEgASgJEg8KB2NvbnRlbnQYAiABKAkizAEKDVdlZWtIYWJpdFRvZG8SDAoEbmFtZRgBIAEoCRIMCgRkYXRlGAIgASgJEg0KBXRpdGxlGAMgASgJEg0KBWhhYml0GAQgASgJEjAKBXN0YXRlGAUgASgOMiEubWVtb3MuYXBpLnYxLldlZWtIYWJpdFRvZG8uU3RhdGUiTwoFU3RhdGUSFQoRU1RBVEVfVU5TUEVDSUZJRUQQABIKCgZBQ1RJVkUQARIICgRET05FEAISCgoGRkFJTEVEEAMSDQoJQ0FOQ0VMTEVEEAQynBkKDlBsYW5uZXJTZXJ2aWNlEm8KCkxpc3RIYWJpdHMSHy5tZW1vcy5hcGkudjEuTGlzdEhhYml0c1JlcXVlc3QaIC5tZW1vcy5hcGkudjEuTGlzdEhhYml0c1Jlc3BvbnNlIh6C0+STAhgSFi9hcGkvdjEvcGxhbm5lci9oYWJpdHMScwoLQ3JlYXRlSGFiaXQSIC5tZW1vcy5hcGkudjEuQ3JlYXRlSGFiaXRSZXF1ZXN0GhMubWVtb3MuYXBpLnYxLkhhYml0Ii3aQQVoYWJpdILT5JMCHzoFaGFiaXQiFi9hcGkvdjEvcGxhbm5lci9oYWJpdHMSjgEKC1VwZGF0ZUhhYml0EiAubWVtb3MuYXBpLnYxLlVwZGF0ZUhhYml0UmVxdWVzdBoTLm1lbW9zLmFwaS52MS5IYWJpdCJI2kERaGFiaXQsdXBkYXRlX21hc2uC0+STAi46BWhhYml0MiUvYXBpL3YxL3toYWJpdC5uYW1lPXBsYW5uZXIvaGFiaXRzLyp9EosBChFMaXN0SGFiaXRWZXJzaW9ucxImLm1lbW9zLmFwaS52MS5MaXN0SGFiaXRWZXJzaW9uc1JlcXVlc3QaJy5tZW1vcy5hcGkudjEuTGlzdEhhYml0VmVyc2lvbnNSZXNwb25zZSIlgtPkkwIfEh0vYXBpL3YxL3BsYW5uZXIvaGFiaXRWZXJzaW9ucxKAAQoQVXBkYXRlSGFiaXREcmFmdBIlLm1lbW9zLmFwaS52MS5VcGRhdGVIYWJpdERyYWZ0UmVxdWVzdBoaLm1lbW9zLmFwaS52MS5IYWJpdFZlcnNpb24iKYLT5JMCIzoFZHJhZnQyGi9hcGkvdjEvcGxhbm5lci9oYWJpdERyYWZ0EnUKEERlbGV0ZUhhYml0RHJhZnQSJS5tZW1vcy5hcGkudjEuRGVsZXRlSGFiaXREcmFmdFJlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkiIoLT5JMCHCoaL2FwaS92MS9wbGFubmVyL2hhYml0RHJhZnQSgwEKEEVuYWJsZUhhYml0RHJhZnQSJS5tZW1vcy5hcGkudjEuRW5hYmxlSGFiaXREcmFmdFJlcXVlc3QaGi5tZW1vcy5hcGkudjEuSGFiaXRWZXJzaW9uIiyC0+STAiY6ASoiIS9hcGkvdjEvcGxhbm5lci9oYWJpdERyYWZ0OmVuYWJsZRKIAQoSTGlzdFBsYW5uZXJFbnRyaWVzEicubWVtb3MuYXBpLnYxLkxpc3RQbGFubmVyRW50cmllc1JlcXVlc3QaKC5tZW1vcy5hcGkudjEuTGlzdFBsYW5uZXJFbnRyaWVzUmVzcG9uc2UiH4LT5JMCGRIXL2FwaS92MS9wbGFubmVyL2VudHJpZXMShAEKD0dldFdlZWtQcm9ncmVzcxIkLm1lbW9zLmFwaS52MS5HZXRXZWVrUHJvZ3Jlc3NSZXF1ZXN0GiUubWVtb3MuYXBpLnYxLkdldFdlZWtQcm9ncmVzc1Jlc3BvbnNlIiSC0+STAh4SHC9hcGkvdjEvcGxhbm5lci93ZWVrUHJvZ3Jlc3MSewoNTGlzdE9wZW5Ub2RvcxIiLm1lbW9zLmFwaS52MS5MaXN0T3BlblRvZG9zUmVxdWVzdBojLm1lbW9zLmFwaS52MS5MaXN0T3BlblRvZG9zUmVzcG9uc2UiIYLT5JMCGxIZL2FwaS92MS9wbGFubmVyL29wZW5Ub2RvcxJ3CgxMaXN0VG9kb1RhZ3MSIS5tZW1vcy5hcGkudjEuTGlzdFRvZG9UYWdzUmVxdWVzdBoiLm1lbW9zLmFwaS52MS5MaXN0VG9kb1RhZ3NSZXNwb25zZSIggtPkkwIaEhgvYXBpL3YxL3BsYW5uZXIvdG9kb1RhZ3MSewoKU2V0Q2hlY2tJbhIfLm1lbW9zLmFwaS52MS5TZXRDaGVja0luUmVxdWVzdBoVLm1lbW9zLmFwaS52MS5DaGVja0luIjXaQQhjaGVja19pboLT5JMCJDoIY2hlY2tfaW4iGC9hcGkvdjEvcGxhbm5lci9jaGVja0lucxJtCg1EZWxldGVDaGVja0luEiIubWVtb3MuYXBpLnYxLkRlbGV0ZUNoZWNrSW5SZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5IiCC0+STAhoqGC9hcGkvdjEvcGxhbm5lci9jaGVja0lucxJ3CgxMaXN0V29ya291dHMSIS5tZW1vcy5hcGkudjEuTGlzdFdvcmtvdXRzUmVxdWVzdBoiLm1lbW9zLmFwaS52MS5MaXN0V29ya291dHNSZXNwb25zZSIggtPkkwIaEhgvYXBpL3YxL3BsYW5uZXIvd29ya291dHMSagoHR2V0VG9kbxIcLm1lbW9zLmFwaS52MS5HZXRUb2RvUmVxdWVzdBoSLm1lbW9zLmFwaS52MS5Ub2RvIi3aQQRuYW1lgtPkkwIgEh4vYXBpL3YxL3tuYW1lPXBsYW5uZXIvdG9kb3MvKn0SbQoKQ3JlYXRlVG9kbxIfLm1lbW9zLmFwaS52MS5DcmVhdGVUb2RvUmVxdWVzdBoSLm1lbW9zLmFwaS52MS5Ub2RvIiraQQR0b2RvgtPkkwIdOgR0b2RvIhUvYXBpL3YxL3BsYW5uZXIvdG9kb3MShwEKClVwZGF0ZVRvZG8SHy5tZW1vcy5hcGkudjEuVXBkYXRlVG9kb1JlcXVlc3QaEi5tZW1vcy5hcGkudjEuVG9kbyJE2kEQdG9kbyx1cGRhdGVfbWFza4LT5JMCKzoEdG9kbzIjL2FwaS92MS97dG9kby5uYW1lPXBsYW5uZXIvdG9kb3MvKn0ShQEKDFBvc3Rwb25lVG9kbxIhLm1lbW9zLmFwaS52MS5Qb3N0cG9uZVRvZG9SZXF1ZXN0GhIubWVtb3MuYXBpLnYxLlRvZG8iPtpBCW5hbWUsZGF0ZYLT5JMCLDoBKiInL2FwaS92MS97bmFtZT1wbGFubmVyL3RvZG9zLyp9OnBvc3Rwb25lEnQKCkRlbGV0ZVRvZG8SHy5tZW1vcy5hcGkudjEuRGVsZXRlVG9kb1JlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkiLdpBBG5hbWWC0+STAiAqHi9hcGkvdjEve25hbWU9cGxhbm5lci90b2Rvcy8qfRKCAQoRQ3JlYXRlUGxhbm5lck5vdGUSJi5tZW1vcy5hcGkudjEuQ3JlYXRlUGxhbm5lck5vdGVSZXF1ZXN0GhkubWVtb3MuYXBpLnYxLlBsYW5uZXJOb3RlIiraQQRub3RlgtPkkwIdOgRub3RlIhUvYXBpL3YxL3BsYW5uZXIvbm90ZXMSnAEKEVVwZGF0ZVBsYW5uZXJOb3RlEiYubWVtb3MuYXBpLnYxLlVwZGF0ZVBsYW5uZXJOb3RlUmVxdWVzdBoZLm1lbW9zLmFwaS52MS5QbGFubmVyTm90ZSJE2kEQbm90ZSx1cGRhdGVfbWFza4LT5JMCKzoEbm90ZTIjL2FwaS92MS97bm90ZS5uYW1lPXBsYW5uZXIvbm90ZXMvKn0SggEKEURlbGV0ZVBsYW5uZXJOb3RlEiYubWVtb3MuYXBpLnYxLkRlbGV0ZVBsYW5uZXJOb3RlUmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eSIt2kEEbmFtZYLT5JMCICoeL2FwaS92MS97bmFtZT1wbGFubmVyL25vdGVzLyp9En4KEkdldFBsYW5uZXJTZXR0aW5ncxInLm1lbW9zLmFwaS52MS5HZXRQbGFubmVyU2V0dGluZ3NSZXF1ZXN0Gh0ubWVtb3MuYXBpLnYxLlBsYW5uZXJTZXR0aW5ncyIggtPkkwIaEhgvYXBpL3YxL3BsYW5uZXIvc2V0dGluZ3MSjgEKFVVwZGF0ZVBsYW5uZXJTZXR0aW5ncxIqLm1lbW9zLmFwaS52MS5VcGRhdGVQbGFubmVyU2V0dGluZ3NSZXF1ZXN0Gh0ubWVtb3MuYXBpLnYxLlBsYW5uZXJTZXR0aW5ncyIqgtPkkwIkOghzZXR0aW5nczIYL2FwaS92MS9wbGFubmVyL3NldHRpbmdzEnsKDUltcG9ydFBsYW5uZXISIi5tZW1vcy5hcGkudjEuSW1wb3J0UGxhbm5lclJlcXVlc3QaIy5tZW1vcy5hcGkudjEuSW1wb3J0UGxhbm5lclJlc3BvbnNlIiGC0+STAhs6ASoiFi9hcGkvdjEvcGxhbm5lcjppbXBvcnRCqwEKEGNvbS5tZW1vcy5hcGkudjFCE1BsYW5uZXJTZXJ2aWNlUHJvdG9QAVowZ2l0aHViLmNvbS91c2VtZW1vcy9tZW1vcy9wcm90by9nZW4vYXBpL3YxO2FwaXYxogIDTUFYqgIMTWVtb3MuQXBpLlYxygIMTWVtb3NcQXBpXFYx4gIYTWVtb3NcQXBpXFYxXEdQQk1ldGFkYXRh6gIOTWVtb3M6OkFwaTo6VjFiBnByb3RvMw", [file_google_api_annotations, file_google_api_client, file_google_api_field_behavior, file_google_api_resource, file_google_protobuf_empty, file_google_protobuf_field_mask, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message memos.api.v1.Habit
@@ -187,6 +187,19 @@ export type CheckIn = Message<"memos.api.v1.CheckIn"> & {
    * @generated from field: string todo = 4;
    */
   todo: string;
+
+  /**
+   * @generated from field: memos.api.v1.CheckIn.Source source = 5;
+   */
+  source: CheckIn_Source;
+
+  /**
+   * The workout the check-in stands for: one session of the habit that day.
+   * Unset for a check-in without one.
+   *
+   * @generated from field: memos.api.v1.Workout workout = 6;
+   */
+  workout?: Workout | undefined;
 };
 
 /**
@@ -195,6 +208,136 @@ export type CheckIn = Message<"memos.api.v1.CheckIn"> & {
  */
 export const CheckInSchema: GenMessage<CheckIn> = /*@__PURE__*/
   messageDesc(file_api_v1_planner_service, 3);
+
+/**
+ * Who made a check-in. The server works it out from the caller's
+ * credential; a caller cannot choose it.
+ *
+ * @generated from enum memos.api.v1.CheckIn.Source
+ */
+export enum CheckIn_Source {
+  /**
+   * @generated from enum value: SOURCE_UNSPECIFIED = 0;
+   */
+  SOURCE_UNSPECIFIED = 0,
+
+  /**
+   * In the app.
+   *
+   * @generated from enum value: MANUAL = 1;
+   */
+  MANUAL = 1,
+
+  /**
+   * By completing a habit todo in the app.
+   *
+   * @generated from enum value: TODO = 2;
+   */
+  TODO = 2,
+
+  /**
+   * By a caller with a personal access token, e.g. a bot.
+   *
+   * @generated from enum value: AGENT = 3;
+   */
+  AGENT = 3,
+}
+
+/**
+ * Describes the enum memos.api.v1.CheckIn.Source.
+ */
+export const CheckIn_SourceSchema: GenEnum<CheckIn_Source> = /*@__PURE__*/
+  enumDesc(file_api_v1_planner_service, 3, 0);
+
+/**
+ * Workout is the detail of a workout a check-in stands for. It records facts
+ * as reported; it does not judge whether the session counts.
+ *
+ * @generated from message memos.api.v1.Workout
+ */
+export type Workout = Message<"memos.api.v1.Workout"> & {
+  /**
+   * The whole session's length in minutes; unset when not recorded.
+   *
+   * @generated from field: optional double duration_minutes = 1;
+   */
+  durationMinutes?: number | undefined;
+
+  /**
+   * The exercises in the order they were done, at most 30.
+   *
+   * @generated from field: repeated memos.api.v1.WorkoutExercise exercises = 2;
+   */
+  exercises: WorkoutExercise[];
+};
+
+/**
+ * Describes the message memos.api.v1.Workout.
+ * Use `create(WorkoutSchema)` to create a new message.
+ */
+export const WorkoutSchema: GenMessage<Workout> = /*@__PURE__*/
+  messageDesc(file_api_v1_planner_service, 4);
+
+/**
+ * @generated from message memos.api.v1.WorkoutExercise
+ */
+export type WorkoutExercise = Message<"memos.api.v1.WorkoutExercise"> & {
+  /**
+   * What was done, e.g. "Romanian deadlift".
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * What it was done with, e.g. "dumbbells".
+   *
+   * @generated from field: string equipment = 2;
+   */
+  equipment: string;
+
+  /**
+   * In kilograms; the caller converts from pounds.
+   *
+   * @generated from field: optional double weight_kg = 3;
+   */
+  weightKg?: number | undefined;
+
+  /**
+   * Repetitions of each set, in order, e.g. [15, 12, 12].
+   *
+   * @generated from field: repeated int32 reps = 4;
+   */
+  reps: number[];
+
+  /**
+   * In minutes, for timed exercises.
+   *
+   * @generated from field: optional double duration_minutes = 5;
+   */
+  durationMinutes?: number | undefined;
+
+  /**
+   * The machine's settings, e.g. "incline 10, 3.8-4 km/h".
+   *
+   * @generated from field: string settings = 6;
+   */
+  settings: string;
+
+  /**
+   * A remark in a sentence.
+   *
+   * @generated from field: string note = 7;
+   */
+  note: string;
+};
+
+/**
+ * Describes the message memos.api.v1.WorkoutExercise.
+ * Use `create(WorkoutExerciseSchema)` to create a new message.
+ */
+export const WorkoutExerciseSchema: GenMessage<WorkoutExercise> = /*@__PURE__*/
+  messageDesc(file_api_v1_planner_service, 5);
 
 /**
  * @generated from message memos.api.v1.Todo
@@ -334,7 +477,7 @@ export type Todo = Message<"memos.api.v1.Todo"> & {
  * Use `create(TodoSchema)` to create a new message.
  */
 export const TodoSchema: GenMessage<Todo> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 4);
+  messageDesc(file_api_v1_planner_service, 6);
 
 /**
  * There is no "overdue" status: an active todo whose date is before the
@@ -368,7 +511,7 @@ export enum Todo_Status {
  * Describes the enum memos.api.v1.Todo.Status.
  */
 export const Todo_StatusSchema: GenEnum<Todo_Status> = /*@__PURE__*/
-  enumDesc(file_api_v1_planner_service, 4, 0);
+  enumDesc(file_api_v1_planner_service, 6, 0);
 
 /**
  * PlannerNote is a plain record of what happened on a day.
@@ -411,7 +554,7 @@ export type PlannerNote = Message<"memos.api.v1.PlannerNote"> & {
  * Use `create(PlannerNoteSchema)` to create a new message.
  */
 export const PlannerNoteSchema: GenMessage<PlannerNote> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 5);
+  messageDesc(file_api_v1_planner_service, 7);
 
 /**
  * @generated from message memos.api.v1.ListHabitsRequest
@@ -424,7 +567,7 @@ export type ListHabitsRequest = Message<"memos.api.v1.ListHabitsRequest"> & {
  * Use `create(ListHabitsRequestSchema)` to create a new message.
  */
 export const ListHabitsRequestSchema: GenMessage<ListHabitsRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 6);
+  messageDesc(file_api_v1_planner_service, 8);
 
 /**
  * @generated from message memos.api.v1.ListHabitVersionsRequest
@@ -437,7 +580,7 @@ export type ListHabitVersionsRequest = Message<"memos.api.v1.ListHabitVersionsRe
  * Use `create(ListHabitVersionsRequestSchema)` to create a new message.
  */
 export const ListHabitVersionsRequestSchema: GenMessage<ListHabitVersionsRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 7);
+  messageDesc(file_api_v1_planner_service, 9);
 
 /**
  * @generated from message memos.api.v1.ListHabitVersionsResponse
@@ -461,7 +604,7 @@ export type ListHabitVersionsResponse = Message<"memos.api.v1.ListHabitVersionsR
  * Use `create(ListHabitVersionsResponseSchema)` to create a new message.
  */
 export const ListHabitVersionsResponseSchema: GenMessage<ListHabitVersionsResponse> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 8);
+  messageDesc(file_api_v1_planner_service, 10);
 
 /**
  * @generated from message memos.api.v1.UpdateHabitDraftRequest
@@ -480,7 +623,7 @@ export type UpdateHabitDraftRequest = Message<"memos.api.v1.UpdateHabitDraftRequ
  * Use `create(UpdateHabitDraftRequestSchema)` to create a new message.
  */
 export const UpdateHabitDraftRequestSchema: GenMessage<UpdateHabitDraftRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 9);
+  messageDesc(file_api_v1_planner_service, 11);
 
 /**
  * @generated from message memos.api.v1.DeleteHabitDraftRequest
@@ -493,7 +636,7 @@ export type DeleteHabitDraftRequest = Message<"memos.api.v1.DeleteHabitDraftRequ
  * Use `create(DeleteHabitDraftRequestSchema)` to create a new message.
  */
 export const DeleteHabitDraftRequestSchema: GenMessage<DeleteHabitDraftRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 10);
+  messageDesc(file_api_v1_planner_service, 12);
 
 /**
  * @generated from message memos.api.v1.EnableHabitDraftRequest
@@ -520,7 +663,7 @@ export type EnableHabitDraftRequest = Message<"memos.api.v1.EnableHabitDraftRequ
  * Use `create(EnableHabitDraftRequestSchema)` to create a new message.
  */
 export const EnableHabitDraftRequestSchema: GenMessage<EnableHabitDraftRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 11);
+  messageDesc(file_api_v1_planner_service, 13);
 
 /**
  * @generated from message memos.api.v1.ListHabitsResponse
@@ -537,7 +680,7 @@ export type ListHabitsResponse = Message<"memos.api.v1.ListHabitsResponse"> & {
  * Use `create(ListHabitsResponseSchema)` to create a new message.
  */
 export const ListHabitsResponseSchema: GenMessage<ListHabitsResponse> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 12);
+  messageDesc(file_api_v1_planner_service, 14);
 
 /**
  * @generated from message memos.api.v1.CreateHabitRequest
@@ -554,7 +697,7 @@ export type CreateHabitRequest = Message<"memos.api.v1.CreateHabitRequest"> & {
  * Use `create(CreateHabitRequestSchema)` to create a new message.
  */
 export const CreateHabitRequestSchema: GenMessage<CreateHabitRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 13);
+  messageDesc(file_api_v1_planner_service, 15);
 
 /**
  * @generated from message memos.api.v1.UpdateHabitRequest
@@ -578,7 +721,7 @@ export type UpdateHabitRequest = Message<"memos.api.v1.UpdateHabitRequest"> & {
  * Use `create(UpdateHabitRequestSchema)` to create a new message.
  */
 export const UpdateHabitRequestSchema: GenMessage<UpdateHabitRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 14);
+  messageDesc(file_api_v1_planner_service, 16);
 
 /**
  * @generated from message memos.api.v1.ListPlannerEntriesRequest
@@ -604,7 +747,7 @@ export type ListPlannerEntriesRequest = Message<"memos.api.v1.ListPlannerEntries
  * Use `create(ListPlannerEntriesRequestSchema)` to create a new message.
  */
 export const ListPlannerEntriesRequestSchema: GenMessage<ListPlannerEntriesRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 15);
+  messageDesc(file_api_v1_planner_service, 17);
 
 /**
  * @generated from message memos.api.v1.ListPlannerEntriesResponse
@@ -631,7 +774,7 @@ export type ListPlannerEntriesResponse = Message<"memos.api.v1.ListPlannerEntrie
  * Use `create(ListPlannerEntriesResponseSchema)` to create a new message.
  */
 export const ListPlannerEntriesResponseSchema: GenMessage<ListPlannerEntriesResponse> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 16);
+  messageDesc(file_api_v1_planner_service, 18);
 
 /**
  * @generated from message memos.api.v1.ListOpenTodosRequest
@@ -644,7 +787,7 @@ export type ListOpenTodosRequest = Message<"memos.api.v1.ListOpenTodosRequest"> 
  * Use `create(ListOpenTodosRequestSchema)` to create a new message.
  */
 export const ListOpenTodosRequestSchema: GenMessage<ListOpenTodosRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 17);
+  messageDesc(file_api_v1_planner_service, 19);
 
 /**
  * @generated from message memos.api.v1.ListOpenTodosResponse
@@ -661,7 +804,7 @@ export type ListOpenTodosResponse = Message<"memos.api.v1.ListOpenTodosResponse"
  * Use `create(ListOpenTodosResponseSchema)` to create a new message.
  */
 export const ListOpenTodosResponseSchema: GenMessage<ListOpenTodosResponse> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 18);
+  messageDesc(file_api_v1_planner_service, 20);
 
 /**
  * @generated from message memos.api.v1.ListTodoTagsRequest
@@ -674,7 +817,7 @@ export type ListTodoTagsRequest = Message<"memos.api.v1.ListTodoTagsRequest"> & 
  * Use `create(ListTodoTagsRequestSchema)` to create a new message.
  */
 export const ListTodoTagsRequestSchema: GenMessage<ListTodoTagsRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 19);
+  messageDesc(file_api_v1_planner_service, 21);
 
 /**
  * @generated from message memos.api.v1.ListTodoTagsResponse
@@ -693,7 +836,7 @@ export type ListTodoTagsResponse = Message<"memos.api.v1.ListTodoTagsResponse"> 
  * Use `create(ListTodoTagsResponseSchema)` to create a new message.
  */
 export const ListTodoTagsResponseSchema: GenMessage<ListTodoTagsResponse> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 20);
+  messageDesc(file_api_v1_planner_service, 22);
 
 /**
  * @generated from message memos.api.v1.SetCheckInRequest
@@ -710,7 +853,7 @@ export type SetCheckInRequest = Message<"memos.api.v1.SetCheckInRequest"> & {
  * Use `create(SetCheckInRequestSchema)` to create a new message.
  */
 export const SetCheckInRequestSchema: GenMessage<SetCheckInRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 21);
+  messageDesc(file_api_v1_planner_service, 23);
 
 /**
  * @generated from message memos.api.v1.DeleteCheckInRequest
@@ -736,7 +879,72 @@ export type DeleteCheckInRequest = Message<"memos.api.v1.DeleteCheckInRequest"> 
  * Use `create(DeleteCheckInRequestSchema)` to create a new message.
  */
 export const DeleteCheckInRequestSchema: GenMessage<DeleteCheckInRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 22);
+  messageDesc(file_api_v1_planner_service, 24);
+
+/**
+ * @generated from message memos.api.v1.ListWorkoutsRequest
+ */
+export type ListWorkoutsRequest = Message<"memos.api.v1.ListWorkoutsRequest"> & {
+  /**
+   * Inclusive bounds, YYYY-MM-DD; either may be empty for no bound.
+   *
+   * @generated from field: string start_date = 1;
+   */
+  startDate: string;
+
+  /**
+   * @generated from field: string end_date = 2;
+   */
+  endDate: string;
+
+  /**
+   * Only this habit's workouts. Format: planner/habits/{habit}
+   *
+   * @generated from field: string habit = 3;
+   */
+  habit: string;
+
+  /**
+   * Only workouts with an exercise whose name contains this text, ignoring
+   * case, e.g. "deadlift" for the last times one did deadlifts.
+   *
+   * @generated from field: string exercise = 4;
+   */
+  exercise: string;
+
+  /**
+   * At most this many, the newest: 1 to 200, 50 when unset.
+   *
+   * @generated from field: int32 limit = 5;
+   */
+  limit: number;
+};
+
+/**
+ * Describes the message memos.api.v1.ListWorkoutsRequest.
+ * Use `create(ListWorkoutsRequestSchema)` to create a new message.
+ */
+export const ListWorkoutsRequestSchema: GenMessage<ListWorkoutsRequest> = /*@__PURE__*/
+  messageDesc(file_api_v1_planner_service, 25);
+
+/**
+ * @generated from message memos.api.v1.ListWorkoutsResponse
+ */
+export type ListWorkoutsResponse = Message<"memos.api.v1.ListWorkoutsResponse"> & {
+  /**
+   * Check-ins that carry a workout, newest first.
+   *
+   * @generated from field: repeated memos.api.v1.CheckIn check_ins = 1;
+   */
+  checkIns: CheckIn[];
+};
+
+/**
+ * Describes the message memos.api.v1.ListWorkoutsResponse.
+ * Use `create(ListWorkoutsResponseSchema)` to create a new message.
+ */
+export const ListWorkoutsResponseSchema: GenMessage<ListWorkoutsResponse> = /*@__PURE__*/
+  messageDesc(file_api_v1_planner_service, 26);
 
 /**
  * @generated from message memos.api.v1.GetTodoRequest
@@ -755,7 +963,7 @@ export type GetTodoRequest = Message<"memos.api.v1.GetTodoRequest"> & {
  * Use `create(GetTodoRequestSchema)` to create a new message.
  */
 export const GetTodoRequestSchema: GenMessage<GetTodoRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 23);
+  messageDesc(file_api_v1_planner_service, 27);
 
 /**
  * @generated from message memos.api.v1.CreateTodoRequest
@@ -780,7 +988,7 @@ export type CreateTodoRequest = Message<"memos.api.v1.CreateTodoRequest"> & {
  * Use `create(CreateTodoRequestSchema)` to create a new message.
  */
 export const CreateTodoRequestSchema: GenMessage<CreateTodoRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 24);
+  messageDesc(file_api_v1_planner_service, 28);
 
 /**
  * @generated from message memos.api.v1.UpdateTodoRequest
@@ -814,7 +1022,7 @@ export type UpdateTodoRequest = Message<"memos.api.v1.UpdateTodoRequest"> & {
  * Use `create(UpdateTodoRequestSchema)` to create a new message.
  */
 export const UpdateTodoRequestSchema: GenMessage<UpdateTodoRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 25);
+  messageDesc(file_api_v1_planner_service, 29);
 
 /**
  * @generated from message memos.api.v1.PostponeTodoRequest
@@ -848,7 +1056,7 @@ export type PostponeTodoRequest = Message<"memos.api.v1.PostponeTodoRequest"> & 
  * Use `create(PostponeTodoRequestSchema)` to create a new message.
  */
 export const PostponeTodoRequestSchema: GenMessage<PostponeTodoRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 26);
+  messageDesc(file_api_v1_planner_service, 30);
 
 /**
  * @generated from message memos.api.v1.DeleteTodoRequest
@@ -867,7 +1075,7 @@ export type DeleteTodoRequest = Message<"memos.api.v1.DeleteTodoRequest"> & {
  * Use `create(DeleteTodoRequestSchema)` to create a new message.
  */
 export const DeleteTodoRequestSchema: GenMessage<DeleteTodoRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 27);
+  messageDesc(file_api_v1_planner_service, 31);
 
 /**
  * @generated from message memos.api.v1.CreatePlannerNoteRequest
@@ -884,7 +1092,7 @@ export type CreatePlannerNoteRequest = Message<"memos.api.v1.CreatePlannerNoteRe
  * Use `create(CreatePlannerNoteRequestSchema)` to create a new message.
  */
 export const CreatePlannerNoteRequestSchema: GenMessage<CreatePlannerNoteRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 28);
+  messageDesc(file_api_v1_planner_service, 32);
 
 /**
  * @generated from message memos.api.v1.UpdatePlannerNoteRequest
@@ -908,7 +1116,7 @@ export type UpdatePlannerNoteRequest = Message<"memos.api.v1.UpdatePlannerNoteRe
  * Use `create(UpdatePlannerNoteRequestSchema)` to create a new message.
  */
 export const UpdatePlannerNoteRequestSchema: GenMessage<UpdatePlannerNoteRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 29);
+  messageDesc(file_api_v1_planner_service, 33);
 
 /**
  * @generated from message memos.api.v1.DeletePlannerNoteRequest
@@ -927,7 +1135,7 @@ export type DeletePlannerNoteRequest = Message<"memos.api.v1.DeletePlannerNoteRe
  * Use `create(DeletePlannerNoteRequestSchema)` to create a new message.
  */
 export const DeletePlannerNoteRequestSchema: GenMessage<DeletePlannerNoteRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 30);
+  messageDesc(file_api_v1_planner_service, 34);
 
 /**
  * @generated from message memos.api.v1.ImportPlannerRequest
@@ -968,7 +1176,7 @@ export type ImportPlannerRequest = Message<"memos.api.v1.ImportPlannerRequest"> 
  * Use `create(ImportPlannerRequestSchema)` to create a new message.
  */
 export const ImportPlannerRequestSchema: GenMessage<ImportPlannerRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 31);
+  messageDesc(file_api_v1_planner_service, 35);
 
 /**
  * @generated from message memos.api.v1.ImportCheckIn
@@ -999,7 +1207,7 @@ export type ImportCheckIn = Message<"memos.api.v1.ImportCheckIn"> & {
  * Use `create(ImportCheckInSchema)` to create a new message.
  */
 export const ImportCheckInSchema: GenMessage<ImportCheckIn> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 32);
+  messageDesc(file_api_v1_planner_service, 36);
 
 /**
  * @generated from message memos.api.v1.ImportTodo
@@ -1023,7 +1231,7 @@ export type ImportTodo = Message<"memos.api.v1.ImportTodo"> & {
  * Use `create(ImportTodoSchema)` to create a new message.
  */
 export const ImportTodoSchema: GenMessage<ImportTodo> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 33);
+  messageDesc(file_api_v1_planner_service, 37);
 
 /**
  * @generated from message memos.api.v1.ImportPlannerResponse
@@ -1055,7 +1263,7 @@ export type ImportPlannerResponse = Message<"memos.api.v1.ImportPlannerResponse"
  * Use `create(ImportPlannerResponseSchema)` to create a new message.
  */
 export const ImportPlannerResponseSchema: GenMessage<ImportPlannerResponse> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 34);
+  messageDesc(file_api_v1_planner_service, 38);
 
 /**
  * PlannerSettings are the caller's planner preferences kept on the server, so
@@ -1078,7 +1286,7 @@ export type PlannerSettings = Message<"memos.api.v1.PlannerSettings"> & {
  * Use `create(PlannerSettingsSchema)` to create a new message.
  */
 export const PlannerSettingsSchema: GenMessage<PlannerSettings> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 35);
+  messageDesc(file_api_v1_planner_service, 39);
 
 /**
  * @generated from message memos.api.v1.GetPlannerSettingsRequest
@@ -1091,7 +1299,7 @@ export type GetPlannerSettingsRequest = Message<"memos.api.v1.GetPlannerSettings
  * Use `create(GetPlannerSettingsRequestSchema)` to create a new message.
  */
 export const GetPlannerSettingsRequestSchema: GenMessage<GetPlannerSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 36);
+  messageDesc(file_api_v1_planner_service, 40);
 
 /**
  * @generated from message memos.api.v1.UpdatePlannerSettingsRequest
@@ -1108,7 +1316,7 @@ export type UpdatePlannerSettingsRequest = Message<"memos.api.v1.UpdatePlannerSe
  * Use `create(UpdatePlannerSettingsRequestSchema)` to create a new message.
  */
 export const UpdatePlannerSettingsRequestSchema: GenMessage<UpdatePlannerSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 37);
+  messageDesc(file_api_v1_planner_service, 41);
 
 /**
  * @generated from message memos.api.v1.GetWeekProgressRequest
@@ -1135,7 +1343,7 @@ export type GetWeekProgressRequest = Message<"memos.api.v1.GetWeekProgressReques
  * Use `create(GetWeekProgressRequestSchema)` to create a new message.
  */
 export const GetWeekProgressRequestSchema: GenMessage<GetWeekProgressRequest> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 38);
+  messageDesc(file_api_v1_planner_service, 42);
 
 /**
  * @generated from message memos.api.v1.GetWeekProgressResponse
@@ -1162,7 +1370,7 @@ export type GetWeekProgressResponse = Message<"memos.api.v1.GetWeekProgressRespo
  * Use `create(GetWeekProgressResponseSchema)` to create a new message.
  */
 export const GetWeekProgressResponseSchema: GenMessage<GetWeekProgressResponse> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 39);
+  messageDesc(file_api_v1_planner_service, 43);
 
 /**
  * WeekProgress is one week of a habit plan: what was planned and what was done.
@@ -1232,7 +1440,7 @@ export type WeekProgress = Message<"memos.api.v1.WeekProgress"> & {
  * Use `create(WeekProgressSchema)` to create a new message.
  */
 export const WeekProgressSchema: GenMessage<WeekProgress> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 40);
+  messageDesc(file_api_v1_planner_service, 44);
 
 /**
  * WeekPlan is a habit plan (a habit version). Plans have no names: the app
@@ -1271,7 +1479,7 @@ export type WeekPlan = Message<"memos.api.v1.WeekPlan"> & {
  * Use `create(WeekPlanSchema)` to create a new message.
  */
 export const WeekPlanSchema: GenMessage<WeekPlan> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 41);
+  messageDesc(file_api_v1_planner_service, 45);
 
 /**
  * @generated from message memos.api.v1.WeekPlanDocument
@@ -1297,7 +1505,7 @@ export type WeekPlanDocument = Message<"memos.api.v1.WeekPlanDocument"> & {
  * Use `create(WeekPlanDocumentSchema)` to create a new message.
  */
 export const WeekPlanDocumentSchema: GenMessage<WeekPlanDocument> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 42);
+  messageDesc(file_api_v1_planner_service, 46);
 
 /**
  * @generated from message memos.api.v1.WeekHabitProgress
@@ -1360,7 +1568,7 @@ export type WeekHabitProgress = Message<"memos.api.v1.WeekHabitProgress"> & {
  * Use `create(WeekHabitProgressSchema)` to create a new message.
  */
 export const WeekHabitProgressSchema: GenMessage<WeekHabitProgress> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 43);
+  messageDesc(file_api_v1_planner_service, 47);
 
 /**
  * @generated from message memos.api.v1.WeekCheckIn
@@ -1385,6 +1593,20 @@ export type WeekCheckIn = Message<"memos.api.v1.WeekCheckIn"> & {
    * @generated from field: string todo = 3;
    */
   todo: string;
+
+  /**
+   * Who made the check-in.
+   *
+   * @generated from field: memos.api.v1.CheckIn.Source source = 4;
+   */
+  source: CheckIn_Source;
+
+  /**
+   * The workout the check-in stands for; unset for none.
+   *
+   * @generated from field: memos.api.v1.Workout workout = 5;
+   */
+  workout?: Workout | undefined;
 };
 
 /**
@@ -1392,7 +1614,7 @@ export type WeekCheckIn = Message<"memos.api.v1.WeekCheckIn"> & {
  * Use `create(WeekCheckInSchema)` to create a new message.
  */
 export const WeekCheckInSchema: GenMessage<WeekCheckIn> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 44);
+  messageDesc(file_api_v1_planner_service, 48);
 
 /**
  * WeekNote is a note written on a day of the week, e.g. that one was ill or away.
@@ -1418,7 +1640,7 @@ export type WeekNote = Message<"memos.api.v1.WeekNote"> & {
  * Use `create(WeekNoteSchema)` to create a new message.
  */
 export const WeekNoteSchema: GenMessage<WeekNote> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 45);
+  messageDesc(file_api_v1_planner_service, 49);
 
 /**
  * @generated from message memos.api.v1.WeekHabitTodo
@@ -1463,7 +1685,7 @@ export type WeekHabitTodo = Message<"memos.api.v1.WeekHabitTodo"> & {
  * Use `create(WeekHabitTodoSchema)` to create a new message.
  */
 export const WeekHabitTodoSchema: GenMessage<WeekHabitTodo> = /*@__PURE__*/
-  messageDesc(file_api_v1_planner_service, 46);
+  messageDesc(file_api_v1_planner_service, 50);
 
 /**
  * @generated from enum memos.api.v1.WeekHabitTodo.State
@@ -1505,7 +1727,7 @@ export enum WeekHabitTodo_State {
  * Describes the enum memos.api.v1.WeekHabitTodo.State.
  */
 export const WeekHabitTodo_StateSchema: GenEnum<WeekHabitTodo_State> = /*@__PURE__*/
-  enumDesc(file_api_v1_planner_service, 46, 0);
+  enumDesc(file_api_v1_planner_service, 50, 0);
 
 /**
  * PlannerService keeps the caller's habits, daily check-ins, todos and notes.
@@ -1652,6 +1874,16 @@ export const PlannerService: GenService<{
    * SetCheckIn records a check-in, or replaces the note of an existing one.
    * An archived habit takes no new check-ins.
    *
+   * With `workout` set, it also records the workout the check-in stands for,
+   * replacing any it had (an empty workout removes it); without, the workout
+   * is kept. Calling it again with the same habit, date and content changes
+   * nothing, so a caller can retry, and correct a workout by sending it whole.
+   *
+   * A caller with a personal access token (a bot) checks in as an agent. It
+   * can change or remove only check-ins made by an agent; on one made in the
+   * app it may only set the workout, and the note stays. If an open habit todo
+   * of that habit is due that day, an agent's check-in completes it.
+   *
    * @generated from rpc memos.api.v1.PlannerService.SetCheckIn
    */
   setCheckIn: {
@@ -1661,7 +1893,9 @@ export const PlannerService: GenService<{
   },
   /**
    * DeleteCheckIn removes a habit's check-in on a day. Removing one that does not
-   * exist succeeds.
+   * exist succeeds. A caller with a personal access token can remove only
+   * check-ins made by an agent; removing one that completed a habit todo
+   * reopens the todo.
    *
    * @generated from rpc memos.api.v1.PlannerService.DeleteCheckIn
    */
@@ -1669,6 +1903,18 @@ export const PlannerService: GenService<{
     methodKind: "unary";
     input: typeof DeleteCheckInRequestSchema;
     output: typeof EmptySchema;
+  },
+  /**
+   * ListWorkouts returns check-ins that carry a workout, newest first: to see
+   * what was lifted last time, how often one trained this month, how weights
+   * changed. It reports facts only.
+   *
+   * @generated from rpc memos.api.v1.PlannerService.ListWorkouts
+   */
+  listWorkouts: {
+    methodKind: "unary";
+    input: typeof ListWorkoutsRequestSchema;
+    output: typeof ListWorkoutsResponseSchema;
   },
   /**
    * GetTodo returns one todo.

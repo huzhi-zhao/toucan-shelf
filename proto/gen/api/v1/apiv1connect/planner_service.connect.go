@@ -73,6 +73,9 @@ const (
 	// PlannerServiceDeleteCheckInProcedure is the fully-qualified name of the PlannerService's
 	// DeleteCheckIn RPC.
 	PlannerServiceDeleteCheckInProcedure = "/memos.api.v1.PlannerService/DeleteCheckIn"
+	// PlannerServiceListWorkoutsProcedure is the fully-qualified name of the PlannerService's
+	// ListWorkouts RPC.
+	PlannerServiceListWorkoutsProcedure = "/memos.api.v1.PlannerService/ListWorkouts"
 	// PlannerServiceGetTodoProcedure is the fully-qualified name of the PlannerService's GetTodo RPC.
 	PlannerServiceGetTodoProcedure = "/memos.api.v1.PlannerService/GetTodo"
 	// PlannerServiceCreateTodoProcedure is the fully-qualified name of the PlannerService's CreateTodo
@@ -150,10 +153,26 @@ type PlannerServiceClient interface {
 	ListTodoTags(context.Context, *connect.Request[v1.ListTodoTagsRequest]) (*connect.Response[v1.ListTodoTagsResponse], error)
 	// SetCheckIn records a check-in, or replaces the note of an existing one.
 	// An archived habit takes no new check-ins.
+	//
+	// With `workout` set, it also records the workout the check-in stands for,
+	// replacing any it had (an empty workout removes it); without, the workout
+	// is kept. Calling it again with the same habit, date and content changes
+	// nothing, so a caller can retry, and correct a workout by sending it whole.
+	//
+	// A caller with a personal access token (a bot) checks in as an agent. It
+	// can change or remove only check-ins made by an agent; on one made in the
+	// app it may only set the workout, and the note stays. If an open habit todo
+	// of that habit is due that day, an agent's check-in completes it.
 	SetCheckIn(context.Context, *connect.Request[v1.SetCheckInRequest]) (*connect.Response[v1.CheckIn], error)
 	// DeleteCheckIn removes a habit's check-in on a day. Removing one that does not
-	// exist succeeds.
+	// exist succeeds. A caller with a personal access token can remove only
+	// check-ins made by an agent; removing one that completed a habit todo
+	// reopens the todo.
 	DeleteCheckIn(context.Context, *connect.Request[v1.DeleteCheckInRequest]) (*connect.Response[emptypb.Empty], error)
+	// ListWorkouts returns check-ins that carry a workout, newest first: to see
+	// what was lifted last time, how often one trained this month, how weights
+	// changed. It reports facts only.
+	ListWorkouts(context.Context, *connect.Request[v1.ListWorkoutsRequest]) (*connect.Response[v1.ListWorkoutsResponse], error)
 	// GetTodo returns one todo.
 	GetTodo(context.Context, *connect.Request[v1.GetTodoRequest]) (*connect.Response[v1.Todo], error)
 	// CreateTodo adds an active todo.
@@ -274,6 +293,12 @@ func NewPlannerServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(plannerServiceMethods.ByName("DeleteCheckIn")),
 			connect.WithClientOptions(opts...),
 		),
+		listWorkouts: connect.NewClient[v1.ListWorkoutsRequest, v1.ListWorkoutsResponse](
+			httpClient,
+			baseURL+PlannerServiceListWorkoutsProcedure,
+			connect.WithSchema(plannerServiceMethods.ByName("ListWorkouts")),
+			connect.WithClientOptions(opts...),
+		),
 		getTodo: connect.NewClient[v1.GetTodoRequest, v1.Todo](
 			httpClient,
 			baseURL+PlannerServiceGetTodoProcedure,
@@ -358,6 +383,7 @@ type plannerServiceClient struct {
 	listTodoTags          *connect.Client[v1.ListTodoTagsRequest, v1.ListTodoTagsResponse]
 	setCheckIn            *connect.Client[v1.SetCheckInRequest, v1.CheckIn]
 	deleteCheckIn         *connect.Client[v1.DeleteCheckInRequest, emptypb.Empty]
+	listWorkouts          *connect.Client[v1.ListWorkoutsRequest, v1.ListWorkoutsResponse]
 	getTodo               *connect.Client[v1.GetTodoRequest, v1.Todo]
 	createTodo            *connect.Client[v1.CreateTodoRequest, v1.Todo]
 	updateTodo            *connect.Client[v1.UpdateTodoRequest, v1.Todo]
@@ -434,6 +460,11 @@ func (c *plannerServiceClient) SetCheckIn(ctx context.Context, req *connect.Requ
 // DeleteCheckIn calls memos.api.v1.PlannerService.DeleteCheckIn.
 func (c *plannerServiceClient) DeleteCheckIn(ctx context.Context, req *connect.Request[v1.DeleteCheckInRequest]) (*connect.Response[emptypb.Empty], error) {
 	return c.deleteCheckIn.CallUnary(ctx, req)
+}
+
+// ListWorkouts calls memos.api.v1.PlannerService.ListWorkouts.
+func (c *plannerServiceClient) ListWorkouts(ctx context.Context, req *connect.Request[v1.ListWorkoutsRequest]) (*connect.Response[v1.ListWorkoutsResponse], error) {
+	return c.listWorkouts.CallUnary(ctx, req)
 }
 
 // GetTodo calls memos.api.v1.PlannerService.GetTodo.
@@ -534,10 +565,26 @@ type PlannerServiceHandler interface {
 	ListTodoTags(context.Context, *connect.Request[v1.ListTodoTagsRequest]) (*connect.Response[v1.ListTodoTagsResponse], error)
 	// SetCheckIn records a check-in, or replaces the note of an existing one.
 	// An archived habit takes no new check-ins.
+	//
+	// With `workout` set, it also records the workout the check-in stands for,
+	// replacing any it had (an empty workout removes it); without, the workout
+	// is kept. Calling it again with the same habit, date and content changes
+	// nothing, so a caller can retry, and correct a workout by sending it whole.
+	//
+	// A caller with a personal access token (a bot) checks in as an agent. It
+	// can change or remove only check-ins made by an agent; on one made in the
+	// app it may only set the workout, and the note stays. If an open habit todo
+	// of that habit is due that day, an agent's check-in completes it.
 	SetCheckIn(context.Context, *connect.Request[v1.SetCheckInRequest]) (*connect.Response[v1.CheckIn], error)
 	// DeleteCheckIn removes a habit's check-in on a day. Removing one that does not
-	// exist succeeds.
+	// exist succeeds. A caller with a personal access token can remove only
+	// check-ins made by an agent; removing one that completed a habit todo
+	// reopens the todo.
 	DeleteCheckIn(context.Context, *connect.Request[v1.DeleteCheckInRequest]) (*connect.Response[emptypb.Empty], error)
+	// ListWorkouts returns check-ins that carry a workout, newest first: to see
+	// what was lifted last time, how often one trained this month, how weights
+	// changed. It reports facts only.
+	ListWorkouts(context.Context, *connect.Request[v1.ListWorkoutsRequest]) (*connect.Response[v1.ListWorkoutsResponse], error)
 	// GetTodo returns one todo.
 	GetTodo(context.Context, *connect.Request[v1.GetTodoRequest]) (*connect.Response[v1.Todo], error)
 	// CreateTodo adds an active todo.
@@ -654,6 +701,12 @@ func NewPlannerServiceHandler(svc PlannerServiceHandler, opts ...connect.Handler
 		connect.WithSchema(plannerServiceMethods.ByName("DeleteCheckIn")),
 		connect.WithHandlerOptions(opts...),
 	)
+	plannerServiceListWorkoutsHandler := connect.NewUnaryHandler(
+		PlannerServiceListWorkoutsProcedure,
+		svc.ListWorkouts,
+		connect.WithSchema(plannerServiceMethods.ByName("ListWorkouts")),
+		connect.WithHandlerOptions(opts...),
+	)
 	plannerServiceGetTodoHandler := connect.NewUnaryHandler(
 		PlannerServiceGetTodoProcedure,
 		svc.GetTodo,
@@ -748,6 +801,8 @@ func NewPlannerServiceHandler(svc PlannerServiceHandler, opts ...connect.Handler
 			plannerServiceSetCheckInHandler.ServeHTTP(w, r)
 		case PlannerServiceDeleteCheckInProcedure:
 			plannerServiceDeleteCheckInHandler.ServeHTTP(w, r)
+		case PlannerServiceListWorkoutsProcedure:
+			plannerServiceListWorkoutsHandler.ServeHTTP(w, r)
 		case PlannerServiceGetTodoProcedure:
 			plannerServiceGetTodoHandler.ServeHTTP(w, r)
 		case PlannerServiceCreateTodoProcedure:
@@ -829,6 +884,10 @@ func (UnimplementedPlannerServiceHandler) SetCheckIn(context.Context, *connect.R
 
 func (UnimplementedPlannerServiceHandler) DeleteCheckIn(context.Context, *connect.Request[v1.DeleteCheckInRequest]) (*connect.Response[emptypb.Empty], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.DeleteCheckIn is not implemented"))
+}
+
+func (UnimplementedPlannerServiceHandler) ListWorkouts(context.Context, *connect.Request[v1.ListWorkoutsRequest]) (*connect.Response[v1.ListWorkoutsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.ListWorkouts is not implemented"))
 }
 
 func (UnimplementedPlannerServiceHandler) GetTodo(context.Context, *connect.Request[v1.GetTodoRequest]) (*connect.Response[v1.Todo], error) {

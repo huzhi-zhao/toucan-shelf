@@ -469,6 +469,9 @@ CREATE TABLE planner_habit_draft (
 
 -- planner_check_in records that a habit was kept on a day. One per habit per day.
 -- todo_id  the todo whose completion made the check-in, or 0 for one checked in by hand.
+-- source   'MANUAL' (the app), 'TODO' (completing a habit todo in the app) or 'AGENT'
+--          (an API caller with a personal access token, e.g. a bot).
+-- workout  JSON: the workout's total minutes and its exercises; '' for none.
 CREATE TABLE planner_check_in (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   creator_id INTEGER NOT NULL,
@@ -478,6 +481,8 @@ CREATE TABLE planner_check_in (
   created_ts BIGINT  NOT NULL DEFAULT (strftime('%s', 'now')),
   updated_ts BIGINT  NOT NULL DEFAULT (strftime('%s', 'now')),
   todo_id    INTEGER NOT NULL DEFAULT 0,
+  source     TEXT    NOT NULL DEFAULT 'MANUAL',
+  workout    TEXT    NOT NULL DEFAULT '',
   UNIQUE(habit_id, date)
 );
 

@@ -1199,6 +1199,14 @@ func (s *ConnectServiceHandler) UpdatePlannerSettings(ctx context.Context, req *
 	return connect.NewResponse(resp), nil
 }
 
+func (s *ConnectServiceHandler) ListWorkouts(ctx context.Context, req *connect.Request[v1pb.ListWorkoutsRequest]) (*connect.Response[v1pb.ListWorkoutsResponse], error) {
+	resp, err := s.APIV1Service.ListWorkouts(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (s *ConnectServiceHandler) ListTodoTags(ctx context.Context, req *connect.Request[v1pb.ListTodoTagsRequest]) (*connect.Response[v1pb.ListTodoTagsResponse], error) {
 	resp, err := s.APIV1Service.ListTodoTags(ctx, req.Msg)
 	if err != nil {

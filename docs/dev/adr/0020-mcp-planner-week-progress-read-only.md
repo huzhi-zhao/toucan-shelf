@@ -1,5 +1,8 @@
 # 0020. MCP 加一个只读的每周习惯进度工具
 
+> 2026-10-20："agent 打卡就是造假""bot 只调这一个接口"已被 [ADR 0021](0021-bot-checks-in-with-workouts.md)
+> 部分取代：bot 可以按用户在会话里报的训练打卡。MCP 上计划仍然只读。
+
 ## Context
 
 [ADR 0010](0010-mcp-tool-whitelist-eight-tools.md) 把 MCP 工具收敛到知识库编写所需的最小集合，理由是

@@ -226,7 +226,7 @@
 ### 2.4.3 每周进度接口（2026-10-20）
 
 toucan-base 的 Discord bot 要当健身监督：按每周进度提醒、周末评分；Claude Code 会话也要能问"这周、这个月履约得怎样"。
-两边都只读。达标判断必须和 app 上显示的一致，所以周怎么划、按哪个计划、怎么计数都由服务端算，调用方不自己拼。
+这个接口只读（bot 后来可以打卡，见 2.4.4）。达标判断必须和 app 上显示的一致，所以周怎么划、按哪个计划、怎么计数都由服务端算，调用方不自己拼。
 
 #### 1. 每周第一天挪到服务端
 
@@ -249,7 +249,8 @@ toucan-base 的 Discord bot 要当健身监督：按每周进度提醒、周末�
     `documents` 是计划关联的文档（名字和标题；调用方读不到的文档标题为空）。这周还没有任何计划时没有 `plan`。
   - `habits`：先按计划顺序列计划里的习惯，再列不在计划里、但这周打过卡的习惯（`inPlan: false`）。
     每个习惯有 `icon`、`label`（标题去掉图标的部分，可能为空）、`weeklyGoal`（计划没设目标、或习惯不在计划里时没有这个字段）、
-    `checkInCount`（直接打的和待办带出的都算，和 app 的"2/3"一致，超额照写）、`checkIns`（日期、备注、带出它的待办）。
+    `checkInCount`（直接打的和待办带出的都算，和 app 的"2/3"一致，超额照写）、`checkIns`（日期、备注、带出它的待办；
+    2026-10-20 起还有来源 `source` 和训练记录 `workout`，见 2.4.4）。
   - `habitTodos`：这周的习惯待办，按日期：标题、关联习惯、状态。状态 `ACTIVE` / `DONE` / `FAILED` / `CANCELLED`，
     以 `date` 为今天算：过了日子还没完成就是 `FAILED`（同 2.4.2 §5）。普通待办不在里面。
   - `notes`（2026-10-20 补充）：这周的备忘，每条 `date`、`content`，按日期排，同一天按记的先后。
@@ -281,7 +282,7 @@ toucan-base 的 Discord bot 要当健身监督：按每周进度提醒、周末�
           "inPlan": true,
           "weeklyGoal": 2,
           "checkInCount": 1,
-          "checkIns": [{ "date": "2026-10-23", "note": "跑 5 公里", "todo": "planner/todos/t1" }]
+          "checkIns": [{ "date": "2026-10-23", "note": "跑 5 公里", "todo": "planner/todos/t1", "source": "TODO" }]
         },
         {
           "habit": "planner/habits/walk",
@@ -289,7 +290,15 @@ toucan-base 的 Discord bot 要当健身监督：按每周进度提醒、周末�
           "label": "",
           "inPlan": true,
           "checkInCount": 1,
-          "checkIns": [{ "date": "2026-10-22", "note": "", "todo": "" }]
+          "checkIns": [
+            {
+              "date": "2026-10-22",
+              "note": "",
+              "todo": "",
+              "source": "AGENT",
+              "workout": { "durationMinutes": 40, "exercises": [{ "name": "走路", "equipment": "", "reps": [], "settings": "", "note": "" }] }
+            }
+          ]
         },
         {
           "habit": "planner/habits/read",
@@ -297,7 +306,7 @@ toucan-base 的 Discord bot 要当健身监督：按每周进度提醒、周末�
           "label": "阅读",
           "inPlan": false,
           "checkInCount": 1,
-          "checkIns": [{ "date": "2026-10-20", "note": "第三章", "todo": "" }]
+          "checkIns": [{ "date": "2026-10-20", "note": "第三章", "todo": "", "source": "MANUAL" }]
         }
       ],
       "habitTodos": [
@@ -316,10 +325,96 @@ toucan-base 的 Discord bot 要当健身监督：按每周进度提醒、周末�
 #### 3. 认证与范围
 
 - REST 用个人访问令牌（PAT）：`Authorization: Bearer <PAT>`。返回的是令牌主人自己的计划。
-- PAT 目前没有只读范围，技术上能调所有接口。约定：给 bot 单独建一个 PAT，**bot 只调这一个接口**，不写任何计划数据。
-  只读 PAT 以后单独做。
+- PAT 目前没有只读范围，技术上能调所有接口。约定：给 bot 单独建一个 PAT。原来约定 bot 只调这一个接口；
+  2026-10-20 起 bot 可以打卡，约定改为只调计划的四个接口，见 2.4.4 §5。
 - MCP 上是工具 `planner_get_week_progress`，只读，计划的其他操作都不进 MCP。原因和上下文成本见
   `docs/dev/adr/0020-mcp-planner-week-progress-read-only.md`；agent 怎么用写在 `docs/skill/references/mcp.md` §8。
+
+### 2.4.4 训练记录挂在打卡上，bot 可以打卡（2026-10-20）
+
+toucan-base 的 Discord bot（Jen）当健身教练：用户一边练一边在 Discord 里报每个动作，Jen 记下来。以前这份记录
+写成 Markdown 存在 bot 那边，和计划页的打卡是两份，打卡还得用户自己再点一次。现在训练记录存在 ToucanShelf，
+挂在打卡上，bot 练完直接打卡。决定和理由见 [ADR 0021](../adr/0021-bot-checks-in-with-workouts.md)，它部分取代了 ADR 0020
+"agent 打卡就是造假""bot 只调一个接口"两条。
+
+#### 1. 一次训练 = 一个打卡
+
+- 打卡（习惯 + 日期）上可以带一份**训练记录** `workout`：总时长（分钟，可空）+ 动作列表。
+- 动作的字段：名称（必填）、器械、重量（kg）、每组次数（如 15/12/12）、时长（分钟）、设置（坡度、阻力等，一段文字）、备注。
+  除了名称都可以不填。
+- **不按动作拆习惯**：去健身房不分有氧无氧，整体算一次 💪；外面走路、滑冰、游泳算一次有氧。
+  挂在哪个习惯由打卡的人定，服务端不判断。
+- 只记事实，不判有效性：练够没有、算不算达标，由调用方按计划文档判断。服务端只挡明显的垃圾值
+  （最多 30 个动作、每个动作最多 30 组、每组 0～1000 次、重量 0～1000 kg、时长 0～1440 分钟、名称器械设置最长 200 字、备注最长 500 字）。
+
+#### 2. 来源
+
+- 打卡多一个只读的来源 `source`：`MANUAL` 在 app 里点的、`TODO` 完成待办带出的、`AGENT` 程序打的。
+- **服务端按凭证判定**，调用方不能自报：app 的登录会话是人，个人访问令牌（PAT，bot 用的）和 MCP 是 agent。
+- 来源在第一次打卡时定下，之后谁改都不变（bot 给用户的打卡补训练记录，来源还是 `MANUAL`）。
+- 上线前已有的打卡：待办带出的记 `TODO`，其余记 `MANUAL`。
+
+#### 3. 谁能改什么
+
+| | app（本人） | bot（PAT） |
+|---|---|---|
+| agent 打的卡 | 能看、改备注和训练记录、删除 | 能改、能删 |
+| 手动打的卡 | 照旧 | 只能设训练记录，备注不动；不能删 |
+| 待办带出的卡 | 只能改训练记录；备注是待办标题，要撤销就删待办（同 2.4.1） | 只能设训练记录，备注不动；不能删 |
+| 习惯那天挂着没完成的习惯待办 | 照旧：只能在待办里完成 | 打卡就顺带完成这条待办，来源 `AGENT`；bot 删掉这个打卡，待办重新打开 |
+
+- 不能提前打卡（同 2.4 的 2026-10-18 补充）。bot 按自己的时区传日期，服务端按全世界最早的时区（UTC+14）判"未来"。
+- "只能改最近 N 天"是 app 上的限制，bot 不受。
+
+#### 4. app
+
+- 点开有训练记录的打卡、或者 agent 打的打卡，进**打卡详情页**：来源（agent 带 🤖）、完成的待办（有的话）、备注、
+  总时长、动作列表。点动作可以改、删，也能添加动作。每次改动都把整份打卡（备注 + 完整训练记录）存回去。
+- 普通的打卡窗口多一个"训练明细 ›"，从这里给手动打的卡添加训练记录。
+- 日历下面 agent 打的打卡按钮带 🤖。
+- 不做统计（某个动作的重量曲线之类）。
+
+#### 5. 接口
+
+`PlannerService`，REST 用 PAT：`Authorization: Bearer <PAT>`（toucan-base 还要带 User-Agent，否则被 Cloudflare 拦）。
+字段名 camelCase。约定 bot 只调这四个：
+
+- **打卡 / 上报训练**：`POST /api/v1/planner/checkIns`，body 就是打卡本身：
+
+  ```json
+  {
+    "habit": "planner/habits/run",
+    "date": "2026-10-20",
+    "note": "下肢 + 有氧",
+    "workout": {
+      "durationMinutes": 30,
+      "exercises": [
+        { "name": "跑步机", "equipment": "Spirit 跑步机", "durationMinutes": 5, "settings": "坡度 10，3.8–4 km/h" },
+        { "name": "罗马尼亚硬拉", "equipment": "哑铃", "weightKg": 2.3, "reps": [15, 12, 12] }
+      ]
+    }
+  }
+  ```
+
+  返回保存后的打卡（多 `todo`、`source`；没填的可选数字字段不出现，文字和数组给空值）。
+  - **会话结束时一次上报**，不是每个动作报一次。按（习惯，日期）覆盖，所以**天然幂等**：重试、重复发送结果都一样。
+    同一天第二次训练，要发合并后的完整列表。
+  - 不带 `workout` 表示训练记录不动（只改备注）；带一个空的 `workout: {}` 表示删掉训练记录。
+  - 习惯 `name` 从 `weekProgress` 的 `habits[].habit` 拿。
+- **撤销**：`DELETE /api/v1/planner/checkIns?habit=planner/habits/run&date=2026-10-20`。那天本来没打卡也返回成功。
+  删别人（app）打的卡返回 403。
+- **拉近期训练**：`GET /api/v1/planner/workouts`，参数都可选：`startDate`、`endDate`（YYYY-MM-DD）、`habit`、
+  `exercise`（动作名包含这段文字，不分大小写）、`limit`（1～200，默认 50）。只返回带训练记录的打卡，
+  `{"checkIns": [...]}`，最新的在前（同一天按记录先后倒序）。"上次臀推多重"就是 `?exercise=臀推&limit=1`。
+- **每周进度**：`GET /api/v1/planner/weekProgress`（2.4.3），打卡多了 `source` 和 `workout`。
+
+错误：参数不对返回 400（`INVALID_ARGUMENT`），违反第 3 小节的规则返回 400（`FAILED_PRECONDITION`）或 403
+（`PERMISSION_DENIED`），消息里写明原因。
+
+#### 6. MCP
+
+不加工具。`planner_get_week_progress` 的打卡已经带训练记录，Claude Code 问"这周练了什么"够用；
+写入和 `ListWorkouts` 都不进 MCP（ADR 0021 第 4 条）。
 
 ### 2.5 KPI
 
@@ -372,6 +467,7 @@ toucan-base 的 Discord bot 要当健身监督：按每周进度提醒、周末�
    - 现有 MCP 只有八个知识库工具（[ADR 0010](../adr/0010-mcp-tool-whitelist-eight-tools.md)），
      加计划工具要先改这条决定。
    - 要定 agent 能做到哪一步：比如能不能替人取消待办、能不能打卡。按 §2.5，打卡是 KPI，应该由本人来打。
+     （2026-10-20：bot 已经可以按用户在会话里报的训练打卡，见 2.4.4；MCP 上计划仍然只读。）
 
 ## 3. 数据模型草图（未定稿）
 

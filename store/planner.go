@@ -100,6 +100,16 @@ type UpdatePlannerHabit struct {
 	Color    *int32
 }
 
+// Who made a check-in.
+const (
+	// PlannerCheckInManual is a check-in made in the app.
+	PlannerCheckInManual = "MANUAL"
+	// PlannerCheckInTodo is a check-in made by completing a habit todo in the app.
+	PlannerCheckInTodo = "TODO"
+	// PlannerCheckInAgent is a check-in made by an API caller with a personal access token, e.g. a bot.
+	PlannerCheckInAgent = "AGENT"
+)
+
 // PlannerCheckIn records that a habit was kept on a day. There is at most one
 // per habit per day.
 type PlannerCheckIn struct {
@@ -111,9 +121,35 @@ type PlannerCheckIn struct {
 	// TodoID is the todo whose completion made the check-in, or 0 for one checked in by hand.
 	TodoID int32
 	// TodoUID is that todo's UID, or "". Read-only.
-	TodoUID   string
+	TodoUID string
+	// Source is who made the check-in, one of the PlannerCheckIn* constants. Set when it is made, never changed.
+	Source string
+	// Workout is the workout the check-in stands for, or nil.
+	Workout   *PlannerWorkout
 	CreatedTs int64
 	UpdatedTs int64
+}
+
+// PlannerWorkout is the detail of a workout a check-in stands for: one session of the habit that day.
+type PlannerWorkout struct {
+	// DurationMinutes is the whole session's length, or nil when not recorded.
+	DurationMinutes *float64 `json:"duration_minutes,omitempty"`
+	// Exercises are in the order they were done.
+	Exercises []PlannerExercise `json:"exercises"`
+}
+
+// PlannerExercise is one exercise of a workout. Every field but the name is optional.
+type PlannerExercise struct {
+	Name      string `json:"name"`
+	Equipment string `json:"equipment,omitempty"`
+	// WeightKg is in kilograms; callers convert from pounds.
+	WeightKg *float64 `json:"weight_kg,omitempty"`
+	// Reps are the repetitions of each set, in order.
+	Reps            []int32  `json:"reps,omitempty"`
+	DurationMinutes *float64 `json:"duration_minutes,omitempty"`
+	// Settings are the machine's, e.g. "incline 10, 3.8-4 km/h".
+	Settings string `json:"settings,omitempty"`
+	Note     string `json:"note,omitempty"`
 }
 
 // FindPlannerCheckIn filters one user's check-ins by an inclusive date range.
@@ -123,6 +159,8 @@ type FindPlannerCheckIn struct {
 	HabitID   *int32
 	StartDate string
 	EndDate   string
+	// WithWorkout keeps only check-ins that carry a workout.
+	WithWorkout bool
 }
 
 // PlannerTodo is a plan made ahead of time.
@@ -178,6 +216,9 @@ type FindPlannerTodo struct {
 // CheckIn, when set, is added in the same transaction, made by this todo: it is
 // how completing a todo checks in its habit. If the habit already has a check-in
 // that day nothing is written and ErrPlannerCheckInTaken is returned.
+//
+// DropCheckIn removes the check-in the todo made, in the same transaction: it is
+// how undoing an agent's check-in reopens the todo it completed.
 type UpdatePlannerTodo struct {
 	ID            int32
 	Title         *string
@@ -195,6 +236,7 @@ type UpdatePlannerTodo struct {
 	PostponeCount *int32
 	HabitID       *int32
 	CheckIn       *PlannerCheckIn
+	DropCheckIn   bool
 }
 
 // PlannerNote is a plain record of what happened on a day.
@@ -299,8 +341,9 @@ func (s *Store) EnablePlannerHabitDraft(ctx context.Context, creatorID int32, ef
 	return s.driver.EnablePlannerHabitDraft(ctx, creatorID, effectiveDate, unlinkTodoIDs)
 }
 
-// UpsertPlannerCheckIn records a check-in, replacing the note of an existing one
-// for the same habit and day.
+// UpsertPlannerCheckIn records a check-in, replacing the note and workout of an
+// existing one for the same habit and day. Source is written only when the
+// check-in is made: an existing one keeps who made it.
 func (s *Store) UpsertPlannerCheckIn(ctx context.Context, upsert *PlannerCheckIn) (*PlannerCheckIn, error) {
 	return s.driver.UpsertPlannerCheckIn(ctx, upsert)
 }

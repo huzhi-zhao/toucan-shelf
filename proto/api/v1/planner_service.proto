@@ -110,6 +110,16 @@ service PlannerService {
 
   // SetCheckIn records a check-in, or replaces the note of an existing one.
   // An archived habit takes no new check-ins.
+  //
+  // With `workout` set, it also records the workout the check-in stands for,
+  // replacing any it had (an empty workout removes it); without, the workout
+  // is kept. Calling it again with the same habit, date and content changes
+  // nothing, so a caller can retry, and correct a workout by sending it whole.
+  //
+  // A caller with a personal access token (a bot) checks in as an agent. It
+  // can change or remove only check-ins made by an agent; on one made in the
+  // app it may only set the workout, and the note stays. If an open habit todo
+  // of that habit is due that day, an agent's check-in completes it.
   rpc SetCheckIn(SetCheckInRequest) returns (CheckIn) {
     option (google.api.http) = {
       post: "/api/v1/planner/checkIns"
@@ -119,9 +129,18 @@ service PlannerService {
   }
 
   // DeleteCheckIn removes a habit's check-in on a day. Removing one that does not
-  // exist succeeds.
+  // exist succeeds. A caller with a personal access token can remove only
+  // check-ins made by an agent; removing one that completed a habit todo
+  // reopens the todo.
   rpc DeleteCheckIn(DeleteCheckInRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {delete: "/api/v1/planner/checkIns"};
+  }
+
+  // ListWorkouts returns check-ins that carry a workout, newest first: to see
+  // what was lifted last time, how often one trained this month, how weights
+  // changed. It reports facts only.
+  rpc ListWorkouts(ListWorkoutsRequest) returns (ListWorkoutsResponse) {
+    option (google.api.http) = {get: "/api/v1/planner/workouts"};
   }
 
   // GetTodo returns one todo.
@@ -291,6 +310,57 @@ message CheckIn {
   // by hand. Such a check-in belongs to the todo: it cannot be changed or
   // removed on its own, only with the todo. Format: planner/todos/{todo}
   string todo = 4 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Who made a check-in. The server works it out from the caller's
+  // credential; a caller cannot choose it.
+  enum Source {
+    SOURCE_UNSPECIFIED = 0;
+    // In the app.
+    MANUAL = 1;
+    // By completing a habit todo in the app.
+    TODO = 2;
+    // By a caller with a personal access token, e.g. a bot.
+    AGENT = 3;
+  }
+
+  Source source = 5 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // The workout the check-in stands for: one session of the habit that day.
+  // Unset for a check-in without one.
+  Workout workout = 6 [(google.api.field_behavior) = OPTIONAL];
+}
+
+// Workout is the detail of a workout a check-in stands for. It records facts
+// as reported; it does not judge whether the session counts.
+message Workout {
+  // The whole session's length in minutes; unset when not recorded.
+  optional double duration_minutes = 1 [(google.api.field_behavior) = OPTIONAL];
+
+  // The exercises in the order they were done, at most 30.
+  repeated WorkoutExercise exercises = 2 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message WorkoutExercise {
+  // What was done, e.g. "Romanian deadlift".
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // What it was done with, e.g. "dumbbells".
+  string equipment = 2 [(google.api.field_behavior) = OPTIONAL];
+
+  // In kilograms; the caller converts from pounds.
+  optional double weight_kg = 3 [(google.api.field_behavior) = OPTIONAL];
+
+  // Repetitions of each set, in order, e.g. [15, 12, 12].
+  repeated int32 reps = 4 [(google.api.field_behavior) = OPTIONAL];
+
+  // In minutes, for timed exercises.
+  optional double duration_minutes = 5 [(google.api.field_behavior) = OPTIONAL];
+
+  // The machine's settings, e.g. "incline 10, 3.8-4 km/h".
+  string settings = 6 [(google.api.field_behavior) = OPTIONAL];
+
+  // A remark in a sentence.
+  string note = 7 [(google.api.field_behavior) = OPTIONAL];
 }
 
 message Todo {
@@ -474,6 +544,27 @@ message DeleteCheckInRequest {
 
   // Format: YYYY-MM-DD.
   string date = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListWorkoutsRequest {
+  // Inclusive bounds, YYYY-MM-DD; either may be empty for no bound.
+  string start_date = 1 [(google.api.field_behavior) = OPTIONAL];
+  string end_date = 2 [(google.api.field_behavior) = OPTIONAL];
+
+  // Only this habit's workouts. Format: planner/habits/{habit}
+  string habit = 3 [(google.api.field_behavior) = OPTIONAL];
+
+  // Only workouts with an exercise whose name contains this text, ignoring
+  // case, e.g. "deadlift" for the last times one did deadlifts.
+  string exercise = 4 [(google.api.field_behavior) = OPTIONAL];
+
+  // At most this many, the newest: 1 to 200, 50 when unset.
+  int32 limit = 5 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message ListWorkoutsResponse {
+  // Check-ins that carry a workout, newest first.
+  repeated CheckIn check_ins = 1;
 }
 
 message GetTodoRequest {
@@ -694,6 +785,12 @@ message WeekCheckIn {
   // The todo whose completion made the check-in, or empty for one checked in
   // by hand. Format: planner/todos/{todo}
   string todo = 3;
+
+  // Who made the check-in.
+  CheckIn.Source source = 4;
+
+  // The workout the check-in stands for; unset for none.
+  Workout workout = 5;
 }
 
 // WeekNote is a note written on a day of the week, e.g. that one was ill or away.
