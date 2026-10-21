@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildCalendarData,
   convertCalendarBlock,
+  exerciseSummary,
+  formatReps,
   groupOpenTodos,
   habitTodoLabel,
   habitVersionOn,
@@ -14,6 +16,8 @@ import {
   joinHabitTitle,
   localToday,
   monthRange,
+  parseAmount,
+  parseReps,
   postponeChoices,
   readCalendarView,
   saveCalendarView,
@@ -186,6 +190,27 @@ describe("habit versions", () => {
     expect(isOverdue(habitTodo, "2026-10-17")).toBe(false);
     expect(isFailed(habitTodo, "2026-10-16")).toBe(false);
     expect(isFailed(todo("plain", "2026-10-16"), "2026-10-17")).toBe(false);
+  });
+});
+
+describe("workouts", () => {
+  it("reads reps and amounts as typed", () => {
+    expect(parseReps("15/12/12")).toEqual([15, 12, 12]);
+    expect(parseReps(" 15, 20 ，40 ")).toEqual([15, 20, 40]);
+    expect(parseReps("15/x/-1/")).toEqual([15]);
+    expect(parseReps("")).toEqual([]);
+    expect(formatReps([15, 12, 12])).toBe("15/12/12");
+    expect(parseAmount("2.3")).toBe(2.3);
+    expect(parseAmount("2,3")).toBe(2.3);
+    expect(parseAmount(" ")).toBeUndefined();
+    expect(parseAmount("-1")).toBeUndefined();
+  });
+
+  it("sums an exercise up in a line", () => {
+    const blank = { equipment: "", weightKg: undefined, reps: [], durationMinutes: undefined, settings: "" };
+    expect(exerciseSummary({ ...blank, equipment: "哑铃", weightKg: 2.3, reps: [15, 12, 12] })).toBe("哑铃 · 2.3 kg · 15/12/12");
+    expect(exerciseSummary({ ...blank, durationMinutes: 5, settings: "阻力 8" })).toBe("5 分钟 · 阻力 8");
+    expect(exerciseSummary(blank)).toBe("");
   });
 });
 

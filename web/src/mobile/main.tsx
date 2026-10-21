@@ -31,6 +31,7 @@ const ReaderPage = lazy(() => import("./pages/ReaderPage"));
 const FavoritesPage = lazy(() => import("./pages/FavoritesPage"));
 const PlannerPage = lazy(() => import("./pages/planner/PlannerPage"));
 const TodoPage = lazy(() => import("./pages/planner/TodoPage"));
+const CheckInPage = lazy(() => import("./pages/planner/CheckInPage"));
 const PlannerSettingsPage = lazy(() => import("./pages/planner/PlannerSettingsPage"));
 const PlannerImportPage = lazy(() => import("./pages/planner/PlannerImportPage"));
 const HabitVersionPage = lazy(() => import("./pages/planner/HabitVersionPage"));
@@ -110,6 +111,7 @@ const router = createBrowserRouter([
           { path: "/kb/:uid/*", element: <FolderPage /> },
           { path: MOBILE_ROUTES.FAVORITES, element: lazyPage(<FavoritesPage />) },
           { path: "/plan/todo/:uid", element: lazyPage(<TodoPage />) },
+          { path: "/plan/checkin/:uid/:date", element: lazyPage(<CheckInPage />) },
           { path: MOBILE_ROUTES.PLAN_SETTINGS, element: lazyPage(<PlannerSettingsPage />) },
           { path: MOBILE_ROUTES.PLAN_IMPORT, element: lazyPage(<PlannerImportPage />) },
           { path: MOBILE_ROUTES.PLAN_VERSION, element: lazyPage(<HabitVersionPage />) },

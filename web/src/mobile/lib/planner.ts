@@ -16,6 +16,7 @@ import {
   PlannerNoteSchema,
   type Todo,
   Todo_Status,
+  type WorkoutExercise,
 } from "@/types/proto/api/v1/planner_service_pb";
 
 /** Check-ins and notes older than this many days are read-only (0 = no limit), as `allowMaxUpdateDays` in the calendar block. */
@@ -397,4 +398,38 @@ export function convertCalendarBlock(source: string): { request: ImportPlannerRe
   summary.habits = request.habits.length;
   summary.checkIns = request.checkIns.length;
   return { request, summary };
+}
+
+/** Repetitions of each set as typed, "15/12/12" (or with spaces or commas); blanks and non-numbers dropped. */
+export function parseReps(text: string): number[] {
+  return text
+    .split(/[\s/,，、]+/)
+    .filter(Boolean)
+    .map(Number)
+    .filter((n) => Number.isInteger(n) && n >= 0);
+}
+
+export const formatReps = (reps: number[]): string => reps.join("/");
+
+/** A number typed in a field, or undefined when blank or not a non-negative number. */
+export function parseAmount(text: string): number | undefined {
+  const trimmed = text.trim().replace(",", ".");
+  if (trimmed === "") return undefined;
+  const n = Number(trimmed);
+  return Number.isFinite(n) && n >= 0 ? n : undefined;
+}
+
+/** One exercise in a line under its name: "哑铃 · 2.3 kg · 15/12/12", "5 分钟 · 坡度 10". */
+export function exerciseSummary(
+  exercise: Pick<WorkoutExercise, "equipment" | "weightKg" | "reps" | "durationMinutes" | "settings">,
+): string {
+  return [
+    exercise.equipment,
+    exercise.weightKg !== undefined ? `${exercise.weightKg} kg` : "",
+    exercise.reps.length > 0 ? formatReps(exercise.reps) : "",
+    exercise.durationMinutes !== undefined ? `${exercise.durationMinutes} 分钟` : "",
+    exercise.settings,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }

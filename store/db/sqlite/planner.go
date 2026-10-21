@@ -295,22 +295,64 @@ func (d *DB) EnablePlannerHabitDraft(ctx context.Context, creatorID int32, effec
 // plannerCheckInColumns reads a check-in, with the UID of the todo that made it looked up alongside.
 const plannerCheckInColumns = "`id`, `creator_id`, `habit_id`, `date`, `note`, `todo_id`, " +
 	"COALESCE((SELECT `planner_todo`.`uid` FROM `planner_todo` WHERE `planner_todo`.`id` = `planner_check_in`.`todo_id`), ''), " +
-	"`created_ts`, `updated_ts`"
+	"`source`, `workout`, `created_ts`, `updated_ts`"
 
 func scanPlannerCheckIn(row interface{ Scan(...any) error }) (*store.PlannerCheckIn, error) {
 	c := &store.PlannerCheckIn{}
-	if err := row.Scan(&c.ID, &c.CreatorID, &c.HabitID, &c.Date, &c.Note, &c.TodoID, &c.TodoUID, &c.CreatedTs, &c.UpdatedTs); err != nil {
+	var workout string
+	if err := row.Scan(&c.ID, &c.CreatorID, &c.HabitID, &c.Date, &c.Note, &c.TodoID, &c.TodoUID, &c.Source, &workout, &c.CreatedTs, &c.UpdatedTs); err != nil {
 		return nil, err
 	}
-	return c, nil
+	var err error
+	c.Workout, err = decodePlannerWorkout(workout)
+	return c, err
 }
 
-// upsertPlannerCheckIn records a check-in by hand: it never sets, or clears, the todo that made one.
+// encodePlannerWorkout is a check-in's workout as stored: JSON, or "" for none.
+func encodePlannerWorkout(workout *store.PlannerWorkout) (string, error) {
+	if workout == nil {
+		return "", nil
+	}
+	encoded, err := json.Marshal(workout)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to encode the workout")
+	}
+	return string(encoded), nil
+}
+
+func decodePlannerWorkout(value string) (*store.PlannerWorkout, error) {
+	if value == "" {
+		return nil, nil
+	}
+	workout := &store.PlannerWorkout{}
+	if err := json.Unmarshal([]byte(value), workout); err != nil {
+		return nil, errors.Wrap(err, "failed to decode the workout")
+	}
+	return workout, nil
+}
+
+// plannerCheckInSource defaults a check-in made without a stated source to one made by hand.
+func plannerCheckInSource(source string) string {
+	if source == "" {
+		return store.PlannerCheckInManual
+	}
+	return source
+}
+
+// upsertPlannerCheckIn records a check-in by hand or by an agent: it never sets, or clears, the todo that made
+// one, and an existing check-in keeps its source.
 func upsertPlannerCheckIn(ctx context.Context, q plannerQuerier, upsert *store.PlannerCheckIn) (*store.PlannerCheckIn, error) {
-	stmt := "INSERT INTO `planner_check_in` (`creator_id`, `habit_id`, `date`, `note`) VALUES (?, ?, ?, ?) " +
-		"ON CONFLICT(`habit_id`, `date`) DO UPDATE SET `note` = excluded.`note`, `updated_ts` = strftime('%s', 'now') " +
+	workout, err := encodePlannerWorkout(upsert.Workout)
+	if err != nil {
+		return nil, err
+	}
+	stmt := "INSERT INTO `planner_check_in` (`creator_id`, `habit_id`, `date`, `note`, `source`, `workout`) VALUES (?, ?, ?, ?, ?, ?) " +
+		"ON CONFLICT(`habit_id`, `date`) DO UPDATE SET `note` = excluded.`note`, `workout` = excluded.`workout`, " +
+		"`updated_ts` = strftime('%s', 'now') " +
 		"RETURNING " + plannerCheckInColumns
-	return scanPlannerCheckIn(q.QueryRowContext(ctx, stmt, upsert.CreatorID, upsert.HabitID, upsert.Date, upsert.Note))
+	return scanPlannerCheckIn(q.QueryRowContext(ctx, stmt,
+		upsert.CreatorID, upsert.HabitID, upsert.Date, upsert.Note, plannerCheckInSource(upsert.Source), workout,
+	))
 }
 
 func (d *DB) UpsertPlannerCheckIn(ctx context.Context, upsert *store.PlannerCheckIn) (*store.PlannerCheckIn, error) {
@@ -323,6 +365,9 @@ func (d *DB) ListPlannerCheckIns(ctx context.Context, find *store.FindPlannerChe
 		where, args = append(where, "`habit_id` = ?"), append(args, *find.HabitID)
 	}
 	where, args = dateRange(where, args, find.StartDate, find.EndDate)
+	if find.WithWorkout {
+		where = append(where, "`workout` != ''")
+	}
 	rows, err := d.db.QueryContext(ctx,
 		"SELECT "+plannerCheckInColumns+" FROM `planner_check_in` WHERE "+strings.Join(where, " AND ")+" ORDER BY `date`, `id`",
 		args...,
@@ -470,12 +515,22 @@ func (d *DB) UpdatePlannerTodo(ctx context.Context, update *store.UpdatePlannerT
 	}
 	args = append(args, update.ID)
 	stmt := "UPDATE `planner_todo` SET " + strings.Join(set, ", ") + " WHERE `id` = ? RETURNING " + plannerTodoColumns
-	if update.CheckIn == nil {
+	if update.CheckIn == nil && !update.DropCheckIn {
 		return scanPlannerTodo(d.db.QueryRowContext(ctx, stmt, args...))
 	}
 
 	var todo *store.PlannerTodo
 	err := d.withPlannerTx(ctx, func(tx *sql.Tx) error {
+		if update.DropCheckIn {
+			if _, err := tx.ExecContext(ctx, "DELETE FROM `planner_check_in` WHERE `todo_id` = ?", update.ID); err != nil {
+				return errors.Wrap(err, "failed to drop the todo's check-in")
+			}
+		}
+		if update.CheckIn == nil {
+			var err error
+			todo, err = scanPlannerTodo(tx.QueryRowContext(ctx, stmt, args...))
+			return err
+		}
 		checkIn := update.CheckIn
 		var taken int
 		if err := tx.QueryRowContext(ctx,
@@ -486,14 +541,21 @@ func (d *DB) UpdatePlannerTodo(ctx context.Context, update *store.UpdatePlannerT
 		if taken > 0 {
 			return store.ErrPlannerCheckInTaken
 		}
+		workout, err := encodePlannerWorkout(checkIn.Workout)
+		if err != nil {
+			return err
+		}
+		source := checkIn.Source
+		if source == "" {
+			source = store.PlannerCheckInTodo
+		}
 		// The check-in goes in first, so the todo read back below already carries its date.
 		if _, err := tx.ExecContext(ctx,
-			"INSERT INTO `planner_check_in` (`creator_id`, `habit_id`, `date`, `note`, `todo_id`) VALUES (?, ?, ?, ?, ?)",
-			checkIn.CreatorID, checkIn.HabitID, checkIn.Date, checkIn.Note, update.ID,
+			"INSERT INTO `planner_check_in` (`creator_id`, `habit_id`, `date`, `note`, `todo_id`, `source`, `workout`) VALUES (?, ?, ?, ?, ?, ?, ?)",
+			checkIn.CreatorID, checkIn.HabitID, checkIn.Date, checkIn.Note, update.ID, source, workout,
 		); err != nil {
 			return errors.Wrap(err, "failed to check in")
 		}
-		var err error
 		todo, err = scanPlannerTodo(tx.QueryRowContext(ctx, stmt, args...))
 		return err
 	})

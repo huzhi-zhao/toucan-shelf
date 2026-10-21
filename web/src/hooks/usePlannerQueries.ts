@@ -12,6 +12,7 @@ import {
   PlannerSettingsSchema,
   type Todo,
   TodoSchema,
+  type Workout,
 } from "@/types/proto/api/v1/planner_service_pb";
 
 // The planner is personal data (habits, check-ins, todos, notes); see
@@ -147,13 +148,28 @@ export function useEnableHabitDraft() {
 
 /** Checks in, or with `checked: false` removes the check-in. `note` replaces the remark. */
 export function useSetCheckIn() {
-  return usePlannerMutation(async ({ habit, date, note, checked }: { habit: string; date: string; note?: string; checked: boolean }) => {
-    if (!checked) {
-      await plannerServiceClient.deleteCheckIn({ habit, date });
-      return;
-    }
-    await plannerServiceClient.setCheckIn({ checkIn: create(CheckInSchema, { habit, date, note: note ?? "" }) });
-  });
+  return usePlannerMutation(
+    async ({
+      habit,
+      date,
+      note,
+      checked,
+      workout,
+    }: {
+      habit: string;
+      date: string;
+      note?: string;
+      checked: boolean;
+      workout?: Workout;
+    }) => {
+      if (!checked) {
+        await plannerServiceClient.deleteCheckIn({ habit, date });
+        return;
+      }
+      // Without a workout the server keeps the one there; an empty one removes it.
+      await plannerServiceClient.setCheckIn({ checkIn: create(CheckInSchema, { habit, date, note: note ?? "", workout }) });
+    },
+  );
 }
 
 /** Creates a todo; with `habit`, a habit todo for `date`, which then needs the phone's today as `localDate`. */

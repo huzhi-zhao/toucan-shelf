@@ -1812,6 +1812,16 @@ paths:
             description: |-
                 SetCheckIn records a check-in, or replaces the note of an existing one.
                  An archived habit takes no new check-ins.
+
+                 With `workout` set, it also records the workout the check-in stands for,
+                 replacing any it had (an empty workout removes it); without, the workout
+                 is kept. Calling it again with the same habit, date and content changes
+                 nothing, so a caller can retry, and correct a workout by sending it whole.
+
+                 A caller with a personal access token (a bot) checks in as an agent. It
+                 can change or remove only check-ins made by an agent; on one made in the
+                 app it may only set the workout, and the note stays. If an open habit todo
+                 of that habit is due that day, an agent's check-in completes it.
             operationId: PlannerService_SetCheckIn
             requestBody:
                 content:
@@ -1837,7 +1847,9 @@ paths:
                 - PlannerService
             description: |-
                 DeleteCheckIn removes a habit's check-in on a day. Removing one that does not
-                 exist succeeds.
+                 exist succeeds. A caller with a personal access token can remove only
+                 check-ins made by an agent; removing one that completed a habit todo
+                 reopens the todo.
             operationId: PlannerService_DeleteCheckIn
             parameters:
                 - name: habit
@@ -2209,6 +2221,56 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/GetWeekProgressResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/planner/workouts:
+        get:
+            tags:
+                - PlannerService
+            description: |-
+                ListWorkouts returns check-ins that carry a workout, newest first: to see
+                 what was lifted last time, how often one trained this month, how weights
+                 changed. It reports facts only.
+            operationId: PlannerService_ListWorkouts
+            parameters:
+                - name: startDate
+                  in: query
+                  description: Inclusive bounds, YYYY-MM-DD; either may be empty for no bound.
+                  schema:
+                    type: string
+                - name: endDate
+                  in: query
+                  schema:
+                    type: string
+                - name: habit
+                  in: query
+                  description: 'Only this habit''s workouts. Format: planner/habits/{habit}'
+                  schema:
+                    type: string
+                - name: exercise
+                  in: query
+                  description: |-
+                    Only workouts with an exercise whose name contains this text, ignoring
+                     case, e.g. "deadlift" for the last times one did deadlifts.
+                  schema:
+                    type: string
+                - name: limit
+                  in: query
+                  description: 'At most this many, the newest: 1 to 200, 50 when unset.'
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListWorkoutsResponse'
                 default:
                     description: Default error response
                     content:
@@ -5145,6 +5207,21 @@ components:
                         The todo whose completion made this check-in, or empty for one checked in
                          by hand. Such a check-in belongs to the todo: it cannot be changed or
                          removed on its own, only with the todo. Format: planner/todos/{todo}
+                source:
+                    readOnly: true
+                    enum:
+                        - SOURCE_UNSPECIFIED
+                        - MANUAL
+                        - TODO
+                        - AGENT
+                    type: string
+                    format: enum
+                workout:
+                    allOf:
+                        - $ref: '#/components/schemas/Workout'
+                    description: |-
+                        The workout the check-in stands for: one session of the habit that day.
+                         Unset for a check-in without one.
             description: |-
                 CheckIn records that a habit was kept on a day. There is at most one per
                  habit per day, so it is addressed by the pair rather than by its own name.
@@ -6501,6 +6578,14 @@ components:
                     description: |-
                         A token that can be sent as `page_token` to retrieve the next page.
                          If this field is omitted, there are no subsequent pages.
+        ListWorkoutsResponse:
+            type: object
+            properties:
+                checkIns:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/CheckIn'
+                    description: Check-ins that carry a workout, newest first.
         ListWorkspaceGrantsResponse:
             type: object
             properties:
@@ -8781,6 +8866,19 @@ components:
                     description: |-
                         The todo whose completion made the check-in, or empty for one checked in
                          by hand. Format: planner/todos/{todo}
+                source:
+                    enum:
+                        - SOURCE_UNSPECIFIED
+                        - MANUAL
+                        - TODO
+                        - AGENT
+                    type: string
+                    description: Who made the check-in.
+                    format: enum
+                workout:
+                    allOf:
+                        - $ref: '#/components/schemas/Workout'
+                    description: The workout the check-in stands for; unset for none.
         WeekHabitProgress:
             type: object
             properties:
@@ -8918,6 +9016,52 @@ components:
                         $ref: '#/components/schemas/WeekNote'
                     description: The week's notes, by date.
             description: 'WeekProgress is one week of a habit plan: what was planned and what was done.'
+        Workout:
+            type: object
+            properties:
+                durationMinutes:
+                    type: number
+                    description: The whole session's length in minutes; unset when not recorded.
+                    format: double
+                exercises:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/WorkoutExercise'
+                    description: The exercises in the order they were done, at most 30.
+            description: |-
+                Workout is the detail of a workout a check-in stands for. It records facts
+                 as reported; it does not judge whether the session counts.
+        WorkoutExercise:
+            required:
+                - name
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: What was done, e.g. "Romanian deadlift".
+                equipment:
+                    type: string
+                    description: What it was done with, e.g. "dumbbells".
+                weightKg:
+                    type: number
+                    description: In kilograms; the caller converts from pounds.
+                    format: double
+                reps:
+                    type: array
+                    items:
+                        type: integer
+                        format: int32
+                    description: Repetitions of each set, in order, e.g. [15, 12, 12].
+                durationMinutes:
+                    type: number
+                    description: In minutes, for timed exercises.
+                    format: double
+                settings:
+                    type: string
+                    description: The machine's settings, e.g. "incline 10, 3.8-4 km/h".
+                note:
+                    type: string
+                    description: A remark in a sentence.
         Workspace:
             required:
                 - title

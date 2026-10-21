@@ -33,6 +33,7 @@ const (
 	PlannerService_ListTodoTags_FullMethodName          = "/memos.api.v1.PlannerService/ListTodoTags"
 	PlannerService_SetCheckIn_FullMethodName            = "/memos.api.v1.PlannerService/SetCheckIn"
 	PlannerService_DeleteCheckIn_FullMethodName         = "/memos.api.v1.PlannerService/DeleteCheckIn"
+	PlannerService_ListWorkouts_FullMethodName          = "/memos.api.v1.PlannerService/ListWorkouts"
 	PlannerService_GetTodo_FullMethodName               = "/memos.api.v1.PlannerService/GetTodo"
 	PlannerService_CreateTodo_FullMethodName            = "/memos.api.v1.PlannerService/CreateTodo"
 	PlannerService_UpdateTodo_FullMethodName            = "/memos.api.v1.PlannerService/UpdateTodo"
@@ -101,10 +102,26 @@ type PlannerServiceClient interface {
 	ListTodoTags(ctx context.Context, in *ListTodoTagsRequest, opts ...grpc.CallOption) (*ListTodoTagsResponse, error)
 	// SetCheckIn records a check-in, or replaces the note of an existing one.
 	// An archived habit takes no new check-ins.
+	//
+	// With `workout` set, it also records the workout the check-in stands for,
+	// replacing any it had (an empty workout removes it); without, the workout
+	// is kept. Calling it again with the same habit, date and content changes
+	// nothing, so a caller can retry, and correct a workout by sending it whole.
+	//
+	// A caller with a personal access token (a bot) checks in as an agent. It
+	// can change or remove only check-ins made by an agent; on one made in the
+	// app it may only set the workout, and the note stays. If an open habit todo
+	// of that habit is due that day, an agent's check-in completes it.
 	SetCheckIn(ctx context.Context, in *SetCheckInRequest, opts ...grpc.CallOption) (*CheckIn, error)
 	// DeleteCheckIn removes a habit's check-in on a day. Removing one that does not
-	// exist succeeds.
+	// exist succeeds. A caller with a personal access token can remove only
+	// check-ins made by an agent; removing one that completed a habit todo
+	// reopens the todo.
 	DeleteCheckIn(ctx context.Context, in *DeleteCheckInRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// ListWorkouts returns check-ins that carry a workout, newest first: to see
+	// what was lifted last time, how often one trained this month, how weights
+	// changed. It reports facts only.
+	ListWorkouts(ctx context.Context, in *ListWorkoutsRequest, opts ...grpc.CallOption) (*ListWorkoutsResponse, error)
 	// GetTodo returns one todo.
 	GetTodo(ctx context.Context, in *GetTodoRequest, opts ...grpc.CallOption) (*Todo, error)
 	// CreateTodo adds an active todo.
@@ -268,6 +285,16 @@ func (c *plannerServiceClient) DeleteCheckIn(ctx context.Context, in *DeleteChec
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, PlannerService_DeleteCheckIn_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plannerServiceClient) ListWorkouts(ctx context.Context, in *ListWorkoutsRequest, opts ...grpc.CallOption) (*ListWorkoutsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListWorkoutsResponse)
+	err := c.cc.Invoke(ctx, PlannerService_ListWorkouts_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -439,10 +466,26 @@ type PlannerServiceServer interface {
 	ListTodoTags(context.Context, *ListTodoTagsRequest) (*ListTodoTagsResponse, error)
 	// SetCheckIn records a check-in, or replaces the note of an existing one.
 	// An archived habit takes no new check-ins.
+	//
+	// With `workout` set, it also records the workout the check-in stands for,
+	// replacing any it had (an empty workout removes it); without, the workout
+	// is kept. Calling it again with the same habit, date and content changes
+	// nothing, so a caller can retry, and correct a workout by sending it whole.
+	//
+	// A caller with a personal access token (a bot) checks in as an agent. It
+	// can change or remove only check-ins made by an agent; on one made in the
+	// app it may only set the workout, and the note stays. If an open habit todo
+	// of that habit is due that day, an agent's check-in completes it.
 	SetCheckIn(context.Context, *SetCheckInRequest) (*CheckIn, error)
 	// DeleteCheckIn removes a habit's check-in on a day. Removing one that does not
-	// exist succeeds.
+	// exist succeeds. A caller with a personal access token can remove only
+	// check-ins made by an agent; removing one that completed a habit todo
+	// reopens the todo.
 	DeleteCheckIn(context.Context, *DeleteCheckInRequest) (*emptypb.Empty, error)
+	// ListWorkouts returns check-ins that carry a workout, newest first: to see
+	// what was lifted last time, how often one trained this month, how weights
+	// changed. It reports facts only.
+	ListWorkouts(context.Context, *ListWorkoutsRequest) (*ListWorkoutsResponse, error)
 	// GetTodo returns one todo.
 	GetTodo(context.Context, *GetTodoRequest) (*Todo, error)
 	// CreateTodo adds an active todo.
@@ -520,6 +563,9 @@ func (UnimplementedPlannerServiceServer) SetCheckIn(context.Context, *SetCheckIn
 }
 func (UnimplementedPlannerServiceServer) DeleteCheckIn(context.Context, *DeleteCheckInRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteCheckIn not implemented")
+}
+func (UnimplementedPlannerServiceServer) ListWorkouts(context.Context, *ListWorkoutsRequest) (*ListWorkoutsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListWorkouts not implemented")
 }
 func (UnimplementedPlannerServiceServer) GetTodo(context.Context, *GetTodoRequest) (*Todo, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetTodo not implemented")
@@ -809,6 +855,24 @@ func _PlannerService_DeleteCheckIn_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PlannerService_ListWorkouts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListWorkoutsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlannerServiceServer).ListWorkouts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlannerService_ListWorkouts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlannerServiceServer).ListWorkouts(ctx, req.(*ListWorkoutsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PlannerService_GetTodo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetTodoRequest)
 	if err := dec(in); err != nil {
@@ -1065,6 +1129,10 @@ var PlannerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteCheckIn",
 			Handler:    _PlannerService_DeleteCheckIn_Handler,
+		},
+		{
+			MethodName: "ListWorkouts",
+			Handler:    _PlannerService_ListWorkouts_Handler,
 		},
 		{
 			MethodName: "GetTodo",
