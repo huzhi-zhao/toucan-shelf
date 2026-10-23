@@ -616,19 +616,26 @@ func (d *DB) ListPlannerTodoTags(ctx context.Context, creatorID int32) ([]string
 
 // Notes.
 
-const plannerNoteColumns = "`id`, `uid`, `creator_id`, `date`, `content`, `created_ts`, `updated_ts`"
+const plannerNoteColumns = "`id`, `uid`, `creator_id`, `date`, `content`, `remark`, `memo_names`, `created_ts`, `updated_ts`"
 
 func scanPlannerNote(row interface{ Scan(...any) error }) (*store.PlannerNote, error) {
 	n := &store.PlannerNote{}
-	if err := row.Scan(&n.ID, &n.UID, &n.CreatorID, &n.Date, &n.Content, &n.CreatedTs, &n.UpdatedTs); err != nil {
+	var memoNames string
+	if err := row.Scan(&n.ID, &n.UID, &n.CreatorID, &n.Date, &n.Content, &n.Remark, &memoNames, &n.CreatedTs, &n.UpdatedTs); err != nil {
 		return nil, err
+	}
+	n.MemoNames = []string{}
+	if err := json.Unmarshal([]byte(memoNames), &n.MemoNames); err != nil {
+		return nil, errors.Wrap(err, "failed to read the note's linked documents")
 	}
 	return n, nil
 }
 
 func insertPlannerNote(ctx context.Context, q plannerQuerier, create *store.PlannerNote) (*store.PlannerNote, error) {
-	stmt := "INSERT INTO `planner_note` (`uid`, `creator_id`, `date`, `content`) VALUES (?, ?, ?, ?) RETURNING " + plannerNoteColumns
-	return scanPlannerNote(q.QueryRowContext(ctx, stmt, create.UID, create.CreatorID, create.Date, create.Content))
+	stmt := "INSERT INTO `planner_note` (`uid`, `creator_id`, `date`, `content`, `remark`, `memo_names`) VALUES (?, ?, ?, ?, ?, ?) RETURNING " +
+		plannerNoteColumns
+	return scanPlannerNote(q.QueryRowContext(ctx, stmt, create.UID, create.CreatorID, create.Date, create.Content, create.Remark,
+		encodeMemoNames(create.MemoNames)))
 }
 
 func (d *DB) CreatePlannerNote(ctx context.Context, create *store.PlannerNote) (*store.PlannerNote, error) {
@@ -674,6 +681,12 @@ func (d *DB) UpdatePlannerNote(ctx context.Context, update *store.UpdatePlannerN
 	}
 	if update.Content != nil {
 		set, args = append(set, "`content` = ?"), append(args, *update.Content)
+	}
+	if update.Remark != nil {
+		set, args = append(set, "`remark` = ?"), append(args, *update.Remark)
+	}
+	if update.MemoNames != nil {
+		set, args = append(set, "`memo_names` = ?"), append(args, encodeMemoNames(*update.MemoNames))
 	}
 	args = append(args, update.ID)
 	stmt := "UPDATE `planner_note` SET " + strings.Join(set, ", ") + " WHERE `id` = ? RETURNING " + plannerNoteColumns

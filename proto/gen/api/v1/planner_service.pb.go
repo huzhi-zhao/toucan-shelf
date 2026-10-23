@@ -191,7 +191,7 @@ func (x WeekHabitTodo_State) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use WeekHabitTodo_State.Descriptor instead.
 func (WeekHabitTodo_State) EnumDescriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{50, 0}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{51, 0}
 }
 
 type Habit struct {
@@ -897,10 +897,14 @@ type PlannerNote struct {
 	// Format: planner/notes/{note}
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Format: YYYY-MM-DD.
-	Date          string                 `protobuf:"bytes,2,opt,name=date,proto3" json:"date,omitempty"`
-	Content       string                 `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
-	CreateTime    *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
-	UpdateTime    *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	Date       string                 `protobuf:"bytes,2,opt,name=date,proto3" json:"date,omitempty"`
+	Content    string                 `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
+	CreateTime *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	UpdateTime *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	// A longer remark, shown only on the note's own page.
+	Remark string `protobuf:"bytes,6,opt,name=remark,proto3" json:"remark,omitempty"`
+	// Linked documents, "memos/{uid}", in display order.
+	Memos         []string `protobuf:"bytes,7,rep,name=memos,proto3" json:"memos,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -966,6 +970,20 @@ func (x *PlannerNote) GetCreateTime() *timestamppb.Timestamp {
 func (x *PlannerNote) GetUpdateTime() *timestamppb.Timestamp {
 	if x != nil {
 		return x.UpdateTime
+	}
+	return nil
+}
+
+func (x *PlannerNote) GetRemark() string {
+	if x != nil {
+		return x.Remark
+	}
+	return ""
+}
+
+func (x *PlannerNote) GetMemos() []string {
+	if x != nil {
+		return x.Memos
 	}
 	return nil
 }
@@ -2144,6 +2162,51 @@ func (x *DeleteTodoRequest) GetName() string {
 	return ""
 }
 
+type GetPlannerNoteRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Format: planner/notes/{note}
+	Name          string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetPlannerNoteRequest) Reset() {
+	*x = GetPlannerNoteRequest{}
+	mi := &file_api_v1_planner_service_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPlannerNoteRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPlannerNoteRequest) ProtoMessage() {}
+
+func (x *GetPlannerNoteRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_planner_service_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPlannerNoteRequest.ProtoReflect.Descriptor instead.
+func (*GetPlannerNoteRequest) Descriptor() ([]byte, []int) {
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *GetPlannerNoteRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
 type CreatePlannerNoteRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Note          *PlannerNote           `protobuf:"bytes,1,opt,name=note,proto3" json:"note,omitempty"`
@@ -2153,7 +2216,7 @@ type CreatePlannerNoteRequest struct {
 
 func (x *CreatePlannerNoteRequest) Reset() {
 	*x = CreatePlannerNoteRequest{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[32]
+	mi := &file_api_v1_planner_service_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2165,7 +2228,7 @@ func (x *CreatePlannerNoteRequest) String() string {
 func (*CreatePlannerNoteRequest) ProtoMessage() {}
 
 func (x *CreatePlannerNoteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[32]
+	mi := &file_api_v1_planner_service_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2178,7 +2241,7 @@ func (x *CreatePlannerNoteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatePlannerNoteRequest.ProtoReflect.Descriptor instead.
 func (*CreatePlannerNoteRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{32}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *CreatePlannerNoteRequest) GetNote() *PlannerNote {
@@ -2191,7 +2254,7 @@ func (x *CreatePlannerNoteRequest) GetNote() *PlannerNote {
 type UpdatePlannerNoteRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Note  *PlannerNote           `protobuf:"bytes,1,opt,name=note,proto3" json:"note,omitempty"`
-	// Supported paths: date, content.
+	// Supported paths: date, content, remark, memos.
 	UpdateMask    *fieldmaskpb.FieldMask `protobuf:"bytes,2,opt,name=update_mask,json=updateMask,proto3" json:"update_mask,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2199,7 +2262,7 @@ type UpdatePlannerNoteRequest struct {
 
 func (x *UpdatePlannerNoteRequest) Reset() {
 	*x = UpdatePlannerNoteRequest{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[33]
+	mi := &file_api_v1_planner_service_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2211,7 +2274,7 @@ func (x *UpdatePlannerNoteRequest) String() string {
 func (*UpdatePlannerNoteRequest) ProtoMessage() {}
 
 func (x *UpdatePlannerNoteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[33]
+	mi := &file_api_v1_planner_service_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2224,7 +2287,7 @@ func (x *UpdatePlannerNoteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdatePlannerNoteRequest.ProtoReflect.Descriptor instead.
 func (*UpdatePlannerNoteRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{33}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *UpdatePlannerNoteRequest) GetNote() *PlannerNote {
@@ -2251,7 +2314,7 @@ type DeletePlannerNoteRequest struct {
 
 func (x *DeletePlannerNoteRequest) Reset() {
 	*x = DeletePlannerNoteRequest{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[34]
+	mi := &file_api_v1_planner_service_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2263,7 +2326,7 @@ func (x *DeletePlannerNoteRequest) String() string {
 func (*DeletePlannerNoteRequest) ProtoMessage() {}
 
 func (x *DeletePlannerNoteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[34]
+	mi := &file_api_v1_planner_service_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2276,7 +2339,7 @@ func (x *DeletePlannerNoteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeletePlannerNoteRequest.ProtoReflect.Descriptor instead.
 func (*DeletePlannerNoteRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{34}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *DeletePlannerNoteRequest) GetName() string {
@@ -2303,7 +2366,7 @@ type ImportPlannerRequest struct {
 
 func (x *ImportPlannerRequest) Reset() {
 	*x = ImportPlannerRequest{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[35]
+	mi := &file_api_v1_planner_service_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2315,7 +2378,7 @@ func (x *ImportPlannerRequest) String() string {
 func (*ImportPlannerRequest) ProtoMessage() {}
 
 func (x *ImportPlannerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[35]
+	mi := &file_api_v1_planner_service_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2328,7 +2391,7 @@ func (x *ImportPlannerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImportPlannerRequest.ProtoReflect.Descriptor instead.
 func (*ImportPlannerRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{35}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *ImportPlannerRequest) GetHabits() []*Habit {
@@ -2372,7 +2435,7 @@ type ImportCheckIn struct {
 
 func (x *ImportCheckIn) Reset() {
 	*x = ImportCheckIn{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[36]
+	mi := &file_api_v1_planner_service_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2384,7 +2447,7 @@ func (x *ImportCheckIn) String() string {
 func (*ImportCheckIn) ProtoMessage() {}
 
 func (x *ImportCheckIn) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[36]
+	mi := &file_api_v1_planner_service_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2397,7 +2460,7 @@ func (x *ImportCheckIn) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImportCheckIn.ProtoReflect.Descriptor instead.
 func (*ImportCheckIn) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{36}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *ImportCheckIn) GetHabitIndex() int32 {
@@ -2432,7 +2495,7 @@ type ImportTodo struct {
 
 func (x *ImportTodo) Reset() {
 	*x = ImportTodo{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[37]
+	mi := &file_api_v1_planner_service_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2444,7 +2507,7 @@ func (x *ImportTodo) String() string {
 func (*ImportTodo) ProtoMessage() {}
 
 func (x *ImportTodo) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[37]
+	mi := &file_api_v1_planner_service_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2457,7 +2520,7 @@ func (x *ImportTodo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImportTodo.ProtoReflect.Descriptor instead.
 func (*ImportTodo) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{37}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *ImportTodo) GetTodo() *Todo {
@@ -2486,7 +2549,7 @@ type ImportPlannerResponse struct {
 
 func (x *ImportPlannerResponse) Reset() {
 	*x = ImportPlannerResponse{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[38]
+	mi := &file_api_v1_planner_service_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2498,7 +2561,7 @@ func (x *ImportPlannerResponse) String() string {
 func (*ImportPlannerResponse) ProtoMessage() {}
 
 func (x *ImportPlannerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[38]
+	mi := &file_api_v1_planner_service_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2511,7 +2574,7 @@ func (x *ImportPlannerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImportPlannerResponse.ProtoReflect.Descriptor instead.
 func (*ImportPlannerResponse) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{38}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *ImportPlannerResponse) GetHabitCount() int32 {
@@ -2555,7 +2618,7 @@ type PlannerSettings struct {
 
 func (x *PlannerSettings) Reset() {
 	*x = PlannerSettings{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[39]
+	mi := &file_api_v1_planner_service_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2567,7 +2630,7 @@ func (x *PlannerSettings) String() string {
 func (*PlannerSettings) ProtoMessage() {}
 
 func (x *PlannerSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[39]
+	mi := &file_api_v1_planner_service_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2580,7 +2643,7 @@ func (x *PlannerSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlannerSettings.ProtoReflect.Descriptor instead.
 func (*PlannerSettings) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{39}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *PlannerSettings) GetWeekStartDay() int32 {
@@ -2598,7 +2661,7 @@ type GetPlannerSettingsRequest struct {
 
 func (x *GetPlannerSettingsRequest) Reset() {
 	*x = GetPlannerSettingsRequest{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[40]
+	mi := &file_api_v1_planner_service_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2610,7 +2673,7 @@ func (x *GetPlannerSettingsRequest) String() string {
 func (*GetPlannerSettingsRequest) ProtoMessage() {}
 
 func (x *GetPlannerSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[40]
+	mi := &file_api_v1_planner_service_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2623,7 +2686,7 @@ func (x *GetPlannerSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPlannerSettingsRequest.ProtoReflect.Descriptor instead.
 func (*GetPlannerSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{40}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{41}
 }
 
 type UpdatePlannerSettingsRequest struct {
@@ -2635,7 +2698,7 @@ type UpdatePlannerSettingsRequest struct {
 
 func (x *UpdatePlannerSettingsRequest) Reset() {
 	*x = UpdatePlannerSettingsRequest{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[41]
+	mi := &file_api_v1_planner_service_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2647,7 +2710,7 @@ func (x *UpdatePlannerSettingsRequest) String() string {
 func (*UpdatePlannerSettingsRequest) ProtoMessage() {}
 
 func (x *UpdatePlannerSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[41]
+	mi := &file_api_v1_planner_service_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2660,7 +2723,7 @@ func (x *UpdatePlannerSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdatePlannerSettingsRequest.ProtoReflect.Descriptor instead.
 func (*UpdatePlannerSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{41}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *UpdatePlannerSettingsRequest) GetSettings() *PlannerSettings {
@@ -2683,7 +2746,7 @@ type GetWeekProgressRequest struct {
 
 func (x *GetWeekProgressRequest) Reset() {
 	*x = GetWeekProgressRequest{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[42]
+	mi := &file_api_v1_planner_service_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2695,7 +2758,7 @@ func (x *GetWeekProgressRequest) String() string {
 func (*GetWeekProgressRequest) ProtoMessage() {}
 
 func (x *GetWeekProgressRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[42]
+	mi := &file_api_v1_planner_service_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2708,7 +2771,7 @@ func (x *GetWeekProgressRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetWeekProgressRequest.ProtoReflect.Descriptor instead.
 func (*GetWeekProgressRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{42}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *GetWeekProgressRequest) GetDate() string {
@@ -2738,7 +2801,7 @@ type GetWeekProgressResponse struct {
 
 func (x *GetWeekProgressResponse) Reset() {
 	*x = GetWeekProgressResponse{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[43]
+	mi := &file_api_v1_planner_service_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2750,7 +2813,7 @@ func (x *GetWeekProgressResponse) String() string {
 func (*GetWeekProgressResponse) ProtoMessage() {}
 
 func (x *GetWeekProgressResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[43]
+	mi := &file_api_v1_planner_service_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2763,7 +2826,7 @@ func (x *GetWeekProgressResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetWeekProgressResponse.ProtoReflect.Descriptor instead.
 func (*GetWeekProgressResponse) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{43}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *GetWeekProgressResponse) GetWeekStartDay() int32 {
@@ -2806,7 +2869,7 @@ type WeekProgress struct {
 
 func (x *WeekProgress) Reset() {
 	*x = WeekProgress{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[44]
+	mi := &file_api_v1_planner_service_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2818,7 +2881,7 @@ func (x *WeekProgress) String() string {
 func (*WeekProgress) ProtoMessage() {}
 
 func (x *WeekProgress) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[44]
+	mi := &file_api_v1_planner_service_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2831,7 +2894,7 @@ func (x *WeekProgress) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WeekProgress.ProtoReflect.Descriptor instead.
 func (*WeekProgress) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{44}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *WeekProgress) GetWeekStart() string {
@@ -2909,7 +2972,7 @@ type WeekPlan struct {
 
 func (x *WeekPlan) Reset() {
 	*x = WeekPlan{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[45]
+	mi := &file_api_v1_planner_service_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2921,7 +2984,7 @@ func (x *WeekPlan) String() string {
 func (*WeekPlan) ProtoMessage() {}
 
 func (x *WeekPlan) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[45]
+	mi := &file_api_v1_planner_service_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2934,7 +2997,7 @@ func (x *WeekPlan) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WeekPlan.ProtoReflect.Descriptor instead.
 func (*WeekPlan) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{45}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *WeekPlan) GetEffectiveDate() string {
@@ -2970,7 +3033,7 @@ type WeekPlanDocument struct {
 
 func (x *WeekPlanDocument) Reset() {
 	*x = WeekPlanDocument{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[46]
+	mi := &file_api_v1_planner_service_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2982,7 +3045,7 @@ func (x *WeekPlanDocument) String() string {
 func (*WeekPlanDocument) ProtoMessage() {}
 
 func (x *WeekPlanDocument) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[46]
+	mi := &file_api_v1_planner_service_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2995,7 +3058,7 @@ func (x *WeekPlanDocument) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WeekPlanDocument.ProtoReflect.Descriptor instead.
 func (*WeekPlanDocument) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{46}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *WeekPlanDocument) GetName() string {
@@ -3036,7 +3099,7 @@ type WeekHabitProgress struct {
 
 func (x *WeekHabitProgress) Reset() {
 	*x = WeekHabitProgress{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[47]
+	mi := &file_api_v1_planner_service_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3048,7 +3111,7 @@ func (x *WeekHabitProgress) String() string {
 func (*WeekHabitProgress) ProtoMessage() {}
 
 func (x *WeekHabitProgress) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[47]
+	mi := &file_api_v1_planner_service_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3061,7 +3124,7 @@ func (x *WeekHabitProgress) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WeekHabitProgress.ProtoReflect.Descriptor instead.
 func (*WeekHabitProgress) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{47}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *WeekHabitProgress) GetHabit() string {
@@ -3131,7 +3194,7 @@ type WeekCheckIn struct {
 
 func (x *WeekCheckIn) Reset() {
 	*x = WeekCheckIn{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[48]
+	mi := &file_api_v1_planner_service_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3143,7 +3206,7 @@ func (x *WeekCheckIn) String() string {
 func (*WeekCheckIn) ProtoMessage() {}
 
 func (x *WeekCheckIn) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[48]
+	mi := &file_api_v1_planner_service_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3156,7 +3219,7 @@ func (x *WeekCheckIn) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WeekCheckIn.ProtoReflect.Descriptor instead.
 func (*WeekCheckIn) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{48}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *WeekCheckIn) GetDate() string {
@@ -3206,7 +3269,7 @@ type WeekNote struct {
 
 func (x *WeekNote) Reset() {
 	*x = WeekNote{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[49]
+	mi := &file_api_v1_planner_service_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3218,7 +3281,7 @@ func (x *WeekNote) String() string {
 func (*WeekNote) ProtoMessage() {}
 
 func (x *WeekNote) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[49]
+	mi := &file_api_v1_planner_service_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3231,7 +3294,7 @@ func (x *WeekNote) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WeekNote.ProtoReflect.Descriptor instead.
 func (*WeekNote) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{49}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *WeekNote) GetDate() string {
@@ -3265,7 +3328,7 @@ type WeekHabitTodo struct {
 
 func (x *WeekHabitTodo) Reset() {
 	*x = WeekHabitTodo{}
-	mi := &file_api_v1_planner_service_proto_msgTypes[50]
+	mi := &file_api_v1_planner_service_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3277,7 +3340,7 @@ func (x *WeekHabitTodo) String() string {
 func (*WeekHabitTodo) ProtoMessage() {}
 
 func (x *WeekHabitTodo) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_planner_service_proto_msgTypes[50]
+	mi := &file_api_v1_planner_service_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3290,7 +3353,7 @@ func (x *WeekHabitTodo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WeekHabitTodo.ProtoReflect.Descriptor instead.
 func (*WeekHabitTodo) Descriptor() ([]byte, []int) {
-	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{50}
+	return file_api_v1_planner_service_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *WeekHabitTodo) GetName() string {
@@ -3414,7 +3477,7 @@ const file_api_v1_planner_service_proto_rawDesc = "" +
 	"\x06ACTIVE\x10\x01\x12\b\n" +
 	"\x04DONE\x10\x02\x12\r\n" +
 	"\tCANCELLED\x10\x03:9\xeaA6\n" +
-	"\x11memos.api.v1/Todo\x12\x14planner/todos/{todo}*\x05todos2\x04todo\"\xb2\x02\n" +
+	"\x11memos.api.v1/Todo\x12\x14planner/todos/{todo}*\x05todos2\x04todo\"\xea\x02\n" +
 	"\vPlannerNote\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12\x17\n" +
 	"\x04date\x18\x02 \x01(\tB\x03\xe0A\x02R\x04date\x12\x1d\n" +
@@ -3422,7 +3485,9 @@ const file_api_v1_planner_service_proto_rawDesc = "" +
 	"\vcreate_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
 	"createTime\x12@\n" +
 	"\vupdate_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
-	"updateTime:N\xeaAK\n" +
+	"updateTime\x12\x1b\n" +
+	"\x06remark\x18\x06 \x01(\tB\x03\xe0A\x01R\x06remark\x12\x19\n" +
+	"\x05memos\x18\a \x03(\tB\x03\xe0A\x01R\x05memos:N\xeaAK\n" +
 	"\x18memos.api.v1/PlannerNote\x12\x14planner/notes/{note}*\fplannerNotes2\vplannerNote\"\x13\n" +
 	"\x11ListHabitsRequest\"\x1a\n" +
 	"\x18ListHabitVersionsRequest\"\x85\x01\n" +
@@ -3490,6 +3555,8 @@ const file_api_v1_planner_service_proto_rawDesc = "" +
 	"\n" +
 	"local_date\x18\x03 \x01(\tB\x03\xe0A\x02R\tlocalDate\",\n" +
 	"\x11DeleteTodoRequest\x12\x17\n" +
+	"\x04name\x18\x01 \x01(\tB\x03\xe0A\x02R\x04name\"0\n" +
+	"\x15GetPlannerNoteRequest\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tB\x03\xe0A\x02R\x04name\"N\n" +
 	"\x18CreatePlannerNoteRequest\x122\n" +
 	"\x04note\x18\x01 \x01(\v2\x19.memos.api.v1.PlannerNoteB\x03\xe0A\x02R\x04note\"\x90\x01\n" +
@@ -3582,7 +3649,7 @@ const file_api_v1_planner_service_proto_rawDesc = "" +
 	"\x04DONE\x10\x02\x12\n" +
 	"\n" +
 	"\x06FAILED\x10\x03\x12\r\n" +
-	"\tCANCELLED\x10\x042\x9c\x19\n" +
+	"\tCANCELLED\x10\x042\x9d\x1a\n" +
 	"\x0ePlannerService\x12o\n" +
 	"\n" +
 	"ListHabits\x12\x1f.memos.api.v1.ListHabitsRequest\x1a .memos.api.v1.ListHabitsResponse\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/api/v1/planner/habits\x12s\n" +
@@ -3607,7 +3674,8 @@ const file_api_v1_planner_service_proto_rawDesc = "" +
 	"UpdateTodo\x12\x1f.memos.api.v1.UpdateTodoRequest\x1a\x12.memos.api.v1.Todo\"D\xdaA\x10todo,update_mask\x82\xd3\xe4\x93\x02+:\x04todo2#/api/v1/{todo.name=planner/todos/*}\x12\x85\x01\n" +
 	"\fPostponeTodo\x12!.memos.api.v1.PostponeTodoRequest\x1a\x12.memos.api.v1.Todo\">\xdaA\tname,date\x82\xd3\xe4\x93\x02,:\x01*\"'/api/v1/{name=planner/todos/*}:postpone\x12t\n" +
 	"\n" +
-	"DeleteTodo\x12\x1f.memos.api.v1.DeleteTodoRequest\x1a\x16.google.protobuf.Empty\"-\xdaA\x04name\x82\xd3\xe4\x93\x02 *\x1e/api/v1/{name=planner/todos/*}\x12\x82\x01\n" +
+	"DeleteTodo\x12\x1f.memos.api.v1.DeleteTodoRequest\x1a\x16.google.protobuf.Empty\"-\xdaA\x04name\x82\xd3\xe4\x93\x02 *\x1e/api/v1/{name=planner/todos/*}\x12\x7f\n" +
+	"\x0eGetPlannerNote\x12#.memos.api.v1.GetPlannerNoteRequest\x1a\x19.memos.api.v1.PlannerNote\"-\xdaA\x04name\x82\xd3\xe4\x93\x02 \x12\x1e/api/v1/{name=planner/notes/*}\x12\x82\x01\n" +
 	"\x11CreatePlannerNote\x12&.memos.api.v1.CreatePlannerNoteRequest\x1a\x19.memos.api.v1.PlannerNote\"*\xdaA\x04note\x82\xd3\xe4\x93\x02\x1d:\x04note\"\x15/api/v1/planner/notes\x12\x9c\x01\n" +
 	"\x11UpdatePlannerNote\x12&.memos.api.v1.UpdatePlannerNoteRequest\x1a\x19.memos.api.v1.PlannerNote\"D\xdaA\x10note,update_mask\x82\xd3\xe4\x93\x02+:\x04note2#/api/v1/{note.name=planner/notes/*}\x12\x82\x01\n" +
 	"\x11DeletePlannerNote\x12&.memos.api.v1.DeletePlannerNoteRequest\x1a\x16.google.protobuf.Empty\"-\xdaA\x04name\x82\xd3\xe4\x93\x02 *\x1e/api/v1/{name=planner/notes/*}\x12~\n" +
@@ -3629,7 +3697,7 @@ func file_api_v1_planner_service_proto_rawDescGZIP() []byte {
 }
 
 var file_api_v1_planner_service_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_api_v1_planner_service_proto_msgTypes = make([]protoimpl.MessageInfo, 51)
+var file_api_v1_planner_service_proto_msgTypes = make([]protoimpl.MessageInfo, 52)
 var file_api_v1_planner_service_proto_goTypes = []any{
 	(CheckIn_Source)(0),                  // 0: memos.api.v1.CheckIn.Source
 	(Todo_Status)(0),                     // 1: memos.api.v1.Todo.Status
@@ -3666,51 +3734,52 @@ var file_api_v1_planner_service_proto_goTypes = []any{
 	(*UpdateTodoRequest)(nil),            // 32: memos.api.v1.UpdateTodoRequest
 	(*PostponeTodoRequest)(nil),          // 33: memos.api.v1.PostponeTodoRequest
 	(*DeleteTodoRequest)(nil),            // 34: memos.api.v1.DeleteTodoRequest
-	(*CreatePlannerNoteRequest)(nil),     // 35: memos.api.v1.CreatePlannerNoteRequest
-	(*UpdatePlannerNoteRequest)(nil),     // 36: memos.api.v1.UpdatePlannerNoteRequest
-	(*DeletePlannerNoteRequest)(nil),     // 37: memos.api.v1.DeletePlannerNoteRequest
-	(*ImportPlannerRequest)(nil),         // 38: memos.api.v1.ImportPlannerRequest
-	(*ImportCheckIn)(nil),                // 39: memos.api.v1.ImportCheckIn
-	(*ImportTodo)(nil),                   // 40: memos.api.v1.ImportTodo
-	(*ImportPlannerResponse)(nil),        // 41: memos.api.v1.ImportPlannerResponse
-	(*PlannerSettings)(nil),              // 42: memos.api.v1.PlannerSettings
-	(*GetPlannerSettingsRequest)(nil),    // 43: memos.api.v1.GetPlannerSettingsRequest
-	(*UpdatePlannerSettingsRequest)(nil), // 44: memos.api.v1.UpdatePlannerSettingsRequest
-	(*GetWeekProgressRequest)(nil),       // 45: memos.api.v1.GetWeekProgressRequest
-	(*GetWeekProgressResponse)(nil),      // 46: memos.api.v1.GetWeekProgressResponse
-	(*WeekProgress)(nil),                 // 47: memos.api.v1.WeekProgress
-	(*WeekPlan)(nil),                     // 48: memos.api.v1.WeekPlan
-	(*WeekPlanDocument)(nil),             // 49: memos.api.v1.WeekPlanDocument
-	(*WeekHabitProgress)(nil),            // 50: memos.api.v1.WeekHabitProgress
-	(*WeekCheckIn)(nil),                  // 51: memos.api.v1.WeekCheckIn
-	(*WeekNote)(nil),                     // 52: memos.api.v1.WeekNote
-	(*WeekHabitTodo)(nil),                // 53: memos.api.v1.WeekHabitTodo
-	(*timestamppb.Timestamp)(nil),        // 54: google.protobuf.Timestamp
-	(*fieldmaskpb.FieldMask)(nil),        // 55: google.protobuf.FieldMask
-	(*emptypb.Empty)(nil),                // 56: google.protobuf.Empty
+	(*GetPlannerNoteRequest)(nil),        // 35: memos.api.v1.GetPlannerNoteRequest
+	(*CreatePlannerNoteRequest)(nil),     // 36: memos.api.v1.CreatePlannerNoteRequest
+	(*UpdatePlannerNoteRequest)(nil),     // 37: memos.api.v1.UpdatePlannerNoteRequest
+	(*DeletePlannerNoteRequest)(nil),     // 38: memos.api.v1.DeletePlannerNoteRequest
+	(*ImportPlannerRequest)(nil),         // 39: memos.api.v1.ImportPlannerRequest
+	(*ImportCheckIn)(nil),                // 40: memos.api.v1.ImportCheckIn
+	(*ImportTodo)(nil),                   // 41: memos.api.v1.ImportTodo
+	(*ImportPlannerResponse)(nil),        // 42: memos.api.v1.ImportPlannerResponse
+	(*PlannerSettings)(nil),              // 43: memos.api.v1.PlannerSettings
+	(*GetPlannerSettingsRequest)(nil),    // 44: memos.api.v1.GetPlannerSettingsRequest
+	(*UpdatePlannerSettingsRequest)(nil), // 45: memos.api.v1.UpdatePlannerSettingsRequest
+	(*GetWeekProgressRequest)(nil),       // 46: memos.api.v1.GetWeekProgressRequest
+	(*GetWeekProgressResponse)(nil),      // 47: memos.api.v1.GetWeekProgressResponse
+	(*WeekProgress)(nil),                 // 48: memos.api.v1.WeekProgress
+	(*WeekPlan)(nil),                     // 49: memos.api.v1.WeekPlan
+	(*WeekPlanDocument)(nil),             // 50: memos.api.v1.WeekPlanDocument
+	(*WeekHabitProgress)(nil),            // 51: memos.api.v1.WeekHabitProgress
+	(*WeekCheckIn)(nil),                  // 52: memos.api.v1.WeekCheckIn
+	(*WeekNote)(nil),                     // 53: memos.api.v1.WeekNote
+	(*WeekHabitTodo)(nil),                // 54: memos.api.v1.WeekHabitTodo
+	(*timestamppb.Timestamp)(nil),        // 55: google.protobuf.Timestamp
+	(*fieldmaskpb.FieldMask)(nil),        // 56: google.protobuf.FieldMask
+	(*emptypb.Empty)(nil),                // 57: google.protobuf.Empty
 }
 var file_api_v1_planner_service_proto_depIdxs = []int32{
-	54, // 0: memos.api.v1.Habit.create_time:type_name -> google.protobuf.Timestamp
-	54, // 1: memos.api.v1.Habit.update_time:type_name -> google.protobuf.Timestamp
+	55, // 0: memos.api.v1.Habit.create_time:type_name -> google.protobuf.Timestamp
+	55, // 1: memos.api.v1.Habit.update_time:type_name -> google.protobuf.Timestamp
 	5,  // 2: memos.api.v1.HabitVersion.entries:type_name -> memos.api.v1.HabitVersionEntry
-	54, // 3: memos.api.v1.HabitVersion.create_time:type_name -> google.protobuf.Timestamp
-	54, // 4: memos.api.v1.HabitVersion.update_time:type_name -> google.protobuf.Timestamp
+	55, // 3: memos.api.v1.HabitVersion.create_time:type_name -> google.protobuf.Timestamp
+	55, // 4: memos.api.v1.HabitVersion.update_time:type_name -> google.protobuf.Timestamp
 	0,  // 5: memos.api.v1.CheckIn.source:type_name -> memos.api.v1.CheckIn.Source
 	7,  // 6: memos.api.v1.CheckIn.workout:type_name -> memos.api.v1.Workout
 	8,  // 7: memos.api.v1.Workout.exercises:type_name -> memos.api.v1.WorkoutExercise
 	1,  // 8: memos.api.v1.Todo.status:type_name -> memos.api.v1.Todo.Status
-	54, // 9: memos.api.v1.Todo.close_time:type_name -> google.protobuf.Timestamp
-	54, // 10: memos.api.v1.Todo.create_time:type_name -> google.protobuf.Timestamp
-	54, // 11: memos.api.v1.Todo.update_time:type_name -> google.protobuf.Timestamp
-	54, // 12: memos.api.v1.PlannerNote.create_time:type_name -> google.protobuf.Timestamp
-	54, // 13: memos.api.v1.PlannerNote.update_time:type_name -> google.protobuf.Timestamp
+	55, // 9: memos.api.v1.Todo.close_time:type_name -> google.protobuf.Timestamp
+	55, // 10: memos.api.v1.Todo.create_time:type_name -> google.protobuf.Timestamp
+	55, // 11: memos.api.v1.Todo.update_time:type_name -> google.protobuf.Timestamp
+	55, // 12: memos.api.v1.PlannerNote.create_time:type_name -> google.protobuf.Timestamp
+	55, // 13: memos.api.v1.PlannerNote.update_time:type_name -> google.protobuf.Timestamp
 	4,  // 14: memos.api.v1.ListHabitVersionsResponse.versions:type_name -> memos.api.v1.HabitVersion
 	4,  // 15: memos.api.v1.ListHabitVersionsResponse.draft:type_name -> memos.api.v1.HabitVersion
 	4,  // 16: memos.api.v1.UpdateHabitDraftRequest.draft:type_name -> memos.api.v1.HabitVersion
 	3,  // 17: memos.api.v1.ListHabitsResponse.habits:type_name -> memos.api.v1.Habit
 	3,  // 18: memos.api.v1.CreateHabitRequest.habit:type_name -> memos.api.v1.Habit
 	3,  // 19: memos.api.v1.UpdateHabitRequest.habit:type_name -> memos.api.v1.Habit
-	55, // 20: memos.api.v1.UpdateHabitRequest.update_mask:type_name -> google.protobuf.FieldMask
+	56, // 20: memos.api.v1.UpdateHabitRequest.update_mask:type_name -> google.protobuf.FieldMask
 	6,  // 21: memos.api.v1.ListPlannerEntriesResponse.check_ins:type_name -> memos.api.v1.CheckIn
 	9,  // 22: memos.api.v1.ListPlannerEntriesResponse.todos:type_name -> memos.api.v1.Todo
 	10, // 23: memos.api.v1.ListPlannerEntriesResponse.notes:type_name -> memos.api.v1.PlannerNote
@@ -3719,23 +3788,23 @@ var file_api_v1_planner_service_proto_depIdxs = []int32{
 	6,  // 26: memos.api.v1.ListWorkoutsResponse.check_ins:type_name -> memos.api.v1.CheckIn
 	9,  // 27: memos.api.v1.CreateTodoRequest.todo:type_name -> memos.api.v1.Todo
 	9,  // 28: memos.api.v1.UpdateTodoRequest.todo:type_name -> memos.api.v1.Todo
-	55, // 29: memos.api.v1.UpdateTodoRequest.update_mask:type_name -> google.protobuf.FieldMask
+	56, // 29: memos.api.v1.UpdateTodoRequest.update_mask:type_name -> google.protobuf.FieldMask
 	10, // 30: memos.api.v1.CreatePlannerNoteRequest.note:type_name -> memos.api.v1.PlannerNote
 	10, // 31: memos.api.v1.UpdatePlannerNoteRequest.note:type_name -> memos.api.v1.PlannerNote
-	55, // 32: memos.api.v1.UpdatePlannerNoteRequest.update_mask:type_name -> google.protobuf.FieldMask
+	56, // 32: memos.api.v1.UpdatePlannerNoteRequest.update_mask:type_name -> google.protobuf.FieldMask
 	3,  // 33: memos.api.v1.ImportPlannerRequest.habits:type_name -> memos.api.v1.Habit
-	39, // 34: memos.api.v1.ImportPlannerRequest.check_ins:type_name -> memos.api.v1.ImportCheckIn
-	40, // 35: memos.api.v1.ImportPlannerRequest.todos:type_name -> memos.api.v1.ImportTodo
+	40, // 34: memos.api.v1.ImportPlannerRequest.check_ins:type_name -> memos.api.v1.ImportCheckIn
+	41, // 35: memos.api.v1.ImportPlannerRequest.todos:type_name -> memos.api.v1.ImportTodo
 	10, // 36: memos.api.v1.ImportPlannerRequest.notes:type_name -> memos.api.v1.PlannerNote
 	9,  // 37: memos.api.v1.ImportTodo.todo:type_name -> memos.api.v1.Todo
-	42, // 38: memos.api.v1.UpdatePlannerSettingsRequest.settings:type_name -> memos.api.v1.PlannerSettings
-	47, // 39: memos.api.v1.GetWeekProgressResponse.weeks:type_name -> memos.api.v1.WeekProgress
-	48, // 40: memos.api.v1.WeekProgress.plan:type_name -> memos.api.v1.WeekPlan
-	50, // 41: memos.api.v1.WeekProgress.habits:type_name -> memos.api.v1.WeekHabitProgress
-	53, // 42: memos.api.v1.WeekProgress.habit_todos:type_name -> memos.api.v1.WeekHabitTodo
-	52, // 43: memos.api.v1.WeekProgress.notes:type_name -> memos.api.v1.WeekNote
-	49, // 44: memos.api.v1.WeekPlan.documents:type_name -> memos.api.v1.WeekPlanDocument
-	51, // 45: memos.api.v1.WeekHabitProgress.check_ins:type_name -> memos.api.v1.WeekCheckIn
+	43, // 38: memos.api.v1.UpdatePlannerSettingsRequest.settings:type_name -> memos.api.v1.PlannerSettings
+	48, // 39: memos.api.v1.GetWeekProgressResponse.weeks:type_name -> memos.api.v1.WeekProgress
+	49, // 40: memos.api.v1.WeekProgress.plan:type_name -> memos.api.v1.WeekPlan
+	51, // 41: memos.api.v1.WeekProgress.habits:type_name -> memos.api.v1.WeekHabitProgress
+	54, // 42: memos.api.v1.WeekProgress.habit_todos:type_name -> memos.api.v1.WeekHabitTodo
+	53, // 43: memos.api.v1.WeekProgress.notes:type_name -> memos.api.v1.WeekNote
+	50, // 44: memos.api.v1.WeekPlan.documents:type_name -> memos.api.v1.WeekPlanDocument
+	52, // 45: memos.api.v1.WeekHabitProgress.check_ins:type_name -> memos.api.v1.WeekCheckIn
 	0,  // 46: memos.api.v1.WeekCheckIn.source:type_name -> memos.api.v1.CheckIn.Source
 	7,  // 47: memos.api.v1.WeekCheckIn.workout:type_name -> memos.api.v1.Workout
 	2,  // 48: memos.api.v1.WeekHabitTodo.state:type_name -> memos.api.v1.WeekHabitTodo.State
@@ -3747,7 +3816,7 @@ var file_api_v1_planner_service_proto_depIdxs = []int32{
 	15, // 54: memos.api.v1.PlannerService.DeleteHabitDraft:input_type -> memos.api.v1.DeleteHabitDraftRequest
 	16, // 55: memos.api.v1.PlannerService.EnableHabitDraft:input_type -> memos.api.v1.EnableHabitDraftRequest
 	20, // 56: memos.api.v1.PlannerService.ListPlannerEntries:input_type -> memos.api.v1.ListPlannerEntriesRequest
-	45, // 57: memos.api.v1.PlannerService.GetWeekProgress:input_type -> memos.api.v1.GetWeekProgressRequest
+	46, // 57: memos.api.v1.PlannerService.GetWeekProgress:input_type -> memos.api.v1.GetWeekProgressRequest
 	22, // 58: memos.api.v1.PlannerService.ListOpenTodos:input_type -> memos.api.v1.ListOpenTodosRequest
 	24, // 59: memos.api.v1.PlannerService.ListTodoTags:input_type -> memos.api.v1.ListTodoTagsRequest
 	26, // 60: memos.api.v1.PlannerService.SetCheckIn:input_type -> memos.api.v1.SetCheckInRequest
@@ -3758,39 +3827,41 @@ var file_api_v1_planner_service_proto_depIdxs = []int32{
 	32, // 65: memos.api.v1.PlannerService.UpdateTodo:input_type -> memos.api.v1.UpdateTodoRequest
 	33, // 66: memos.api.v1.PlannerService.PostponeTodo:input_type -> memos.api.v1.PostponeTodoRequest
 	34, // 67: memos.api.v1.PlannerService.DeleteTodo:input_type -> memos.api.v1.DeleteTodoRequest
-	35, // 68: memos.api.v1.PlannerService.CreatePlannerNote:input_type -> memos.api.v1.CreatePlannerNoteRequest
-	36, // 69: memos.api.v1.PlannerService.UpdatePlannerNote:input_type -> memos.api.v1.UpdatePlannerNoteRequest
-	37, // 70: memos.api.v1.PlannerService.DeletePlannerNote:input_type -> memos.api.v1.DeletePlannerNoteRequest
-	43, // 71: memos.api.v1.PlannerService.GetPlannerSettings:input_type -> memos.api.v1.GetPlannerSettingsRequest
-	44, // 72: memos.api.v1.PlannerService.UpdatePlannerSettings:input_type -> memos.api.v1.UpdatePlannerSettingsRequest
-	38, // 73: memos.api.v1.PlannerService.ImportPlanner:input_type -> memos.api.v1.ImportPlannerRequest
-	17, // 74: memos.api.v1.PlannerService.ListHabits:output_type -> memos.api.v1.ListHabitsResponse
-	3,  // 75: memos.api.v1.PlannerService.CreateHabit:output_type -> memos.api.v1.Habit
-	3,  // 76: memos.api.v1.PlannerService.UpdateHabit:output_type -> memos.api.v1.Habit
-	13, // 77: memos.api.v1.PlannerService.ListHabitVersions:output_type -> memos.api.v1.ListHabitVersionsResponse
-	4,  // 78: memos.api.v1.PlannerService.UpdateHabitDraft:output_type -> memos.api.v1.HabitVersion
-	56, // 79: memos.api.v1.PlannerService.DeleteHabitDraft:output_type -> google.protobuf.Empty
-	4,  // 80: memos.api.v1.PlannerService.EnableHabitDraft:output_type -> memos.api.v1.HabitVersion
-	21, // 81: memos.api.v1.PlannerService.ListPlannerEntries:output_type -> memos.api.v1.ListPlannerEntriesResponse
-	46, // 82: memos.api.v1.PlannerService.GetWeekProgress:output_type -> memos.api.v1.GetWeekProgressResponse
-	23, // 83: memos.api.v1.PlannerService.ListOpenTodos:output_type -> memos.api.v1.ListOpenTodosResponse
-	25, // 84: memos.api.v1.PlannerService.ListTodoTags:output_type -> memos.api.v1.ListTodoTagsResponse
-	6,  // 85: memos.api.v1.PlannerService.SetCheckIn:output_type -> memos.api.v1.CheckIn
-	56, // 86: memos.api.v1.PlannerService.DeleteCheckIn:output_type -> google.protobuf.Empty
-	29, // 87: memos.api.v1.PlannerService.ListWorkouts:output_type -> memos.api.v1.ListWorkoutsResponse
-	9,  // 88: memos.api.v1.PlannerService.GetTodo:output_type -> memos.api.v1.Todo
-	9,  // 89: memos.api.v1.PlannerService.CreateTodo:output_type -> memos.api.v1.Todo
-	9,  // 90: memos.api.v1.PlannerService.UpdateTodo:output_type -> memos.api.v1.Todo
-	9,  // 91: memos.api.v1.PlannerService.PostponeTodo:output_type -> memos.api.v1.Todo
-	56, // 92: memos.api.v1.PlannerService.DeleteTodo:output_type -> google.protobuf.Empty
-	10, // 93: memos.api.v1.PlannerService.CreatePlannerNote:output_type -> memos.api.v1.PlannerNote
-	10, // 94: memos.api.v1.PlannerService.UpdatePlannerNote:output_type -> memos.api.v1.PlannerNote
-	56, // 95: memos.api.v1.PlannerService.DeletePlannerNote:output_type -> google.protobuf.Empty
-	42, // 96: memos.api.v1.PlannerService.GetPlannerSettings:output_type -> memos.api.v1.PlannerSettings
-	42, // 97: memos.api.v1.PlannerService.UpdatePlannerSettings:output_type -> memos.api.v1.PlannerSettings
-	41, // 98: memos.api.v1.PlannerService.ImportPlanner:output_type -> memos.api.v1.ImportPlannerResponse
-	74, // [74:99] is the sub-list for method output_type
-	49, // [49:74] is the sub-list for method input_type
+	35, // 68: memos.api.v1.PlannerService.GetPlannerNote:input_type -> memos.api.v1.GetPlannerNoteRequest
+	36, // 69: memos.api.v1.PlannerService.CreatePlannerNote:input_type -> memos.api.v1.CreatePlannerNoteRequest
+	37, // 70: memos.api.v1.PlannerService.UpdatePlannerNote:input_type -> memos.api.v1.UpdatePlannerNoteRequest
+	38, // 71: memos.api.v1.PlannerService.DeletePlannerNote:input_type -> memos.api.v1.DeletePlannerNoteRequest
+	44, // 72: memos.api.v1.PlannerService.GetPlannerSettings:input_type -> memos.api.v1.GetPlannerSettingsRequest
+	45, // 73: memos.api.v1.PlannerService.UpdatePlannerSettings:input_type -> memos.api.v1.UpdatePlannerSettingsRequest
+	39, // 74: memos.api.v1.PlannerService.ImportPlanner:input_type -> memos.api.v1.ImportPlannerRequest
+	17, // 75: memos.api.v1.PlannerService.ListHabits:output_type -> memos.api.v1.ListHabitsResponse
+	3,  // 76: memos.api.v1.PlannerService.CreateHabit:output_type -> memos.api.v1.Habit
+	3,  // 77: memos.api.v1.PlannerService.UpdateHabit:output_type -> memos.api.v1.Habit
+	13, // 78: memos.api.v1.PlannerService.ListHabitVersions:output_type -> memos.api.v1.ListHabitVersionsResponse
+	4,  // 79: memos.api.v1.PlannerService.UpdateHabitDraft:output_type -> memos.api.v1.HabitVersion
+	57, // 80: memos.api.v1.PlannerService.DeleteHabitDraft:output_type -> google.protobuf.Empty
+	4,  // 81: memos.api.v1.PlannerService.EnableHabitDraft:output_type -> memos.api.v1.HabitVersion
+	21, // 82: memos.api.v1.PlannerService.ListPlannerEntries:output_type -> memos.api.v1.ListPlannerEntriesResponse
+	47, // 83: memos.api.v1.PlannerService.GetWeekProgress:output_type -> memos.api.v1.GetWeekProgressResponse
+	23, // 84: memos.api.v1.PlannerService.ListOpenTodos:output_type -> memos.api.v1.ListOpenTodosResponse
+	25, // 85: memos.api.v1.PlannerService.ListTodoTags:output_type -> memos.api.v1.ListTodoTagsResponse
+	6,  // 86: memos.api.v1.PlannerService.SetCheckIn:output_type -> memos.api.v1.CheckIn
+	57, // 87: memos.api.v1.PlannerService.DeleteCheckIn:output_type -> google.protobuf.Empty
+	29, // 88: memos.api.v1.PlannerService.ListWorkouts:output_type -> memos.api.v1.ListWorkoutsResponse
+	9,  // 89: memos.api.v1.PlannerService.GetTodo:output_type -> memos.api.v1.Todo
+	9,  // 90: memos.api.v1.PlannerService.CreateTodo:output_type -> memos.api.v1.Todo
+	9,  // 91: memos.api.v1.PlannerService.UpdateTodo:output_type -> memos.api.v1.Todo
+	9,  // 92: memos.api.v1.PlannerService.PostponeTodo:output_type -> memos.api.v1.Todo
+	57, // 93: memos.api.v1.PlannerService.DeleteTodo:output_type -> google.protobuf.Empty
+	10, // 94: memos.api.v1.PlannerService.GetPlannerNote:output_type -> memos.api.v1.PlannerNote
+	10, // 95: memos.api.v1.PlannerService.CreatePlannerNote:output_type -> memos.api.v1.PlannerNote
+	10, // 96: memos.api.v1.PlannerService.UpdatePlannerNote:output_type -> memos.api.v1.PlannerNote
+	57, // 97: memos.api.v1.PlannerService.DeletePlannerNote:output_type -> google.protobuf.Empty
+	43, // 98: memos.api.v1.PlannerService.GetPlannerSettings:output_type -> memos.api.v1.PlannerSettings
+	43, // 99: memos.api.v1.PlannerService.UpdatePlannerSettings:output_type -> memos.api.v1.PlannerSettings
+	42, // 100: memos.api.v1.PlannerService.ImportPlanner:output_type -> memos.api.v1.ImportPlannerResponse
+	75, // [75:101] is the sub-list for method output_type
+	49, // [49:75] is the sub-list for method input_type
 	49, // [49:49] is the sub-list for extension type_name
 	49, // [49:49] is the sub-list for extension extendee
 	0,  // [0:49] is the sub-list for field type_name
@@ -3803,14 +3874,14 @@ func file_api_v1_planner_service_proto_init() {
 	}
 	file_api_v1_planner_service_proto_msgTypes[4].OneofWrappers = []any{}
 	file_api_v1_planner_service_proto_msgTypes[5].OneofWrappers = []any{}
-	file_api_v1_planner_service_proto_msgTypes[47].OneofWrappers = []any{}
+	file_api_v1_planner_service_proto_msgTypes[48].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_v1_planner_service_proto_rawDesc), len(file_api_v1_planner_service_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   51,
+			NumMessages:   52,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

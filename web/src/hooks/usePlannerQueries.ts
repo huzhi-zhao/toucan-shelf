@@ -7,6 +7,7 @@ import {
   HabitSchema,
   HabitVersionSchema,
   type ImportPlannerRequest,
+  type PlannerNote,
   PlannerNoteSchema,
   type PlannerSettings,
   PlannerSettingsSchema,
@@ -26,6 +27,7 @@ export const plannerKeys = {
   entries: (startDate: string, endDate: string) => [...plannerKeys.all, "entries", startDate, endDate] as const,
   openTodos: () => [...plannerKeys.all, "openTodos"] as const,
   todo: (name?: string) => [...plannerKeys.all, "todo", name] as const,
+  note: (name?: string) => [...plannerKeys.all, "note", name] as const,
   todoTags: () => [...plannerKeys.all, "todoTags"] as const,
   settings: () => [...plannerKeys.all, "settings"] as const,
 };
@@ -77,6 +79,14 @@ export function useTodo(name: string | undefined) {
   return useQuery({
     queryKey: plannerKeys.todo(name),
     queryFn: () => plannerServiceClient.getTodo({ name: name! }),
+    enabled: !!name,
+  });
+}
+
+export function usePlannerNote(name: string | undefined) {
+  return useQuery({
+    queryKey: plannerKeys.note(name),
+    queryFn: () => plannerServiceClient.getPlannerNote({ name: name! }),
     enabled: !!name,
   });
 }
@@ -227,11 +237,14 @@ export function useCreatePlannerNote() {
   );
 }
 
+type NoteField = "content" | "remark" | "memos";
+
+/** Changes the given fields of a note. */
 export function useUpdatePlannerNote() {
-  return usePlannerMutation(({ name, content }: { name: string; content: string }) =>
+  return usePlannerMutation(({ name, changes }: { name: string; changes: Partial<Pick<PlannerNote, NoteField>> }) =>
     plannerServiceClient.updatePlannerNote({
-      note: create(PlannerNoteSchema, { name, content }),
-      updateMask: create(FieldMaskSchema, { paths: ["content"] }),
+      note: create(PlannerNoteSchema, { name, ...changes }),
+      updateMask: create(FieldMaskSchema, { paths: Object.keys(changes) }),
     }),
   );
 }

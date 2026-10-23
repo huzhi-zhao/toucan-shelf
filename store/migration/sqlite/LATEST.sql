@@ -533,7 +533,11 @@ CREATE TABLE planner_note (
   date       TEXT    NOT NULL,
   content    TEXT    NOT NULL,
   created_ts BIGINT  NOT NULL DEFAULT (strftime('%s', 'now')),
-  updated_ts BIGINT  NOT NULL DEFAULT (strftime('%s', 'now'))
+  updated_ts BIGINT  NOT NULL DEFAULT (strftime('%s', 'now')),
+  -- A longer remark shown only on the note's own page.
+  remark     TEXT    NOT NULL DEFAULT '',
+  -- JSON array of linked documents, 'memos/{uid}', in display order.
+  memo_names TEXT    NOT NULL DEFAULT '[]'
 );
 
 CREATE INDEX idx_planner_note_creator_date ON planner_note(creator_id, date);

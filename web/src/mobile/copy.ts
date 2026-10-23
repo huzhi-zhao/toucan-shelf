@@ -178,7 +178,6 @@ export const COPY = {
     futureCheckIn: "今天之后的日子不能打卡，点习惯可以建那天的习惯待办",
     readonlyDay: (days: number) => `只能修改最近 ${days} 天的打卡和备忘`,
     weekStartFrom: (day: string) => `${day}开始`,
-    editNote: "备忘",
     failed: "保存失败，请稍后再试",
   },
   plannerSettings: {
@@ -278,6 +277,16 @@ export const COPY = {
       note: "备注",
       remove: "删除动作",
     },
+  },
+  note: {
+    title: "备忘",
+    content: "内容",
+    remark: "备注",
+    doc: "关联文档",
+    readOnly: (days: number) => `只能修改最近 ${days} 天的备忘`,
+    delete: "删除备忘",
+    deleteConfirm: "删除这条备忘？删除后不能恢复。",
+    notFound: "备忘不存在，或者已经被删除",
   },
   todo: {
     title: "待办",

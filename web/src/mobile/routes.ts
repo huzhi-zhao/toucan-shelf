@@ -45,6 +45,12 @@ export const DESKTOP_ORIGIN = import.meta.env.VITE_DESKTOP_ORIGIN || "https://to
 /** A todo's detail page, by its resource name (`planner/todos/{uid}`). */
 export const todoRoute = (todoName: string): string => `/plan/todo/${encodeURIComponent(todoName.replace(/^planner\/todos\//, ""))}`;
 
+/** A note's detail page, by its resource name (`planner/notes/{uid}`). */
+export const noteRoute = (noteName: string): string => `/plan/note/${encodeURIComponent(noteName.replace(/^planner\/notes\//, ""))}`;
+
+/** `planner/notes/{uid}` from the detail page's `:uid`. */
+export const noteNameFromUid = (uid: string): string => `planner/notes/${uid}`;
+
 /** `planner/todos/{uid}` from the detail page's `:uid`. */
 export const todoNameFromUid = (uid: string): string => `planner/todos/${uid}`;
 

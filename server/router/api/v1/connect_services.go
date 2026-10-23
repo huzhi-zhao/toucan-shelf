@@ -1167,6 +1167,14 @@ func (s *ConnectServiceHandler) GetTodo(ctx context.Context, req *connect.Reques
 	return connect.NewResponse(resp), nil
 }
 
+func (s *ConnectServiceHandler) GetPlannerNote(ctx context.Context, req *connect.Request[v1pb.GetPlannerNoteRequest]) (*connect.Response[v1pb.PlannerNote], error) {
+	resp, err := s.APIV1Service.GetPlannerNote(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (s *ConnectServiceHandler) CreateTodo(ctx context.Context, req *connect.Request[v1pb.CreateTodoRequest]) (*connect.Response[v1pb.Todo], error) {
 	resp, err := s.APIV1Service.CreateTodo(ctx, req.Msg)
 	if err != nil {

@@ -234,6 +234,8 @@ func convertPlannerNoteFromStore(n *store.PlannerNote) *v1pb.PlannerNote {
 		Name:       plannerNoteNamePrefix + n.UID,
 		Date:       n.Date,
 		Content:    n.Content,
+		Remark:     n.Remark,
+		Memos:      n.MemoNames,
 		CreateTime: optionalTimestamp(n.CreatedTs),
 		UpdateTime: optionalTimestamp(n.UpdatedTs),
 	}
@@ -1003,6 +1005,18 @@ func (s *APIV1Service) DeleteTodo(ctx context.Context, request *v1pb.DeleteTodoR
 
 // Notes.
 
+func (s *APIV1Service) GetPlannerNote(ctx context.Context, request *v1pb.GetPlannerNoteRequest) (*v1pb.PlannerNote, error) {
+	user, err := s.plannerUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	note, err := s.getOwnPlannerNote(ctx, user, request.Name)
+	if err != nil {
+		return nil, err
+	}
+	return convertPlannerNoteFromStore(note), nil
+}
+
 func (s *APIV1Service) CreatePlannerNote(ctx context.Context, request *v1pb.CreatePlannerNoteRequest) (*v1pb.PlannerNote, error) {
 	user, err := s.plannerUser(ctx)
 	if err != nil {
@@ -1019,7 +1033,17 @@ func (s *APIV1Service) CreatePlannerNote(ctx context.Context, request *v1pb.Crea
 	if err != nil {
 		return nil, err
 	}
-	note, err := s.Store.CreatePlannerNote(ctx, &store.PlannerNote{UID: shortuuid.New(), CreatorID: user.ID, Date: date, Content: content})
+	remark, err := checkPlannerText(request.Note.Remark, "remark", plannerMaxTextLength, false)
+	if err != nil {
+		return nil, err
+	}
+	memos, err := checkPlannerMemos(request.Note.Memos)
+	if err != nil {
+		return nil, err
+	}
+	note, err := s.Store.CreatePlannerNote(ctx, &store.PlannerNote{
+		UID: shortuuid.New(), CreatorID: user.ID, Date: date, Content: content, Remark: remark, MemoNames: memos,
+	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create note: %v", err)
 	}
@@ -1053,6 +1077,18 @@ func (s *APIV1Service) UpdatePlannerNote(ctx context.Context, request *v1pb.Upda
 				return nil, err
 			}
 			update.Content = &content
+		case "remark":
+			remark, err := checkPlannerText(request.Note.Remark, "remark", plannerMaxTextLength, false)
+			if err != nil {
+				return nil, err
+			}
+			update.Remark = &remark
+		case "memos":
+			memos, err := checkPlannerMemos(request.Note.Memos)
+			if err != nil {
+				return nil, err
+			}
+			update.MemoNames = &memos
 		default:
 			return nil, status.Errorf(codes.InvalidArgument, "unsupported update_mask path: %s", path)
 		}

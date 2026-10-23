@@ -2281,8 +2281,8 @@ paths:
         get:
             tags:
                 - PlannerService
-            description: GetTodo returns one todo.
-            operationId: PlannerService_GetTodo
+            description: GetPlannerNote returns one note.
+            operationId: PlannerService_GetPlannerNote
             parameters:
                 - name: planner
                   in: path
@@ -2296,7 +2296,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/Todo'
+                                $ref: '#/components/schemas/PlannerNote'
                 default:
                     description: Default error response
                     content:
@@ -2339,7 +2339,7 @@ paths:
                     type: string
                 - name: updateMask
                   in: query
-                  description: 'Supported paths: date, content.'
+                  description: 'Supported paths: date, content, remark, memos.'
                   schema:
                     type: string
                     format: field-mask
@@ -7144,6 +7144,14 @@ components:
                     readOnly: true
                     type: string
                     format: date-time
+                remark:
+                    type: string
+                    description: A longer remark, shown only on the note's own page.
+                memos:
+                    type: array
+                    items:
+                        type: string
+                    description: Linked documents, "memos/{uid}", in display order.
             description: PlannerNote is a plain record of what happened on a day.
         PlannerSettings:
             type: object
