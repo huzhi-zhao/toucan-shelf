@@ -9,7 +9,6 @@ import { COPY } from "../../copy";
 import { useBlurOnClose } from "../../lib/keyboard";
 import { useBack, useBackLabel, useGo } from "../../lib/nav";
 import {
-  colorsTakenFor,
   habitColor,
   habitVersionOn,
   localToday,
@@ -180,12 +179,7 @@ export default function PlannerSettingsPage() {
         <ListItem link title={COPY.plannerSettings.import} onClick={() => go(MOBILE_ROUTES.PLAN_IMPORT)} />
       </List>
 
-      <HabitEditSheet
-        habit={editing}
-        takenColors={editing ? colorsTakenFor(editing.name, habits, versions, today) : new Set()}
-        onClose={() => setEditing(undefined)}
-        onSave={saveHabit}
-      />
+      <HabitEditSheet habit={editing} onClose={() => setEditing(undefined)} onSave={saveHabit} />
 
       <Toast position="center" opened={toast !== ""}>
         {toast}

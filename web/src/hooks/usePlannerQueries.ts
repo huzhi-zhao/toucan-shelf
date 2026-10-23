@@ -136,7 +136,7 @@ export function useUpdateHabit() {
 
 /** Saves the plan draft, creating it or replacing the one there. A draft takes no effect. */
 export function useSaveHabitDraft() {
-  return usePlannerMutation(({ entries, memos }: { entries: { habit: string; weeklyGoal: number }[]; memos: string[] }) =>
+  return usePlannerMutation(({ entries, memos }: { entries: { habit: string; weeklyGoal: number; pinned: boolean }[]; memos: string[] }) =>
     plannerServiceClient.updateHabitDraft({ draft: create(HabitVersionSchema, { entries, memos }) }),
   );
 }

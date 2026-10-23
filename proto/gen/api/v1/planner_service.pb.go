@@ -383,7 +383,10 @@ type HabitVersionEntry struct {
 	// Format: planner/habits/{habit}
 	Habit string `protobuf:"bytes,1,opt,name=habit,proto3" json:"habit,omitempty"`
 	// Check-ins a week the habit aims for, 0 to 7; 0 for none.
-	WeeklyGoal    int32 `protobuf:"varint,2,opt,name=weekly_goal,json=weeklyGoal,proto3" json:"weekly_goal,omitempty"`
+	WeeklyGoal int32 `protobuf:"varint,2,opt,name=weekly_goal,json=weeklyGoal,proto3" json:"weekly_goal,omitempty"`
+	// Pinned habits show on the planner page and in the calendar's day cells;
+	// the others fold behind one button. At most three per plan.
+	Pinned        bool `protobuf:"varint,3,opt,name=pinned,proto3" json:"pinned,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -430,6 +433,13 @@ func (x *HabitVersionEntry) GetWeeklyGoal() int32 {
 		return x.WeeklyGoal
 	}
 	return 0
+}
+
+func (x *HabitVersionEntry) GetPinned() bool {
+	if x != nil {
+		return x.Pinned
+	}
+	return false
 }
 
 // CheckIn records that a habit was kept on a day. There is at most one per
@@ -3414,11 +3424,12 @@ const file_api_v1_planner_service_proto_rawDesc = "" +
 	"\vcreate_time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
 	"createTime\x12@\n" +
 	"\vupdate_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
-	"updateTime\"T\n" +
+	"updateTime\"q\n" +
 	"\x11HabitVersionEntry\x12\x19\n" +
 	"\x05habit\x18\x01 \x01(\tB\x03\xe0A\x02R\x05habit\x12$\n" +
 	"\vweekly_goal\x18\x02 \x01(\x05B\x03\xe0A\x01R\n" +
-	"weeklyGoal\"\xa3\x02\n" +
+	"weeklyGoal\x12\x1b\n" +
+	"\x06pinned\x18\x03 \x01(\bB\x03\xe0A\x01R\x06pinned\"\xa3\x02\n" +
 	"\aCheckIn\x12\x19\n" +
 	"\x05habit\x18\x01 \x01(\tB\x03\xe0A\x02R\x05habit\x12\x17\n" +
 	"\x04date\x18\x02 \x01(\tB\x03\xe0A\x02R\x04date\x12\x17\n" +

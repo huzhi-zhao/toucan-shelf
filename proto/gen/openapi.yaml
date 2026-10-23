@@ -5827,6 +5827,11 @@ components:
                     type: integer
                     description: Check-ins a week the habit aims for, 0 to 7; 0 for none.
                     format: int32
+                pinned:
+                    type: boolean
+                    description: |-
+                        Pinned habits show on the planner page and in the calendar's day cells;
+                         the others fold behind one button. At most three per plan.
         IdentityProvider:
             required:
                 - type

@@ -298,6 +298,10 @@ message HabitVersionEntry {
 
   // Check-ins a week the habit aims for, 0 to 7; 0 for none.
   int32 weekly_goal = 2 [(google.api.field_behavior) = OPTIONAL];
+
+  // Pinned habits show on the planner page and in the calendar's day cells;
+  // the others fold behind one button. At most three per plan.
+  bool pinned = 3 [(google.api.field_behavior) = OPTIONAL];
 }
 
 // CheckIn records that a habit was kept on a day. There is at most one per

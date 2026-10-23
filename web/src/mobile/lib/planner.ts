@@ -95,27 +95,9 @@ export function habitsOn(versions: HabitVersion[], habits: Habit[], date: string
   return (habitVersionOn(versions, date)?.entries ?? []).flatMap((entry) => byName.get(entry.habit) ?? []);
 }
 
-/** The versions still in use or to come: the one in use today and every later one. */
-export function liveVersions(versions: HabitVersion[], today: string): HabitVersion[] {
-  const current = habitVersionOn(versions, today);
-  return versions.filter((version) => version === current || version.effectiveDate > today);
-}
-
-/**
- * The colors a habit cannot take: those of the other habits sharing a live version with it, so one day's
- * dots stay apart. The server checks the same.
- */
-export function colorsTakenFor(habit: string, habits: Habit[], versions: HabitVersion[], today: string): Set<number> {
-  const colorOf = new Map(habits.map((h) => [h.name, h.color]));
-  const taken = new Set<number>();
-  for (const version of liveVersions(versions, today)) {
-    if (!version.entries.some((entry) => entry.habit === habit)) continue;
-    for (const entry of version.entries) {
-      const color = colorOf.get(entry.habit);
-      if (entry.habit !== habit && color !== undefined) taken.add(color);
-    }
-  }
-  return taken;
+/** The habits of the plan in use on a day that are pinned (at most three): the planner page shows them, the rest fold away. */
+export function pinnedHabitNamesOn(versions: HabitVersion[], date: string): Set<string> {
+  return new Set((habitVersionOn(versions, date)?.entries ?? []).filter((entry) => entry.pinned).map((entry) => entry.habit));
 }
 
 /** A version's name in lists: "最早" for the first, else "10/20 起" (with the year when it is not this one). */
@@ -202,7 +184,13 @@ export function buildCalendarData(
       if (title && !events.includes(title)) events.push(title);
     }
   });
-  const slotsOf = (date: string) => habitsOn(versions, habits, date).map((habit) => habit.title);
+  // Only pinned habits get a place in a day's cell: one row of three icons at most.
+  const slotsOf = (date: string) => {
+    const pinned = pinnedHabitNamesOn(versions, date);
+    return habitsOn(versions, habits, date)
+      .filter((habit) => pinned.has(habit.name))
+      .map((habit) => habit.title);
+  };
   const colorOf = (title: string) => colorByTitle.get(title) ?? "#9ca3af";
   const iconOf = (title: string) => splitHabitTitle(title).icon;
   const itemsByDate: Record<string, CalendarItem[]> = {};

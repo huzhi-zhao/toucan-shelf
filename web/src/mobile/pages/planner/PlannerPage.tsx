@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 import { Link, List, ListItem, Navbar, Page, Segmented, SegmentedButton, Sheet, Toast } from "konsta/react";
-import { BotIcon, LinkIcon, PlusIcon, Settings2Icon } from "lucide-react";
+import { BotIcon, EllipsisIcon, LinkIcon, PlusIcon, Settings2Icon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarMonthGrid } from "@/components/MemoContent/calendar/CalendarMonthGrid";
 import { defaultVisibleMonth, type VisibleMonth } from "@/components/MemoContent/calendar/defaultVisibleMonth";
@@ -34,6 +34,7 @@ import {
   monthRange,
   PLANNER_MAX_UPDATE_DAYS_DEFAULT,
   PLANNER_MAX_UPDATE_DAYS_KEY,
+  pinnedHabitNamesOn,
   readCalendarView,
   saveCalendarView,
   todosForDay,
@@ -109,6 +110,10 @@ export default function PlannerPage() {
   const groups = groupOpenTodos(listedTodos, today);
   const notesOfDay = (entries?.notes ?? []).filter((note) => note.date === selectedDate);
   const habitsOfDay = habitsOn(versions, habits, selectedDate);
+  // Pinned habits show as buttons; the rest fold behind one, opening a sheet of them (requirement §2.4.2 §2).
+  const pinnedNames = pinnedHabitNamesOn(versions, selectedDate);
+  const pinnedOfDay = habitsOfDay.filter((habit) => pinnedNames.has(habit.name));
+  const foldedOfDay = habitsOfDay.filter((habit) => !pinnedNames.has(habit.name));
   const habitByName = new Map(habits.map((habit) => [habit.name, habit]));
 
   // A habit todo shows its habit's check-ins in the week of its date, and a habit not checked in yet those of
@@ -131,6 +136,7 @@ export default function PlannerPage() {
   // A habit sheet keeps what it shows while it slides away, so it does not flip to another mode as the new
   // check-in or todo lands.
   const [habitSheet, setHabitSheet] = useState<HabitSheet>();
+  const [moreOpen, setMoreOpen] = useState(false);
   const [habitSheetOpen, setHabitSheetOpen] = useState<HabitSheet["kind"]>();
   const addInputRef = useRef<HTMLTextAreaElement>(null);
   const habitTodoInputRef = useRef<HTMLInputElement>(null);
@@ -236,6 +242,38 @@ export default function PlannerPage() {
     }
   };
 
+  // One habit's button: filled once checked in, with its weekly progress, linked todo, agent mark and note.
+  const habitButton = (habit: Habit) => {
+    const checkIn = checkInsOfDay.get(habit.name);
+    const color = habitColor(habit);
+    const linked = Boolean(todoOfHabit(habit));
+    const byAgent = checkIn?.source === CheckIn_Source.AGENT;
+    const enabled = canCheckIn || linked || isFuture || Boolean(checkIn?.workout) || byAgent;
+    const goal = weeklyGoalOn(versions, habit.name, selectedDate, resolvedDefault);
+    const progress =
+      !checkIn && goal > 0 ? `${weeklyCheckIns(weekEntries?.checkIns ?? [], habit.name, selectedDate, resolvedDefault)}/${goal}` : "";
+    return (
+      <button
+        key={habit.name}
+        type="button"
+        disabled={!enabled}
+        onClick={() => tapHabit(habit)}
+        className={cn(
+          "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[14px] border transition-colors",
+          checkIn ? "text-white border-transparent" : "border-black/15 dark:border-white/20 bg-white dark:bg-[#1c1c1e]",
+          !enabled && "opacity-60",
+        )}
+        style={checkIn ? { backgroundColor: color } : undefined}
+      >
+        <span>{habit.title}</span>
+        {progress && <span className="text-[12px] text-black/45 dark:text-white/45">{progress}</span>}
+        {linked && <LinkIcon className={cn("w-3 h-3", checkIn ? "text-white/85" : "text-black/40 dark:text-white/40")} />}
+        {byAgent && <BotIcon className="w-3.5 h-3.5 text-white/85" aria-label={COPY.checkIn.sources.AGENT} />}
+        {checkIn?.note && <span className="text-white/85 text-[12px] max-w-24 truncate">{checkIn.note}</span>}
+      </button>
+    );
+  };
+
   const day = dayjs(selectedDate);
   const dayTitle = `${day.format("M月D日")} ${COPY.planner.weekdays[day.day()]}${selectedDate === today ? ` · ${COPY.planner.today}` : ""}`;
   const dayIsEmpty = checkInsOfDay.size === 0 && todosOfDay.length === 0 && notesOfDay.length === 0;
@@ -313,38 +351,19 @@ export default function PlannerPage() {
 
       {habitsOfDay.length > 0 ? (
         <div className="flex flex-wrap gap-2 px-4 pb-3">
-          {habitsOfDay.map((habit) => {
-            const checkIn = checkInsOfDay.get(habit.name);
-            const color = habitColor(habit);
-            const linked = Boolean(todoOfHabit(habit));
-            const byAgent = checkIn?.source === CheckIn_Source.AGENT;
-            const enabled = canCheckIn || linked || isFuture || Boolean(checkIn?.workout) || byAgent;
-            const goal = weeklyGoalOn(versions, habit.name, selectedDate, resolvedDefault);
-            const progress =
-              !checkIn && goal > 0
-                ? `${weeklyCheckIns(weekEntries?.checkIns ?? [], habit.name, selectedDate, resolvedDefault)}/${goal}`
-                : "";
-            return (
-              <button
-                key={habit.name}
-                type="button"
-                disabled={!enabled}
-                onClick={() => tapHabit(habit)}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[14px] border transition-colors",
-                  checkIn ? "text-white border-transparent" : "border-black/15 dark:border-white/20 bg-white dark:bg-[#1c1c1e]",
-                  !enabled && "opacity-60",
-                )}
-                style={checkIn ? { backgroundColor: color } : undefined}
-              >
-                <span>{habit.title}</span>
-                {progress && <span className="text-[12px] text-black/45 dark:text-white/45">{progress}</span>}
-                {linked && <LinkIcon className={cn("w-3 h-3", checkIn ? "text-white/85" : "text-black/40 dark:text-white/40")} />}
-                {byAgent && <BotIcon className="w-3.5 h-3.5 text-white/85" aria-label={COPY.checkIn.sources.AGENT} />}
-                {checkIn?.note && <span className="text-white/85 text-[12px] max-w-24 truncate">{checkIn.note}</span>}
-              </button>
-            );
-          })}
+          {pinnedOfDay.map(habitButton)}
+          {foldedOfDay.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setMoreOpen(true)}
+              className="flex items-center gap-1 rounded-full px-3 py-1.5 text-[14px] border border-black/15 dark:border-white/20 bg-white dark:bg-[#1c1c1e]"
+            >
+              <EllipsisIcon className="w-4 h-4" />
+              <span className="text-[12px] text-black/45 dark:text-white/45">
+                {COPY.planner.moreHabits(foldedOfDay.filter((habit) => checkInsOfDay.has(habit.name)).length, foldedOfDay.length)}
+              </span>
+            </button>
+          )}
         </div>
       ) : (
         <div className="px-4 pb-3 text-[13px] text-black/45 dark:text-white/45">{COPY.planner.noHabits}</div>
@@ -548,6 +567,19 @@ export default function PlannerPage() {
             <button type="button" className="text-[16px] font-semibold text-primary" onClick={() => saveCheckInNote(true)}>
               {habitSheet?.confirming ? COPY.planner.confirmCheckIn : COPY.planner.save}
             </button>
+          </div>
+        </div>
+      </Sheet>
+
+      <Sheet className="pb-safe w-full rounded-t-2xl" opened={moreOpen} onBackdropClick={() => setMoreOpen(false)}>
+        <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-black/15 dark:bg-white/20" />
+        <div className="px-4 pt-3 pb-4">
+          <div className="text-[15px] font-semibold mb-3">
+            {dayTitle} · {COPY.planner.foldedHabits}
+          </div>
+          {/* A tap closes this sheet first: the habit opens its own sheet or page, as from the row above. */}
+          <div className="flex flex-wrap gap-2" onClickCapture={() => setMoreOpen(false)}>
+            {foldedOfDay.map(habitButton)}
           </div>
         </div>
       </Sheet>

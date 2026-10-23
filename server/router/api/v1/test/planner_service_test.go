@@ -489,8 +489,12 @@ func TestHabitPlanDrafts(t *testing.T) {
 	}
 
 	t.Run("a draft is checked", func(t *testing.T) {
-		_, err := save(habitVersion("", names[:6]...))
-		requireCode(t, err, codes.InvalidArgument) // more than five
+		pinnedFour := habitVersion("", names[:4]...)
+		for _, entry := range pinnedFour.Entries {
+			entry.Pinned = true
+		}
+		_, err := save(pinnedFour)
+		requireCode(t, err, codes.InvalidArgument) // more than three pinned
 		_, err = save(habitVersion("", names[0], names[0]))
 		requireCode(t, err, codes.InvalidArgument)
 		goal := habitVersion("", names[0])
@@ -524,27 +528,15 @@ func TestHabitPlanDrafts(t *testing.T) {
 	require.Nil(t, list().Draft, "enabling uses the draft up")
 	require.NoError(t, checkIn(names[0], today))
 
-	// Two habits of the same color cannot share a plan, nor can a habit take a color its plans use.
-	_, err = ts.Service.UpdateHabit(userCtx, &v1pb.UpdateHabitRequest{
-		Habit: &v1pb.Habit{Name: names[1], Color: habits[0].Color}, UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"color"}},
-	})
-	requireCode(t, err, codes.FailedPrecondition)
+	// Habits of one plan may share a color now that the planner shows them by icon.
 	recolor := func(habit string, color int32) error {
 		_, err := ts.Service.UpdateHabit(userCtx, &v1pb.UpdateHabitRequest{
 			Habit: &v1pb.Habit{Name: habit, Color: color}, UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"color"}},
 		})
 		return err
 	}
-	require.NoError(t, recolor(names[6], habits[0].Color))
-	_, err = save(habitVersion("", names[0], names[6]))
-	requireCode(t, err, codes.InvalidArgument)
-	// A color changed after the draft was saved is caught when enabling.
-	_, err = save(habitVersion("", names[5], names[6]))
-	require.NoError(t, err)
-	require.NoError(t, recolor(names[5], habits[0].Color))
-	_, err = enable(today, false)
-	requireCode(t, err, codes.FailedPrecondition)
-	require.NoError(t, recolor(names[5], habits[5].Color))
+	require.NoError(t, recolor(names[1], habits[0].Color))
+	require.NoError(t, recolor(names[1], habits[1].Color))
 
 	// A new habit takes a color no habit has, or else one the latest plan does not use.
 	fresh, err := ts.Service.CreateHabit(userCtx, &v1pb.CreateHabitRequest{Habit: &v1pb.Habit{Title: "new"}})
