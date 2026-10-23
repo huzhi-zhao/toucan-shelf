@@ -34,7 +34,13 @@ export default function TodoRow({ todo, today, showDate, habitLabel, onToggle, o
   const closed = done || cancelled;
   // A todo whose completion checked in its habit cannot be reopened.
   const settled = done && todo.checkInDate !== "";
-  const dateLabel = todo.date ? dayjs(todo.date).format(todo.date.slice(0, 4) === today.slice(0, 4) ? "M/D" : "YYYY/M/D") : "";
+  // Today's todo in the list (another day is selected) reads as today at a glance.
+  const dateLabel =
+    todo.date === today
+      ? COPY.planner.todayMark
+      : todo.date
+        ? dayjs(todo.date).format(todo.date.slice(0, 4) === today.slice(0, 4) ? "M/D" : "YYYY/M/D")
+        : "";
 
   return (
     <ListItem

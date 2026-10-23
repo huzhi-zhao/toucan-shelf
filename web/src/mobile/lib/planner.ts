@@ -236,19 +236,24 @@ export function buildCalendarData(
 
 export interface OpenTodoGroups {
   overdue: Todo[];
-  today: Todo[];
-  upcoming: Todo[];
+  /** Today and the six days after it. */
+  thisWeek: Todo[];
+  later: Todo[];
   undated: Todo[];
 }
 
+/** How many days, today included, the "this week" group of the todo list covers. */
+export const THIS_WEEK_DAYS = 7;
+
 /** Splits the open list by date. The server already orders it by date with undated ones last. */
 export function groupOpenTodos(todos: Todo[], today: string): OpenTodoGroups {
-  const groups: OpenTodoGroups = { overdue: [], today: [], upcoming: [], undated: [] };
+  const groups: OpenTodoGroups = { overdue: [], thisWeek: [], later: [], undated: [] };
+  const weekEnd = dayjs(today).add(THIS_WEEK_DAYS, "day").format("YYYY-MM-DD");
   for (const todo of todos) {
     if (todo.date === "") groups.undated.push(todo);
     else if (todo.date < today) groups.overdue.push(todo);
-    else if (todo.date === today) groups.today.push(todo);
-    else groups.upcoming.push(todo);
+    else if (todo.date < weekEnd) groups.thisWeek.push(todo);
+    else groups.later.push(todo);
   }
   return groups;
 }

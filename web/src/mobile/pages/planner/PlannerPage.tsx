@@ -253,8 +253,8 @@ export default function PlannerPage() {
   const dayIsEmpty = checkInsOfDay.size === 0 && todosOfDay.length === 0 && notesOfDay.length === 0;
   const listSections: { key: string; title: string; todos: Todo[]; danger?: boolean }[] = [
     { key: "overdue", title: COPY.todo.overdue, todos: groups.overdue, danger: true },
-    { key: "today", title: COPY.planner.today, todos: groups.today },
-    { key: "upcoming", title: COPY.planner.upcoming, todos: groups.upcoming },
+    { key: "thisWeek", title: COPY.planner.thisWeek, todos: groups.thisWeek },
+    { key: "later", title: COPY.planner.later, todos: groups.later },
     { key: "undated", title: COPY.planner.undated, todos: groups.undated },
   ];
 
