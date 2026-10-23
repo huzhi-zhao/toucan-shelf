@@ -1239,6 +1239,14 @@ func (s *ConnectServiceHandler) PostponeTodo(ctx context.Context, req *connect.R
 	return connect.NewResponse(resp), nil
 }
 
+func (s *ConnectServiceHandler) SetPlannedWorkout(ctx context.Context, req *connect.Request[v1pb.SetPlannedWorkoutRequest]) (*connect.Response[v1pb.SetPlannedWorkoutResponse], error) {
+	resp, err := s.APIV1Service.SetPlannedWorkout(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (s *ConnectServiceHandler) DeleteTodo(ctx context.Context, req *connect.Request[v1pb.DeleteTodoRequest]) (*connect.Response[emptypb.Empty], error) {
 	resp, err := s.APIV1Service.DeleteTodo(ctx, req.Msg)
 	if err != nil {

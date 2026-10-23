@@ -1,15 +1,16 @@
 import dayjs from "dayjs";
 import { List, ListButton, ListItem, Navbar, NavbarBackLink, Page, Preloader, Sheet, Toast, Toggle } from "konsta/react";
-import { ExternalLinkIcon } from "lucide-react";
+import { BotIcon, ExternalLinkIcon } from "lucide-react";
 import { type FormEvent, type RefObject, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useDeleteTodo, useHabits, usePostponeTodo, useTodo, useTodoTags, useUpdateTodo } from "@/hooks/usePlannerQueries";
 import { cn } from "@/lib/utils";
-import { type Todo, Todo_Status } from "@/types/proto/api/v1/planner_service_pb";
+import { type Todo, Todo_Source, Todo_Status } from "@/types/proto/api/v1/planner_service_pb";
 import DangerListButton from "../../components/DangerListButton";
 import DocPickerSheet from "../../components/DocPickerSheet";
 import { LinkedDocsList } from "../../components/LinkedDocs";
 import TodoNoteField from "../../components/planner/TodoNoteField";
+import WorkoutEditor from "../../components/planner/WorkoutEditor";
 import SectionTitle from "../../components/SectionTitle";
 import { COPY } from "../../copy";
 import { useBlurOnClose } from "../../lib/keyboard";
@@ -87,7 +88,9 @@ export default function TodoPage() {
   };
 
   const save = (
-    changes: Partial<Pick<Todo, "title" | "date" | "status" | "cancelReason" | "important" | "tag" | "note" | "memos" | "url">>,
+    changes: Partial<
+      Pick<Todo, "title" | "date" | "status" | "cancelReason" | "important" | "tag" | "note" | "memos" | "url" | "plannedWorkout">
+    >,
   ) => updateTodo.mutate({ name, changes, localDate: today }, { onError: () => flash(COPY.planner.failed) });
 
   const commitText = (field: EditableField) => {
@@ -221,6 +224,24 @@ export default function TodoPage() {
       <div className="mx-4 rounded-xl bg-white dark:bg-[#1c1c1e] p-3">
         <TodoNoteField value={drafts.note} onChange={(note) => setDrafts((d) => ({ ...d, note }))} onCommit={() => commitText("note")} />
       </div>
+
+      {isHabitTodo && (
+        <>
+          <SectionTitle>
+            <span className="inline-flex items-center gap-1.5">
+              {COPY.todo.plannedWorkout}
+              {todo.plannedWorkoutSource === Todo_Source.AGENT && <BotIcon className="w-4 h-4" aria-label={COPY.checkIn.sources.AGENT} />}
+            </span>
+          </SectionTitle>
+          {/* What to do that day, against the check-in's record of what was done. History once the todo is closed or failed. */}
+          <WorkoutEditor
+            workout={todo.plannedWorkout}
+            readOnly={closed || failed}
+            onChange={(plannedWorkout) => save({ plannedWorkout })}
+            emptyText={COPY.todo.noPlannedWorkout}
+          />
+        </>
+      )}
 
       <SectionTitle>{COPY.todo.doc}</SectionTitle>
       <LinkedDocsList

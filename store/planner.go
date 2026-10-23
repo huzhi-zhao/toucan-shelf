@@ -199,8 +199,15 @@ type PlannerTodo struct {
 	HabitUID string
 	// CheckInDate is the day of the check-in the todo's completion made, or "" for none. Read-only.
 	CheckInDate string
-	CreatedTs   int64
-	UpdatedTs   int64
+	// Source is who created the todo: PlannerCheckInManual (the app) or PlannerCheckInAgent (a personal
+	// access token). Set on creation, never changed; "" is stored as manual.
+	Source string
+	// PlannedWorkout is the workout planned for a habit todo, or nil for none.
+	PlannedWorkout *PlannerWorkout
+	// PlannedWorkoutSource is who last set PlannedWorkout, like Source; "" when there is none.
+	PlannedWorkoutSource string
+	CreatedTs            int64
+	UpdatedTs            int64
 }
 
 // FindPlannerTodo filters todos. A date bound only matches todos that have a
@@ -241,8 +248,12 @@ type UpdatePlannerTodo struct {
 	OriginalDate  *string
 	PostponeCount *int32
 	HabitID       *int32
-	CheckIn       *PlannerCheckIn
-	DropCheckIn   bool
+	// SetPlannedWorkout writes PlannedWorkout (nil clears it) and PlannedWorkoutSource.
+	SetPlannedWorkout    bool
+	PlannedWorkout       *PlannerWorkout
+	PlannedWorkoutSource string
+	CheckIn              *PlannerCheckIn
+	DropCheckIn          bool
 }
 
 // PlannerNote is a plain record of what happened on a day.

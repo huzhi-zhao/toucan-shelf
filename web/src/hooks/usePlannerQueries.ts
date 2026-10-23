@@ -189,7 +189,7 @@ export function useCreateTodo() {
   );
 }
 
-type TodoField = "title" | "date" | "status" | "cancelReason" | "important" | "tag" | "note" | "memos" | "url";
+type TodoField = "title" | "date" | "status" | "cancelReason" | "important" | "tag" | "note" | "memos" | "url" | "plannedWorkout";
 
 const TODO_MASK_PATHS: Record<TodoField, string> = {
   title: "title",
@@ -201,6 +201,7 @@ const TODO_MASK_PATHS: Record<TodoField, string> = {
   note: "note",
   memos: "memos",
   url: "url",
+  plannedWorkout: "planned_workout",
 };
 
 /**

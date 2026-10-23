@@ -225,11 +225,14 @@ func (s *APIV1Service) GetWeekProgress(ctx context.Context, request *v1pb.GetWee
 				continue
 			}
 			week.HabitTodos = append(week.HabitTodos, &v1pb.WeekHabitTodo{
-				Name:  todoNamePrefix + todo.UID,
-				Date:  todo.Date,
-				Title: todo.Title,
-				Habit: plannerName(habitNamePrefix, todo.HabitUID),
-				State: habitTodoState(todo, date),
+				Name:                 todoNamePrefix + todo.UID,
+				Date:                 todo.Date,
+				Title:                todo.Title,
+				Habit:                plannerName(habitNamePrefix, todo.HabitUID),
+				State:                habitTodoState(todo, date),
+				Source:               todoSourceFromStore[todo.Source],
+				PlannedWorkout:       convertWorkoutFromStore(todo.PlannedWorkout),
+				PlannedWorkoutSource: todoSourceFromStore[todo.PlannedWorkoutSource],
 			})
 		}
 		for _, note := range notes {
