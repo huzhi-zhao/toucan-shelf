@@ -82,12 +82,12 @@ describe("dates", () => {
 describe("todo lists", () => {
   it("groups open todos by date", () => {
     const groups = groupOpenTodos(
-      [todo("late", "2026-10-01"), todo("now", "2026-10-17"), todo("soon", "2026-10-20"), todo("any", "")],
+      [todo("late", "2026-10-01"), todo("now", "2026-10-17"), todo("soon", "2026-10-23"), todo("far", "2026-10-24"), todo("any", "")],
       "2026-10-17",
     );
     expect(groups.overdue.map((t) => t.title)).toEqual(["late"]);
-    expect(groups.today.map((t) => t.title)).toEqual(["now"]);
-    expect(groups.upcoming.map((t) => t.title)).toEqual(["soon"]);
+    expect(groups.thisWeek.map((t) => t.title)).toEqual(["now", "soon"]);
+    expect(groups.later.map((t) => t.title)).toEqual(["far"]);
     expect(groups.undated.map((t) => t.title)).toEqual(["any"]);
   });
 
