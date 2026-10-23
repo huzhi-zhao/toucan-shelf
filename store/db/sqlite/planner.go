@@ -401,16 +401,20 @@ const plannerTodoColumns = "`id`, `uid`, `creator_id`, `title`, `date`, `status`
 	"`important`, `tag`, `note`, `memo_names`, `url`, `original_date`, `postpone_count`, `habit_id`, " +
 	"COALESCE((SELECT `planner_habit`.`uid` FROM `planner_habit` WHERE `planner_habit`.`id` = `planner_todo`.`habit_id`), ''), " +
 	"COALESCE((SELECT `planner_check_in`.`date` FROM `planner_check_in` WHERE `planner_check_in`.`todo_id` = `planner_todo`.`id` LIMIT 1), ''), " +
-	"`created_ts`, `updated_ts`"
+	"`source`, `planned_workout`, `planned_workout_source`, `created_ts`, `updated_ts`"
 
 func scanPlannerTodo(row interface{ Scan(...any) error }) (*store.PlannerTodo, error) {
 	t := &store.PlannerTodo{}
-	var memoNames string
+	var memoNames, plannedWorkout string
 	if err := row.Scan(
 		&t.ID, &t.UID, &t.CreatorID, &t.Title, &t.Date, &t.Status, &t.ClosedOverdue, &t.ClosedTs, &t.CancelReason,
 		&t.Important, &t.Tag, &t.Note, &memoNames, &t.URL, &t.OriginalDate, &t.PostponeCount, &t.HabitID, &t.HabitUID, &t.CheckInDate,
-		&t.CreatedTs, &t.UpdatedTs,
+		&t.Source, &plannedWorkout, &t.PlannedWorkoutSource, &t.CreatedTs, &t.UpdatedTs,
 	); err != nil {
+		return nil, err
+	}
+	var err error
+	if t.PlannedWorkout, err = decodePlannerWorkout(plannedWorkout); err != nil {
 		return nil, err
 	}
 	t.MemoNames = []string{}
@@ -431,10 +435,16 @@ func encodeMemoNames(names []string) string {
 
 func insertPlannerTodo(ctx context.Context, q plannerQuerier, create *store.PlannerTodo) (*store.PlannerTodo, error) {
 	stmt := "INSERT INTO `planner_todo` (`uid`, `creator_id`, `title`, `date`, `status`, `closed_overdue`, `closed_ts`, `cancel_reason`, " +
-		"`important`, `tag`, `note`, `memo_names`, `url`, `habit_id`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING " + plannerTodoColumns
+		"`important`, `tag`, `note`, `memo_names`, `url`, `habit_id`, `source`, `planned_workout`, `planned_workout_source`) " +
+		"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING " + plannerTodoColumns
+	plannedWorkout, err := encodePlannerWorkout(create.PlannedWorkout)
+	if err != nil {
+		return nil, err
+	}
 	return scanPlannerTodo(q.QueryRowContext(ctx, stmt,
 		create.UID, create.CreatorID, create.Title, create.Date, create.Status, create.ClosedOverdue, create.ClosedTs, create.CancelReason,
 		create.Important, create.Tag, create.Note, encodeMemoNames(create.MemoNames), create.URL, create.HabitID,
+		plannerCheckInSource(create.Source), plannedWorkout, create.PlannedWorkoutSource,
 	))
 }
 
@@ -507,6 +517,13 @@ func (d *DB) UpdatePlannerTodo(ctx context.Context, update *store.UpdatePlannerT
 		{"original_date", update.OriginalDate, update.OriginalDate != nil},
 		{"postpone_count", update.PostponeCount, update.PostponeCount != nil},
 		{"habit_id", update.HabitID, update.HabitID != nil},
+	}
+	if update.SetPlannedWorkout {
+		plannedWorkout, err := encodePlannerWorkout(update.PlannedWorkout)
+		if err != nil {
+			return nil, err
+		}
+		set, args = append(set, "`planned_workout` = ?", "`planned_workout_source` = ?"), append(args, plannedWorkout, update.PlannedWorkoutSource)
 	}
 	for _, f := range fields {
 		if f.ok {

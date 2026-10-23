@@ -87,6 +87,9 @@ const (
 	// PlannerServicePostponeTodoProcedure is the fully-qualified name of the PlannerService's
 	// PostponeTodo RPC.
 	PlannerServicePostponeTodoProcedure = "/memos.api.v1.PlannerService/PostponeTodo"
+	// PlannerServiceSetPlannedWorkoutProcedure is the fully-qualified name of the PlannerService's
+	// SetPlannedWorkout RPC.
+	PlannerServiceSetPlannedWorkoutProcedure = "/memos.api.v1.PlannerService/SetPlannedWorkout"
 	// PlannerServiceDeleteTodoProcedure is the fully-qualified name of the PlannerService's DeleteTodo
 	// RPC.
 	PlannerServiceDeleteTodoProcedure = "/memos.api.v1.PlannerService/DeleteTodo"
@@ -189,7 +192,14 @@ type PlannerServiceClient interface {
 	// the date through UpdateTodo (which corrects it), this keeps the original
 	// date and counts the postponement.
 	PostponeTodo(context.Context, *connect.Request[v1.PostponeTodoRequest]) (*connect.Response[v1.Todo], error)
-	// DeleteTodo deletes a todo.
+	// SetPlannedWorkout sets the workout planned for a habit on a day, on that
+	// day's habit todo, replacing any plan it had; an empty workout clears it.
+	// It is for agents: with no habit todo that day, it creates one (titled
+	// after the habit) for a date from local_date on. The app sets a plan with
+	// UpdateTodo instead.
+	SetPlannedWorkout(context.Context, *connect.Request[v1.SetPlannedWorkoutRequest]) (*connect.Response[v1.SetPlannedWorkoutResponse], error)
+	// DeleteTodo deletes a todo. A personal access token may delete only the
+	// todos an agent created.
 	DeleteTodo(context.Context, *connect.Request[v1.DeleteTodoRequest]) (*connect.Response[emptypb.Empty], error)
 	// GetPlannerNote returns one note.
 	GetPlannerNote(context.Context, *connect.Request[v1.GetPlannerNoteRequest]) (*connect.Response[v1.PlannerNote], error)
@@ -328,6 +338,12 @@ func NewPlannerServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(plannerServiceMethods.ByName("PostponeTodo")),
 			connect.WithClientOptions(opts...),
 		),
+		setPlannedWorkout: connect.NewClient[v1.SetPlannedWorkoutRequest, v1.SetPlannedWorkoutResponse](
+			httpClient,
+			baseURL+PlannerServiceSetPlannedWorkoutProcedure,
+			connect.WithSchema(plannerServiceMethods.ByName("SetPlannedWorkout")),
+			connect.WithClientOptions(opts...),
+		),
 		deleteTodo: connect.NewClient[v1.DeleteTodoRequest, emptypb.Empty](
 			httpClient,
 			baseURL+PlannerServiceDeleteTodoProcedure,
@@ -399,6 +415,7 @@ type plannerServiceClient struct {
 	createTodo            *connect.Client[v1.CreateTodoRequest, v1.Todo]
 	updateTodo            *connect.Client[v1.UpdateTodoRequest, v1.Todo]
 	postponeTodo          *connect.Client[v1.PostponeTodoRequest, v1.Todo]
+	setPlannedWorkout     *connect.Client[v1.SetPlannedWorkoutRequest, v1.SetPlannedWorkoutResponse]
 	deleteTodo            *connect.Client[v1.DeleteTodoRequest, emptypb.Empty]
 	getPlannerNote        *connect.Client[v1.GetPlannerNoteRequest, v1.PlannerNote]
 	createPlannerNote     *connect.Client[v1.CreatePlannerNoteRequest, v1.PlannerNote]
@@ -497,6 +514,11 @@ func (c *plannerServiceClient) UpdateTodo(ctx context.Context, req *connect.Requ
 // PostponeTodo calls memos.api.v1.PlannerService.PostponeTodo.
 func (c *plannerServiceClient) PostponeTodo(ctx context.Context, req *connect.Request[v1.PostponeTodoRequest]) (*connect.Response[v1.Todo], error) {
 	return c.postponeTodo.CallUnary(ctx, req)
+}
+
+// SetPlannedWorkout calls memos.api.v1.PlannerService.SetPlannedWorkout.
+func (c *plannerServiceClient) SetPlannedWorkout(ctx context.Context, req *connect.Request[v1.SetPlannedWorkoutRequest]) (*connect.Response[v1.SetPlannedWorkoutResponse], error) {
+	return c.setPlannedWorkout.CallUnary(ctx, req)
 }
 
 // DeleteTodo calls memos.api.v1.PlannerService.DeleteTodo.
@@ -615,7 +637,14 @@ type PlannerServiceHandler interface {
 	// the date through UpdateTodo (which corrects it), this keeps the original
 	// date and counts the postponement.
 	PostponeTodo(context.Context, *connect.Request[v1.PostponeTodoRequest]) (*connect.Response[v1.Todo], error)
-	// DeleteTodo deletes a todo.
+	// SetPlannedWorkout sets the workout planned for a habit on a day, on that
+	// day's habit todo, replacing any plan it had; an empty workout clears it.
+	// It is for agents: with no habit todo that day, it creates one (titled
+	// after the habit) for a date from local_date on. The app sets a plan with
+	// UpdateTodo instead.
+	SetPlannedWorkout(context.Context, *connect.Request[v1.SetPlannedWorkoutRequest]) (*connect.Response[v1.SetPlannedWorkoutResponse], error)
+	// DeleteTodo deletes a todo. A personal access token may delete only the
+	// todos an agent created.
 	DeleteTodo(context.Context, *connect.Request[v1.DeleteTodoRequest]) (*connect.Response[emptypb.Empty], error)
 	// GetPlannerNote returns one note.
 	GetPlannerNote(context.Context, *connect.Request[v1.GetPlannerNoteRequest]) (*connect.Response[v1.PlannerNote], error)
@@ -750,6 +779,12 @@ func NewPlannerServiceHandler(svc PlannerServiceHandler, opts ...connect.Handler
 		connect.WithSchema(plannerServiceMethods.ByName("PostponeTodo")),
 		connect.WithHandlerOptions(opts...),
 	)
+	plannerServiceSetPlannedWorkoutHandler := connect.NewUnaryHandler(
+		PlannerServiceSetPlannedWorkoutProcedure,
+		svc.SetPlannedWorkout,
+		connect.WithSchema(plannerServiceMethods.ByName("SetPlannedWorkout")),
+		connect.WithHandlerOptions(opts...),
+	)
 	plannerServiceDeleteTodoHandler := connect.NewUnaryHandler(
 		PlannerServiceDeleteTodoProcedure,
 		svc.DeleteTodo,
@@ -836,6 +871,8 @@ func NewPlannerServiceHandler(svc PlannerServiceHandler, opts ...connect.Handler
 			plannerServiceUpdateTodoHandler.ServeHTTP(w, r)
 		case PlannerServicePostponeTodoProcedure:
 			plannerServicePostponeTodoHandler.ServeHTTP(w, r)
+		case PlannerServiceSetPlannedWorkoutProcedure:
+			plannerServiceSetPlannedWorkoutHandler.ServeHTTP(w, r)
 		case PlannerServiceDeleteTodoProcedure:
 			plannerServiceDeleteTodoHandler.ServeHTTP(w, r)
 		case PlannerServiceGetPlannerNoteProcedure:
@@ -931,6 +968,10 @@ func (UnimplementedPlannerServiceHandler) UpdateTodo(context.Context, *connect.R
 
 func (UnimplementedPlannerServiceHandler) PostponeTodo(context.Context, *connect.Request[v1.PostponeTodoRequest]) (*connect.Response[v1.Todo], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.PostponeTodo is not implemented"))
+}
+
+func (UnimplementedPlannerServiceHandler) SetPlannedWorkout(context.Context, *connect.Request[v1.SetPlannedWorkoutRequest]) (*connect.Response[v1.SetPlannedWorkoutResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.SetPlannedWorkout is not implemented"))
 }
 
 func (UnimplementedPlannerServiceHandler) DeleteTodo(context.Context, *connect.Request[v1.DeleteTodoRequest]) (*connect.Response[emptypb.Empty], error) {

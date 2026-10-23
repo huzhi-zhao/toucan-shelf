@@ -38,6 +38,7 @@ const (
 	PlannerService_CreateTodo_FullMethodName            = "/memos.api.v1.PlannerService/CreateTodo"
 	PlannerService_UpdateTodo_FullMethodName            = "/memos.api.v1.PlannerService/UpdateTodo"
 	PlannerService_PostponeTodo_FullMethodName          = "/memos.api.v1.PlannerService/PostponeTodo"
+	PlannerService_SetPlannedWorkout_FullMethodName     = "/memos.api.v1.PlannerService/SetPlannedWorkout"
 	PlannerService_DeleteTodo_FullMethodName            = "/memos.api.v1.PlannerService/DeleteTodo"
 	PlannerService_GetPlannerNote_FullMethodName        = "/memos.api.v1.PlannerService/GetPlannerNote"
 	PlannerService_CreatePlannerNote_FullMethodName     = "/memos.api.v1.PlannerService/CreatePlannerNote"
@@ -136,7 +137,14 @@ type PlannerServiceClient interface {
 	// the date through UpdateTodo (which corrects it), this keeps the original
 	// date and counts the postponement.
 	PostponeTodo(ctx context.Context, in *PostponeTodoRequest, opts ...grpc.CallOption) (*Todo, error)
-	// DeleteTodo deletes a todo.
+	// SetPlannedWorkout sets the workout planned for a habit on a day, on that
+	// day's habit todo, replacing any plan it had; an empty workout clears it.
+	// It is for agents: with no habit todo that day, it creates one (titled
+	// after the habit) for a date from local_date on. The app sets a plan with
+	// UpdateTodo instead.
+	SetPlannedWorkout(ctx context.Context, in *SetPlannedWorkoutRequest, opts ...grpc.CallOption) (*SetPlannedWorkoutResponse, error)
+	// DeleteTodo deletes a todo. A personal access token may delete only the
+	// todos an agent created.
 	DeleteTodo(ctx context.Context, in *DeleteTodoRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// GetPlannerNote returns one note.
 	GetPlannerNote(ctx context.Context, in *GetPlannerNoteRequest, opts ...grpc.CallOption) (*PlannerNote, error)
@@ -344,6 +352,16 @@ func (c *plannerServiceClient) PostponeTodo(ctx context.Context, in *PostponeTod
 	return out, nil
 }
 
+func (c *plannerServiceClient) SetPlannedWorkout(ctx context.Context, in *SetPlannedWorkoutRequest, opts ...grpc.CallOption) (*SetPlannedWorkoutResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetPlannedWorkoutResponse)
+	err := c.cc.Invoke(ctx, PlannerService_SetPlannedWorkout_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *plannerServiceClient) DeleteTodo(ctx context.Context, in *DeleteTodoRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -512,7 +530,14 @@ type PlannerServiceServer interface {
 	// the date through UpdateTodo (which corrects it), this keeps the original
 	// date and counts the postponement.
 	PostponeTodo(context.Context, *PostponeTodoRequest) (*Todo, error)
-	// DeleteTodo deletes a todo.
+	// SetPlannedWorkout sets the workout planned for a habit on a day, on that
+	// day's habit todo, replacing any plan it had; an empty workout clears it.
+	// It is for agents: with no habit todo that day, it creates one (titled
+	// after the habit) for a date from local_date on. The app sets a plan with
+	// UpdateTodo instead.
+	SetPlannedWorkout(context.Context, *SetPlannedWorkoutRequest) (*SetPlannedWorkoutResponse, error)
+	// DeleteTodo deletes a todo. A personal access token may delete only the
+	// todos an agent created.
 	DeleteTodo(context.Context, *DeleteTodoRequest) (*emptypb.Empty, error)
 	// GetPlannerNote returns one note.
 	GetPlannerNote(context.Context, *GetPlannerNoteRequest) (*PlannerNote, error)
@@ -593,6 +618,9 @@ func (UnimplementedPlannerServiceServer) UpdateTodo(context.Context, *UpdateTodo
 }
 func (UnimplementedPlannerServiceServer) PostponeTodo(context.Context, *PostponeTodoRequest) (*Todo, error) {
 	return nil, status.Error(codes.Unimplemented, "method PostponeTodo not implemented")
+}
+func (UnimplementedPlannerServiceServer) SetPlannedWorkout(context.Context, *SetPlannedWorkoutRequest) (*SetPlannedWorkoutResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetPlannedWorkout not implemented")
 }
 func (UnimplementedPlannerServiceServer) DeleteTodo(context.Context, *DeleteTodoRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteTodo not implemented")
@@ -963,6 +991,24 @@ func _PlannerService_PostponeTodo_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PlannerService_SetPlannedWorkout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetPlannedWorkoutRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlannerServiceServer).SetPlannedWorkout(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlannerService_SetPlannedWorkout_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlannerServiceServer).SetPlannedWorkout(ctx, req.(*SetPlannedWorkoutRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PlannerService_DeleteTodo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeleteTodoRequest)
 	if err := dec(in); err != nil {
@@ -1185,6 +1231,10 @@ var PlannerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "PostponeTodo",
 			Handler:    _PlannerService_PostponeTodo_Handler,
+		},
+		{
+			MethodName: "SetPlannedWorkout",
+			Handler:    _PlannerService_SetPlannedWorkout_Handler,
 		},
 		{
 			MethodName: "DeleteTodo",

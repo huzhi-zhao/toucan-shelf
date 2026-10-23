@@ -2088,6 +2088,36 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/v1/planner/plannedWorkouts:
+        post:
+            tags:
+                - PlannerService
+            description: |-
+                SetPlannedWorkout sets the workout planned for a habit on a day, on that
+                 day's habit todo, replacing any plan it had; an empty workout clears it.
+                 It is for agents: with no habit todo that day, it creates one (titled
+                 after the habit) for a date from local_date on. The app sets a plan with
+                 UpdateTodo instead.
+            operationId: PlannerService_SetPlannedWorkout
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/SetPlannedWorkoutRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/SetPlannedWorkoutResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/planner/settings:
         get:
             tags:
@@ -7912,6 +7942,40 @@ components:
                     items:
                         $ref: '#/components/schemas/MemoRelation'
                     description: Required. The relations to set for the memo.
+        SetPlannedWorkoutRequest:
+            required:
+                - habit
+                - date
+                - localDate
+            type: object
+            properties:
+                habit:
+                    type: string
+                    description: 'Format: planner/habits/{habit}'
+                date:
+                    type: string
+                    description: 'The day of the habit todo. Format: YYYY-MM-DD.'
+                localDate:
+                    type: string
+                    description: |-
+                        The caller's today, YYYY-MM-DD: a new habit todo is for a date from this
+                         day on.
+                workout:
+                    allOf:
+                        - $ref: '#/components/schemas/Workout'
+                    description: The whole plan; an empty one clears it.
+        SetPlannedWorkoutResponse:
+            type: object
+            properties:
+                todo:
+                    allOf:
+                        - $ref: '#/components/schemas/Todo'
+                    description: |-
+                        The habit todo, with its plan. Unset when clearing a plan on a day with no
+                         habit todo.
+                created:
+                    type: boolean
+                    description: Whether this call created the todo.
         Shortcut:
             required:
                 - title
@@ -8308,6 +8372,34 @@ components:
                         The day of the check-in the todo's completion made, YYYY-MM-DD, or empty for
                          none. A todo with one can no longer be reopened, cancelled or relinked, only
                          deleted, which removes the check-in too.
+                source:
+                    readOnly: true
+                    enum:
+                        - SOURCE_UNSPECIFIED
+                        - MANUAL
+                        - AGENT
+                    type: string
+                    description: |-
+                        Who created the todo. A personal access token may delete only the todos an
+                         agent created.
+                    format: enum
+                plannedWorkout:
+                    allOf:
+                        - $ref: '#/components/schemas/Workout'
+                    description: |-
+                        The workout planned for a habit todo's day: what to do, where a check-in's
+                         workout records what was done. Reps are target counts. Only habit todos
+                         carry one; written with update mask path "planned_workout", where an empty
+                         workout clears it.
+                plannedWorkoutSource:
+                    readOnly: true
+                    enum:
+                        - SOURCE_UNSPECIFIED
+                        - MANUAL
+                        - AGENT
+                    type: string
+                    description: Who last set planned_workout; unspecified when there is none.
+                    format: enum
         TranscribeRequest:
             required:
                 - audio
@@ -8947,6 +9039,26 @@ components:
                         - CANCELLED
                     type: string
                     description: Worked out against the request's `date` as today.
+                    format: enum
+                source:
+                    enum:
+                        - SOURCE_UNSPECIFIED
+                        - MANUAL
+                        - AGENT
+                    type: string
+                    description: Who created the todo.
+                    format: enum
+                plannedWorkout:
+                    allOf:
+                        - $ref: '#/components/schemas/Workout'
+                    description: The workout planned for the day, if any.
+                plannedWorkoutSource:
+                    enum:
+                        - SOURCE_UNSPECIFIED
+                        - MANUAL
+                        - AGENT
+                    type: string
+                    description: Who last set planned_workout; unspecified when there is none.
                     format: enum
         WeekNote:
             type: object

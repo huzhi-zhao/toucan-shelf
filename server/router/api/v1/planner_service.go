@@ -188,25 +188,28 @@ func todoStatusFromStore(value string) v1pb.Todo_Status {
 
 func convertTodoFromStore(t *store.PlannerTodo) *v1pb.Todo {
 	return &v1pb.Todo{
-		Name:          todoNamePrefix + t.UID,
-		Title:         t.Title,
-		Date:          t.Date,
-		Status:        todoStatusFromStore(t.Status),
-		ClosedOverdue: t.ClosedOverdue,
-		CloseTime:     optionalTimestamp(t.ClosedTs),
-		CancelReason:  t.CancelReason,
-		Important:     t.Important,
-		Tag:           t.Tag,
-		Note:          t.Note,
-		Memo:          firstMemo(t.MemoNames), //nolint:staticcheck // still filled for clients that only know it
-		Memos:         t.MemoNames,
-		Url:           t.URL,
-		OriginalDate:  t.OriginalDate,
-		PostponeCount: t.PostponeCount,
-		Habit:         plannerName(habitNamePrefix, t.HabitUID),
-		CheckInDate:   t.CheckInDate,
-		CreateTime:    optionalTimestamp(t.CreatedTs),
-		UpdateTime:    optionalTimestamp(t.UpdatedTs),
+		Name:                 todoNamePrefix + t.UID,
+		Title:                t.Title,
+		Date:                 t.Date,
+		Status:               todoStatusFromStore(t.Status),
+		ClosedOverdue:        t.ClosedOverdue,
+		CloseTime:            optionalTimestamp(t.ClosedTs),
+		CancelReason:         t.CancelReason,
+		Important:            t.Important,
+		Tag:                  t.Tag,
+		Note:                 t.Note,
+		Memo:                 firstMemo(t.MemoNames), //nolint:staticcheck // still filled for clients that only know it
+		Memos:                t.MemoNames,
+		Url:                  t.URL,
+		OriginalDate:         t.OriginalDate,
+		PostponeCount:        t.PostponeCount,
+		Habit:                plannerName(habitNamePrefix, t.HabitUID),
+		CheckInDate:          t.CheckInDate,
+		CreateTime:           optionalTimestamp(t.CreatedTs),
+		UpdateTime:           optionalTimestamp(t.UpdatedTs),
+		Source:               todoSourceFromStore[t.Source],
+		PlannedWorkout:       convertWorkoutFromStore(t.PlannedWorkout),
+		PlannedWorkoutSource: todoSourceFromStore[t.PlannedWorkoutSource],
 	}
 }
 
@@ -727,6 +730,7 @@ func (s *APIV1Service) CreateTodo(ctx context.Context, request *v1pb.CreateTodoR
 	}
 	create.UID = shortuuid.New()
 	create.CreatorID = user.ID
+	create.Source = plannerTodoSourceFor(ctx)
 	if request.Todo.Habit != "" {
 		if create.HabitID, err = s.checkNewHabitTodo(ctx, user, request.Todo.Habit, create.Date, request.LocalDate); err != nil {
 			return nil, err
@@ -856,6 +860,13 @@ func (s *APIV1Service) UpdateTodo(ctx context.Context, request *v1pb.UpdateTodoR
 				return nil, err
 			}
 			update.URL = &link
+		case "planned_workout":
+			if err := checkPlannableTodo(todo, request.LocalDate); err != nil {
+				return nil, err
+			}
+			if err := setPlannedWorkout(ctx, update, request.Todo.PlannedWorkout); err != nil {
+				return nil, err
+			}
 		default:
 			return nil, status.Errorf(codes.InvalidArgument, "unsupported update_mask path: %s", path)
 		}
@@ -974,6 +985,10 @@ func (s *APIV1Service) DeleteTodo(ctx context.Context, request *v1pb.DeleteTodoR
 	todo, err := s.getOwnTodo(ctx, user, request.Name)
 	if err != nil {
 		return nil, err
+	}
+	// A bot may take back a todo it made (the user changed their mind), never one the user made.
+	if plannerAgent(ctx) && todo.Source != store.PlannerCheckInAgent {
+		return nil, status.Errorf(codes.PermissionDenied, "an agent can only delete the todos an agent created")
 	}
 	if err := s.Store.DeletePlannerTodo(ctx, todo.ID); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete todo: %v", err)

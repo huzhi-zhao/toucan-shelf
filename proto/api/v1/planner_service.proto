@@ -181,7 +181,20 @@ service PlannerService {
     option (google.api.method_signature) = "name,date";
   }
 
-  // DeleteTodo deletes a todo.
+  // SetPlannedWorkout sets the workout planned for a habit on a day, on that
+  // day's habit todo, replacing any plan it had; an empty workout clears it.
+  // It is for agents: with no habit todo that day, it creates one (titled
+  // after the habit) for a date from local_date on. The app sets a plan with
+  // UpdateTodo instead.
+  rpc SetPlannedWorkout(SetPlannedWorkoutRequest) returns (SetPlannedWorkoutResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/planner/plannedWorkouts"
+      body: "*"
+    };
+  }
+
+  // DeleteTodo deletes a todo. A personal access token may delete only the
+  // todos an agent created.
   rpc DeleteTodo(DeleteTodoRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {delete: "/api/v1/{name=planner/todos/*}"};
     option (google.api.method_signature) = "name";
@@ -449,6 +462,29 @@ message Todo {
   // none. A todo with one can no longer be reopened, cancelled or relinked, only
   // deleted, which removes the check-in too.
   string check_in_date = 19 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Who created the todo or set its planned workout, decided from the
+  // caller's credential.
+  enum Source {
+    SOURCE_UNSPECIFIED = 0;
+    // In the app.
+    MANUAL = 1;
+    // By a caller with a personal access token, e.g. a bot.
+    AGENT = 2;
+  }
+
+  // Who created the todo. A personal access token may delete only the todos an
+  // agent created.
+  Source source = 20 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // The workout planned for a habit todo's day: what to do, where a check-in's
+  // workout records what was done. Reps are target counts. Only habit todos
+  // carry one; written with update mask path "planned_workout", where an empty
+  // workout clears it.
+  Workout planned_workout = 21 [(google.api.field_behavior) = OPTIONAL];
+
+  // Who last set planned_workout; unspecified when there is none.
+  Source planned_workout_source = 22 [(google.api.field_behavior) = OUTPUT_ONLY];
 }
 
 // PlannerNote is a plain record of what happened on a day.
@@ -619,6 +655,30 @@ message PostponeTodoRequest {
 
   // The caller's local date, YYYY-MM-DD.
   string local_date = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message SetPlannedWorkoutRequest {
+  // Format: planner/habits/{habit}
+  string habit = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // The day of the habit todo. Format: YYYY-MM-DD.
+  string date = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The caller's today, YYYY-MM-DD: a new habit todo is for a date from this
+  // day on.
+  string local_date = 3 [(google.api.field_behavior) = REQUIRED];
+
+  // The whole plan; an empty one clears it.
+  Workout workout = 4 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message SetPlannedWorkoutResponse {
+  // The habit todo, with its plan. Unset when clearing a plan on a day with no
+  // habit todo.
+  Todo todo = 1;
+
+  // Whether this call created the todo.
+  bool created = 2;
 }
 
 message DeleteTodoRequest {
@@ -847,4 +907,13 @@ message WeekHabitTodo {
 
   // Worked out against the request's `date` as today.
   State state = 5;
+
+  // Who created the todo.
+  Todo.Source source = 6;
+
+  // The workout planned for the day, if any.
+  Workout planned_workout = 7;
+
+  // Who last set planned_workout; unspecified when there is none.
+  Todo.Source planned_workout_source = 8;
 }
