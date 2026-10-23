@@ -187,6 +187,12 @@ service PlannerService {
     option (google.api.method_signature) = "name";
   }
 
+  // GetPlannerNote returns one note.
+  rpc GetPlannerNote(GetPlannerNoteRequest) returns (PlannerNote) {
+    option (google.api.http) = {get: "/api/v1/{name=planner/notes/*}"};
+    option (google.api.method_signature) = "name";
+  }
+
   // CreatePlannerNote adds a note to a day.
   rpc CreatePlannerNote(CreatePlannerNoteRequest) returns (PlannerNote) {
     option (google.api.http) = {
@@ -461,6 +467,12 @@ message PlannerNote {
   google.protobuf.Timestamp create_time = 4 [(google.api.field_behavior) = OUTPUT_ONLY];
 
   google.protobuf.Timestamp update_time = 5 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // A longer remark, shown only on the note's own page.
+  string remark = 6 [(google.api.field_behavior) = OPTIONAL];
+
+  // Linked documents, "memos/{uid}", in display order.
+  repeated string memos = 7 [(google.api.field_behavior) = OPTIONAL];
 }
 
 message ListHabitsRequest {}
@@ -610,6 +622,11 @@ message DeleteTodoRequest {
   string name = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
+message GetPlannerNoteRequest {
+  // Format: planner/notes/{note}
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
 message CreatePlannerNoteRequest {
   PlannerNote note = 1 [(google.api.field_behavior) = REQUIRED];
 }
@@ -617,7 +634,7 @@ message CreatePlannerNoteRequest {
 message UpdatePlannerNoteRequest {
   PlannerNote note = 1 [(google.api.field_behavior) = REQUIRED];
 
-  // Supported paths: date, content.
+  // Supported paths: date, content, remark, memos.
   google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = REQUIRED];
 }
 

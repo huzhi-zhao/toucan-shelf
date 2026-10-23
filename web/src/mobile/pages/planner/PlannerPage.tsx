@@ -8,17 +8,15 @@ import { useInstance } from "@/contexts/InstanceContext";
 import {
   useCreatePlannerNote,
   useCreateTodo,
-  useDeletePlannerNote,
   useHabits,
   useHabitVersions,
   useOpenTodos,
   usePlannerEntries,
   useSetCheckIn,
-  useUpdatePlannerNote,
   useUpdateTodo,
 } from "@/hooks/usePlannerQueries";
 import { cn } from "@/lib/utils";
-import { CheckIn_Source, type Habit, type PlannerNote, type Todo, Todo_Status } from "@/types/proto/api/v1/planner_service_pb";
+import { CheckIn_Source, type Habit, type Todo, Todo_Status } from "@/types/proto/api/v1/planner_service_pb";
 import TodoRow from "../../components/planner/TodoRow";
 import SectionTitle from "../../components/SectionTitle";
 import { COPY } from "../../copy";
@@ -46,7 +44,7 @@ import {
 } from "../../lib/planner";
 import { usePlannerWeekStart } from "../../lib/plannerWeekStart";
 import { usePref } from "../../lib/storage";
-import { checkInRoute, MOBILE_ROUTES, todoRoute } from "../../routes";
+import { checkInRoute, MOBILE_ROUTES, noteRoute, todoRoute } from "../../routes";
 
 type AddKind = "todo" | "note";
 
@@ -89,8 +87,6 @@ export default function PlannerPage() {
   const createTodo = useCreateTodo();
   const updateTodo = useUpdateTodo();
   const createNote = useCreatePlannerNote();
-  const updateNote = useUpdatePlannerNote();
-  const deleteNote = useDeletePlannerNote();
   const [toast, setToast] = useState("");
   const fail = () => {
     setToast(COPY.planner.failed);
@@ -136,10 +132,9 @@ export default function PlannerPage() {
   // check-in or todo lands.
   const [habitSheet, setHabitSheet] = useState<HabitSheet>();
   const [habitSheetOpen, setHabitSheetOpen] = useState<HabitSheet["kind"]>();
-  const [noteTarget, setNoteTarget] = useState<PlannerNote>();
   const addInputRef = useRef<HTMLTextAreaElement>(null);
   const habitTodoInputRef = useRef<HTMLInputElement>(null);
-  useBlurOnClose(addKind !== undefined || habitSheetOpen !== undefined || noteTarget !== undefined);
+  useBlurOnClose(addKind !== undefined || habitSheetOpen !== undefined);
 
   const toggleTodo = (todo: Todo) => {
     // A todo that checked in its habit stays done (requirement §2.4.1).
@@ -231,13 +226,6 @@ export default function PlannerPage() {
     if (!habitSheet || !draft.trim()) return;
     createTodo.mutate({ title: draft.trim(), date: selectedDate, habit: habitSheet.habit.name, localDate: today }, { onError: fail });
     setHabitSheetOpen(undefined);
-  };
-
-  const saveNote = (remove: boolean) => {
-    if (!noteTarget) return;
-    if (remove) deleteNote.mutate(noteTarget.name, { onError: fail });
-    else if (draft.trim()) updateNote.mutate({ name: noteTarget.name, content: draft.trim() }, { onError: fail });
-    setNoteTarget(undefined);
   };
 
   const selectMonth = (next: VisibleMonth) => {
@@ -376,15 +364,11 @@ export default function PlannerPage() {
           {notesOfDay.map((note) => (
             <ListItem
               key={note.name}
-              link={editable}
+              link
               chevron={false}
               title={<span className="whitespace-pre-wrap text-[15px]">{note.content}</span>}
               media={<span className="w-[22px] text-center text-[15px] leading-none">📋</span>}
-              onClick={() => {
-                if (!editable) return;
-                setDraft(note.content);
-                setNoteTarget(note);
-              }}
+              onClick={() => go(noteRoute(note.name))}
             />
           ))}
         </List>
@@ -563,32 +547,6 @@ export default function PlannerPage() {
             )}
             <button type="button" className="text-[16px] font-semibold text-primary" onClick={() => saveCheckInNote(true)}>
               {habitSheet?.confirming ? COPY.planner.confirmCheckIn : COPY.planner.save}
-            </button>
-          </div>
-        </div>
-      </Sheet>
-
-      <Sheet className="pb-safe w-full rounded-t-2xl" opened={noteTarget !== undefined} onBackdropClick={() => setNoteTarget(undefined)}>
-        <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-black/15 dark:bg-white/20" />
-        <div className="px-4 pt-3">
-          <div className="text-[15px] font-semibold mb-2">{COPY.planner.editNote}</div>
-          <textarea
-            rows={4}
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            className="w-full rounded-xl bg-black/5 dark:bg-white/10 p-3 text-[16px] outline-none resize-none"
-          />
-          <div className="flex justify-between py-3">
-            <button type="button" className="text-[16px] text-red-500" onClick={() => saveNote(true)}>
-              {COPY.planner.delete}
-            </button>
-            <button
-              type="button"
-              className="text-[16px] font-semibold text-primary disabled:opacity-40"
-              disabled={!draft.trim()}
-              onClick={() => saveNote(false)}
-            >
-              {COPY.planner.save}
             </button>
           </div>
         </div>

@@ -246,6 +246,10 @@ type PlannerNote struct {
 	CreatorID int32
 	Date      string
 	Content   string
+	// Remark is a longer text shown only on the note's own page.
+	Remark string
+	// MemoNames are the linked documents, "memos/{uid}", in display order.
+	MemoNames []string
 	CreatedTs int64
 	UpdatedTs int64
 }
@@ -261,9 +265,11 @@ type FindPlannerNote struct {
 
 // UpdatePlannerNote changes the given fields of one note.
 type UpdatePlannerNote struct {
-	ID      int32
-	Date    *string
-	Content *string
+	ID        int32
+	Date      *string
+	Content   *string
+	Remark    *string
+	MemoNames *[]string
 }
 
 // PlannerImport is a whole planner written in one transaction. Check-ins name

@@ -699,3 +699,34 @@ func TestHabitTodos(t *testing.T) {
 	_, err = ts.Service.SetCheckIn(userCtx, &v1pb.SetCheckInRequest{CheckIn: &v1pb.CheckIn{Habit: run.Name, Date: "2026-10-22"}})
 	requireCode(t, err, codes.FailedPrecondition)
 }
+
+func TestPlannerNoteRemarkAndDocuments(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestService(t)
+	defer ts.Cleanup()
+	user, err := ts.CreateRegularUser(ctx, "owner")
+	require.NoError(t, err)
+	userCtx := ts.CreateUserContext(ctx, user.ID)
+
+	note, err := ts.Service.CreatePlannerNote(userCtx, &v1pb.CreatePlannerNoteRequest{Note: &v1pb.PlannerNote{Date: "2026-10-01", Content: "病了"}})
+	require.NoError(t, err)
+	require.Empty(t, note.Remark)
+	require.Empty(t, note.Memos)
+
+	_, err = ts.Service.UpdatePlannerNote(userCtx, &v1pb.UpdatePlannerNoteRequest{
+		Note:       &v1pb.PlannerNote{Name: note.Name, Remark: "发烧 38 度", Memos: []string{"memos/a", "memos/b"}},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"remark", "memos"}},
+	})
+	require.NoError(t, err)
+	got, err := ts.Service.GetPlannerNote(userCtx, &v1pb.GetPlannerNoteRequest{Name: note.Name})
+	require.NoError(t, err)
+	require.Equal(t, "病了", got.Content)
+	require.Equal(t, "发烧 38 度", got.Remark)
+	require.Equal(t, []string{"memos/a", "memos/b"}, got.Memos)
+
+	_, err = ts.Service.UpdatePlannerNote(userCtx, &v1pb.UpdatePlannerNoteRequest{
+		Note:       &v1pb.PlannerNote{Name: note.Name, Memos: []string{"not-a-memo"}},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"memos"}},
+	})
+	requireCode(t, err, codes.InvalidArgument)
+}

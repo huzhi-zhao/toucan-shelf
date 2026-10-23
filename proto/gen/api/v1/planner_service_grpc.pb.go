@@ -39,6 +39,7 @@ const (
 	PlannerService_UpdateTodo_FullMethodName            = "/memos.api.v1.PlannerService/UpdateTodo"
 	PlannerService_PostponeTodo_FullMethodName          = "/memos.api.v1.PlannerService/PostponeTodo"
 	PlannerService_DeleteTodo_FullMethodName            = "/memos.api.v1.PlannerService/DeleteTodo"
+	PlannerService_GetPlannerNote_FullMethodName        = "/memos.api.v1.PlannerService/GetPlannerNote"
 	PlannerService_CreatePlannerNote_FullMethodName     = "/memos.api.v1.PlannerService/CreatePlannerNote"
 	PlannerService_UpdatePlannerNote_FullMethodName     = "/memos.api.v1.PlannerService/UpdatePlannerNote"
 	PlannerService_DeletePlannerNote_FullMethodName     = "/memos.api.v1.PlannerService/DeletePlannerNote"
@@ -137,6 +138,8 @@ type PlannerServiceClient interface {
 	PostponeTodo(ctx context.Context, in *PostponeTodoRequest, opts ...grpc.CallOption) (*Todo, error)
 	// DeleteTodo deletes a todo.
 	DeleteTodo(ctx context.Context, in *DeleteTodoRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// GetPlannerNote returns one note.
+	GetPlannerNote(ctx context.Context, in *GetPlannerNoteRequest, opts ...grpc.CallOption) (*PlannerNote, error)
 	// CreatePlannerNote adds a note to a day.
 	CreatePlannerNote(ctx context.Context, in *CreatePlannerNoteRequest, opts ...grpc.CallOption) (*PlannerNote, error)
 	// UpdatePlannerNote changes the fields named in update_mask.
@@ -351,6 +354,16 @@ func (c *plannerServiceClient) DeleteTodo(ctx context.Context, in *DeleteTodoReq
 	return out, nil
 }
 
+func (c *plannerServiceClient) GetPlannerNote(ctx context.Context, in *GetPlannerNoteRequest, opts ...grpc.CallOption) (*PlannerNote, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PlannerNote)
+	err := c.cc.Invoke(ctx, PlannerService_GetPlannerNote_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *plannerServiceClient) CreatePlannerNote(ctx context.Context, in *CreatePlannerNoteRequest, opts ...grpc.CallOption) (*PlannerNote, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PlannerNote)
@@ -501,6 +514,8 @@ type PlannerServiceServer interface {
 	PostponeTodo(context.Context, *PostponeTodoRequest) (*Todo, error)
 	// DeleteTodo deletes a todo.
 	DeleteTodo(context.Context, *DeleteTodoRequest) (*emptypb.Empty, error)
+	// GetPlannerNote returns one note.
+	GetPlannerNote(context.Context, *GetPlannerNoteRequest) (*PlannerNote, error)
 	// CreatePlannerNote adds a note to a day.
 	CreatePlannerNote(context.Context, *CreatePlannerNoteRequest) (*PlannerNote, error)
 	// UpdatePlannerNote changes the fields named in update_mask.
@@ -581,6 +596,9 @@ func (UnimplementedPlannerServiceServer) PostponeTodo(context.Context, *Postpone
 }
 func (UnimplementedPlannerServiceServer) DeleteTodo(context.Context, *DeleteTodoRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteTodo not implemented")
+}
+func (UnimplementedPlannerServiceServer) GetPlannerNote(context.Context, *GetPlannerNoteRequest) (*PlannerNote, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPlannerNote not implemented")
 }
 func (UnimplementedPlannerServiceServer) CreatePlannerNote(context.Context, *CreatePlannerNoteRequest) (*PlannerNote, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreatePlannerNote not implemented")
@@ -963,6 +981,24 @@ func _PlannerService_DeleteTodo_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PlannerService_GetPlannerNote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPlannerNoteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlannerServiceServer).GetPlannerNote(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlannerService_GetPlannerNote_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlannerServiceServer).GetPlannerNote(ctx, req.(*GetPlannerNoteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PlannerService_CreatePlannerNote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreatePlannerNoteRequest)
 	if err := dec(in); err != nil {
@@ -1153,6 +1189,10 @@ var PlannerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteTodo",
 			Handler:    _PlannerService_DeleteTodo_Handler,
+		},
+		{
+			MethodName: "GetPlannerNote",
+			Handler:    _PlannerService_GetPlannerNote_Handler,
 		},
 		{
 			MethodName: "CreatePlannerNote",

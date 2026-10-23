@@ -90,6 +90,9 @@ const (
 	// PlannerServiceDeleteTodoProcedure is the fully-qualified name of the PlannerService's DeleteTodo
 	// RPC.
 	PlannerServiceDeleteTodoProcedure = "/memos.api.v1.PlannerService/DeleteTodo"
+	// PlannerServiceGetPlannerNoteProcedure is the fully-qualified name of the PlannerService's
+	// GetPlannerNote RPC.
+	PlannerServiceGetPlannerNoteProcedure = "/memos.api.v1.PlannerService/GetPlannerNote"
 	// PlannerServiceCreatePlannerNoteProcedure is the fully-qualified name of the PlannerService's
 	// CreatePlannerNote RPC.
 	PlannerServiceCreatePlannerNoteProcedure = "/memos.api.v1.PlannerService/CreatePlannerNote"
@@ -188,6 +191,8 @@ type PlannerServiceClient interface {
 	PostponeTodo(context.Context, *connect.Request[v1.PostponeTodoRequest]) (*connect.Response[v1.Todo], error)
 	// DeleteTodo deletes a todo.
 	DeleteTodo(context.Context, *connect.Request[v1.DeleteTodoRequest]) (*connect.Response[emptypb.Empty], error)
+	// GetPlannerNote returns one note.
+	GetPlannerNote(context.Context, *connect.Request[v1.GetPlannerNoteRequest]) (*connect.Response[v1.PlannerNote], error)
 	// CreatePlannerNote adds a note to a day.
 	CreatePlannerNote(context.Context, *connect.Request[v1.CreatePlannerNoteRequest]) (*connect.Response[v1.PlannerNote], error)
 	// UpdatePlannerNote changes the fields named in update_mask.
@@ -329,6 +334,12 @@ func NewPlannerServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(plannerServiceMethods.ByName("DeleteTodo")),
 			connect.WithClientOptions(opts...),
 		),
+		getPlannerNote: connect.NewClient[v1.GetPlannerNoteRequest, v1.PlannerNote](
+			httpClient,
+			baseURL+PlannerServiceGetPlannerNoteProcedure,
+			connect.WithSchema(plannerServiceMethods.ByName("GetPlannerNote")),
+			connect.WithClientOptions(opts...),
+		),
 		createPlannerNote: connect.NewClient[v1.CreatePlannerNoteRequest, v1.PlannerNote](
 			httpClient,
 			baseURL+PlannerServiceCreatePlannerNoteProcedure,
@@ -389,6 +400,7 @@ type plannerServiceClient struct {
 	updateTodo            *connect.Client[v1.UpdateTodoRequest, v1.Todo]
 	postponeTodo          *connect.Client[v1.PostponeTodoRequest, v1.Todo]
 	deleteTodo            *connect.Client[v1.DeleteTodoRequest, emptypb.Empty]
+	getPlannerNote        *connect.Client[v1.GetPlannerNoteRequest, v1.PlannerNote]
 	createPlannerNote     *connect.Client[v1.CreatePlannerNoteRequest, v1.PlannerNote]
 	updatePlannerNote     *connect.Client[v1.UpdatePlannerNoteRequest, v1.PlannerNote]
 	deletePlannerNote     *connect.Client[v1.DeletePlannerNoteRequest, emptypb.Empty]
@@ -490,6 +502,11 @@ func (c *plannerServiceClient) PostponeTodo(ctx context.Context, req *connect.Re
 // DeleteTodo calls memos.api.v1.PlannerService.DeleteTodo.
 func (c *plannerServiceClient) DeleteTodo(ctx context.Context, req *connect.Request[v1.DeleteTodoRequest]) (*connect.Response[emptypb.Empty], error) {
 	return c.deleteTodo.CallUnary(ctx, req)
+}
+
+// GetPlannerNote calls memos.api.v1.PlannerService.GetPlannerNote.
+func (c *plannerServiceClient) GetPlannerNote(ctx context.Context, req *connect.Request[v1.GetPlannerNoteRequest]) (*connect.Response[v1.PlannerNote], error) {
+	return c.getPlannerNote.CallUnary(ctx, req)
 }
 
 // CreatePlannerNote calls memos.api.v1.PlannerService.CreatePlannerNote.
@@ -600,6 +617,8 @@ type PlannerServiceHandler interface {
 	PostponeTodo(context.Context, *connect.Request[v1.PostponeTodoRequest]) (*connect.Response[v1.Todo], error)
 	// DeleteTodo deletes a todo.
 	DeleteTodo(context.Context, *connect.Request[v1.DeleteTodoRequest]) (*connect.Response[emptypb.Empty], error)
+	// GetPlannerNote returns one note.
+	GetPlannerNote(context.Context, *connect.Request[v1.GetPlannerNoteRequest]) (*connect.Response[v1.PlannerNote], error)
 	// CreatePlannerNote adds a note to a day.
 	CreatePlannerNote(context.Context, *connect.Request[v1.CreatePlannerNoteRequest]) (*connect.Response[v1.PlannerNote], error)
 	// UpdatePlannerNote changes the fields named in update_mask.
@@ -737,6 +756,12 @@ func NewPlannerServiceHandler(svc PlannerServiceHandler, opts ...connect.Handler
 		connect.WithSchema(plannerServiceMethods.ByName("DeleteTodo")),
 		connect.WithHandlerOptions(opts...),
 	)
+	plannerServiceGetPlannerNoteHandler := connect.NewUnaryHandler(
+		PlannerServiceGetPlannerNoteProcedure,
+		svc.GetPlannerNote,
+		connect.WithSchema(plannerServiceMethods.ByName("GetPlannerNote")),
+		connect.WithHandlerOptions(opts...),
+	)
 	plannerServiceCreatePlannerNoteHandler := connect.NewUnaryHandler(
 		PlannerServiceCreatePlannerNoteProcedure,
 		svc.CreatePlannerNote,
@@ -813,6 +838,8 @@ func NewPlannerServiceHandler(svc PlannerServiceHandler, opts ...connect.Handler
 			plannerServicePostponeTodoHandler.ServeHTTP(w, r)
 		case PlannerServiceDeleteTodoProcedure:
 			plannerServiceDeleteTodoHandler.ServeHTTP(w, r)
+		case PlannerServiceGetPlannerNoteProcedure:
+			plannerServiceGetPlannerNoteHandler.ServeHTTP(w, r)
 		case PlannerServiceCreatePlannerNoteProcedure:
 			plannerServiceCreatePlannerNoteHandler.ServeHTTP(w, r)
 		case PlannerServiceUpdatePlannerNoteProcedure:
@@ -908,6 +935,10 @@ func (UnimplementedPlannerServiceHandler) PostponeTodo(context.Context, *connect
 
 func (UnimplementedPlannerServiceHandler) DeleteTodo(context.Context, *connect.Request[v1.DeleteTodoRequest]) (*connect.Response[emptypb.Empty], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.DeleteTodo is not implemented"))
+}
+
+func (UnimplementedPlannerServiceHandler) GetPlannerNote(context.Context, *connect.Request[v1.GetPlannerNoteRequest]) (*connect.Response[v1.PlannerNote], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.GetPlannerNote is not implemented"))
 }
 
 func (UnimplementedPlannerServiceHandler) CreatePlannerNote(context.Context, *connect.Request[v1.CreatePlannerNoteRequest]) (*connect.Response[v1.PlannerNote], error) {
