@@ -18,6 +18,7 @@ import {
   monthRange,
   parseAmount,
   parseReps,
+  pinnedHabitNamesOn,
   postponeChoices,
   readCalendarView,
   saveCalendarView,
@@ -140,7 +141,7 @@ describe("calendar data", () => {
 });
 
 const version = (effectiveDate: string, ...habits: string[]): HabitVersion =>
-  create(HabitVersionSchema, { effectiveDate, entries: habits.map((habit, i) => ({ habit, weeklyGoal: i })) });
+  create(HabitVersionSchema, { effectiveDate, entries: habits.map((habit, i) => ({ habit, weeklyGoal: i, pinned: i < 3 })) });
 
 describe("habit versions", () => {
   const habits = ["a", "b", "c"].map((id, i) => create(HabitSchema, { name: `planner/habits/${id}`, title: id, color: i }));
@@ -172,6 +173,20 @@ describe("habit versions", () => {
     expect(data.events).toEqual(["a", "b", "c"]);
     // A month after the change lists only the habits in use then.
     expect(buildCalendarData(habits, versions, undefined, { startDate: "2026-11-24", endDate: "2027-01-07" }).events).toEqual(["c", "a"]);
+  });
+
+  it("gives only pinned habits a place in a day's cell", () => {
+    const folded = create(HabitVersionSchema, {
+      effectiveDate: "",
+      entries: [
+        { habit: "planner/habits/a", pinned: false },
+        { habit: "planner/habits/b", pinned: true },
+      ],
+    });
+    expect(
+      buildCalendarData(habits, [folded], undefined, { startDate: "2026-09-24", endDate: "2026-11-07" }).slotsOf("2026-10-19"),
+    ).toEqual(["b"]);
+    expect([...pinnedHabitNamesOn([folded], "2026-10-19")]).toEqual(["planner/habits/b"]);
   });
 
   it("counts a habit's check-ins in the week of a day", () => {

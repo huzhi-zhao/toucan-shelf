@@ -22,8 +22,12 @@ const (
 	PlannerTodoCancelled = "cancelled"
 )
 
-// PlannerMaxHabitsPerVersion is how many habits a version holds: the calendar has five dot places a day.
-const PlannerMaxHabitsPerVersion = 5
+// PlannerMaxHabitsPerVersion is how many habits a version holds.
+const PlannerMaxHabitsPerVersion = 10
+
+// PlannerMaxPinnedHabits is how many habits of a version are pinned: shown on the planner page and in the
+// calendar's day cells, which have room for one row of three icons. The rest fold behind one button.
+const PlannerMaxPinnedHabits = 3
 
 // ErrPlannerNotEmpty is returned by ImportPlanner when the user already has
 // planner data: an import is a one-time backfill and must not run twice.
@@ -82,6 +86,8 @@ type PlannerHabitVersionEntry struct {
 	HabitID int32 `json:"habit_id"`
 	// WeeklyGoal is how many check-ins a week the habit aims for; 0 for none.
 	WeeklyGoal int32 `json:"weekly_goal"`
+	// Pinned habits show on the planner page; the others fold away.
+	Pinned bool `json:"pinned,omitempty"`
 }
 
 // FindPlannerHabit filters habits. Callers always scope by CreatorID.

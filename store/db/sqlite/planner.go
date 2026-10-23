@@ -734,7 +734,8 @@ func (d *DB) ImportPlanner(ctx context.Context, data *store.PlannerImport) error
 		}
 		habitIDs[i] = created.ID
 		if !habit.Archived && len(first.Entries) < store.PlannerMaxHabitsPerVersion {
-			first.Entries = append(first.Entries, store.PlannerHabitVersionEntry{HabitID: created.ID})
+			pinned := len(first.Entries) < store.PlannerMaxPinnedHabits
+			first.Entries = append(first.Entries, store.PlannerHabitVersionEntry{HabitID: created.ID, Pinned: pinned})
 		}
 	}
 	if len(data.Habits) > 0 {

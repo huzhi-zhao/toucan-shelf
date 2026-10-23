@@ -1,5 +1,5 @@
 import { List, ListButton, ListItem, Navbar, NavbarBackLink, Page, Preloader, Stepper, Toast } from "konsta/react";
-import { ArrowDownIcon, ArrowUpIcon, XIcon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, PinIcon, PinOffIcon, XIcon } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -21,14 +21,15 @@ import SectionTitle from "../../components/SectionTitle";
 import { COPY } from "../../copy";
 import { useBlurOnClose } from "../../lib/keyboard";
 import { useBack, useBackLabel, useGo } from "../../lib/nav";
-import { colorsTakenFor, habitColor, habitVersionOn, localToday, versionLabel } from "../../lib/planner";
+import { habitColor, habitVersionOn, localToday, versionLabel } from "../../lib/planner";
 import { docRoute, MOBILE_ROUTES } from "../../routes";
 
-// The server's limits: five habits a plan, a goal of at most every day.
-const MAX_HABITS = 5;
+// The server's limits: ten habits a plan, three of them pinned, a goal of at most every day.
+const MAX_HABITS = 10;
+const MAX_PINNED = 3;
 const MAX_WEEKLY_GOAL = 7;
 
-type Entry = { habit: string; weeklyGoal: number };
+type Entry = { habit: string; weeklyGoal: number; pinned: boolean };
 type Plan = { entries: Entry[]; memos: string[] };
 
 const Hint = ({ children, danger }: { children: ReactNode; danger?: boolean }) => (
@@ -67,7 +68,7 @@ export default function HabitVersionPage() {
     if (plan || !plans) return;
     const base = readonly ? plans.versions.find((v) => v.effectiveDate === opened) : (plans.draft ?? habitVersionOn(plans.versions, today));
     setPlan({
-      entries: base?.entries.map((entry) => ({ habit: entry.habit, weeklyGoal: entry.weeklyGoal })) ?? [],
+      entries: base?.entries.map((entry) => ({ habit: entry.habit, weeklyGoal: entry.weeklyGoal, pinned: entry.pinned })) ?? [],
       memos: [...(base?.memos ?? [])],
     });
   }, [plan, plans, readonly, opened, today]);
@@ -104,8 +105,7 @@ export default function HabitVersionPage() {
   const habitByName = new Map(habits.map((habit) => [habit.name, habit]));
   const picked = new Set(entries.map((entry) => entry.habit));
   const pool = habits.filter((habit) => !picked.has(habit.name));
-  const colors = entries.map((entry) => habitByName.get(entry.habit)?.color);
-  const sameColor = colors.some((color, i) => color !== undefined && colors.indexOf(color) !== i);
+  const pinnedCount = entries.filter((entry) => entry.pinned).length;
   const busy = saveDraft.isPending || enableDraft.isPending;
 
   const add = (habit: string) => {
@@ -113,7 +113,14 @@ export default function HabitVersionPage() {
       flash(COPY.plannerSettings.maxHabits(MAX_HABITS));
       return;
     }
-    setEntries([...entries, { habit, weeklyGoal: 0 }]);
+    setEntries([...entries, { habit, weeklyGoal: 0, pinned: pinnedCount < MAX_PINNED }]);
+  };
+  const togglePin = (index: number) => {
+    if (!entries[index].pinned && pinnedCount >= MAX_PINNED) {
+      flash(COPY.plannerSettings.maxPinned(MAX_PINNED));
+      return;
+    }
+    setEntries(entries.map((entry, i) => (i === index ? { ...entry, pinned: !entry.pinned } : entry)));
   };
   const move = (index: number, by: number) => {
     const next = [...entries];
@@ -164,7 +171,7 @@ export default function HabitVersionPage() {
     try {
       if (!habit) {
         const created = await createHabit.mutateAsync(title);
-        if (entries.length < MAX_HABITS) setEntries([...entries, { habit: created.name, weeklyGoal: 0 }]);
+        if (entries.length < MAX_HABITS) setEntries([...entries, { habit: created.name, weeklyGoal: 0, pinned: pinnedCount < MAX_PINNED }]);
         return;
       }
       await updateHabit.mutateAsync({
@@ -176,12 +183,6 @@ export default function HabitVersionPage() {
       flash(COPY.planner.failed);
     }
   };
-  // A color is taken when a habit of this plan, or of an enabled plan with this habit, already has it.
-  const takenColors = (habit: Habit) =>
-    new Set([
-      ...colorsTakenFor(habit.name, habits, plans.versions, today),
-      ...entries.flatMap((entry) => (entry.habit !== habit.name ? (habitByName.get(entry.habit)?.color ?? []) : [])),
-    ]);
 
   return (
     <Page className="pb-safe">
@@ -198,6 +199,7 @@ export default function HabitVersionPage() {
             <ListItem
               key={entry.habit}
               media={<span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: habitColor(habit) }} />}
+              header={entry.pinned ? <span className="text-primary">📌 {COPY.plannerSettings.pin}</span> : undefined}
               title={
                 readonly ? (
                   habit.title
@@ -212,6 +214,15 @@ export default function HabitVersionPage() {
                   COPY.plannerSettings.weeklyGoal(entry.weeklyGoal)
                 ) : (
                   <div className="flex items-center gap-3 text-black/50 dark:text-white/50">
+                    <button
+                      type="button"
+                      aria-label={COPY.plannerSettings.pin}
+                      aria-pressed={entry.pinned}
+                      className={entry.pinned ? "text-primary" : undefined}
+                      onClick={() => togglePin(index)}
+                    >
+                      {entry.pinned ? <PinIcon className="w-4 h-4" /> : <PinOffIcon className="w-4 h-4" />}
+                    </button>
                     <button
                       type="button"
                       aria-label="↑"
@@ -259,7 +270,7 @@ export default function HabitVersionPage() {
           );
         })}
       </List>
-      {sameColor ? <Hint danger>{COPY.plannerSettings.sameColor}</Hint> : <Hint>{COPY.plannerSettings.versionHabitsHint}</Hint>}
+      <Hint>{COPY.plannerSettings.versionHabitsHint}</Hint>
 
       {!readonly && (
         <>
@@ -298,10 +309,10 @@ export default function HabitVersionPage() {
       {!readonly && (
         <>
           <List strongIos insetIos dividersIos className="mt-8">
-            <ListButton onClick={save} className={sameColor || busy ? "pointer-events-none opacity-40" : undefined}>
+            <ListButton onClick={save} className={busy ? "pointer-events-none opacity-40" : undefined}>
               {COPY.plannerSettings.saveDraft}
             </ListButton>
-            <ListButton onClick={enable} className={sameColor || busy ? "pointer-events-none opacity-40" : "font-semibold"}>
+            <ListButton onClick={enable} className={busy ? "pointer-events-none opacity-40" : "font-semibold"}>
               {COPY.plannerSettings.enable}
             </ListButton>
           </List>
@@ -313,12 +324,7 @@ export default function HabitVersionPage() {
         </>
       )}
 
-      <HabitEditSheet
-        habit={editing}
-        takenColors={editing ? takenColors(editing) : new Set()}
-        onClose={() => setEditing(undefined)}
-        onSave={saveHabit}
-      />
+      <HabitEditSheet habit={editing} onClose={() => setEditing(undefined)} onSave={saveHabit} />
 
       <DocPickerSheet
         opened={pickerOpen}

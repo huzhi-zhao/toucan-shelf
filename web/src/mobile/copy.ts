@@ -145,6 +145,8 @@ export const COPY = {
     failed: "保存失败，请稍后再试",
   },
   planner: {
+    moreHabits: (checked: number, total: number) => (checked > 0 ? `${checked}/${total}` : `${total}`),
+    foldedHabits: "其余习惯",
     title: "计划",
     today: "今天",
     weekdays: ["周日", "周一", "周二", "周三", "周四", "周五", "周六"],
@@ -203,11 +205,13 @@ export const COPY = {
     weeklyGoal: (goal: number) => (goal > 0 ? `每周 ${goal} 次` : "不设目标"),
     draftTitle: "计划草稿",
     versionHabits: (count: number, max: number) => `习惯（${count}/${max}）`,
-    versionHabitsHint: "日历格子里，打了卡的习惯图标按这个顺序排。每周目标显示在习惯按钮和习惯待办上，例如“🚶 2/3”。",
+    versionHabitsHint:
+      "最多固定 3 个习惯：计划页直接显示它们的按钮，日历格子里也只画它们的图标；其余的收进“⋯”按钮。图标按这个顺序排。每周目标显示在习惯按钮和习惯待办上，例如“🚶 2/3”。",
     habitPool: "习惯池",
     habitPoolHint: "建过的习惯都在这里，点一下加进计划。",
     maxHabits: (max: number) => `一个计划最多 ${max} 个习惯`,
-    sameColor: "有两个习惯同色，先改掉一个的颜色",
+    pin: "固定",
+    maxPinned: (max: number) => `最多固定 ${max} 个习惯`,
     docs: "关联文档",
     noDocs: "没有关联文档",
     docsHint: "文档内容在知识库里编辑，这里只决定关联哪几篇。",
@@ -224,7 +228,6 @@ export const COPY = {
     removeHabit: "移出",
     editHabit: "编辑习惯",
     color: "颜色",
-    colorTaken: "同一计划里的习惯已经用了这个颜色",
     import: "导入日历数据",
   },
   plannerImport: {

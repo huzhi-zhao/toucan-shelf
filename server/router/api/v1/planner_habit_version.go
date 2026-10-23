@@ -87,7 +87,7 @@ func convertHabitVersionFromStore(version *store.PlannerHabitVersion, habitUIDs 
 		if !ok {
 			continue
 		}
-		result.Entries = append(result.Entries, &v1pb.HabitVersionEntry{Habit: habitNamePrefix + uid, WeeklyGoal: entry.WeeklyGoal})
+		result.Entries = append(result.Entries, &v1pb.HabitVersionEntry{Habit: habitNamePrefix + uid, WeeklyGoal: entry.WeeklyGoal, Pinned: entry.Pinned})
 	}
 	return result
 }
@@ -137,14 +137,14 @@ func (s *APIV1Service) ListHabitVersions(ctx context.Context, _ *v1pb.ListHabitV
 	return response, nil
 }
 
-// planEntries checks a plan's habits and turns them into store entries: at most five, each once, no two of
-// the same color, goals within a week. It also returns the habits' UIDs for the response.
+// planEntries checks a plan's habits and turns them into store entries: at most ten, each once, at most three
+// pinned, goals within a week. It also returns the habits' UIDs for the response.
 func (s *APIV1Service) planEntries(ctx context.Context, user *store.User, entries []*v1pb.HabitVersionEntry) ([]store.PlannerHabitVersionEntry, map[int32]string, error) {
 	if len(entries) > store.PlannerMaxHabitsPerVersion {
 		return nil, nil, status.Errorf(codes.InvalidArgument, "a plan has at most %d habits", store.PlannerMaxHabitsPerVersion)
 	}
 	result := []store.PlannerHabitVersionEntry{}
-	colors := map[int32]bool{}
+	pinned := 0
 	uids := map[int32]string{}
 	for _, entry := range entries {
 		habit, err := s.getOwnHabit(ctx, user, entry.Habit)
@@ -154,14 +154,17 @@ func (s *APIV1Service) planEntries(ctx context.Context, user *store.User, entrie
 		if _, dup := uids[habit.ID]; dup {
 			return nil, nil, status.Errorf(codes.InvalidArgument, "habit %s is in the plan twice", entry.Habit)
 		}
-		if colors[habit.Color] {
-			return nil, nil, status.Errorf(codes.InvalidArgument, "two habits in a plan share a color")
-		}
 		if entry.WeeklyGoal < 0 || entry.WeeklyGoal > plannerMaxWeeklyGoal {
 			return nil, nil, status.Errorf(codes.InvalidArgument, "weekly_goal must be 0 to %d", plannerMaxWeeklyGoal)
 		}
-		uids[habit.ID], colors[habit.Color] = habit.UID, true
-		result = append(result, store.PlannerHabitVersionEntry{HabitID: habit.ID, WeeklyGoal: entry.WeeklyGoal})
+		if entry.Pinned {
+			pinned++
+		}
+		uids[habit.ID] = habit.UID
+		result = append(result, store.PlannerHabitVersionEntry{HabitID: habit.ID, WeeklyGoal: entry.WeeklyGoal, Pinned: entry.Pinned})
+	}
+	if pinned > store.PlannerMaxPinnedHabits {
+		return nil, nil, status.Errorf(codes.InvalidArgument, "a plan pins at most %d habits", store.PlannerMaxPinnedHabits)
 	}
 	return result, uids, nil
 }
@@ -220,12 +223,8 @@ func (s *APIV1Service) EnableHabitDraft(ctx context.Context, request *v1pb.Enabl
 	if draft == nil {
 		return nil, status.Errorf(codes.NotFound, "there is no habit draft to enable")
 	}
-	// A habit may have changed color since the draft was saved.
 	uids, err := s.habitUIDs(ctx, user)
 	if err != nil {
-		return nil, err
-	}
-	if err := s.checkPlanColors(ctx, user, draft.Entries); err != nil {
 		return nil, err
 	}
 	dropped, err := s.orphanedHabitTodos(ctx, user, &store.PlannerHabitVersion{Entries: draft.Entries}, local, "")
@@ -243,27 +242,6 @@ func (s *APIV1Service) EnableHabitDraft(ctx context.Context, request *v1pb.Enabl
 		return nil, status.Errorf(codes.Internal, "failed to enable habit draft: %v", err)
 	}
 	return convertHabitVersionFromStore(enabled, uids), nil
-}
-
-// checkPlanColors refuses a plan with two habits of the same color.
-func (s *APIV1Service) checkPlanColors(ctx context.Context, user *store.User, entries []store.PlannerHabitVersionEntry) error {
-	habits, err := s.Store.ListPlannerHabits(ctx, &store.FindPlannerHabit{CreatorID: &user.ID})
-	if err != nil {
-		return status.Errorf(codes.Internal, "failed to list habits: %v", err)
-	}
-	colorOf := map[int32]int32{}
-	for _, habit := range habits {
-		colorOf[habit.ID] = habit.Color
-	}
-	seen := map[int32]bool{}
-	for _, entry := range entries {
-		color := colorOf[entry.HabitID]
-		if seen[color] {
-			return status.Errorf(codes.FailedPrecondition, "two habits in the plan share a color")
-		}
-		seen[color] = true
-	}
-	return nil
 }
 
 // orphanedHabitTodos lists the open habit todos dated from start up to (not including) end, "" for no end,

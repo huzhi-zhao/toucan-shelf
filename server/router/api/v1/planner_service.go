@@ -363,7 +363,7 @@ func (s *APIV1Service) UpdateHabit(ctx context.Context, request *v1pb.UpdateHabi
 			}
 			update.Name = &title
 		case "color":
-			if err := s.checkHabitColor(ctx, user, habit, request.Habit.Color); err != nil {
+			if err := checkHabitColor(request.Habit.Color); err != nil {
 				return nil, err
 			}
 			update.Color = &request.Habit.Color
@@ -405,33 +405,11 @@ func newHabitColor(habits []*store.PlannerHabit, versions []*store.PlannerHabitV
 	return int32(len(habits) % plannerHabitColors)
 }
 
-// checkHabitColor refuses a color out of the palette, or one another habit already has in a version this
-// habit is in, still in use or to come: the dots of one day must tell the habits apart.
-func (s *APIV1Service) checkHabitColor(ctx context.Context, user *store.User, habit *store.PlannerHabit, color int32) error {
+// checkHabitColor refuses a color out of the palette. Habits of one plan may share a color: the planner shows
+// them by icon.
+func checkHabitColor(color int32) error {
 	if color < 0 || color >= plannerHabitColors {
 		return status.Errorf(codes.InvalidArgument, "color must be 0 to %d", plannerHabitColors-1)
-	}
-	habits, err := s.Store.ListPlannerHabits(ctx, &store.FindPlannerHabit{CreatorID: &user.ID})
-	if err != nil {
-		return status.Errorf(codes.Internal, "failed to list habits: %v", err)
-	}
-	colorOf := map[int32]int32{}
-	for _, other := range habits {
-		colorOf[other.ID] = other.Color
-	}
-	versions, err := s.listHabitVersions(ctx, user)
-	if err != nil {
-		return err
-	}
-	for _, version := range s.liveHabitVersions(versions) {
-		if !habitVersionHas(version, habit.ID) {
-			continue
-		}
-		for _, entry := range version.Entries {
-			if entry.HabitID != habit.ID && colorOf[entry.HabitID] == color {
-				return status.Errorf(codes.FailedPrecondition, "another habit in the same version has this color")
-			}
-		}
 	}
 	return nil
 }

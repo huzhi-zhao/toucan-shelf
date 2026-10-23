@@ -9,8 +9,6 @@ import { isSingleEmoji, joinHabitTitle, splitHabitTitle } from "../../lib/planne
 interface Props {
   /** Open on a habit to edit it, or on null to create one; closed when undefined. */
   habit: Habit | null | undefined;
-  /** Colors other habits of its versions use: the habit cannot take them. */
-  takenColors: Set<number>;
   onClose: () => void;
   /** `color` is left out for a new habit: the server gives it one no other habit has. */
   onSave: (changes: { title: string; color?: number }) => void;
@@ -20,7 +18,7 @@ interface Props {
  * A habit's icon, name and, for an existing one, color (requirement §2.4.2 §1). The icon is one emoji and
  * required; the name may be left empty. Both are saved as the title, icon first. Habits are never deleted.
  */
-export default function HabitEditSheet({ habit, takenColors, onClose, onSave }: Props) {
+export default function HabitEditSheet({ habit, onClose, onSave }: Props) {
   const [icon, setIcon] = useState("");
   const [name, setName] = useState("");
   const [color, setColor] = useState(0);
@@ -60,26 +58,20 @@ export default function HabitEditSheet({ habit, takenColors, onClose, onSave }: 
           <>
             <div className="mt-3 mb-2 text-[13px] text-black/45 dark:text-white/45">{COPY.plannerSettings.color}</div>
             <div className="flex flex-wrap gap-3">
-              {EVENT_COLORS.map((swatch, index) => {
-                const taken = index !== habit.color && takenColors.has(index);
-                return (
-                  <button
-                    key={swatch}
-                    type="button"
-                    disabled={taken}
-                    aria-label={`${COPY.plannerSettings.color} ${index + 1}`}
-                    aria-pressed={color === index}
-                    title={taken ? COPY.plannerSettings.colorTaken : undefined}
-                    onClick={() => setColor(index)}
-                    className={cn(
-                      "w-8 h-8 rounded-full ring-offset-2 ring-offset-white dark:ring-offset-[#1c1c1e]",
-                      color === index && "ring-2 ring-black/60 dark:ring-white/70",
-                      taken && "opacity-20",
-                    )}
-                    style={{ backgroundColor: swatch }}
-                  />
-                );
-              })}
+              {EVENT_COLORS.map((swatch, index) => (
+                <button
+                  key={swatch}
+                  type="button"
+                  aria-label={`${COPY.plannerSettings.color} ${index + 1}`}
+                  aria-pressed={color === index}
+                  onClick={() => setColor(index)}
+                  className={cn(
+                    "w-8 h-8 rounded-full ring-offset-2 ring-offset-white dark:ring-offset-[#1c1c1e]",
+                    color === index && "ring-2 ring-black/60 dark:ring-white/70",
+                  )}
+                  style={{ backgroundColor: swatch }}
+                />
+              ))}
             </div>
           </>
         )}
