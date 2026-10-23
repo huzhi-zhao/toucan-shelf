@@ -204,7 +204,7 @@ export const COPY = {
     draftTitle: "计划草稿",
     versionHabits: (count: number, max: number) => `习惯（${count}/${max}）`,
     versionHabitsHint:
-      "最多固定 3 个习惯：计划页直接显示它们的按钮，日历格子里也只画它们的图标；其余的收进“更多”按钮。图标按这个顺序排。每周目标显示在习惯按钮和习惯待办上，例如“🚶 2/3”。",
+      "最多固定 3 个习惯：计划页直接显示它们的按钮，日历格子里也只画它们的图标；其余的收进“⋯”按钮。图标按这个顺序排。每周目标显示在习惯按钮和习惯待办上，例如“🚶 2/3”。",
     habitPool: "习惯池",
     habitPoolHint: "建过的习惯都在这里，点一下加进计划。",
     maxHabits: (max: number) => `一个计划最多 ${max} 个习惯`,
