@@ -633,3 +633,87 @@ func TestServeAttachmentFile_RefreshCookieAuthenticatesOwner(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Equal(t, "secret content", rec.Body.String())
 }
+
+// Safari plays a video only if a range request gets a partial answer; S3-backed media used to come back whole.
+func TestServeAttachmentFile_S3MediaSupportsRangeRequests(t *testing.T) {
+	ctx := context.Background()
+	svc, fs, testStore, cleanup := newShareAttachmentTestServices(ctx, t)
+	defer cleanup()
+
+	video := []byte("0123456789")
+	s3Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/media-test/assets/clip.mp4" {
+			http.NotFound(w, r)
+			return
+		}
+		// What S3 answers a range past the end with; http.ServeContent does the rest, ranges included.
+		if r.Header.Get("Range") == "bytes=50-60" {
+			w.Header().Set("Content-Type", "application/xml")
+			w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+			fmt.Fprint(w, `<?xml version="1.0" encoding="UTF-8"?><Error><Code>InvalidRange</Code><Message>The requested range is not satisfiable</Message></Error>`)
+			return
+		}
+		http.ServeContent(w, r, "clip.mp4", time.Unix(0, 0), bytes.NewReader(video))
+	}))
+	defer s3Server.Close()
+	_, err := testStore.UpsertInstanceSetting(ctx, &storepb.InstanceSetting{
+		Key: storepb.InstanceSettingKey_STORAGE,
+		Value: &storepb.InstanceSetting_StorageSetting{StorageSetting: &storepb.InstanceStorageSetting{
+			StorageType: storepb.InstanceStorageSetting_S3,
+			S3Config: &storepb.StorageS3Config{
+				Endpoint: s3Server.URL, Region: "us-east-1", Bucket: "media-test",
+				AccessKeyId: "test-key", AccessKeySecret: "test-secret", UsePathStyle: true,
+			},
+		}},
+	})
+	require.NoError(t, err)
+
+	creator := createMember(ctx, t, svc, "s3-range-owner")
+	creatorCtx := context.WithValue(ctx, auth.UserIDContextKey, creator.ID)
+	memo, err := svc.CreateMemo(creatorCtx, &apiv1.CreateMemoRequest{Memo: &apiv1.Memo{Content: "video", Visibility: apiv1.Visibility_PUBLIC}})
+	require.NoError(t, err)
+	memoUID := strings.TrimPrefix(memo.Name, "memos/")
+	stored, err := testStore.GetMemo(ctx, &store.FindMemo{UID: &memoUID})
+	require.NoError(t, err)
+	attachment, err := testStore.CreateAttachment(ctx, &store.Attachment{
+		UID: "s3clip", CreatorID: creator.ID, Filename: "clip.mp4", Type: "video/mp4", Size: int64(len(video)),
+		StorageType: storepb.AttachmentStorageType_S3, MemoID: &stored.ID,
+		Payload: &storepb.AttachmentPayload{Payload: &storepb.AttachmentPayload_S3Object_{S3Object: &storepb.AttachmentPayload_S3Object{Key: "assets/clip.mp4"}}},
+	})
+	require.NoError(t, err)
+
+	e := echo.New()
+	fs.RegisterRoutes(e)
+	get := func(rangeHeader string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/file/attachments/%s/%s", attachment.UID, attachment.Filename), nil)
+		if rangeHeader != "" {
+			req.Header.Set("Range", rangeHeader)
+		}
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		return rec
+	}
+
+	// Safari's probe, then a seek.
+	probe := get("bytes=0-1")
+	require.Equal(t, http.StatusPartialContent, probe.Code)
+	require.Equal(t, "01", probe.Body.String())
+	require.Equal(t, "bytes 0-1/10", probe.Header().Get("Content-Range"))
+	require.Equal(t, "2", probe.Header().Get("Content-Length"))
+	require.Equal(t, "bytes", probe.Header().Get("Accept-Ranges"))
+	require.Equal(t, "video/mp4", probe.Header().Get("Content-Type"))
+	seek := get("bytes=6-")
+	require.Equal(t, http.StatusPartialContent, seek.Code)
+	require.Equal(t, "6789", seek.Body.String())
+
+	whole := get("")
+	require.Equal(t, http.StatusOK, whole.Code)
+	require.Equal(t, "0123456789", whole.Body.String())
+	require.Equal(t, "bytes", whole.Header().Get("Accept-Ranges"))
+	// Several ranges get the whole object: S3 serves one.
+	require.Equal(t, http.StatusOK, get("bytes=0-1,4-5").Code)
+
+	past := get("bytes=50-60")
+	require.Equal(t, http.StatusRequestedRangeNotSatisfiable, past.Code)
+	require.Equal(t, "bytes */10", past.Header().Get("Content-Range"))
+}
