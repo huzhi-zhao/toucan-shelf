@@ -351,6 +351,10 @@ message CheckIn {
   // The workout the check-in stands for: one session of the habit that day.
   // Unset for a check-in without one.
   Workout workout = 6 [(google.api.field_behavior) = OPTIONAL];
+
+  // How the session went, 1 to 5; 0 when not rated. On write, leaving it
+  // unset keeps the rating already there, and 0 clears it.
+  optional int32 rating = 7 [(google.api.field_behavior) = OPTIONAL];
 }
 
 // Workout is the detail of a workout a check-in stands for. It records facts

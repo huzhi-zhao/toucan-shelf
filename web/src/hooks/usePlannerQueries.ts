@@ -171,19 +171,22 @@ export function useSetCheckIn() {
       note,
       checked,
       workout,
+      rating,
     }: {
       habit: string;
       date: string;
       note?: string;
       checked: boolean;
       workout?: Workout;
+      /** 1 to 5, or 0 to clear; left out, the rating already there stays. */
+      rating?: number;
     }) => {
       if (!checked) {
         await plannerServiceClient.deleteCheckIn({ habit, date });
         return;
       }
       // Without a workout the server keeps the one there; an empty one removes it.
-      await plannerServiceClient.setCheckIn({ checkIn: create(CheckInSchema, { habit, date, note: note ?? "", workout }) });
+      await plannerServiceClient.setCheckIn({ checkIn: create(CheckInSchema, { habit, date, note: note ?? "", workout, rating }) });
     },
   );
 }

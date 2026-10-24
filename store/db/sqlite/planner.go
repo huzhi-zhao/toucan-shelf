@@ -295,12 +295,12 @@ func (d *DB) EnablePlannerHabitDraft(ctx context.Context, creatorID int32, effec
 // plannerCheckInColumns reads a check-in, with the UID of the todo that made it looked up alongside.
 const plannerCheckInColumns = "`id`, `creator_id`, `habit_id`, `date`, `note`, `todo_id`, " +
 	"COALESCE((SELECT `planner_todo`.`uid` FROM `planner_todo` WHERE `planner_todo`.`id` = `planner_check_in`.`todo_id`), ''), " +
-	"`source`, `workout`, `created_ts`, `updated_ts`"
+	"`source`, `workout`, `rating`, `created_ts`, `updated_ts`"
 
 func scanPlannerCheckIn(row interface{ Scan(...any) error }) (*store.PlannerCheckIn, error) {
 	c := &store.PlannerCheckIn{}
 	var workout string
-	if err := row.Scan(&c.ID, &c.CreatorID, &c.HabitID, &c.Date, &c.Note, &c.TodoID, &c.TodoUID, &c.Source, &workout, &c.CreatedTs, &c.UpdatedTs); err != nil {
+	if err := row.Scan(&c.ID, &c.CreatorID, &c.HabitID, &c.Date, &c.Note, &c.TodoID, &c.TodoUID, &c.Source, &workout, &c.Rating, &c.CreatedTs, &c.UpdatedTs); err != nil {
 		return nil, err
 	}
 	var err error
@@ -346,12 +346,12 @@ func upsertPlannerCheckIn(ctx context.Context, q plannerQuerier, upsert *store.P
 	if err != nil {
 		return nil, err
 	}
-	stmt := "INSERT INTO `planner_check_in` (`creator_id`, `habit_id`, `date`, `note`, `source`, `workout`) VALUES (?, ?, ?, ?, ?, ?) " +
-		"ON CONFLICT(`habit_id`, `date`) DO UPDATE SET `note` = excluded.`note`, `workout` = excluded.`workout`, " +
+	stmt := "INSERT INTO `planner_check_in` (`creator_id`, `habit_id`, `date`, `note`, `source`, `workout`, `rating`) VALUES (?, ?, ?, ?, ?, ?, ?) " +
+		"ON CONFLICT(`habit_id`, `date`) DO UPDATE SET `note` = excluded.`note`, `workout` = excluded.`workout`, `rating` = excluded.`rating`, " +
 		"`updated_ts` = strftime('%s', 'now') " +
 		"RETURNING " + plannerCheckInColumns
 	return scanPlannerCheckIn(q.QueryRowContext(ctx, stmt,
-		upsert.CreatorID, upsert.HabitID, upsert.Date, upsert.Note, plannerCheckInSource(upsert.Source), workout,
+		upsert.CreatorID, upsert.HabitID, upsert.Date, upsert.Note, plannerCheckInSource(upsert.Source), workout, upsert.Rating,
 	))
 }
 
@@ -568,8 +568,8 @@ func (d *DB) UpdatePlannerTodo(ctx context.Context, update *store.UpdatePlannerT
 		}
 		// The check-in goes in first, so the todo read back below already carries its date.
 		if _, err := tx.ExecContext(ctx,
-			"INSERT INTO `planner_check_in` (`creator_id`, `habit_id`, `date`, `note`, `todo_id`, `source`, `workout`) VALUES (?, ?, ?, ?, ?, ?, ?)",
-			checkIn.CreatorID, checkIn.HabitID, checkIn.Date, checkIn.Note, update.ID, source, workout,
+			"INSERT INTO `planner_check_in` (`creator_id`, `habit_id`, `date`, `note`, `todo_id`, `source`, `workout`, `rating`) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+			checkIn.CreatorID, checkIn.HabitID, checkIn.Date, checkIn.Note, update.ID, source, workout, checkIn.Rating,
 		); err != nil {
 			return errors.Wrap(err, "failed to check in")
 		}

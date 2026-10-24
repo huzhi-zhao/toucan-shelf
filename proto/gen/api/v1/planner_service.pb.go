@@ -512,7 +512,10 @@ type CheckIn struct {
 	Source CheckIn_Source `protobuf:"varint,5,opt,name=source,proto3,enum=memos.api.v1.CheckIn_Source" json:"source,omitempty"`
 	// The workout the check-in stands for: one session of the habit that day.
 	// Unset for a check-in without one.
-	Workout       *Workout `protobuf:"bytes,6,opt,name=workout,proto3" json:"workout,omitempty"`
+	Workout *Workout `protobuf:"bytes,6,opt,name=workout,proto3" json:"workout,omitempty"`
+	// How the session went, 1 to 5; 0 when not rated. On write, leaving it
+	// unset keeps the rating already there, and 0 clears it.
+	Rating        *int32 `protobuf:"varint,7,opt,name=rating,proto3,oneof" json:"rating,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -587,6 +590,13 @@ func (x *CheckIn) GetWorkout() *Workout {
 		return x.Workout
 	}
 	return nil
+}
+
+func (x *CheckIn) GetRating() int32 {
+	if x != nil && x.Rating != nil {
+		return *x.Rating
+	}
+	return 0
 }
 
 // Workout is the detail of a workout a check-in stands for. It records facts
@@ -3703,20 +3713,22 @@ const file_api_v1_planner_service_proto_rawDesc = "" +
 	"\x05habit\x18\x01 \x01(\tB\x03\xe0A\x02R\x05habit\x12$\n" +
 	"\vweekly_goal\x18\x02 \x01(\x05B\x03\xe0A\x01R\n" +
 	"weeklyGoal\x12\x1b\n" +
-	"\x06pinned\x18\x03 \x01(\bB\x03\xe0A\x01R\x06pinned\"\xa3\x02\n" +
+	"\x06pinned\x18\x03 \x01(\bB\x03\xe0A\x01R\x06pinned\"\xd0\x02\n" +
 	"\aCheckIn\x12\x19\n" +
 	"\x05habit\x18\x01 \x01(\tB\x03\xe0A\x02R\x05habit\x12\x17\n" +
 	"\x04date\x18\x02 \x01(\tB\x03\xe0A\x02R\x04date\x12\x17\n" +
 	"\x04note\x18\x03 \x01(\tB\x03\xe0A\x01R\x04note\x12\x17\n" +
 	"\x04todo\x18\x04 \x01(\tB\x03\xe0A\x03R\x04todo\x129\n" +
 	"\x06source\x18\x05 \x01(\x0e2\x1c.memos.api.v1.CheckIn.SourceB\x03\xe0A\x03R\x06source\x124\n" +
-	"\aworkout\x18\x06 \x01(\v2\x15.memos.api.v1.WorkoutB\x03\xe0A\x01R\aworkout\"A\n" +
+	"\aworkout\x18\x06 \x01(\v2\x15.memos.api.v1.WorkoutB\x03\xe0A\x01R\aworkout\x12 \n" +
+	"\x06rating\x18\a \x01(\x05B\x03\xe0A\x01H\x00R\x06rating\x88\x01\x01\"A\n" +
 	"\x06Source\x12\x16\n" +
 	"\x12SOURCE_UNSPECIFIED\x10\x00\x12\n" +
 	"\n" +
 	"\x06MANUAL\x10\x01\x12\b\n" +
 	"\x04TODO\x10\x02\x12\t\n" +
-	"\x05AGENT\x10\x03\"\x95\x01\n" +
+	"\x05AGENT\x10\x03B\t\n" +
+	"\a_rating\"\x95\x01\n" +
 	"\aWorkout\x123\n" +
 	"\x10duration_minutes\x18\x01 \x01(\x01B\x03\xe0A\x01H\x00R\x0fdurationMinutes\x88\x01\x01\x12@\n" +
 	"\texercises\x18\x02 \x03(\v2\x1d.memos.api.v1.WorkoutExerciseB\x03\xe0A\x01R\texercisesB\x13\n" +
@@ -4194,6 +4206,7 @@ func file_api_v1_planner_service_proto_init() {
 	if File_api_v1_planner_service_proto != nil {
 		return
 	}
+	file_api_v1_planner_service_proto_msgTypes[3].OneofWrappers = []any{}
 	file_api_v1_planner_service_proto_msgTypes[4].OneofWrappers = []any{}
 	file_api_v1_planner_service_proto_msgTypes[5].OneofWrappers = []any{}
 	file_api_v1_planner_service_proto_msgTypes[50].OneofWrappers = []any{}

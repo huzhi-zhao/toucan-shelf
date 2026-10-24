@@ -1,0 +1,22 @@
+import { StarIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { COPY } from "../../copy";
+
+/** A check-in's 1-to-5 rating as stars. Tapping a star rates that; tapping the current one clears it (0). */
+export default function RatingStars({ value, onChange }: { value: number; onChange: (value: number) => void }) {
+  return (
+    <span className="inline-flex items-center">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          type="button"
+          aria-label={COPY.checkIn.rate(n)}
+          onClick={() => onChange(n === value ? 0 : n)}
+          className="p-1 active:opacity-50"
+        >
+          <StarIcon className={cn("w-6 h-6", n <= value ? "fill-amber-400 text-amber-400" : "text-black/20 dark:text-white/25")} />
+        </button>
+      ))}
+    </span>
+  );
+}
