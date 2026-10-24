@@ -279,6 +279,8 @@ export const COPY = {
       duration: "时长（分钟）",
       settings: "设置",
       settingsPlaceholder: "例如：坡度 10，阻力 8",
+      intensity: "强度",
+      intensityPlaceholder: "例如：中等、RPE 7",
       note: "备注",
       remove: "删除动作",
       guide: "动作库",

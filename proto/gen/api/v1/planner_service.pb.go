@@ -668,7 +668,9 @@ type WorkoutExercise struct {
 	// A write must name an existing, unarchived document of the caller's, except
 	// one the stored workout already carries: a guide archived later stays.
 	// Format: memos/{memo}
-	Doc           string `protobuf:"bytes,8,opt,name=doc,proto3" json:"doc,omitempty"`
+	Doc string `protobuf:"bytes,8,opt,name=doc,proto3" json:"doc,omitempty"`
+	// How hard it was, in words, e.g. "moderate" or "RPE 7".
+	Intensity     string `protobuf:"bytes,9,opt,name=intensity,proto3" json:"intensity,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -755,6 +757,13 @@ func (x *WorkoutExercise) GetNote() string {
 func (x *WorkoutExercise) GetDoc() string {
 	if x != nil {
 		return x.Doc
+	}
+	return ""
+}
+
+func (x *WorkoutExercise) GetIntensity() string {
+	if x != nil {
+		return x.Intensity
 	}
 	return ""
 }
@@ -3711,7 +3720,7 @@ const file_api_v1_planner_service_proto_rawDesc = "" +
 	"\aWorkout\x123\n" +
 	"\x10duration_minutes\x18\x01 \x01(\x01B\x03\xe0A\x01H\x00R\x0fdurationMinutes\x88\x01\x01\x12@\n" +
 	"\texercises\x18\x02 \x03(\v2\x1d.memos.api.v1.WorkoutExerciseB\x03\xe0A\x01R\texercisesB\x13\n" +
-	"\x11_duration_minutes\"\xb6\x02\n" +
+	"\x11_duration_minutes\"\xd9\x02\n" +
 	"\x0fWorkoutExercise\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tB\x03\xe0A\x02R\x04name\x12!\n" +
 	"\tequipment\x18\x02 \x01(\tB\x03\xe0A\x01R\tequipment\x12%\n" +
@@ -3720,7 +3729,8 @@ const file_api_v1_planner_service_proto_rawDesc = "" +
 	"\x10duration_minutes\x18\x05 \x01(\x01B\x03\xe0A\x01H\x01R\x0fdurationMinutes\x88\x01\x01\x12\x1f\n" +
 	"\bsettings\x18\x06 \x01(\tB\x03\xe0A\x01R\bsettings\x12\x17\n" +
 	"\x04note\x18\a \x01(\tB\x03\xe0A\x01R\x04note\x12\x15\n" +
-	"\x03doc\x18\b \x01(\tB\x03\xe0A\x01R\x03docB\f\n" +
+	"\x03doc\x18\b \x01(\tB\x03\xe0A\x01R\x03doc\x12!\n" +
+	"\tintensity\x18\t \x01(\tB\x03\xe0A\x01R\tintensityB\f\n" +
 	"\n" +
 	"_weight_kgB\x13\n" +
 	"\x11_duration_minutes\"\xed\b\n" +

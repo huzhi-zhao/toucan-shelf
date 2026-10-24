@@ -393,6 +393,9 @@ message WorkoutExercise {
   // one the stored workout already carries: a guide archived later stays.
   // Format: memos/{memo}
   string doc = 8 [(google.api.field_behavior) = OPTIONAL];
+
+  // How hard it was, in words, e.g. "moderate" or "RPE 7".
+  string intensity = 9 [(google.api.field_behavior) = OPTIONAL];
 }
 
 message Todo {

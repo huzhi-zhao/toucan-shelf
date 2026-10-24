@@ -7,10 +7,12 @@ import { formatReps, parseAmount, parseReps } from "./planner";
 // a field is added here plus in the proto, store.PlannerExercise and its server-side check. The linked guide
 // (`doc`) is not one of them: it is picked, not typed.
 
-export type ExerciseField = "name" | "equipment" | "weight" | "reps" | "duration" | "settings" | "note";
+export type ExerciseField = "name" | "equipment" | "weight" | "reps" | "duration" | "settings" | "intensity" | "note";
 
 /** A typed value with values written to the exercise by `write`. */
-type ExerciseValues = Partial<Pick<WorkoutExercise, "name" | "equipment" | "weightKg" | "reps" | "durationMinutes" | "settings" | "note">>;
+type ExerciseValues = Partial<
+  Pick<WorkoutExercise, "name" | "equipment" | "weightKg" | "reps" | "durationMinutes" | "settings" | "intensity" | "note">
+>;
 
 export interface ExerciseFieldDef {
   key: ExerciseField;
@@ -73,6 +75,14 @@ export const EXERCISE_FIELDS: ExerciseFieldDef[] = [
     read: (e) => e.settings,
     write: (text) => ({ settings: text.trim() }),
     summary: (e) => e.settings,
+  },
+  {
+    key: "intensity",
+    label: COPY.checkIn.exercise.intensity,
+    placeholder: COPY.checkIn.exercise.intensityPlaceholder,
+    read: (e) => e.intensity,
+    write: (text) => ({ intensity: text.trim() }),
+    summary: (e) => (e.intensity ? `${COPY.checkIn.exercise.intensity} ${e.intensity}` : ""),
   },
   {
     key: "note",

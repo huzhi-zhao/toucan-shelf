@@ -287,7 +287,7 @@ describe("workouts", () => {
   it("sums an exercise up in a line", () => {
     const exercise = (init: Partial<WorkoutExercise>) => create(WorkoutExerciseSchema, { name: "x", note: "不进摘要", ...init });
     expect(exerciseSummary(exercise({ equipment: "哑铃", weightKg: 2.3, reps: [15, 12, 12] }))).toBe("哑铃 · 2.3 kg · 15/12/12");
-    expect(exerciseSummary(exercise({ durationMinutes: 5, settings: "阻力 8" }))).toBe("5 分钟 · 阻力 8");
+    expect(exerciseSummary(exercise({ durationMinutes: 5, settings: "阻力 8", intensity: "中等" }))).toBe("5 分钟 · 阻力 8 · 强度 中等");
     expect(exerciseSummary(exercise({}))).toBe("");
   });
 

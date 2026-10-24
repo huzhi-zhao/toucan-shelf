@@ -93,6 +93,9 @@ func (s *APIV1Service) plannerWorkoutFromRequest(ctx context.Context, user *stor
 		if e.Settings, err = checkPlannerText(exercise.Settings, field("settings"), plannerMaxExerciseTextSize, false); err != nil {
 			return nil, err
 		}
+		if e.Intensity, err = checkPlannerText(exercise.Intensity, field("intensity"), plannerMaxExerciseTextSize, false); err != nil {
+			return nil, err
+		}
 		if e.Note, err = checkPlannerText(exercise.Note, field("note"), plannerMaxTitleLength, false); err != nil {
 			return nil, err
 		}
@@ -173,7 +176,7 @@ func convertWorkoutFromStore(workout *store.PlannerWorkout) *v1pb.Workout {
 		}
 		result.Exercises = append(result.Exercises, &v1pb.WorkoutExercise{
 			Name: e.Name, Equipment: e.Equipment, WeightKg: e.WeightKg, Reps: reps, DurationMinutes: e.DurationMinutes, Settings: e.Settings, Note: e.Note,
-			Doc: exerciseDocName(e.DocUID),
+			Intensity: e.Intensity, Doc: exerciseDocName(e.DocUID),
 		})
 	}
 	return result
