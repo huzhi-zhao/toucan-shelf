@@ -114,3 +114,23 @@ export function usedExerciseFields(workouts: (Workout | undefined)[]): Set<Exerc
   }
   return used;
 }
+
+/**
+ * Which of a plan's exercises are already in the record, one for one: two planned rows of the same exercise
+ * need two recorded rows. A recorded row matches a planned one with the same guide, whatever each is called,
+ * or with the same name; guide matches are taken first so a renamed row is not lost to a namesake.
+ */
+export function recordedPlanExercises(planned: WorkoutExercise[], recorded: WorkoutExercise[]): boolean[] {
+  const name = (exercise: WorkoutExercise) => exercise.name.trim().toLowerCase();
+  const used = recorded.map(() => false);
+  const matched = planned.map(() => false);
+  const pass = (same: (p: WorkoutExercise, r: WorkoutExercise) => boolean) =>
+    planned.forEach((p, i) => {
+      if (matched[i]) return;
+      const j = recorded.findIndex((r, j) => !used[j] && same(p, r));
+      if (j >= 0) used[j] = matched[i] = true;
+    });
+  pass((p, r) => p.doc !== "" && p.doc === r.doc);
+  pass((p, r) => name(p) !== "" && name(p) === name(r));
+  return matched;
+}

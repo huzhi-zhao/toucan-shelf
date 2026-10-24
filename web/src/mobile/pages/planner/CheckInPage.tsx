@@ -1,16 +1,25 @@
 import { create } from "@bufbuild/protobuf";
 import dayjs from "dayjs";
-import { List, ListButton, ListItem, Navbar, NavbarBackLink, Page, Preloader, Toast } from "konsta/react";
-import { BotIcon } from "lucide-react";
+import { List, ListItem, Navbar, NavbarBackLink, Page, Preloader, Toast } from "konsta/react";
+import { BotIcon, CheckIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useHabits, usePlannerEntries, useSetCheckIn, useTodo } from "@/hooks/usePlannerQueries";
-import { CheckIn_Source, type Workout, WorkoutSchema } from "@/types/proto/api/v1/planner_service_pb";
+import { cn } from "@/lib/utils";
+import {
+  CheckIn_Source,
+  Todo_Source,
+  type Workout,
+  type WorkoutExercise,
+  WorkoutExerciseSchema,
+  WorkoutSchema,
+} from "@/types/proto/api/v1/planner_service_pb";
 import DangerListButton from "../../components/DangerListButton";
-import WorkoutEditor from "../../components/planner/WorkoutEditor";
+import WorkoutEditor, { ExerciseRow, PLANNED_LIST_CLASS } from "../../components/planner/WorkoutEditor";
 import SectionTitle from "../../components/SectionTitle";
 import { COPY } from "../../copy";
 import { useBack, useBackLabel, useGo } from "../../lib/nav";
+import { recordedPlanExercises } from "../../lib/workoutFields";
 import { docRoute, habitNameFromUid, MOBILE_ROUTES, todoRoute } from "../../routes";
 
 /**
@@ -33,7 +42,8 @@ export default function CheckInPage() {
   const { data: todo } = useTodo(checkIn?.todo || undefined);
   const planned = todo?.plannedWorkout;
   const recorded = checkIn?.workout;
-  const canFillFromPlan = !!planned && planned.exercises.length > 0 && !recorded;
+  const plannedExercises = planned?.exercises ?? [];
+  const inRecord = recordedPlanExercises(plannedExercises, recorded?.exercises ?? []);
   const isAgent = checkIn?.source === CheckIn_Source.AGENT;
   // The note of a todo's check-in is the todo's title; one an agent made completing a todo is still the user's.
   const noteLocked = !!checkIn?.todo && !isAgent;
@@ -55,6 +65,14 @@ export default function CheckInPage() {
     const workout = changes.workout ?? recorded ?? create(WorkoutSchema, {});
     setCheckIn.mutate({ habit: habitName, date, note: changes.note ?? note, checked: true, workout }, { onError: fail });
   };
+  // The plan is never copied on its own (what was not done must not count): each exercise goes in when tapped.
+  const recordPlanned = (exercise: WorkoutExercise) =>
+    save({
+      workout: create(WorkoutSchema, {
+        durationMinutes: recorded?.durationMinutes,
+        exercises: [...(recorded?.exercises ?? []), create(WorkoutExerciseSchema, exercise)],
+      }),
+    });
   const remove = () => {
     if (!window.confirm(COPY.checkIn.confirmRemove)) return;
     setCheckIn.mutate({ habit: habitName, date, checked: false }, { onSuccess: back, onError: fail });
@@ -120,11 +138,44 @@ export default function CheckInPage() {
         emptyText={COPY.checkIn.noExercises}
         onOpenDoc={(memo) => go(docRoute(memo))}
       />
-      {canFillFromPlan && (
-        <List strongIos insetIos className="mt-4 mb-0">
-          {/* The plan is a starting point, never copied on its own: what was not done must not count. */}
-          <ListButton onClick={() => save({ workout: create(WorkoutSchema, planned) })}>{COPY.checkIn.fillFromPlan}</ListButton>
-        </List>
+      {plannedExercises.length > 0 && (
+        <>
+          <SectionTitle>
+            <span className="inline-flex items-center gap-1.5">
+              {COPY.checkIn.plan}
+              {todo?.plannedWorkoutSource === Todo_Source.AGENT && <BotIcon className="w-4 h-4" aria-label={COPY.checkIn.sources.AGENT} />}
+            </span>
+          </SectionTitle>
+          <List strongIos insetIos dividersIos className={cn("!my-0", PLANNED_LIST_CLASS)}>
+            {plannedExercises.map((exercise, index) => (
+              <ExerciseRow
+                key={`${index}-${exercise.name}`}
+                exercise={exercise}
+                planned
+                dimmed={inRecord[index]}
+                onOpenDoc={(memo) => go(docRoute(memo))}
+                after={
+                  inRecord[index] ? (
+                    <span className="inline-flex items-center gap-1 text-[14px]">
+                      <CheckIcon className="w-4 h-4" />
+                      {COPY.checkIn.planRecorded}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={setCheckIn.isPending}
+                      onClick={() => recordPlanned(exercise)}
+                      className="rounded-full bg-primary/10 px-3 py-1 text-[14px] text-primary active:opacity-50 disabled:opacity-40"
+                    >
+                      {COPY.checkIn.recordPlanned}
+                    </button>
+                  )
+                }
+              />
+            ))}
+          </List>
+          <p className="px-8 mt-2 text-[13px] leading-snug text-black/45 dark:text-white/45">{COPY.checkIn.planHint}</p>
+        </>
       )}
 
       <List strongIos insetIos className="mt-8">
