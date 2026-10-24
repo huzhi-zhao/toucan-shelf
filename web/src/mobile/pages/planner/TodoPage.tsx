@@ -237,6 +237,7 @@ export default function TodoPage() {
           <WorkoutEditor
             workout={todo.plannedWorkout}
             habit={todo.habit}
+            planned
             readOnly={closed || failed}
             onChange={(plannedWorkout) => save({ plannedWorkout })}
             emptyText={COPY.todo.noPlannedWorkout}

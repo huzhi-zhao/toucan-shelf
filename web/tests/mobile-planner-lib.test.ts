@@ -30,7 +30,7 @@ import {
   weeklyGoalOn,
   weekRange,
 } from "@/mobile/lib/planner";
-import { exerciseSummary, usedExerciseFields } from "@/mobile/lib/workoutFields";
+import { exerciseSummary, recordedPlanExercises, usedExerciseFields } from "@/mobile/lib/workoutFields";
 import { todoNameFromUid, todoRoute } from "@/mobile/routes";
 import {
   CheckInSchema,
@@ -299,6 +299,17 @@ describe("workouts", () => {
     expect([...usedExerciseFields([gym, undefined])].sort()).toEqual(["equipment", "name", "reps", "weight"]);
     expect([...usedExerciseFields([yoga])].sort()).toEqual(["duration", "name"]);
     expect(usedExerciseFields([]).size).toBe(0);
+  });
+
+  it("tells which planned exercises are already in the record, one for one", () => {
+    const ex = (name: string, doc = "") => create(WorkoutExerciseSchema, { name, doc });
+    const plan = [ex("臀推", "memos/a"), ex("划船"), ex("划船"), ex("Plank")];
+    // Same guide under another name, a name in other case, and only one of the two planned rows.
+    expect(recordedPlanExercises(plan, [ex("Hip thrust", "memos/a"), ex(" 划船 "), ex("跑步")])).toEqual([true, true, false, false]);
+    expect(recordedPlanExercises(plan, [ex("plank"), ex("划船"), ex("划船")])).toEqual([false, true, true, true]);
+    // A guide match is taken before a namesake, so the renamed row still counts.
+    expect(recordedPlanExercises([ex("臀推"), ex("臀推", "memos/a")], [ex("臀推", "memos/a")])).toEqual([false, true]);
+    expect(recordedPlanExercises(plan, [])).toEqual([false, false, false, false]);
   });
 });
 
