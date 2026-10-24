@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   buildCalendarData,
   convertCalendarBlock,
-  exerciseSummary,
   formatReps,
   groupOpenTodos,
   habitTodoLabel,
@@ -29,6 +28,7 @@ import {
   weeklyGoalOn,
   weekRange,
 } from "@/mobile/lib/planner";
+import { exerciseSummary, usedExerciseFields } from "@/mobile/lib/workoutFields";
 import { todoNameFromUid, todoRoute } from "@/mobile/routes";
 import {
   CheckInSchema,
@@ -40,6 +40,9 @@ import {
   type Todo,
   Todo_Status,
   TodoSchema,
+  type WorkoutExercise,
+  WorkoutExerciseSchema,
+  WorkoutSchema,
 } from "@/types/proto/api/v1/planner_service_pb";
 
 const todo = (title: string, date: string, status = Todo_Status.ACTIVE): Todo =>
@@ -175,7 +178,7 @@ describe("habit versions", () => {
     expect(buildCalendarData(habits, versions, undefined, { startDate: "2026-11-24", endDate: "2027-01-07" }).events).toEqual(["c", "a"]);
   });
 
-  it("gives only pinned habits a place in a day's cell", () => {
+  it("puts pinned habits first in a day's cell, folded ones after", () => {
     const folded = create(HabitVersionSchema, {
       effectiveDate: "",
       entries: [
@@ -185,7 +188,7 @@ describe("habit versions", () => {
     });
     expect(
       buildCalendarData(habits, [folded], undefined, { startDate: "2026-09-24", endDate: "2026-11-07" }).slotsOf("2026-10-19"),
-    ).toEqual(["b"]);
+    ).toEqual(["b", "a"]);
     expect([...pinnedHabitNamesOn([folded], "2026-10-19")]).toEqual(["planner/habits/b"]);
   });
 
@@ -222,10 +225,20 @@ describe("workouts", () => {
   });
 
   it("sums an exercise up in a line", () => {
-    const blank = { equipment: "", weightKg: undefined, reps: [], durationMinutes: undefined, settings: "" };
-    expect(exerciseSummary({ ...blank, equipment: "哑铃", weightKg: 2.3, reps: [15, 12, 12] })).toBe("哑铃 · 2.3 kg · 15/12/12");
-    expect(exerciseSummary({ ...blank, durationMinutes: 5, settings: "阻力 8" })).toBe("5 分钟 · 阻力 8");
-    expect(exerciseSummary(blank)).toBe("");
+    const exercise = (init: Partial<WorkoutExercise>) => create(WorkoutExerciseSchema, { name: "x", note: "不进摘要", ...init });
+    expect(exerciseSummary(exercise({ equipment: "哑铃", weightKg: 2.3, reps: [15, 12, 12] }))).toBe("哑铃 · 2.3 kg · 15/12/12");
+    expect(exerciseSummary(exercise({ durationMinutes: 5, settings: "阻力 8" }))).toBe("5 分钟 · 阻力 8");
+    expect(exerciseSummary(exercise({}))).toBe("");
+  });
+
+  it("finds the fields a habit's past workouts used", () => {
+    const workout = (...exercises: Partial<WorkoutExercise>[]) =>
+      create(WorkoutSchema, { exercises: exercises.map((e) => create(WorkoutExerciseSchema, { name: "x", ...e })) });
+    const gym = workout({ equipment: "哑铃", weightKg: 5, reps: [12] }, { weightKg: 0 });
+    const yoga = workout({ durationMinutes: 10 });
+    expect([...usedExerciseFields([gym, undefined])].sort()).toEqual(["equipment", "name", "reps", "weight"]);
+    expect([...usedExerciseFields([yoga])].sort()).toEqual(["duration", "name"]);
+    expect(usedExerciseFields([]).size).toBe(0);
   });
 });
 

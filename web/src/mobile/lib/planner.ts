@@ -16,7 +16,6 @@ import {
   PlannerNoteSchema,
   type Todo,
   Todo_Status,
-  type WorkoutExercise,
 } from "@/types/proto/api/v1/planner_service_pb";
 
 /** Check-ins and notes older than this many days are read-only (0 = no limit), as `allowMaxUpdateDays` in the calendar block. */
@@ -184,12 +183,14 @@ export function buildCalendarData(
       if (title && !events.includes(title)) events.push(title);
     }
   });
-  // Only pinned habits get a place in a day's cell: one row of three icons at most.
+  // Every habit of the day has a place in its cell, pinned ones first, so a folded habit's check-in shows too.
+  // The cell keeps one row of icons and folds what does not fit into "+N".
   const slotsOf = (date: string) => {
     const pinned = pinnedHabitNamesOn(versions, date);
-    return habitsOn(versions, habits, date)
-      .filter((habit) => pinned.has(habit.name))
-      .map((habit) => habit.title);
+    const ofDay = habitsOn(versions, habits, date);
+    return [...ofDay.filter((habit) => pinned.has(habit.name)), ...ofDay.filter((habit) => !pinned.has(habit.name))].map(
+      (habit) => habit.title,
+    );
   };
   const colorOf = (title: string) => colorByTitle.get(title) ?? "#9ca3af";
   const iconOf = (title: string) => splitHabitTitle(title).icon;
@@ -410,19 +411,4 @@ export function parseAmount(text: string): number | undefined {
   if (trimmed === "") return undefined;
   const n = Number(trimmed);
   return Number.isFinite(n) && n >= 0 ? n : undefined;
-}
-
-/** One exercise in a line under its name: "哑铃 · 2.3 kg · 15/12/12", "5 分钟 · 坡度 10". */
-export function exerciseSummary(
-  exercise: Pick<WorkoutExercise, "equipment" | "weightKg" | "reps" | "durationMinutes" | "settings">,
-): string {
-  return [
-    exercise.equipment,
-    exercise.weightKg !== undefined ? `${exercise.weightKg} kg` : "",
-    exercise.reps.length > 0 ? formatReps(exercise.reps) : "",
-    exercise.durationMinutes !== undefined ? `${exercise.durationMinutes} 分钟` : "",
-    exercise.settings,
-  ]
-    .filter(Boolean)
-    .join(" · ");
 }

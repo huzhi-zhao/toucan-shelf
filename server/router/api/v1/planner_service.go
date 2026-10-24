@@ -535,14 +535,18 @@ func (s *APIV1Service) SetCheckIn(ctx context.Context, request *v1pb.SetCheckInR
 	if err != nil {
 		return nil, err
 	}
-	setWorkout := request.CheckIn.Workout != nil
-	workout, err := plannerWorkoutFromRequest(request.CheckIn.Workout)
-	if err != nil {
-		return nil, err
-	}
 	agent := plannerAgent(ctx)
 
 	existing, err := s.checkInOn(ctx, user, habit.ID, date)
+	if err != nil {
+		return nil, err
+	}
+	var kept *store.PlannerWorkout
+	if existing != nil {
+		kept = existing.Workout
+	}
+	setWorkout := request.CheckIn.Workout != nil
+	workout, err := s.plannerWorkoutFromRequest(ctx, user, request.CheckIn.Workout, kept)
 	if err != nil {
 		return nil, err
 	}
@@ -864,7 +868,7 @@ func (s *APIV1Service) UpdateTodo(ctx context.Context, request *v1pb.UpdateTodoR
 			if err := checkPlannableTodo(todo, request.LocalDate); err != nil {
 				return nil, err
 			}
-			if err := setPlannedWorkout(ctx, update, request.Todo.PlannedWorkout); err != nil {
+			if err := s.setPlannedWorkout(ctx, user, update, todo, request.Todo.PlannedWorkout); err != nil {
 				return nil, err
 			}
 		default:
