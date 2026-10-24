@@ -270,6 +270,7 @@ export const COPY = {
     recordPlanned: "记入",
     planRecorded: "已记",
     planProgress: (done: number, total: number) => `完成 ${done}/${total}`,
+    planSummary: (total: number) => `计划 ${total} 项`,
     remove: "删除打卡",
     removeLocked: "这是完成待办打的卡，要撤销请删除那条待办。",
     confirmRemove: "删除这个打卡和它的明细？",
