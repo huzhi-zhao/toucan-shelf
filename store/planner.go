@@ -156,6 +156,9 @@ type PlannerExercise struct {
 	// Settings are the machine's, e.g. "incline 10, 3.8-4 km/h".
 	Settings string `json:"settings,omitempty"`
 	Note     string `json:"note,omitempty"`
+	// DocUID is the memo UID of the exercise's guide in the exercise library, or "". It identifies the
+	// exercise however the name is written.
+	DocUID string `json:"doc,omitempty"`
 }
 
 // FindPlannerCheckIn filters one user's check-ins by an inclusive date range.

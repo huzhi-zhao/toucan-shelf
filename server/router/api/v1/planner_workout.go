@@ -58,13 +58,23 @@ func (s *APIV1Service) checkInOn(ctx context.Context, user *store.User, habitID 
 }
 
 // plannerWorkoutFromRequest checks a workout from a request. An empty one (no length, no exercises) is nil:
-// sending it removes the workout a check-in had.
-func plannerWorkoutFromRequest(workout *v1pb.Workout) (*store.PlannerWorkout, error) {
+// sending it removes the workout a check-in had. kept is the workout stored where this one goes, or nil; the
+// exercise guides it already links are accepted as they are (see checkExerciseDoc).
+func (s *APIV1Service) plannerWorkoutFromRequest(ctx context.Context, user *store.User, workout *v1pb.Workout, kept *store.PlannerWorkout) (*store.PlannerWorkout, error) {
 	if workout == nil || (workout.DurationMinutes == nil && len(workout.Exercises) == 0) {
 		return nil, nil
 	}
 	if len(workout.Exercises) > plannerMaxExercises {
 		return nil, status.Errorf(codes.InvalidArgument, "a workout has at most %d exercises", plannerMaxExercises)
+	}
+	// Guides already known to be fine: the ones the stored workout links, then each one checked here.
+	docs := map[string]bool{}
+	if kept != nil {
+		for _, e := range kept.Exercises {
+			if e.DocUID != "" {
+				docs[e.DocUID] = true
+			}
+		}
 	}
 	result := &store.PlannerWorkout{Exercises: []store.PlannerExercise{}}
 	var err error
@@ -92,6 +102,9 @@ func plannerWorkoutFromRequest(workout *v1pb.Workout) (*store.PlannerWorkout, er
 		if e.DurationMinutes, err = checkPlannerAmount(exercise.DurationMinutes, field("duration_minutes"), plannerMaxWorkoutMinutes); err != nil {
 			return nil, err
 		}
+		if e.DocUID, err = s.checkExerciseDoc(ctx, user, exercise.Doc, field("doc"), docs); err != nil {
+			return nil, err
+		}
 		if len(e.Reps) > plannerMaxSets {
 			return nil, status.Errorf(codes.InvalidArgument, "%s has at most %d sets", field("reps"), plannerMaxSets)
 		}
@@ -103,6 +116,37 @@ func plannerWorkoutFromRequest(workout *v1pb.Workout) (*store.PlannerWorkout, er
 		result.Exercises = append(result.Exercises, e)
 	}
 	return result, nil
+}
+
+// checkExerciseDoc checks an exercise's guide (memos/{uid}) and returns its UID, or "" for none. It must be an
+// unarchived document of the caller's. A guide in known passes without a lookup: one the stored workout already
+// links stays even if it has since been archived, so that editing another exercise does not fail on it. A guide
+// that passes is added to known.
+func (s *APIV1Service) checkExerciseDoc(ctx context.Context, user *store.User, name, field string, known map[string]bool) (string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", nil
+	}
+	uid, err := ExtractMemoUIDFromName(name)
+	if err != nil {
+		return "", status.Errorf(codes.InvalidArgument, "%s must be a document name like memos/{uid}", field)
+	}
+	if known[uid] {
+		return uid, nil
+	}
+	memo, err := s.Store.GetMemo(ctx, &store.FindMemo{UID: &uid, ExcludeContent: true})
+	if err != nil {
+		return "", status.Errorf(codes.Internal, "failed to get memo: %v", err)
+	}
+	// Someone else's document is reported like a missing one, so the error does not reveal it exists.
+	if memo == nil || memo.CreatorID != user.ID {
+		return "", status.Errorf(codes.InvalidArgument, "%s: no document of yours named %s", field, name)
+	}
+	if memo.RowStatus == store.Archived {
+		return "", status.Errorf(codes.InvalidArgument, "%s: %s is archived", field, name)
+	}
+	known[uid] = true
+	return uid, nil
 }
 
 // checkPlannerAmount checks an optional amount: unset, or a number from 0 to max.
@@ -129,9 +173,18 @@ func convertWorkoutFromStore(workout *store.PlannerWorkout) *v1pb.Workout {
 		}
 		result.Exercises = append(result.Exercises, &v1pb.WorkoutExercise{
 			Name: e.Name, Equipment: e.Equipment, WeightKg: e.WeightKg, Reps: reps, DurationMinutes: e.DurationMinutes, Settings: e.Settings, Note: e.Note,
+			Doc: exerciseDocName(e.DocUID),
 		})
 	}
 	return result
+}
+
+// exerciseDocName is the resource name of an exercise's guide, or "" for none.
+func exerciseDocName(uid string) string {
+	if uid == "" {
+		return ""
+	}
+	return MemoNamePrefix + uid
 }
 
 var checkInSourceFromStore = map[string]v1pb.CheckIn_Source{
@@ -172,6 +225,12 @@ func (s *APIV1Service) ListWorkouts(ctx context.Context, request *v1pb.ListWorko
 		find.HabitID = &habit.ID
 	}
 	exercise := strings.ToLower(strings.TrimSpace(request.Exercise))
+	doc := ""
+	if name := strings.TrimSpace(request.Doc); name != "" {
+		if doc, err = ExtractMemoUIDFromName(name); err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "doc must be a document name like memos/{uid}")
+		}
+	}
 
 	checkIns, err := s.Store.ListPlannerCheckIns(ctx, find)
 	if err != nil {
@@ -188,6 +247,9 @@ func (s *APIV1Service) ListWorkouts(ctx context.Context, request *v1pb.ListWorko
 		if exercise != "" && !workoutHasExercise(checkIn.Workout, exercise) {
 			continue
 		}
+		if doc != "" && !workoutHasDoc(checkIn.Workout, doc) {
+			continue
+		}
 		response.CheckIns = append(response.CheckIns, convertCheckInFromStore(checkIn, uids[checkIn.HabitID]))
 	}
 	return response, nil
@@ -200,6 +262,19 @@ func workoutHasExercise(workout *store.PlannerWorkout, query string) bool {
 	}
 	for _, e := range workout.Exercises {
 		if strings.Contains(strings.ToLower(e.Name), query) {
+			return true
+		}
+	}
+	return false
+}
+
+// workoutHasDoc reports whether an exercise links the guide with this memo UID.
+func workoutHasDoc(workout *store.PlannerWorkout, uid string) bool {
+	if workout == nil {
+		return false
+	}
+	for _, e := range workout.Exercises {
+		if e.DocUID == uid {
 			return true
 		}
 	}

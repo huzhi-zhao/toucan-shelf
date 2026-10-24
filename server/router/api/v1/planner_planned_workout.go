@@ -47,9 +47,9 @@ func checkPlannableTodo(todo *store.PlannerTodo, localDate string) error {
 	return nil
 }
 
-// setPlannedWorkout puts a checked plan, or its removal, on an update, recording the caller as its source.
-func setPlannedWorkout(ctx context.Context, update *store.UpdatePlannerTodo, workout *v1pb.Workout) error {
-	planned, err := plannerWorkoutFromRequest(workout)
+// setPlannedWorkout puts a checked plan for todo, or its removal, on an update, recording the caller as its source.
+func (s *APIV1Service) setPlannedWorkout(ctx context.Context, user *store.User, update *store.UpdatePlannerTodo, todo *store.PlannerTodo, workout *v1pb.Workout) error {
+	planned, err := s.plannerWorkoutFromRequest(ctx, user, workout, todo.PlannedWorkout)
 	if err != nil {
 		return err
 	}
@@ -78,10 +78,6 @@ func (s *APIV1Service) SetPlannedWorkout(ctx context.Context, request *v1pb.SetP
 	if date < local {
 		return nil, status.Errorf(codes.InvalidArgument, "a planned workout is for a date from today on")
 	}
-	planned, err := plannerWorkoutFromRequest(request.Workout)
-	if err != nil {
-		return nil, err
-	}
 	habit, err := s.getOwnHabit(ctx, user, request.Habit)
 	if err != nil {
 		return nil, err
@@ -92,6 +88,10 @@ func (s *APIV1Service) SetPlannedWorkout(ctx context.Context, request *v1pb.SetP
 	}
 
 	if todo == nil {
+		planned, err := s.plannerWorkoutFromRequest(ctx, user, request.Workout, nil)
+		if err != nil {
+			return nil, err
+		}
 		if planned == nil {
 			return &v1pb.SetPlannedWorkoutResponse{}, nil
 		}
@@ -114,7 +114,7 @@ func (s *APIV1Service) SetPlannedWorkout(ctx context.Context, request *v1pb.SetP
 		return nil, err
 	}
 	update := &store.UpdatePlannerTodo{ID: todo.ID}
-	if err := setPlannedWorkout(ctx, update, request.Workout); err != nil {
+	if err := s.setPlannedWorkout(ctx, user, update, todo, request.Workout); err != nil {
 		return nil, err
 	}
 	updated, err := s.Store.UpdatePlannerTodo(ctx, update)

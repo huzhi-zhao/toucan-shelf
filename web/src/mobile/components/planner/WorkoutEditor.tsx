@@ -1,6 +1,8 @@
 import { create } from "@bufbuild/protobuf";
 import { List, ListButton, ListItem } from "konsta/react";
 import { useEffect, useState } from "react";
+import { useMemo as useMemoQuery } from "@/hooks/useMemoQueries";
+import { State } from "@/types/proto/api/v1/common_pb";
 import { type Workout, type WorkoutExercise, WorkoutSchema } from "@/types/proto/api/v1/planner_service_pb";
 import { COPY } from "../../copy";
 import { useBlurOnClose } from "../../lib/keyboard";
@@ -14,13 +16,56 @@ interface Props {
   readOnly?: boolean;
   /** Shown when there is no exercise yet. */
   emptyText: string;
+  /** Opens an exercise's guide (`memos/{uid}`); without it, names are plain text. */
+  onOpenDoc?: (memo: string) => void;
+}
+
+/**
+ * An exercise in the list. A name linked to a live guide is a link to it (requirement §2.4.4 §4); the rest of
+ * the row edits the exercise. An archived, deleted or unreadable guide leaves the name as plain text.
+ */
+function ExerciseRow({
+  exercise,
+  onEdit,
+  onOpenDoc,
+}: {
+  exercise: WorkoutExercise;
+  onEdit?: () => void;
+  onOpenDoc?: (memo: string) => void;
+}) {
+  const { data: guide } = useMemoQuery(exercise.doc, { enabled: Boolean(exercise.doc && onOpenDoc) });
+  const linked = Boolean(onOpenDoc) && guide?.state === State.NORMAL;
+  return (
+    <ListItem
+      link={Boolean(onEdit)}
+      title={
+        linked ? (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpenDoc?.(exercise.doc);
+            }}
+            className="-my-1 py-1 text-left text-primary underline decoration-primary/40 underline-offset-4 active:opacity-50"
+          >
+            {exercise.name}
+          </button>
+        ) : (
+          exercise.name
+        )
+      }
+      text={<span className="whitespace-normal">{[exerciseSummary(exercise), exercise.note].filter(Boolean).join(" — ")}</span>}
+      onClick={onEdit}
+    />
+  );
 }
 
 /**
  * A workout's total length and exercises (requirement §2.4.4 §4): a check-in's record of what was done, or a
- * habit todo's plan of what to do (§2.4.5). Tapping an exercise edits it in a sheet; the length saves on blur.
+ * habit todo's plan of what to do (§2.4.5). Tapping an exercise edits it in a sheet, except its name when that
+ * links a guide, which opens the guide; the length saves on blur.
  */
-export default function WorkoutEditor({ workout, onChange, readOnly, emptyText }: Props) {
+export default function WorkoutEditor({ workout, onChange, readOnly, emptyText, onOpenDoc }: Props) {
   const exercises = workout?.exercises ?? [];
   const [duration, setDuration] = useState("");
   useEffect(() => setDuration(workout?.durationMinutes !== undefined ? String(workout.durationMinutes) : ""), [workout]);
@@ -68,12 +113,11 @@ export default function WorkoutEditor({ workout, onChange, readOnly, emptyText }
         />
         {exercises.length === 0 && <ListItem title={<span className="text-black/45 dark:text-white/45">{emptyText}</span>} />}
         {exercises.map((exercise, index) => (
-          <ListItem
+          <ExerciseRow
             key={`${index}-${exercise.name}`}
-            link={!readOnly}
-            title={exercise.name}
-            text={<span className="whitespace-normal">{[exerciseSummary(exercise), exercise.note].filter(Boolean).join(" — ")}</span>}
-            onClick={readOnly ? undefined : () => setEditing({ index, exercise })}
+            exercise={exercise}
+            onEdit={readOnly ? undefined : () => setEditing({ index, exercise })}
+            onOpenDoc={onOpenDoc}
           />
         ))}
         {!readOnly && (

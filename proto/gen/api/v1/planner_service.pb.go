@@ -660,7 +660,15 @@ type WorkoutExercise struct {
 	// The machine's settings, e.g. "incline 10, 3.8-4 km/h".
 	Settings string `protobuf:"bytes,6,opt,name=settings,proto3" json:"settings,omitempty"`
 	// A remark in a sentence.
-	Note          string `protobuf:"bytes,7,opt,name=note,proto3" json:"note,omitempty"`
+	Note string `protobuf:"bytes,7,opt,name=note,proto3" json:"note,omitempty"`
+	// The exercise's guide in the exercise library: a document of the caller's
+	// with `kind: exercise` in its frontmatter. It is what identifies the
+	// exercise, so the same one keeps its identity however the name is written
+	// each time. Empty for an exercise outside the library, e.g. a warm-up walk.
+	// A write must name an existing, unarchived document of the caller's, except
+	// one the stored workout already carries: a guide archived later stays.
+	// Format: memos/{memo}
+	Doc           string `protobuf:"bytes,8,opt,name=doc,proto3" json:"doc,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -740,6 +748,13 @@ func (x *WorkoutExercise) GetSettings() string {
 func (x *WorkoutExercise) GetNote() string {
 	if x != nil {
 		return x.Note
+	}
+	return ""
+}
+
+func (x *WorkoutExercise) GetDoc() string {
+	if x != nil {
+		return x.Doc
 	}
 	return ""
 }
@@ -1868,7 +1883,11 @@ type ListWorkoutsRequest struct {
 	// case, e.g. "deadlift" for the last times one did deadlifts.
 	Exercise string `protobuf:"bytes,4,opt,name=exercise,proto3" json:"exercise,omitempty"`
 	// At most this many, the newest: 1 to 200, 50 when unset.
-	Limit         int32 `protobuf:"varint,5,opt,name=limit,proto3" json:"limit,omitempty"`
+	Limit int32 `protobuf:"varint,5,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Only workouts with an exercise linked to this exercise guide. Unlike
+	// exercise, it does not depend on how the name was written. Format:
+	// memos/{memo}
+	Doc           string `protobuf:"bytes,6,opt,name=doc,proto3" json:"doc,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1936,6 +1955,13 @@ func (x *ListWorkoutsRequest) GetLimit() int32 {
 		return x.Limit
 	}
 	return 0
+}
+
+func (x *ListWorkoutsRequest) GetDoc() string {
+	if x != nil {
+		return x.Doc
+	}
+	return ""
 }
 
 type ListWorkoutsResponse struct {
@@ -3685,7 +3711,7 @@ const file_api_v1_planner_service_proto_rawDesc = "" +
 	"\aWorkout\x123\n" +
 	"\x10duration_minutes\x18\x01 \x01(\x01B\x03\xe0A\x01H\x00R\x0fdurationMinutes\x88\x01\x01\x12@\n" +
 	"\texercises\x18\x02 \x03(\v2\x1d.memos.api.v1.WorkoutExerciseB\x03\xe0A\x01R\texercisesB\x13\n" +
-	"\x11_duration_minutes\"\x9f\x02\n" +
+	"\x11_duration_minutes\"\xb6\x02\n" +
 	"\x0fWorkoutExercise\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tB\x03\xe0A\x02R\x04name\x12!\n" +
 	"\tequipment\x18\x02 \x01(\tB\x03\xe0A\x01R\tequipment\x12%\n" +
@@ -3693,7 +3719,8 @@ const file_api_v1_planner_service_proto_rawDesc = "" +
 	"\x04reps\x18\x04 \x03(\x05B\x03\xe0A\x01R\x04reps\x123\n" +
 	"\x10duration_minutes\x18\x05 \x01(\x01B\x03\xe0A\x01H\x01R\x0fdurationMinutes\x88\x01\x01\x12\x1f\n" +
 	"\bsettings\x18\x06 \x01(\tB\x03\xe0A\x01R\bsettings\x12\x17\n" +
-	"\x04note\x18\a \x01(\tB\x03\xe0A\x01R\x04noteB\f\n" +
+	"\x04note\x18\a \x01(\tB\x03\xe0A\x01R\x04note\x12\x15\n" +
+	"\x03doc\x18\b \x01(\tB\x03\xe0A\x01R\x03docB\f\n" +
 	"\n" +
 	"_weight_kgB\x13\n" +
 	"\x11_duration_minutes\"\xed\b\n" +
@@ -3785,14 +3812,15 @@ const file_api_v1_planner_service_proto_rawDesc = "" +
 	"\bcheck_in\x18\x01 \x01(\v2\x15.memos.api.v1.CheckInB\x03\xe0A\x02R\acheckIn\"J\n" +
 	"\x14DeleteCheckInRequest\x12\x19\n" +
 	"\x05habit\x18\x01 \x01(\tB\x03\xe0A\x02R\x05habit\x12\x17\n" +
-	"\x04date\x18\x02 \x01(\tB\x03\xe0A\x02R\x04date\"\xb0\x01\n" +
+	"\x04date\x18\x02 \x01(\tB\x03\xe0A\x02R\x04date\"\xc7\x01\n" +
 	"\x13ListWorkoutsRequest\x12\"\n" +
 	"\n" +
 	"start_date\x18\x01 \x01(\tB\x03\xe0A\x01R\tstartDate\x12\x1e\n" +
 	"\bend_date\x18\x02 \x01(\tB\x03\xe0A\x01R\aendDate\x12\x19\n" +
 	"\x05habit\x18\x03 \x01(\tB\x03\xe0A\x01R\x05habit\x12\x1f\n" +
 	"\bexercise\x18\x04 \x01(\tB\x03\xe0A\x01R\bexercise\x12\x19\n" +
-	"\x05limit\x18\x05 \x01(\x05B\x03\xe0A\x01R\x05limit\"J\n" +
+	"\x05limit\x18\x05 \x01(\x05B\x03\xe0A\x01R\x05limit\x12\x15\n" +
+	"\x03doc\x18\x06 \x01(\tB\x03\xe0A\x01R\x03doc\"J\n" +
 	"\x14ListWorkoutsResponse\x122\n" +
 	"\tcheck_ins\x18\x01 \x03(\v2\x15.memos.api.v1.CheckInR\bcheckIns\")\n" +
 	"\x0eGetTodoRequest\x12\x17\n" +

@@ -1,7 +1,9 @@
 import { create } from "@bufbuild/protobuf";
 import { FieldMaskSchema } from "@bufbuild/protobuf/wkt";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { plannerServiceClient } from "@/connect";
+import { memoServiceClient, plannerServiceClient } from "@/connect";
+import { buildMemoCreatorFilter } from "@/helpers/resource-names";
+import { State } from "@/types/proto/api/v1/common_pb";
 import {
   CheckInSchema,
   HabitSchema,
@@ -15,6 +17,7 @@ import {
   TodoSchema,
   type Workout,
 } from "@/types/proto/api/v1/planner_service_pb";
+import { EXERCISE_KIND_FILTER, guideOf } from "@/utils/exerciseLibrary";
 
 // The planner is personal data (habits, check-ins, todos, notes); see
 // docs/dev/requirements/planner-and-check-in.md. Every write invalidates the
@@ -30,6 +33,7 @@ export const plannerKeys = {
   note: (name?: string) => [...plannerKeys.all, "note", name] as const,
   todoTags: () => [...plannerKeys.all, "todoTags"] as const,
   settings: () => [...plannerKeys.all, "settings"] as const,
+  exerciseLibrary: (creator: string) => [...plannerKeys.all, "exerciseLibrary", creator] as const,
 };
 
 export function useHabits() {
@@ -256,4 +260,21 @@ export function useDeletePlannerNote() {
 
 export function useImportPlanner() {
   return usePlannerMutation((request: ImportPlannerRequest) => plannerServiceClient.importPlanner(request));
+}
+
+/**
+ * The exercise library (requirement §2.4.4): the creator's unarchived documents with `kind: exercise` in their
+ * frontmatter. Loaded only when `enabled`, i.e. while picking an exercise.
+ */
+export function useExerciseLibrary(creator: string, enabled: boolean) {
+  return useQuery({
+    queryKey: plannerKeys.exerciseLibrary(creator),
+    queryFn: async () => {
+      const filter = [buildMemoCreatorFilter(creator), EXERCISE_KIND_FILTER].filter(Boolean).join(" && ");
+      const response = await memoServiceClient.listMemos({ pageSize: 1000, state: State.NORMAL, filter });
+      return response.memos.flatMap((memo) => guideOf(memo) ?? []);
+    },
+    enabled: enabled && Boolean(creator),
+    staleTime: 60_000,
+  });
 }

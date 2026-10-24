@@ -11,7 +11,7 @@ import WorkoutEditor from "../../components/planner/WorkoutEditor";
 import SectionTitle from "../../components/SectionTitle";
 import { COPY } from "../../copy";
 import { useBack, useBackLabel, useGo } from "../../lib/nav";
-import { habitNameFromUid, MOBILE_ROUTES, todoRoute } from "../../routes";
+import { docRoute, habitNameFromUid, MOBILE_ROUTES, todoRoute } from "../../routes";
 
 /**
  * One check-in (requirement §2.4.4): who made it, its note, and the workout it stands for — the session's
@@ -113,7 +113,12 @@ export default function CheckInPage() {
       {noteLocked && <p className="px-8 mt-2 text-[13px] leading-snug text-black/45 dark:text-white/45">{COPY.checkIn.noteLocked}</p>}
 
       <SectionTitle>{COPY.checkIn.workout}</SectionTitle>
-      <WorkoutEditor workout={recorded} onChange={(workout) => save({ workout })} emptyText={COPY.checkIn.noExercises} />
+      <WorkoutEditor
+        workout={recorded}
+        onChange={(workout) => save({ workout })}
+        emptyText={COPY.checkIn.noExercises}
+        onOpenDoc={(memo) => go(docRoute(memo))}
+      />
       {canFillFromPlan && (
         <List strongIos insetIos className="mt-4 mb-0">
           {/* The plan is a starting point, never copied on its own: what was not done must not count. */}

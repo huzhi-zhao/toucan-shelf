@@ -384,6 +384,15 @@ message WorkoutExercise {
 
   // A remark in a sentence.
   string note = 7 [(google.api.field_behavior) = OPTIONAL];
+
+  // The exercise's guide in the exercise library: a document of the caller's
+  // with `kind: exercise` in its frontmatter. It is what identifies the
+  // exercise, so the same one keeps its identity however the name is written
+  // each time. Empty for an exercise outside the library, e.g. a warm-up walk.
+  // A write must name an existing, unarchived document of the caller's, except
+  // one the stored workout already carries: a guide archived later stays.
+  // Format: memos/{memo}
+  string doc = 8 [(google.api.field_behavior) = OPTIONAL];
 }
 
 message Todo {
@@ -612,6 +621,11 @@ message ListWorkoutsRequest {
 
   // At most this many, the newest: 1 to 200, 50 when unset.
   int32 limit = 5 [(google.api.field_behavior) = OPTIONAL];
+
+  // Only workouts with an exercise linked to this exercise guide. Unlike
+  // exercise, it does not depend on how the name was written. Format:
+  // memos/{memo}
+  string doc = 6 [(google.api.field_behavior) = OPTIONAL];
 }
 
 message ListWorkoutsResponse {

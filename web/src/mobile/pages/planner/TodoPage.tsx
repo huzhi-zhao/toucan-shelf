@@ -239,6 +239,7 @@ export default function TodoPage() {
             readOnly={closed || failed}
             onChange={(plannedWorkout) => save({ plannedWorkout })}
             emptyText={COPY.todo.noPlannedWorkout}
+            onOpenDoc={(memo) => go(docRoute(memo))}
           />
         </>
       )}
