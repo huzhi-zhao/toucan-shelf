@@ -1,5 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { List, ListButton, ListItem } from "konsta/react";
+import { CheckIcon } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useMemo as useMemoQuery } from "@/hooks/useMemoQueries";
 import { useRecentWorkouts } from "@/hooks/usePlannerQueries";
@@ -25,6 +26,18 @@ interface Props {
   habit: string;
   /** A plan of what to do rather than a record of what was done: drawn dashed, each exercise tagged 计划. */
   planned?: boolean;
+  /** For a plan whose check-in is in: which exercises the record has, marked ✓ 已记. */
+  inRecord?: boolean[];
+}
+
+/** The ✓ 已记 mark on a planned exercise the check-in already has. */
+export function RecordedMark() {
+  return (
+    <span className="inline-flex items-center gap-1 text-[14px]">
+      <CheckIcon className="w-4 h-4" />
+      {COPY.checkIn.planRecorded}
+    </span>
+  );
 }
 
 /** How a plan is told apart from a record (requirement §2.4.5 §4): a dashed outline around its list. */
@@ -95,7 +108,7 @@ export function ExerciseRow({
  * habit todo's plan of what to do (§2.4.5). Tapping an exercise edits it in a sheet, except its name when that
  * links a guide, which opens the guide; the length saves on blur.
  */
-export default function WorkoutEditor({ workout, onChange, readOnly, emptyText, onOpenDoc, habit, planned }: Props) {
+export default function WorkoutEditor({ workout, onChange, readOnly, emptyText, onOpenDoc, habit, planned, inRecord }: Props) {
   const exercises = workout?.exercises ?? [];
   const { data: recent } = useRecentWorkouts(readOnly ? "" : habit);
   const usedFields = useMemo(() => usedExerciseFields([...(recent ?? []), workout]), [recent, workout]);
@@ -151,6 +164,8 @@ export default function WorkoutEditor({ workout, onChange, readOnly, emptyText, 
             onEdit={readOnly ? undefined : () => setEditing({ index, exercise })}
             onOpenDoc={onOpenDoc}
             planned={planned}
+            dimmed={inRecord?.[index]}
+            after={inRecord?.[index] ? <RecordedMark /> : undefined}
           />
         ))}
         {!readOnly && (

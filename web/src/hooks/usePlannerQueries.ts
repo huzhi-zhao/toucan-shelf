@@ -57,11 +57,12 @@ export function useHabitPlans() {
 }
 
 /** Everything dated within an inclusive range: one calendar month plus its spill-over days. */
-export function usePlannerEntries(startDate: string, endDate: string) {
+export function usePlannerEntries(startDate: string, endDate: string, enabled = true) {
   return useQuery({
     queryKey: plannerKeys.entries(startDate, endDate),
     queryFn: () => plannerServiceClient.listPlannerEntries({ startDate, endDate }),
     placeholderData: (previous) => previous,
+    enabled,
   });
 }
 

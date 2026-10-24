@@ -118,10 +118,17 @@ export function usedExerciseFields(workouts: (Workout | undefined)[]): Set<Exerc
 /**
  * Which of a plan's exercises are already in the record, one for one: two planned rows of the same exercise
  * need two recorded rows. A recorded row matches a planned one with the same guide, whatever each is called,
- * or with the same name; guide matches are taken first so a renamed row is not lost to a namesake.
+ * or with the same name, a trailing note in brackets aside ("Treadmill walk (warm-up)" is "Treadmill walk");
+ * guide matches are taken first so a renamed row is not lost to a namesake. A check-in made in the app or by a
+ * bot over the API is matched the same way: nothing on the record points at the plan.
  */
 export function recordedPlanExercises(planned: WorkoutExercise[], recorded: WorkoutExercise[]): boolean[] {
-  const name = (exercise: WorkoutExercise) => exercise.name.trim().toLowerCase();
+  const name = (exercise: WorkoutExercise) =>
+    exercise.name
+      .trim()
+      .replace(/\s*[(（][^()（）]*[)）]$/, "")
+      .trim()
+      .toLowerCase();
   const used = recorded.map(() => false);
   const matched = planned.map(() => false);
   const pass = (same: (p: WorkoutExercise, r: WorkoutExercise) => boolean) =>
