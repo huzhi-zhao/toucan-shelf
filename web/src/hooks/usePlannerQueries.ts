@@ -34,6 +34,7 @@ export const plannerKeys = {
   todoTags: () => [...plannerKeys.all, "todoTags"] as const,
   settings: () => [...plannerKeys.all, "settings"] as const,
   exerciseLibrary: (creator: string) => [...plannerKeys.all, "exerciseLibrary", creator] as const,
+  recentWorkouts: (habit: string) => [...plannerKeys.all, "recentWorkouts", habit] as const,
 };
 
 export function useHabits() {
@@ -275,6 +276,16 @@ export function useExerciseLibrary(creator: string, enabled: boolean) {
       return response.memos.flatMap((memo) => guideOf(memo) ?? []);
     },
     enabled: enabled && Boolean(creator),
+    staleTime: 60_000,
+  });
+}
+
+/** A habit's latest workouts, newest first: which exercise fields it uses (requirement §2.4.4 §8). */
+export function useRecentWorkouts(habit: string) {
+  return useQuery({
+    queryKey: plannerKeys.recentWorkouts(habit),
+    queryFn: async () => (await plannerServiceClient.listWorkouts({ habit, limit: 10 })).checkIns.map((checkIn) => checkIn.workout),
+    enabled: Boolean(habit),
     staleTime: 60_000,
   });
 }

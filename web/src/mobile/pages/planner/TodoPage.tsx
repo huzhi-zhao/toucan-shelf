@@ -236,6 +236,7 @@ export default function TodoPage() {
           {/* What to do that day, against the check-in's record of what was done. History once the todo is closed or failed. */}
           <WorkoutEditor
             workout={todo.plannedWorkout}
+            habit={todo.habit}
             readOnly={closed || failed}
             onChange={(plannedWorkout) => save({ plannedWorkout })}
             emptyText={COPY.todo.noPlannedWorkout}

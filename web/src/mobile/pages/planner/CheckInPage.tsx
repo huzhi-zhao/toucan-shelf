@@ -115,6 +115,7 @@ export default function CheckInPage() {
       <SectionTitle>{COPY.checkIn.workout}</SectionTitle>
       <WorkoutEditor
         workout={recorded}
+        habit={habitName}
         onChange={(workout) => save({ workout })}
         emptyText={COPY.checkIn.noExercises}
         onOpenDoc={(memo) => go(docRoute(memo))}

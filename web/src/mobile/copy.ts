@@ -290,6 +290,7 @@ export const COPY = {
       noGuides: "动作库是空的：在文档 frontmatter 里写 kind: exercise",
       noMatch: "没有匹配的动作",
       ungrouped: "未分组",
+      moreFields: (count: number) => `更多字段（${count}）`,
     },
   },
   note: {

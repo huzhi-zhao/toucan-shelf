@@ -1,12 +1,14 @@
 import { create } from "@bufbuild/protobuf";
 import { List, ListButton, ListItem } from "konsta/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMemo as useMemoQuery } from "@/hooks/useMemoQueries";
+import { useRecentWorkouts } from "@/hooks/usePlannerQueries";
 import { State } from "@/types/proto/api/v1/common_pb";
 import { type Workout, type WorkoutExercise, WorkoutSchema } from "@/types/proto/api/v1/planner_service_pb";
 import { COPY } from "../../copy";
 import { useBlurOnClose } from "../../lib/keyboard";
-import { exerciseSummary, parseAmount } from "../../lib/planner";
+import { parseAmount } from "../../lib/planner";
+import { exerciseSummary, usedExerciseFields } from "../../lib/workoutFields";
 import ExerciseSheet from "./ExerciseSheet";
 
 interface Props {
@@ -18,6 +20,8 @@ interface Props {
   emptyText: string;
   /** Opens an exercise's guide (`memos/{uid}`); without it, names are plain text. */
   onOpenDoc?: (memo: string) => void;
+  /** The habit (`planner/habits/{uid}`): its past workouts decide which fields an exercise shows. */
+  habit: string;
 }
 
 /**
@@ -65,8 +69,10 @@ function ExerciseRow({
  * habit todo's plan of what to do (§2.4.5). Tapping an exercise edits it in a sheet, except its name when that
  * links a guide, which opens the guide; the length saves on blur.
  */
-export default function WorkoutEditor({ workout, onChange, readOnly, emptyText, onOpenDoc }: Props) {
+export default function WorkoutEditor({ workout, onChange, readOnly, emptyText, onOpenDoc, habit }: Props) {
   const exercises = workout?.exercises ?? [];
+  const { data: recent } = useRecentWorkouts(readOnly ? "" : habit);
+  const usedFields = useMemo(() => usedExerciseFields([...(recent ?? []), workout]), [recent, workout]);
   const [duration, setDuration] = useState("");
   useEffect(() => setDuration(workout?.durationMinutes !== undefined ? String(workout.durationMinutes) : ""), [workout]);
 
@@ -125,7 +131,13 @@ export default function WorkoutEditor({ workout, onChange, readOnly, emptyText, 
         )}
       </List>
 
-      <ExerciseSheet exercise={editing?.exercise} onClose={() => setEditing(undefined)} onSave={saveExercise} onRemove={removeExercise} />
+      <ExerciseSheet
+        usedFields={usedFields}
+        exercise={editing?.exercise}
+        onClose={() => setEditing(undefined)}
+        onSave={saveExercise}
+        onRemove={removeExercise}
+      />
     </>
   );
 }

@@ -1,13 +1,13 @@
 import { create } from "@bufbuild/protobuf";
 import { Sheet } from "konsta/react";
-import { ChevronRightIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useMemo as useMemoQuery } from "@/hooks/useMemoQueries";
 import { State } from "@/types/proto/api/v1/common_pb";
 import { type WorkoutExercise, WorkoutExerciseSchema } from "@/types/proto/api/v1/planner_service_pb";
 import type { ExerciseGuide } from "@/utils/exerciseLibrary";
 import { COPY } from "../../copy";
-import { formatReps, parseAmount, parseReps } from "../../lib/planner";
+import { ALWAYS_SHOWN_FIELDS, EXERCISE_FIELDS, type ExerciseField } from "../../lib/workoutFields";
 import ExercisePickerSheet from "./ExercisePickerSheet";
 
 interface Props {
@@ -17,36 +17,14 @@ interface Props {
   onSave: (exercise: WorkoutExercise) => void;
   /** Shown for an existing exercise only. */
   onRemove: () => void;
+  /** The fields this habit's workouts use, shown up front; the others wait behind "更多字段". */
+  usedFields: ReadonlySet<ExerciseField>;
 }
 
-const FIELDS = ["name", "equipment", "weight", "reps", "duration", "settings", "note"] as const;
-type Field = (typeof FIELDS)[number];
-
-const LABELS: Record<Field, string> = {
-  name: COPY.checkIn.exercise.name,
-  equipment: COPY.checkIn.exercise.equipment,
-  weight: COPY.checkIn.exercise.weight,
-  reps: COPY.checkIn.exercise.reps,
-  duration: COPY.checkIn.exercise.duration,
-  settings: COPY.checkIn.exercise.settings,
-  note: COPY.checkIn.exercise.note,
+const textsOf = (exercise: WorkoutExercise | null): Record<ExerciseField, string> => {
+  const source = exercise ?? create(WorkoutExerciseSchema, {});
+  return Object.fromEntries(EXERCISE_FIELDS.map((field) => [field.key, field.read(source)])) as Record<ExerciseField, string>;
 };
-
-const PLACEHOLDERS: Partial<Record<Field, string>> = {
-  name: COPY.checkIn.exercise.namePlaceholder,
-  reps: COPY.checkIn.exercise.repsPlaceholder,
-  settings: COPY.checkIn.exercise.settingsPlaceholder,
-};
-
-const fieldsOf = (exercise: WorkoutExercise | null): Record<Field, string> => ({
-  name: exercise?.name ?? "",
-  equipment: exercise?.equipment ?? "",
-  weight: exercise?.weightKg !== undefined ? String(exercise.weightKg) : "",
-  reps: exercise ? formatReps(exercise.reps) : "",
-  duration: exercise?.durationMinutes !== undefined ? String(exercise.durationMinutes) : "",
-  settings: exercise?.settings ?? "",
-  note: exercise?.note ?? "",
-});
 
 /** The linked guide's title as the sheet shows it, marked when archived; "" while it loads. */
 function useGuideLabel(doc: string): string {
@@ -61,8 +39,9 @@ function useGuideLabel(doc: string): string {
  * One exercise of a workout (requirement §2.4.4): only the name is required; weight is in kilograms. It can
  * link its guide in the exercise library; picking one fills in the name, which stays editable.
  */
-export default function ExerciseSheet({ exercise, onClose, onSave, onRemove }: Props) {
-  const [fields, setFields] = useState<Record<Field, string>>(() => fieldsOf(null));
+export default function ExerciseSheet({ exercise, onClose, onSave, onRemove, usedFields }: Props) {
+  const [fields, setFields] = useState<Record<ExerciseField, string>>(() => textsOf(null));
+  const [showAll, setShowAll] = useState(false);
   const [doc, setDoc] = useState("");
   // The title the name was last filled in with from a guide: picking another guide replaces the name only while
   // it still reads that (or is empty), never a name the user typed.
@@ -70,13 +49,14 @@ export default function ExerciseSheet({ exercise, onClose, onSave, onRemove }: P
   const [picking, setPicking] = useState(false);
   useEffect(() => {
     if (exercise !== undefined) {
-      setFields(fieldsOf(exercise));
+      setFields(textsOf(exercise));
+      setShowAll(false);
       setDoc(exercise?.doc ?? "");
       setFilledName("");
       setPicking(false);
     }
   }, [exercise]);
-  const set = (field: Field) => (event: { target: { value: string } }) => setFields((f) => ({ ...f, [field]: event.target.value }));
+  const set = (field: ExerciseField) => (event: { target: { value: string } }) => setFields((f) => ({ ...f, [field]: event.target.value }));
   const guideLabel = useGuideLabel(doc);
 
   const pick = (guide: ExerciseGuide | null) => {
@@ -90,16 +70,23 @@ export default function ExerciseSheet({ exercise, onClose, onSave, onRemove }: P
     }
   };
 
+  // A habit's fields come from its past sessions (requirement §2.4.4 §8): the name and note always, what it used
+  // before, and anything this exercise already has.
+  const [shown, setShown] = useState<Set<ExerciseField>>(new Set());
+  useEffect(() => {
+    if (exercise === undefined) return;
+    const texts = textsOf(exercise);
+    setShown(
+      new Set(EXERCISE_FIELDS.filter((f) => ALWAYS_SHOWN_FIELDS.has(f.key) || usedFields.has(f.key) || texts[f.key]).map((f) => f.key)),
+    );
+  }, [exercise, usedFields]);
+  const visible = EXERCISE_FIELDS.filter((field) => showAll || shown.has(field.key));
+  const hiddenCount = EXERCISE_FIELDS.length - visible.length;
+
   const save = () =>
     onSave(
       create(WorkoutExerciseSchema, {
-        name: fields.name.trim(),
-        equipment: fields.equipment.trim(),
-        weightKg: parseAmount(fields.weight),
-        reps: parseReps(fields.reps),
-        durationMinutes: parseAmount(fields.duration),
-        settings: fields.settings.trim(),
-        note: fields.note.trim(),
+        ...Object.assign({}, ...EXERCISE_FIELDS.map((field) => field.write(fields[field.key]))),
         doc,
       }),
     );
@@ -120,19 +107,29 @@ export default function ExerciseSheet({ exercise, onClose, onSave, onRemove }: P
               <span className={doc ? "truncate" : "truncate text-black/40 dark:text-white/40"}>{guideLabel || "…"}</span>
               <ChevronRightIcon className="h-4 w-4 shrink-0 text-black/30 dark:text-white/30" />
             </button>
-            {FIELDS.map((field) => (
-              <label key={field} className="contents">
-                <span className="text-[14px] text-black/55 dark:text-white/55">{LABELS[field]}</span>
+            {visible.map((field) => (
+              <label key={field.key} className="contents">
+                <span className="text-[14px] text-black/55 dark:text-white/55">{field.label}</span>
                 <input
-                  value={fields[field]}
-                  onChange={set(field)}
-                  placeholder={PLACEHOLDERS[field]}
-                  inputMode={field === "weight" || field === "duration" ? "decimal" : undefined}
+                  value={fields[field.key]}
+                  onChange={set(field.key)}
+                  placeholder={field.placeholder}
+                  inputMode={field.decimal ? "decimal" : undefined}
                   className="min-w-0 rounded-xl bg-black/5 dark:bg-white/10 px-3 py-2 text-[16px] outline-none"
                 />
               </label>
             ))}
           </div>
+          {hiddenCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowAll(true)}
+              className="mt-2 flex items-center gap-1 text-[14px] text-primary active:opacity-50"
+            >
+              {COPY.checkIn.exercise.moreFields(hiddenCount)}
+              <ChevronDownIcon className="h-4 w-4" />
+            </button>
+          )}
           <div className="flex justify-between py-3">
             {exercise ? (
               <button type="button" className="text-[16px] text-red-500" onClick={onRemove}>
