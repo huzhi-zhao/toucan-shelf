@@ -3,12 +3,21 @@ import { List, ListButton, ListItem, Navbar, NavbarBackLink, Page, Preloader, Sh
 import { BotIcon, ExternalLinkIcon } from "lucide-react";
 import { type FormEvent, type RefObject, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { useDeleteTodo, useHabits, usePostponeTodo, useTodo, useTodoTags, useUpdateTodo } from "@/hooks/usePlannerQueries";
+import {
+  useDeleteTodo,
+  useHabits,
+  usePlannerEntries,
+  usePostponeTodo,
+  useTodo,
+  useTodoTags,
+  useUpdateTodo,
+} from "@/hooks/usePlannerQueries";
 import { cn } from "@/lib/utils";
 import { type Todo, Todo_Source, Todo_Status } from "@/types/proto/api/v1/planner_service_pb";
 import DangerListButton from "../../components/DangerListButton";
 import DocPickerSheet from "../../components/DocPickerSheet";
 import { LinkedDocsList } from "../../components/LinkedDocs";
+import PlanProgress from "../../components/planner/PlanProgress";
 import TodoNoteField from "../../components/planner/TodoNoteField";
 import WorkoutEditor from "../../components/planner/WorkoutEditor";
 import SectionTitle from "../../components/SectionTitle";
@@ -25,6 +34,7 @@ import {
   postponeChoices,
 } from "../../lib/planner";
 import { usePref } from "../../lib/storage";
+import { recordedPlanExercises } from "../../lib/workoutFields";
 import { docRoute, MOBILE_ROUTES, todoNameFromUid } from "../../routes";
 
 const EDITABLE_FIELDS = ["title", "note", "url"] as const;
@@ -78,6 +88,10 @@ export default function TodoPage() {
   const [postponeOpen, setPostponeOpen] = useState(false);
   const postponeTodo = usePostponeTodo();
   const { data: habits = [] } = useHabits();
+  // A done habit todo's check-in, to show which planned exercises it recorded.
+  const checkInDate = todo?.habit ? todo.checkInDate : "";
+  const { data: checkInEntries } = usePlannerEntries(checkInDate, checkInDate, checkInDate !== "");
+  const recordedWorkout = checkInEntries?.checkIns.find((c) => c.habit === todo?.habit && c.date === checkInDate)?.workout;
   const [maxUpdateDays] = usePref(PLANNER_MAX_UPDATE_DAYS_KEY, PLANNER_MAX_UPDATE_DAYS_DEFAULT);
   useBlurOnClose(cancelOpen || postponeOpen || pickerOpen || tagOpen);
 
@@ -145,6 +159,7 @@ export default function TodoPage() {
   const settled = todo.checkInDate !== "";
   const linkedHabit = habits.find((habit) => habit.name === todo.habit);
   const isHabitTodo = todo.habit !== "";
+  const inRecord = settled ? recordedPlanExercises(todo.plannedWorkout?.exercises ?? [], recordedWorkout?.exercises ?? []) : undefined;
   const failed = isFailed(todo, today);
   // A failed habit todo can still be done late, by a backfill, within the days check-ins stay editable.
   const canBackfill = failed && isDateEditable(todo.date, today, maxUpdateDays);
@@ -231,6 +246,7 @@ export default function TodoPage() {
             <span className="inline-flex items-center gap-1.5">
               {COPY.todo.plannedWorkout}
               {todo.plannedWorkoutSource === Todo_Source.AGENT && <BotIcon className="w-4 h-4" aria-label={COPY.checkIn.sources.AGENT} />}
+              {inRecord && <PlanProgress inRecord={inRecord} />}
             </span>
           </SectionTitle>
           {/* What to do that day, against the check-in's record of what was done. History once the todo is closed or failed. */}
@@ -238,6 +254,7 @@ export default function TodoPage() {
             workout={todo.plannedWorkout}
             habit={todo.habit}
             planned
+            inRecord={inRecord}
             readOnly={closed || failed}
             onChange={(plannedWorkout) => save({ plannedWorkout })}
             emptyText={COPY.todo.noPlannedWorkout}

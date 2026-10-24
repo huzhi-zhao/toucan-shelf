@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import dayjs from "dayjs";
 import { List, ListItem, Navbar, NavbarBackLink, Page, Preloader, Toast } from "konsta/react";
-import { BotIcon, CheckIcon } from "lucide-react";
+import { BotIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useHabits, usePlannerEntries, useSetCheckIn, useTodo } from "@/hooks/usePlannerQueries";
@@ -15,7 +15,8 @@ import {
   WorkoutSchema,
 } from "@/types/proto/api/v1/planner_service_pb";
 import DangerListButton from "../../components/DangerListButton";
-import WorkoutEditor, { ExerciseRow, PLANNED_LIST_CLASS } from "../../components/planner/WorkoutEditor";
+import PlanProgress from "../../components/planner/PlanProgress";
+import WorkoutEditor, { ExerciseRow, PLANNED_LIST_CLASS, RecordedMark } from "../../components/planner/WorkoutEditor";
 import SectionTitle from "../../components/SectionTitle";
 import { COPY } from "../../copy";
 import { useBack, useBackLabel, useGo } from "../../lib/nav";
@@ -143,6 +144,7 @@ export default function CheckInPage() {
           <SectionTitle>
             <span className="inline-flex items-center gap-1.5">
               {COPY.checkIn.plan}
+              <PlanProgress inRecord={inRecord} />
               {todo?.plannedWorkoutSource === Todo_Source.AGENT && <BotIcon className="w-4 h-4" aria-label={COPY.checkIn.sources.AGENT} />}
             </span>
           </SectionTitle>
@@ -156,10 +158,7 @@ export default function CheckInPage() {
                 onOpenDoc={(memo) => go(docRoute(memo))}
                 after={
                   inRecord[index] ? (
-                    <span className="inline-flex items-center gap-1 text-[14px]">
-                      <CheckIcon className="w-4 h-4" />
-                      {COPY.checkIn.planRecorded}
-                    </span>
+                    <RecordedMark />
                   ) : (
                     <button
                       type="button"

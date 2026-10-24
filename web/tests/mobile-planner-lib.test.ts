@@ -310,6 +310,13 @@ describe("workouts", () => {
     // A guide match is taken before a namesake, so the renamed row still counts.
     expect(recordedPlanExercises([ex("臀推"), ex("臀推", "memos/a")], [ex("臀推", "memos/a")])).toEqual([false, true]);
     expect(recordedPlanExercises(plan, [])).toEqual([false, false, false, false]);
+    // A bracketed note at the end is not part of the name, on either side.
+    expect(
+      recordedPlanExercises(
+        [ex("Treadmill walk (warm-up)"), ex("Recumbent bike（放松）"), ex("Bike")],
+        [ex("Treadmill walk"), ex("recumbent bike (cool-down)")],
+      ),
+    ).toEqual([true, true, false]);
   });
 });
 
