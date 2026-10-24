@@ -24,6 +24,7 @@ import { useBlurOnClose } from "../../lib/keyboard";
 import { useGo, usePageScroll } from "../../lib/nav";
 import {
   buildCalendarData,
+  foldedHabitCounts,
   groupOpenTodos,
   habitColor,
   habitsOn,
@@ -32,11 +33,11 @@ import {
   isFailed,
   localToday,
   monthRange,
+  orderDayTodos,
   PLANNER_MAX_UPDATE_DAYS_DEFAULT,
   PLANNER_MAX_UPDATE_DAYS_KEY,
   readCalendarView,
   saveCalendarView,
-  splitHabitTitle,
   splitPinnedHabits,
   todosForDay,
   todosNotShown,
@@ -103,7 +104,7 @@ export default function PlannerPage() {
   const isFuture = selectedDate > today;
   const canCheckIn = editable && !isFuture;
   const checkInsOfDay = new Map((entries?.checkIns ?? []).filter((c) => c.date === selectedDate).map((c) => [c.habit, c]));
-  const todosOfDay = todosForDay(selectedDate, today, entries?.todos ?? [], openTodos);
+  const todosOfDay = orderDayTodos(todosForDay(selectedDate, today, entries?.todos ?? [], openTodos), versions, today);
   // The list below the calendar skips what the selected day shows: with today selected, today's and the
   // overdue todos are already listed right above.
   // A failed habit todo leaves the list: it stays only on its own day (requirement §2.4.2 §5).
@@ -280,8 +281,12 @@ export default function PlannerPage() {
   const day = dayjs(selectedDate);
   const dayTitle = `${day.format("M月D日")} ${COPY.planner.weekdays[day.day()]}${selectedDate === today ? ` · ${COPY.planner.today}` : ""}`;
   // A folded habit's check-in is out of sight behind "⋯", so the day's list shows it too; pinned ones are the buttons above.
-  const foldedCheckedOfDay = foldedOfDay.filter((habit) => checkInsOfDay.has(habit.name));
-  const dayIsEmpty = foldedCheckedOfDay.length === 0 && todosOfDay.length === 0 && notesOfDay.length === 0;
+  const dayIsEmpty = todosOfDay.length === 0 && notesOfDay.length === 0;
+  const foldedCounts = foldedHabitCounts(
+    foldedOfDay,
+    (habit) => checkInsOfDay.has(habit),
+    (habit) => weeklyGoalOn(versions, habit, selectedDate, resolvedDefault),
+  );
   const listSections: { key: string; title: string; todos: Todo[]; danger?: boolean }[] = [
     { key: "overdue", title: COPY.todo.overdue, todos: groups.overdue, danger: true },
     { key: "thisWeek", title: COPY.planner.thisWeek, todos: groups.thisWeek },
@@ -364,9 +369,11 @@ export default function PlannerPage() {
               className="flex items-center gap-1 rounded-full px-3 py-1.5 text-[14px] border border-black/15 dark:border-white/20 bg-white dark:bg-[#1c1c1e]"
             >
               <EllipsisIcon className="w-4 h-4" />
-              <span className="text-[12px] text-black/45 dark:text-white/45">
-                {COPY.planner.moreHabits(foldedOfDay.filter((habit) => checkInsOfDay.has(habit.name)).length, foldedOfDay.length)}
-              </span>
+              {foldedCounts.total > 0 && (
+                <span className="text-[12px] text-black/45 dark:text-white/45">
+                  {COPY.planner.moreHabits(foldedCounts.checked, foldedCounts.total)}
+                </span>
+              )}
             </button>
           )}
         </div>
@@ -382,30 +389,6 @@ export default function PlannerPage() {
         <div className="px-4 py-3 text-[14px] text-black/40 dark:text-white/40">{COPY.planner.dayEmpty}</div>
       ) : (
         <List strongIos insetIos dividersIos className="!my-0">
-          {foldedCheckedOfDay.map((habit) => {
-            const checkIn = checkInsOfDay.get(habit.name);
-            const { icon, name } = splitHabitTitle(habit.title);
-            const detail = [checkIn?.note, checkIn?.workout && COPY.checkIn.workout].filter(Boolean).join(" · ");
-            return (
-              <ListItem
-                key={habit.name}
-                link
-                chevron={false}
-                title={<span className="text-[15px]">{name || habit.title}</span>}
-                text={detail || undefined}
-                media={<span className="w-[22px] text-center text-[15px] leading-none">{icon || "✓"}</span>}
-                after={
-                  <span className="flex items-center gap-1 text-[13px] text-black/45 dark:text-white/45">
-                    {checkIn?.source === CheckIn_Source.AGENT && (
-                      <BotIcon className="w-3.5 h-3.5" aria-label={COPY.checkIn.sources.AGENT} />
-                    )}
-                    {COPY.planner.checkedIn}
-                  </span>
-                }
-                onClick={() => tapHabit(habit)}
-              />
-            );
-          })}
           {todosOfDay.map((todo) => (
             <TodoRow key={todo.name} todo={todo} today={today} habitLabel={habitLabel(todo)} onToggle={toggleTodo} onOpen={openTodo} />
           ))}

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCalendarData,
   convertCalendarBlock,
+  foldedHabitCounts,
   formatReps,
   groupOpenTodos,
   habitTodoLabel,
@@ -15,6 +16,7 @@ import {
   joinHabitTitle,
   localToday,
   monthRange,
+  orderDayTodos,
   parseAmount,
   parseReps,
   postponeChoices,
@@ -193,6 +195,41 @@ describe("habit versions", () => {
         "2026-10-19",
       ),
     ).toEqual(["b", "a"]);
+  });
+
+  it("lists habit todos first, in today's plan order, open before closed", () => {
+    const plan = [
+      create(HabitVersionSchema, { effectiveDate: "", entries: [{ habit: "planner/habits/b" }, { habit: "planner/habits/a" }] }),
+    ];
+    const t = (title: string, habit: string, status = Todo_Status.ACTIVE) =>
+      create(TodoSchema, { name: `planner/todos/${title}`, title, date: "2026-10-24", habit: habit && `planner/habits/${habit}`, status });
+    const ordered = orderDayTodos(
+      [t("写周报", ""), t("a 待办", "a"), t("b 已完成", "b", Todo_Status.DONE), t("过期", ""), t("b 待办", "b"), t("c 待办", "c")],
+      plan,
+      "2026-10-24",
+    );
+    expect(ordered.map((todo) => todo.title)).toEqual(["b 待办", "a 待办", "c 待办", "b 已完成", "写周报", "过期"]);
+  });
+
+  it("counts only folded habits with a weekly goal", () => {
+    const folded = habits; // a, b, c
+    const goals: Record<string, number> = { "planner/habits/a": 0, "planner/habits/b": 2, "planner/habits/c": 1 };
+    const checked = new Set(["planner/habits/a", "planner/habits/b"]);
+    expect(
+      foldedHabitCounts(
+        folded,
+        (h) => checked.has(h),
+        (h) => goals[h],
+      ),
+    ).toEqual({ checked: 1, total: 2 });
+    // Only a goal-less habit folded: nothing to count.
+    expect(
+      foldedHabitCounts(
+        [habits[0]],
+        (h) => checked.has(h),
+        (h) => goals[h],
+      ),
+    ).toEqual({ checked: 0, total: 0 });
   });
 
   it("pins every day by today's plan, in its order", () => {

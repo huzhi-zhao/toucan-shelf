@@ -145,9 +145,8 @@ export const COPY = {
     failed: "保存失败，请稍后再试",
   },
   planner: {
-    moreHabits: (checked: number, total: number) => (checked > 0 ? `${checked}/${total}` : `${total}`),
+    moreHabits: (checked: number, total: number) => (total === 0 ? "" : checked > 0 ? `${checked}/${total}` : `${total}`),
     foldedHabits: "其余习惯",
-    checkedIn: "已打卡",
     title: "计划",
     today: "今天",
     weekdays: ["周日", "周一", "周二", "周三", "周四", "周五", "周六"],
