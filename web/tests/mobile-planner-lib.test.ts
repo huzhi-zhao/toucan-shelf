@@ -175,7 +175,7 @@ describe("habit versions", () => {
     expect(buildCalendarData(habits, versions, undefined, { startDate: "2026-11-24", endDate: "2027-01-07" }).events).toEqual(["c", "a"]);
   });
 
-  it("gives only pinned habits a place in a day's cell", () => {
+  it("puts pinned habits first in a day's cell, folded ones after", () => {
     const folded = create(HabitVersionSchema, {
       effectiveDate: "",
       entries: [
@@ -185,7 +185,7 @@ describe("habit versions", () => {
     });
     expect(
       buildCalendarData(habits, [folded], undefined, { startDate: "2026-09-24", endDate: "2026-11-07" }).slotsOf("2026-10-19"),
-    ).toEqual(["b"]);
+    ).toEqual(["b", "a"]);
     expect([...pinnedHabitNamesOn([folded], "2026-10-19")]).toEqual(["planner/habits/b"]);
   });
 

@@ -24,6 +24,9 @@ export const CalendarDayCell = ({ day, items, dayEvents, events, showTaskDot, sl
   const hasTasks = taskItems.length > 0;
   const previewItems = taskItems.slice(0, MAX_PREVIEW_ITEMS);
   const hasEvents = dayEvents.length > 0;
+  // 图标一行三格：放不下时前两格放图标，第三格写 "+N"
+  const shownIcons = dayEvents.length > 3 ? dayEvents.slice(0, 2) : dayEvents;
+  const hiddenIcons = dayEvents.slice(shownIcons.length);
   // 悬停圆点时连同评论一起提示，如 "💪运动：跑步10分钟"。
   const eventTitle = (name: string) => {
     const comment = items.find((item) => item.isEvent && !item.hidden && item.text === name)?.comment;
@@ -91,11 +94,19 @@ export const CalendarDayCell = ({ day, items, dayEvents, events, showTaskDot, sl
       {/* 图标本身认得出是哪个 event，不必靠位置：只排打了卡的，不留空位；抵消格子内边距，整格宽三等分、各自居中；总在最底下，放在文字预览之后 */}
       {hasEvents && iconOf && (
         <div className="-mx-1 mt-auto grid shrink-0 grid-cols-3 text-[11px] leading-[13px] md:-mx-1.5" aria-hidden="true">
-          {dayEvents.map((name) => (
+          {shownIcons.map((name) => (
             <span key={name} className="text-center" title={isOutside ? undefined : eventTitle(name)}>
               {iconOf(name)}
             </span>
           ))}
+          {hiddenIcons.length > 0 && (
+            <span
+              className="text-center text-[10px] text-muted-foreground"
+              title={isOutside ? undefined : hiddenIcons.map(eventTitle).join("\n")}
+            >
+              +{hiddenIcons.length}
+            </span>
+          )}
         </div>
       )}
       {/* events 圆点固定分布在 5 等分格中，按 events 定义顺序对号入座，某天未发生的事件留空不占用其他格子 */}

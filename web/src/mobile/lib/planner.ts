@@ -184,12 +184,14 @@ export function buildCalendarData(
       if (title && !events.includes(title)) events.push(title);
     }
   });
-  // Only pinned habits get a place in a day's cell: one row of three icons at most.
+  // Every habit of the day has a place in its cell, pinned ones first, so a folded habit's check-in shows too.
+  // The cell keeps one row of icons and folds what does not fit into "+N".
   const slotsOf = (date: string) => {
     const pinned = pinnedHabitNamesOn(versions, date);
-    return habitsOn(versions, habits, date)
-      .filter((habit) => pinned.has(habit.name))
-      .map((habit) => habit.title);
+    const ofDay = habitsOn(versions, habits, date);
+    return [...ofDay.filter((habit) => pinned.has(habit.name)), ...ofDay.filter((habit) => !pinned.has(habit.name))].map(
+      (habit) => habit.title,
+    );
   };
   const colorOf = (title: string) => colorByTitle.get(title) ?? "#9ca3af";
   const iconOf = (title: string) => splitHabitTitle(title).icon;
