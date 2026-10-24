@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 import { List, ListButton, ListItem, Navbar, NavbarBackLink, Page, Preloader, Sheet, Toast, Toggle } from "konsta/react";
-import { BotIcon, ExternalLinkIcon } from "lucide-react";
+import { BotIcon, ChevronDownIcon, ExternalLinkIcon } from "lucide-react";
 import { type FormEvent, type RefObject, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
@@ -8,6 +8,7 @@ import {
   useHabits,
   usePlannerEntries,
   usePostponeTodo,
+  useSetCheckIn,
   useTodo,
   useTodoTags,
   useUpdateTodo,
@@ -19,7 +20,7 @@ import DocPickerSheet from "../../components/DocPickerSheet";
 import { LinkedDocsList } from "../../components/LinkedDocs";
 import PlanProgress from "../../components/planner/PlanProgress";
 import TodoNoteField from "../../components/planner/TodoNoteField";
-import WorkoutEditor from "../../components/planner/WorkoutEditor";
+import WorkoutEditor, { PLANNED_LIST_CLASS } from "../../components/planner/WorkoutEditor";
 import SectionTitle from "../../components/SectionTitle";
 import { COPY } from "../../copy";
 import { useBlurOnClose } from "../../lib/keyboard";
@@ -91,7 +92,10 @@ export default function TodoPage() {
   // A done habit todo's check-in, to show which planned exercises it recorded.
   const checkInDate = todo?.habit ? todo.checkInDate : "";
   const { data: checkInEntries } = usePlannerEntries(checkInDate, checkInDate, checkInDate !== "");
-  const recordedWorkout = checkInEntries?.checkIns.find((c) => c.habit === todo?.habit && c.date === checkInDate)?.workout;
+  const checkIn = checkInEntries?.checkIns.find((c) => c.habit === todo?.habit && c.date === checkInDate);
+  const setCheckIn = useSetCheckIn();
+  // Once checked in, the plan folds to one line under the record; opened, it shows what was not done.
+  const [planOpen, setPlanOpen] = useState(false);
   const [maxUpdateDays] = usePref(PLANNER_MAX_UPDATE_DAYS_KEY, PLANNER_MAX_UPDATE_DAYS_DEFAULT);
   useBlurOnClose(cancelOpen || postponeOpen || pickerOpen || tagOpen);
 
@@ -159,7 +163,8 @@ export default function TodoPage() {
   const settled = todo.checkInDate !== "";
   const linkedHabit = habits.find((habit) => habit.name === todo.habit);
   const isHabitTodo = todo.habit !== "";
-  const inRecord = settled ? recordedPlanExercises(todo.plannedWorkout?.exercises ?? [], recordedWorkout?.exercises ?? []) : undefined;
+  const plannedExercises = todo.plannedWorkout?.exercises ?? [];
+  const inRecord = recordedPlanExercises(plannedExercises, checkIn?.workout?.exercises ?? []);
   const failed = isFailed(todo, today);
   // A failed habit todo can still be done late, by a backfill, within the days check-ins stay editable.
   const canBackfill = failed && isDateEditable(todo.date, today, maxUpdateDays);
@@ -240,13 +245,68 @@ export default function TodoPage() {
         <TodoNoteField value={drafts.note} onChange={(note) => setDrafts((d) => ({ ...d, note }))} onCommit={() => commitText("note")} />
       </div>
 
-      {isHabitTodo && (
+      {isHabitTodo && settled && (
+        <>
+          {/* Checked in: what was done comes first, edited as on the check-in page; the plan is its footnote. */}
+          <SectionTitle>{COPY.checkIn.workout}</SectionTitle>
+          <WorkoutEditor
+            workout={checkIn?.workout}
+            habit={todo.habit}
+            readOnly={!checkIn}
+            onChange={(workout) =>
+              checkIn &&
+              setCheckIn.mutate(
+                { habit: todo.habit, date: checkIn.date, note: checkIn.note, checked: true, workout },
+                { onError: () => flash(COPY.planner.failed) },
+              )
+            }
+            emptyText={COPY.checkIn.noExercises}
+            onOpenDoc={(memo) => go(docRoute(memo))}
+          />
+          {plannedExercises.length > 0 && (
+            <>
+              <List strongIos insetIos dividersIos className={cn("!mt-4 !mb-0", PLANNED_LIST_CLASS)}>
+                <ListItem
+                  link
+                  chevron={false}
+                  title={
+                    <span className="inline-flex items-center gap-1.5 text-black/60 dark:text-white/60">
+                      {COPY.checkIn.planSummary(plannedExercises.length)}
+                      {todo.plannedWorkoutSource === Todo_Source.AGENT && (
+                        <BotIcon className="w-4 h-4" aria-label={COPY.checkIn.sources.AGENT} />
+                      )}
+                      <PlanProgress inRecord={inRecord} />
+                    </span>
+                  }
+                  after={<ChevronDownIcon className={cn("w-5 h-5 transition-transform", planOpen && "rotate-180")} />}
+                  onClick={() => setPlanOpen((open) => !open)}
+                />
+              </List>
+              {planOpen && (
+                <div className="mt-2">
+                  <WorkoutEditor
+                    workout={todo.plannedWorkout}
+                    habit={todo.habit}
+                    planned
+                    inRecord={inRecord}
+                    readOnly
+                    onChange={() => {}}
+                    emptyText={COPY.todo.noPlannedWorkout}
+                    onOpenDoc={(memo) => go(docRoute(memo))}
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </>
+      )}
+
+      {isHabitTodo && !settled && (
         <>
           <SectionTitle>
             <span className="inline-flex items-center gap-1.5">
               {COPY.todo.plannedWorkout}
               {todo.plannedWorkoutSource === Todo_Source.AGENT && <BotIcon className="w-4 h-4" aria-label={COPY.checkIn.sources.AGENT} />}
-              {inRecord && <PlanProgress inRecord={inRecord} />}
             </span>
           </SectionTitle>
           {/* What to do that day, against the check-in's record of what was done. History once the todo is closed or failed. */}
@@ -254,7 +314,6 @@ export default function TodoPage() {
             workout={todo.plannedWorkout}
             habit={todo.habit}
             planned
-            inRecord={inRecord}
             readOnly={closed || failed}
             onChange={(plannedWorkout) => save({ plannedWorkout })}
             emptyText={COPY.todo.noPlannedWorkout}
