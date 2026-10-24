@@ -133,7 +133,7 @@ describe("calendar data", () => {
       ],
       notes: [create(PlannerNoteSchema, { name: "planner/notes/n", date: "2026-10-02", content: "记一笔" })],
     });
-    const data = buildCalendarData(habits, versions, entries, { startDate: "2026-09-24", endDate: "2026-11-07" }, "2026-10-24");
+    const data = buildCalendarData(habits, versions, entries, { startDate: "2026-09-24", endDate: "2026-11-07" });
     expect(data.events).toEqual(["冥想", "运动"]);
     expect(data.eventsByDate["2026-10-02"]).toEqual(["运动"]);
     expect(data.itemCounts["2026-10-02"]).toBe(3);
@@ -172,17 +172,15 @@ describe("habit versions", () => {
   });
 
   it("lays each day's dots out by its version, without gaps", () => {
-    const data = buildCalendarData(habits, versions, undefined, { startDate: "2026-09-24", endDate: "2026-11-07" }, "2026-10-24");
+    const data = buildCalendarData(habits, versions, undefined, { startDate: "2026-09-24", endDate: "2026-11-07" });
     expect(data.slotsOf("2026-10-19")).toEqual(["a", "b"]);
     expect(data.slotsOf("2026-10-20")).toEqual(["c", "a"]);
     expect(data.events).toEqual(["a", "b", "c"]);
     // A month after the change lists only the habits in use then.
-    expect(buildCalendarData(habits, versions, undefined, { startDate: "2026-11-24", endDate: "2027-01-07" }, "2026-10-24").events).toEqual(
-      ["c", "a"],
-    );
+    expect(buildCalendarData(habits, versions, undefined, { startDate: "2026-11-24", endDate: "2027-01-07" }).events).toEqual(["c", "a"]);
   });
 
-  it("puts pinned habits first in a day's cell, folded ones after", () => {
+  it("lists a day's habits in its cell in the plan's order, pinned or not", () => {
     const folded = create(HabitVersionSchema, {
       effectiveDate: "",
       entries: [
@@ -191,10 +189,8 @@ describe("habit versions", () => {
       ],
     });
     expect(
-      buildCalendarData(habits, [folded], undefined, { startDate: "2026-09-24", endDate: "2026-11-07" }, "2026-10-24").slotsOf(
-        "2026-10-19",
-      ),
-    ).toEqual(["b", "a"]);
+      buildCalendarData(habits, [folded], undefined, { startDate: "2026-09-24", endDate: "2026-11-07" }).slotsOf("2026-10-19"),
+    ).toEqual(["a", "b"]);
   });
 
   it("lists habit todos first, in today's plan order, open before closed", () => {

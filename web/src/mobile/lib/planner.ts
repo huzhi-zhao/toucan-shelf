@@ -185,7 +185,6 @@ export function buildCalendarData(
   versions: HabitVersion[],
   entries: ListPlannerEntriesResponse | undefined,
   range: { startDate: string; endDate: string },
-  today: string,
 ): CalendarData {
   const titleOf = new Map(habits.map((habit) => [habit.name, habit.title]));
   const colorByTitle = new Map(habits.map((habit) => [habit.title, habitColor(habit)]));
@@ -198,12 +197,9 @@ export function buildCalendarData(
       if (title && !events.includes(title)) events.push(title);
     }
   });
-  // Every habit of the day has a place in its cell, pinned ones first, so a folded habit's check-in shows too.
-  // The cell keeps one row of icons and folds what does not fit into "+N".
-  const slotsOf = (date: string) => {
-    const { pinned, folded } = splitPinnedHabits(versions, habitsOn(versions, habits, date), today);
-    return [...pinned, ...folded].map((habit) => habit.title);
-  };
+  // Every habit of the day has a place in its cell, in the order its plan lists them (set when making the plan),
+  // so a folded habit's check-in shows too. The cell keeps one row of icons and folds what does not fit into "+N".
+  const slotsOf = (date: string) => habitsOn(versions, habits, date).map((habit) => habit.title);
   const colorOf = (title: string) => colorByTitle.get(title) ?? "#9ca3af";
   const iconOf = (title: string) => splitHabitTitle(title).icon;
   const itemsByDate: Record<string, CalendarItem[]> = {};
