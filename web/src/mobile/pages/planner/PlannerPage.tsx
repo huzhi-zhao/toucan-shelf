@@ -34,10 +34,10 @@ import {
   monthRange,
   PLANNER_MAX_UPDATE_DAYS_DEFAULT,
   PLANNER_MAX_UPDATE_DAYS_KEY,
-  pinnedHabitNamesOn,
   readCalendarView,
   saveCalendarView,
   splitHabitTitle,
+  splitPinnedHabits,
   todosForDay,
   todosNotShown,
   weeklyCheckIns,
@@ -83,7 +83,10 @@ export default function PlannerPage() {
   const { data: versions = [] } = useHabitVersions();
   const { data: entries } = usePlannerEntries(range.startDate, range.endDate);
   const { data: openTodos = [] } = useOpenTodos();
-  const calendar = useMemo(() => buildCalendarData(habits, versions, entries, monthRange(month)), [habits, versions, entries, month]);
+  const calendar = useMemo(
+    () => buildCalendarData(habits, versions, entries, monthRange(month), today),
+    [habits, versions, entries, month, today],
+  );
 
   const setCheckIn = useSetCheckIn();
   const createTodo = useCreateTodo();
@@ -112,9 +115,8 @@ export default function PlannerPage() {
   const notesOfDay = (entries?.notes ?? []).filter((note) => note.date === selectedDate);
   const habitsOfDay = habitsOn(versions, habits, selectedDate);
   // Pinned habits show as buttons; the rest fold behind one, opening a sheet of them (requirement §2.4.2 §2).
-  const pinnedNames = pinnedHabitNamesOn(versions, selectedDate);
-  const pinnedOfDay = habitsOfDay.filter((habit) => pinnedNames.has(habit.name));
-  const foldedOfDay = habitsOfDay.filter((habit) => !pinnedNames.has(habit.name));
+  // Which are pinned follows today's plan on every day (§2.4.2 §2): pinning is how the page looks, not history.
+  const { pinned: pinnedOfDay, folded: foldedOfDay } = splitPinnedHabits(versions, habitsOfDay, today);
   const habitByName = new Map(habits.map((habit) => [habit.name, habit]));
 
   // A habit todo shows its habit's check-ins in the week of its date, and a habit not checked in yet those of

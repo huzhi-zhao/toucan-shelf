@@ -95,8 +95,22 @@ export function habitsOn(versions: HabitVersion[], habits: Habit[], date: string
 }
 
 /** The habits of the plan in use on a day that are pinned (at most three): the planner page shows them, the rest fold away. */
-export function pinnedHabitNamesOn(versions: HabitVersion[], date: string): Set<string> {
-  return new Set((habitVersionOn(versions, date)?.entries ?? []).filter((entry) => entry.pinned).map((entry) => entry.habit));
+/** How many habits a plan pins to the planner page. */
+export const MAX_PINNED_HABITS = 3;
+
+/**
+ * Splits a day's habits into the pinned ones and the folded rest. Pinning is a display preference, not history
+ * (requirement §2.4.2 §2): every day follows the pins of the plan in use today, in that plan's order, so pinning
+ * a habit shows it on past days too. A habit of the day that today's plan does not pin is folded.
+ */
+export function splitPinnedHabits(versions: HabitVersion[], dayHabits: Habit[], today: string): { pinned: Habit[]; folded: Habit[] } {
+  const byName = new Map(dayHabits.map((habit) => [habit.name, habit]));
+  const pinned = (habitVersionOn(versions, today)?.entries ?? [])
+    .filter((entry) => entry.pinned)
+    .flatMap((entry) => byName.get(entry.habit) ?? [])
+    .slice(0, MAX_PINNED_HABITS);
+  const pinnedNames = new Set(pinned.map((habit) => habit.name));
+  return { pinned, folded: dayHabits.filter((habit) => !pinnedNames.has(habit.name)) };
 }
 
 /** A version's name in lists: "最早" for the first, else "10/20 起" (with the year when it is not this one). */
@@ -171,6 +185,7 @@ export function buildCalendarData(
   versions: HabitVersion[],
   entries: ListPlannerEntriesResponse | undefined,
   range: { startDate: string; endDate: string },
+  today: string,
 ): CalendarData {
   const titleOf = new Map(habits.map((habit) => [habit.name, habit.title]));
   const colorByTitle = new Map(habits.map((habit) => [habit.title, habitColor(habit)]));
@@ -186,11 +201,8 @@ export function buildCalendarData(
   // Every habit of the day has a place in its cell, pinned ones first, so a folded habit's check-in shows too.
   // The cell keeps one row of icons and folds what does not fit into "+N".
   const slotsOf = (date: string) => {
-    const pinned = pinnedHabitNamesOn(versions, date);
-    const ofDay = habitsOn(versions, habits, date);
-    return [...ofDay.filter((habit) => pinned.has(habit.name)), ...ofDay.filter((habit) => !pinned.has(habit.name))].map(
-      (habit) => habit.title,
-    );
+    const { pinned, folded } = splitPinnedHabits(versions, habitsOn(versions, habits, date), today);
+    return [...pinned, ...folded].map((habit) => habit.title);
   };
   const colorOf = (title: string) => colorByTitle.get(title) ?? "#9ca3af";
   const iconOf = (title: string) => splitHabitTitle(title).icon;
