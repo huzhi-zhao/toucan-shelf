@@ -14,9 +14,25 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="ToucanShelf" />
     <title>ToucanShelf</title>
+    <style>
+      /* Shown until the app renders into #root, which replaces it; the same spinner as LoadingScreen. */
+      html, body { margin: 0; background: #f2f2f7; }
+      .boot { display: flex; min-height: 100dvh; align-items: center; justify-content: center; }
+      .boot span {
+        width: 28px; height: 28px; box-sizing: border-box; border-radius: 50%;
+        border: 2.5px solid rgba(0, 0, 0, 0.1); border-top-color: rgba(0, 0, 0, 0.45);
+        opacity: 0; animation: boot-in 0s 0.2s forwards, boot-spin 1s linear infinite;
+      }
+      @media (prefers-color-scheme: dark) {
+        html, body { background: #000; }
+        .boot span { border-color: rgba(255, 255, 255, 0.15); border-top-color: rgba(255, 255, 255, 0.6); }
+      }
+      @keyframes boot-in { to { opacity: 1; } }
+      @keyframes boot-spin { to { transform: rotate(360deg); } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div class="boot" role="status" aria-label="加载中"><span></span></div></div>
     <script type="module" src="/src/mobile/main.tsx"></script>
   </body>
 </html>
