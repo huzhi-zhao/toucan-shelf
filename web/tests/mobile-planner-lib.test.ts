@@ -17,11 +17,11 @@ import {
   monthRange,
   parseAmount,
   parseReps,
-  pinnedHabitNamesOn,
   postponeChoices,
   readCalendarView,
   saveCalendarView,
   splitHabitTitle,
+  splitPinnedHabits,
   todosForDay,
   todosNotShown,
   weeklyCheckIns,
@@ -131,7 +131,7 @@ describe("calendar data", () => {
       ],
       notes: [create(PlannerNoteSchema, { name: "planner/notes/n", date: "2026-10-02", content: "记一笔" })],
     });
-    const data = buildCalendarData(habits, versions, entries, { startDate: "2026-09-24", endDate: "2026-11-07" });
+    const data = buildCalendarData(habits, versions, entries, { startDate: "2026-09-24", endDate: "2026-11-07" }, "2026-10-24");
     expect(data.events).toEqual(["冥想", "运动"]);
     expect(data.eventsByDate["2026-10-02"]).toEqual(["运动"]);
     expect(data.itemCounts["2026-10-02"]).toBe(3);
@@ -170,12 +170,14 @@ describe("habit versions", () => {
   });
 
   it("lays each day's dots out by its version, without gaps", () => {
-    const data = buildCalendarData(habits, versions, undefined, { startDate: "2026-09-24", endDate: "2026-11-07" });
+    const data = buildCalendarData(habits, versions, undefined, { startDate: "2026-09-24", endDate: "2026-11-07" }, "2026-10-24");
     expect(data.slotsOf("2026-10-19")).toEqual(["a", "b"]);
     expect(data.slotsOf("2026-10-20")).toEqual(["c", "a"]);
     expect(data.events).toEqual(["a", "b", "c"]);
     // A month after the change lists only the habits in use then.
-    expect(buildCalendarData(habits, versions, undefined, { startDate: "2026-11-24", endDate: "2027-01-07" }).events).toEqual(["c", "a"]);
+    expect(buildCalendarData(habits, versions, undefined, { startDate: "2026-11-24", endDate: "2027-01-07" }, "2026-10-24").events).toEqual(
+      ["c", "a"],
+    );
   });
 
   it("puts pinned habits first in a day's cell, folded ones after", () => {
@@ -187,9 +189,30 @@ describe("habit versions", () => {
       ],
     });
     expect(
-      buildCalendarData(habits, [folded], undefined, { startDate: "2026-09-24", endDate: "2026-11-07" }).slotsOf("2026-10-19"),
+      buildCalendarData(habits, [folded], undefined, { startDate: "2026-09-24", endDate: "2026-11-07" }, "2026-10-24").slotsOf(
+        "2026-10-19",
+      ),
     ).toEqual(["b", "a"]);
-    expect([...pinnedHabitNamesOn([folded], "2026-10-19")]).toEqual(["planner/habits/b"]);
+  });
+
+  it("pins every day by today's plan, in its order", () => {
+    const entry = (id: string, pinned: boolean) => ({ habit: `planner/habits/${id}`, pinned });
+    // Until 10-20 only b was pinned; from 10-24 c, b and a are, in that order.
+    const plans = [
+      create(HabitVersionSchema, { effectiveDate: "", entries: [entry("a", false), entry("b", true), entry("c", false)] }),
+      create(HabitVersionSchema, { effectiveDate: "2026-10-24", entries: [entry("c", true), entry("b", true), entry("a", true)] }),
+    ];
+    const names = (list: { title: string }[]) => list.map((habit) => habit.title);
+    // A day before the change shows today's pins.
+    const before = splitPinnedHabits(plans, habits, "2026-10-24");
+    expect(names(before.pinned)).toEqual(["c", "b", "a"]);
+    expect(before.folded).toEqual([]);
+    // Viewed before the change took effect, the old pins apply.
+    expect(names(splitPinnedHabits(plans, habits, "2026-10-23").pinned)).toEqual(["b"]);
+    // A habit of the day that today's plan no longer has is folded.
+    const day = splitPinnedHabits([create(HabitVersionSchema, { effectiveDate: "", entries: [entry("b", true)] })], habits, "2026-10-24");
+    expect(names(day.pinned)).toEqual(["b"]);
+    expect(names(day.folded)).toEqual(["a", "c"]);
   });
 
   it("counts a habit's check-ins in the week of a day", () => {

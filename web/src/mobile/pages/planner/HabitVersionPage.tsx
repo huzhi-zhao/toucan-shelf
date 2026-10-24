@@ -21,12 +21,12 @@ import SectionTitle from "../../components/SectionTitle";
 import { COPY } from "../../copy";
 import { useBlurOnClose } from "../../lib/keyboard";
 import { useBack, useBackLabel, useGo } from "../../lib/nav";
-import { habitColor, habitVersionOn, localToday, versionLabel } from "../../lib/planner";
+import { habitColor, habitVersionOn, localToday, MAX_PINNED_HABITS, versionLabel } from "../../lib/planner";
 import { docRoute, MOBILE_ROUTES } from "../../routes";
 
 // The server's limits: ten habits a plan, three of them pinned, a goal of at most every day.
 const MAX_HABITS = 10;
-const MAX_PINNED = 3;
+const MAX_PINNED = MAX_PINNED_HABITS;
 const MAX_WEEKLY_GOAL = 7;
 
 type Entry = { habit: string; weeklyGoal: number; pinned: boolean };
