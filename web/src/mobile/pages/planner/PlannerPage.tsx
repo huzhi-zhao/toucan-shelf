@@ -247,7 +247,9 @@ export default function PlannerPage() {
   };
 
   // One habit's button: filled once checked in, with its weekly progress, linked todo, agent mark and note.
-  const habitButton = (habit: Habit) => {
+  // In the day's row a button shows only the habit's icon, to keep the row on one line; the "⋯" sheet has room
+  // for the whole title.
+  const habitButton = (habit: Habit, iconOnly = false) => {
     const checkIn = checkInsOfDay.get(habit.name);
     const color = habitColor(habit);
     const linked = Boolean(todoOfHabit(habit));
@@ -261,6 +263,8 @@ export default function PlannerPage() {
         key={habit.name}
         type="button"
         disabled={!enabled}
+        title={iconOnly ? habit.title : undefined}
+        aria-label={iconOnly ? habit.title : undefined}
         onClick={() => tapHabit(habit)}
         className={cn(
           "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[14px] border transition-colors",
@@ -269,7 +273,7 @@ export default function PlannerPage() {
         )}
         style={checkIn ? { backgroundColor: color } : undefined}
       >
-        <span>{habit.title}</span>
+        <span>{iconOnly ? splitHabitTitle(habit.title).icon || habit.title : habit.title}</span>
         {progress && <span className="text-[12px] text-black/45 dark:text-white/45">{progress}</span>}
         {linked && <LinkIcon className={cn("w-3 h-3", checkIn ? "text-white/85" : "text-black/40 dark:text-white/40")} />}
         {byAgent && <BotIcon className="w-3.5 h-3.5 text-white/85" aria-label={COPY.checkIn.sources.AGENT} />}
@@ -361,7 +365,7 @@ export default function PlannerPage() {
 
       {habitsOfDay.length > 0 ? (
         <div className="flex flex-wrap gap-2 px-4 pb-3">
-          {pinnedOfDay.map(habitButton)}
+          {pinnedOfDay.map((habit) => habitButton(habit, true))}
           {foldedOfDay.length > 0 && (
             <button
               type="button"
@@ -591,7 +595,7 @@ export default function PlannerPage() {
           </div>
           {/* A tap closes this sheet first: the habit opens its own sheet or page, as from the row above. */}
           <div className="flex flex-wrap gap-2" onClickCapture={() => setMoreOpen(false)}>
-            {foldedOfDay.map(habitButton)}
+            {foldedOfDay.map((habit) => habitButton(habit))}
           </div>
         </div>
       </Sheet>
