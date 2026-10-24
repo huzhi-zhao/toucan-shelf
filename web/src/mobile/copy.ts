@@ -6,6 +6,7 @@
 export const COPY = {
   appName: "ToucanShelf",
   tagline: "随时随地翻阅你的知识库",
+  loading: "加载中",
   tabs: { shelf: "书架", plan: "计划", search: "搜索", me: "我的" },
   docPicker: { knowledgeBases: "知识库" },
   linkedDocs: {

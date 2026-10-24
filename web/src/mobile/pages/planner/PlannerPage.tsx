@@ -38,6 +38,7 @@ import {
   PLANNER_MAX_UPDATE_DAYS_KEY,
   readCalendarView,
   saveCalendarView,
+  splitHabitTitle,
   splitPinnedHabits,
   todosForDay,
   todosNotShown,

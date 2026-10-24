@@ -13,6 +13,7 @@ import { InstanceProvider, useInstance } from "@/contexts/InstanceContext";
 import { useTokenRefreshOnFocus } from "@/hooks/useTokenRefreshOnFocus";
 import { queryClient } from "@/lib/query-client";
 import { buildAuthRoute } from "@/utils/redirect-safety";
+import LoadingScreen from "./components/LoadingScreen";
 import TabsLayout from "./components/TabsLayout";
 import { useBlurTextFieldWhenHidden } from "./lib/keyboard";
 import { forgetRouterTransitions, useRouteCommitSignal } from "./lib/nav";
@@ -39,8 +40,8 @@ const HabitVersionPage = lazy(() => import("./pages/planner/HabitVersionPage"));
 const MeSettingsPage = lazy(() => import("./pages/MeSettingsPage"));
 const MeItemPage = lazy(() => import("./pages/MeItemPage"));
 
-/** Blank page while a lazy page loads, in the list background so the switch does not flash. */
-const lazyPage = (page: ReactNode) => <Suspense fallback={<div className="min-h-full bg-[#f2f2f7] dark:bg-black" />}>{page}</Suspense>;
+/** A spinner while a lazy page's code loads, in the list background so the switch does not flash. */
+const lazyPage = (page: ReactNode) => <Suspense fallback={<LoadingScreen />}>{page}</Suspense>;
 
 /** Instance profile and session first, as the web app does; nothing renders until both are settled. */
 function Bootstrap({ children }: { children: ReactNode }) {
@@ -56,7 +57,8 @@ function Bootstrap({ children }: { children: ReactNode }) {
 
   useTokenRefreshOnFocus(refreshAccessToken, !!currentUser);
 
-  return authReady && instanceReady ? <>{children}</> : null;
+  // mobile.html's spinner has already been up while the scripts loaded, so this one shows at once.
+  return authReady && instanceReady ? <>{children}</> : <LoadingScreen delay={0} />;
 }
 
 function Root() {
