@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { List, ListItem } from "konsta/react";
 import { BotIcon, ChevronDownIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useSetCheckIn } from "@/hooks/usePlannerQueries";
 import { cn } from "@/lib/utils";
 import {
@@ -53,6 +53,14 @@ export default function CheckInDetail({
 
   const [note, setNote] = useState(checkIn.note);
   useEffect(() => setNote(checkIn.note), [checkIn.note]);
+  // The note wraps and grows with its text, so a long one reads in full.
+  const noteRef = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const field = noteRef.current;
+    if (!field) return;
+    field.style.height = "auto";
+    field.style.height = `${field.scrollHeight}px`;
+  }, [note]);
 
   // Every change resends the note and the whole workout, as the server replaces them; the rating only when it changes.
   const save = (changes: { note?: string; workout?: Workout; rating?: number }) =>
@@ -96,14 +104,16 @@ export default function CheckInDetail({
         <ListItem title={COPY.checkIn.rating} after={<RatingStars value={checkIn.rating ?? 0} onChange={(rating) => save({ rating })} />} />
         <ListItem
           title={
-            <input
+            <textarea
+              ref={noteRef}
+              rows={1}
               value={note}
               disabled={noteLocked}
               onChange={(event) => setNote(event.target.value)}
               onBlur={() => note.trim() !== checkIn.note && save({ note: note.trim() })}
               placeholder={COPY.checkIn.notePlaceholder}
               aria-label={COPY.checkIn.note}
-              className="w-full bg-transparent text-[16px] outline-none disabled:opacity-60"
+              className="block w-full bg-transparent text-[16px] leading-relaxed outline-none resize-none overflow-hidden whitespace-pre-wrap disabled:opacity-60"
             />
           }
         />

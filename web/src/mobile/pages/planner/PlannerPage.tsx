@@ -283,7 +283,10 @@ export default function PlannerPage() {
         {progress && <span className="text-[12px] text-black/45 dark:text-white/45">{progress}</span>}
         {linked && <LinkIcon className={cn("w-3 h-3", checkIn ? "text-white/85" : "text-black/40 dark:text-white/40")} />}
         {byAgent && <BotIcon className="w-3.5 h-3.5 text-white/85" aria-label={COPY.checkIn.sources.AGENT} />}
-        {checkIn?.note && <span className="text-white/85 text-[12px] max-w-24 truncate">{checkIn.note}</span>}
+        {/* Checked in, the button names the habit; the note can run long, so it stays on the check-in. */}
+        {checkIn && iconOnly && splitHabitTitle(habit.title).hasEmoji && splitHabitTitle(habit.title).name && (
+          <span className="text-white/90 text-[13px] max-w-24 truncate">{splitHabitTitle(habit.title).name}</span>
+        )}
       </button>
     );
   };

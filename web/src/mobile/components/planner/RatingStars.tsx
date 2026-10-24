@@ -12,9 +12,9 @@ export default function RatingStars({ value, onChange }: { value: number; onChan
           type="button"
           aria-label={COPY.checkIn.rate(n)}
           onClick={() => onChange(n === value ? 0 : n)}
-          className="p-1 active:opacity-50"
+          className="p-0.5 active:opacity-50"
         >
-          <StarIcon className={cn("w-6 h-6", n <= value ? "fill-amber-400 text-amber-400" : "text-black/20 dark:text-white/25")} />
+          <StarIcon className={cn("w-5 h-5", n <= value ? "fill-amber-400 text-amber-400" : "text-black/20 dark:text-white/25")} />
         </button>
       ))}
     </span>
