@@ -158,6 +158,36 @@ func (c *Client) GetObjectStream(ctx context.Context, key string) (io.ReadCloser
 	return output.Body, nil
 }
 
+// ErrInvalidRange is returned by GetObjectRange when the requested range lies outside the object.
+var ErrInvalidRange = errors.New("requested range not satisfiable")
+
+// ObjectRange is the part of an object a GetObjectRange call read.
+type ObjectRange struct {
+	Body io.ReadCloser
+	// ContentLength is the length of Body.
+	ContentLength int64
+	// ContentRange is S3's Content-Range ("bytes 0-1/1234") when a range was served, or "" for the whole object.
+	ContentRange string
+}
+
+// GetObjectRange streams the object, or only the byte range rangeHeader asks for (an HTTP Range value such as
+// "bytes=0-1"; "" for the whole object). S3 serves a single range, as browsers ask for when they play media.
+func (c *Client) GetObjectRange(ctx context.Context, key, rangeHeader string) (*ObjectRange, error) {
+	input := &s3.GetObjectInput{Bucket: c.Bucket, Key: aws.String(key)}
+	if rangeHeader != "" {
+		input.Range = aws.String(rangeHeader)
+	}
+	output, err := c.Client.GetObject(ctx, input)
+	if err != nil {
+		var apiErr smithy.APIError
+		if errors.As(err, &apiErr) && apiErr.ErrorCode() == "InvalidRange" {
+			return nil, ErrInvalidRange
+		}
+		return nil, errors.Wrap(err, "failed to get object")
+	}
+	return &ObjectRange{Body: output.Body, ContentLength: aws.ToInt64(output.ContentLength), ContentRange: aws.ToString(output.ContentRange)}, nil
+}
+
 // DeleteObject deletes an object in S3.
 func (c *Client) DeleteObject(ctx context.Context, key string) error {
 	_, err := c.Client.DeleteObject(ctx, &s3.DeleteObjectInput{

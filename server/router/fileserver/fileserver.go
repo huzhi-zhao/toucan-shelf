@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -256,12 +257,7 @@ func (s *FileServerService) serveMediaStream(c *echo.Context, attachment *store.
 		return nil
 
 	case storepb.AttachmentStorageType_S3:
-		reader, err := s.getAttachmentReader(c.Request().Context(), attachment)
-		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, "failed to get attachment reader").Wrap(err)
-		}
-		defer reader.Close()
-		return c.Stream(http.StatusOK, contentType, reader)
+		return s.serveS3MediaRange(c, attachment, contentType)
 
 	default:
 		// Database storage fallback.
@@ -269,6 +265,41 @@ func (s *FileServerService) serveMediaStream(c *echo.Context, attachment *store.
 		http.ServeContent(c.Response(), c.Request(), attachment.Filename, modTime, bytes.NewReader(attachment.Blob))
 		return nil
 	}
+}
+
+// serveS3MediaRange streams an S3 media object, honouring a Range request the way http.ServeContent does for
+// the other backends. Safari will not play a video whose server answers a range request with the whole file:
+// it shows a crossed-out play button instead.
+func (s *FileServerService) serveS3MediaRange(c *echo.Context, attachment *store.Attachment, contentType string) error {
+	ctx := c.Request().Context()
+	client, s3Object, err := s.createS3Client(ctx, attachment)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get attachment reader").Wrap(err)
+	}
+	// S3 serves one range; a request for several gets the whole object, which HTTP allows.
+	rangeHeader := c.Request().Header.Get("Range")
+	if strings.Contains(rangeHeader, ",") {
+		rangeHeader = ""
+	}
+	object, err := client.GetObjectRange(ctx, s3Object.Key, rangeHeader)
+	h := c.Response().Header()
+	if errors.Is(err, s3.ErrInvalidRange) {
+		h.Set("Content-Range", fmt.Sprintf("bytes */%d", attachment.Size))
+		return c.NoContent(http.StatusRequestedRangeNotSatisfiable)
+	}
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get attachment reader").Wrap(err)
+	}
+	defer object.Body.Close()
+
+	h.Set("Accept-Ranges", "bytes")
+	h.Set(echo.HeaderContentLength, strconv.FormatInt(object.ContentLength, 10))
+	status := http.StatusOK
+	if object.ContentRange != "" {
+		h.Set("Content-Range", object.ContentRange)
+		status = http.StatusPartialContent
+	}
+	return c.Stream(status, contentType, object.Body)
 }
 
 // serveStaticFile serves non-streaming files (images, documents, etc.).
