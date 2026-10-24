@@ -102,21 +102,20 @@ export default function CheckInDetail({
           }
         />
         <ListItem title={COPY.checkIn.rating} after={<RatingStars value={checkIn.rating ?? 0} onChange={(rating) => save({ rating })} />} />
-        <ListItem
-          title={
-            <textarea
-              ref={noteRef}
-              rows={1}
-              value={note}
-              disabled={noteLocked}
-              onChange={(event) => setNote(event.target.value)}
-              onBlur={() => note.trim() !== checkIn.note && save({ note: note.trim() })}
-              placeholder={COPY.checkIn.notePlaceholder}
-              aria-label={COPY.checkIn.note}
-              className="block w-full bg-transparent text-[16px] leading-relaxed outline-none resize-none overflow-hidden whitespace-pre-wrap disabled:opacity-60"
-            />
-          }
-        />
+        {/* A plain row, not a ListItem: its title shrinks to its content, and the note should span the row. */}
+        <li className="px-4 py-3">
+          <textarea
+            ref={noteRef}
+            rows={1}
+            value={note}
+            disabled={noteLocked}
+            onChange={(event) => setNote(event.target.value)}
+            onBlur={() => note.trim() !== checkIn.note && save({ note: note.trim() })}
+            placeholder={COPY.checkIn.notePlaceholder}
+            aria-label={COPY.checkIn.note}
+            className="block w-full bg-transparent text-[16px] leading-relaxed outline-none resize-none overflow-hidden whitespace-pre-wrap disabled:opacity-60"
+          />
+        </li>
       </List>
       {(isAgent || noteLocked) && (
         <p className="px-8 mt-2 text-[13px] leading-snug text-black/45 dark:text-white/45">
