@@ -259,7 +259,7 @@ export const COPY = {
     note: "备注",
     notePlaceholder: "一句话，例如：下肢 + 有氧",
     noteLocked: "完成待办打的卡，备注就是待办的标题。",
-    workout: "训练明细",
+    workout: "明细",
     duration: "总时长（分钟）",
     exercises: "动作",
     noExercises: "还没有记录动作",
@@ -267,7 +267,7 @@ export const COPY = {
     fillFromPlan: "按计划填",
     remove: "删除打卡",
     removeLocked: "这是完成待办打的卡，要撤销请删除那条待办。",
-    confirmRemove: "删除这个打卡和它的训练明细？",
+    confirmRemove: "删除这个打卡和它的明细？",
     exercise: {
       title: "动作",
       name: "名称",
