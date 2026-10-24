@@ -9205,6 +9205,9 @@ components:
                          A write must name an existing, unarchived document of the caller's, except
                          one the stored workout already carries: a guide archived later stays.
                          Format: memos/{memo}
+                intensity:
+                    type: string
+                    description: How hard it was, in words, e.g. "moderate" or "RPE 7".
         Workspace:
             required:
                 - title

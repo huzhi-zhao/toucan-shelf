@@ -156,6 +156,8 @@ type PlannerExercise struct {
 	// Settings are the machine's, e.g. "incline 10, 3.8-4 km/h".
 	Settings string `json:"settings,omitempty"`
 	Note     string `json:"note,omitempty"`
+	// Intensity is how hard it was, in words, e.g. "moderate" or "RPE 7".
+	Intensity string `json:"intensity,omitempty"`
 	// DocUID is the memo UID of the exercise's guide in the exercise library, or "". It identifies the
 	// exercise however the name is written.
 	DocUID string `json:"doc,omitempty"`

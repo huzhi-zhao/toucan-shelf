@@ -63,12 +63,13 @@ func TestWorkoutExerciseDocs(t *testing.T) {
 
 	t.Run("a check-in's exercises keep their guide, whatever they are called", func(t *testing.T) {
 		made, err := checkIn(bot, "2026-10-20", workout(
-			&v1pb.WorkoutExercise{Name: "Hip thrust", Doc: hipThrust.Name, Reps: []int32{12}},
+			&v1pb.WorkoutExercise{Name: "Hip thrust", Doc: hipThrust.Name, Reps: []int32{12}, Intensity: "RPE 7"},
 			&v1pb.WorkoutExercise{Name: "热身走路"},
 		))
 		require.NoError(t, err)
 		require.Equal(t, hipThrust.Name, made.Workout.Exercises[0].Doc)
 		require.Empty(t, made.Workout.Exercises[1].Doc)
+		require.Equal(t, "RPE 7", made.Workout.Exercises[0].Intensity)
 
 		_, err = checkIn(bot, "2026-10-22", workout(&v1pb.WorkoutExercise{Name: "Bench hip thrust", Doc: hipThrust.Name}))
 		require.NoError(t, err)
