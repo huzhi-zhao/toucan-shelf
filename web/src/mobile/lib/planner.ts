@@ -276,6 +276,33 @@ export function todosForDay(date: string, today: string, dated: Todo[], open: To
   return [...overdue, ...own];
 }
 
+/**
+ * The selected day's todos in the order the list shows them: habit todos first, in today's plan's habit order
+ * (as the buttons above), the open ones before the closed or failed ones; then the other todos as given.
+ */
+export function orderDayTodos(todos: Todo[], versions: HabitVersion[], today: string): Todo[] {
+  const position = new Map((habitVersionOn(versions, today)?.entries ?? []).map((entry, i) => [entry.habit, i]));
+  const settled = (todo: Todo) => (todo.status !== Todo_Status.ACTIVE || isFailed(todo, today) ? 1 : 0);
+  const rank = (todo: Todo) => position.get(todo.habit) ?? position.size;
+  const habitTodos = todos.filter((todo) => todo.habit !== "");
+  // Array.prototype.sort is stable, so equal ones keep the order they came in.
+  habitTodos.sort((a, b) => settled(a) - settled(b) || rank(a) - rank(b));
+  return [...habitTodos, ...todos.filter((todo) => todo.habit === "")];
+}
+
+/**
+ * What the "⋯" button counts: the folded habits that have a weekly goal, and how many of them are checked in that
+ * day. A habit without a goal is kept but not counted.
+ */
+export function foldedHabitCounts(
+  folded: Habit[],
+  checkedIn: (habit: string) => boolean,
+  goalOf: (habit: string) => number,
+): { checked: number; total: number } {
+  const counted = folded.filter((habit) => goalOf(habit.name) > 0);
+  return { checked: counted.filter((habit) => checkedIn(habit.name)).length, total: counted.length };
+}
+
 /** What the planner's calendar shows: the month on screen, the selected day and this visit's week start. */
 export interface CalendarView {
   month: VisibleMonth;
