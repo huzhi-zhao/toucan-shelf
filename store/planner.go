@@ -131,7 +131,9 @@ type PlannerCheckIn struct {
 	// Source is who made the check-in, one of the PlannerCheckIn* constants. Set when it is made, never changed.
 	Source string
 	// Workout is the workout the check-in stands for, or nil.
-	Workout   *PlannerWorkout
+	Workout *PlannerWorkout
+	// Rating is how the session went, 1 to 5, or 0 when not rated.
+	Rating    int32
 	CreatedTs int64
 	UpdatedTs int64
 }

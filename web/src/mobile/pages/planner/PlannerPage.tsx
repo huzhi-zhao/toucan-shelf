@@ -187,6 +187,11 @@ export default function PlannerPage() {
   const tapHabit = (habit: Habit) => {
     // A check-in with a workout, or one a bot made, opens its own page: the exercises and who made it (§2.4.4).
     const checkIn = checkInsOfDay.get(habit.name);
+    // One that completed a todo lives on the todo's page, plan and all.
+    if (checkIn?.todo) {
+      go(todoRoute(checkIn.todo));
+      return;
+    }
     if (checkIn && (checkIn.workout || checkIn.source === CheckIn_Source.AGENT)) {
       go(checkInRoute(habit.name, selectedDate));
       return;

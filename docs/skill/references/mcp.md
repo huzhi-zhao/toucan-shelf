@@ -171,6 +171,7 @@ MCP 这边**没有列附件的工具**——找哪个附件是用户的事，不
   每条打卡还有 `source`：`MANUAL` 用户在 app 里点的、`TODO` 完成待办带出的、`AGENT` bot 打的；
   有训练记录的带 `workout`：`durationMinutes` 总时长和 `exercises`（`name`、`equipment`、`weightKg`、
   `reps` 每组次数、`durationMinutes`、`settings`、`note`，没填的字段不出现）。
+  `rating` 是这次的评分，1–5，`0` 表示没评分。
 - `habitTodos`：本周的习惯待办和状态（`ACTIVE` / `DONE` / `FAILED` / `CANCELLED`，按 `date` 当今天算）。
 - `notes`：本周的备忘（`date`、`content`，按日期排）。用户常在这里记"病""旅行 到 某天"这类原因，
   计划文档可能规定这些情况怎么算，判断时一并看。

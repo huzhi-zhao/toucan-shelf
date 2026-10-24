@@ -39,6 +39,9 @@ const (
 	plannerMaxImportedRows = 50_000
 )
 
+// plannerMaxRating is the top of a check-in's rating scale, 1 to 5.
+const plannerMaxRating = 5
+
 func (s *APIV1Service) plannerUser(ctx context.Context) (*store.User, error) {
 	user, err := s.fetchCurrentUser(ctx)
 	if err != nil {
@@ -229,6 +232,7 @@ func convertCheckInFromStore(c *store.PlannerCheckIn, habitUID string) *v1pb.Che
 		Todo:    plannerName(todoNamePrefix, c.TodoUID),
 		Source:  checkInSourceFromStore[c.Source],
 		Workout: convertWorkoutFromStore(c.Workout),
+		Rating:  &c.Rating,
 	}
 }
 
@@ -535,6 +539,9 @@ func (s *APIV1Service) SetCheckIn(ctx context.Context, request *v1pb.SetCheckInR
 	if err != nil {
 		return nil, err
 	}
+	if r := request.CheckIn.Rating; r != nil && (*r < 0 || *r > plannerMaxRating) {
+		return nil, status.Errorf(codes.InvalidArgument, "rating must be between 0 and %d", plannerMaxRating)
+	}
 	agent := plannerAgent(ctx)
 
 	existing, err := s.checkInOn(ctx, user, habit.ID, date)
@@ -563,6 +570,9 @@ func (s *APIV1Service) SetCheckIn(ctx context.Context, request *v1pb.SetCheckInR
 			workout = existing.Workout
 		}
 		existing.Note, existing.Workout = note, workout
+		if request.CheckIn.Rating != nil {
+			existing.Rating = *request.CheckIn.Rating
+		}
 		checkIn, err := s.Store.UpsertPlannerCheckIn(ctx, existing)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to set check-in: %v", err)
@@ -580,10 +590,11 @@ func (s *APIV1Service) SetCheckIn(ctx context.Context, request *v1pb.SetCheckInR
 		if !agent {
 			return nil, status.Errorf(codes.FailedPrecondition, "the habit has a todo on %s; complete it to check in", date)
 		}
-		return s.completeHabitTodoAsAgent(ctx, user, habit, todo, note, workout)
+		return s.completeHabitTodoAsAgent(ctx, user, habit, todo, note, workout, request.CheckIn.GetRating())
 	}
 	checkIn, err := s.Store.UpsertPlannerCheckIn(ctx, &store.PlannerCheckIn{
 		CreatorID: user.ID, HabitID: habit.ID, Date: date, Note: note, Source: plannerCheckInSourceFor(ctx), Workout: workout,
+		Rating: request.CheckIn.GetRating(),
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to set check-in: %v", err)
@@ -604,7 +615,7 @@ func checkInNoteLocked(existing *store.PlannerCheckIn, agent bool) string {
 
 // completeHabitTodoAsAgent completes the habit todo due that day with an agent's check-in, which carries the
 // workout and, without a note of its own, the todo's title.
-func (s *APIV1Service) completeHabitTodoAsAgent(ctx context.Context, user *store.User, habit *store.PlannerHabit, todo *store.PlannerTodo, note string, workout *store.PlannerWorkout) (*v1pb.CheckIn, error) {
+func (s *APIV1Service) completeHabitTodoAsAgent(ctx context.Context, user *store.User, habit *store.PlannerHabit, todo *store.PlannerTodo, note string, workout *store.PlannerWorkout, rating int32) (*v1pb.CheckIn, error) {
 	if note == "" {
 		note = todo.Title
 	}
@@ -612,7 +623,7 @@ func (s *APIV1Service) completeHabitTodoAsAgent(ctx context.Context, user *store
 	_, err := s.Store.UpdatePlannerTodo(ctx, &store.UpdatePlannerTodo{
 		ID: todo.ID, Status: &done, ClosedTs: &closedSec, ClosedOverdue: &overdue, CancelReason: &reason,
 		CheckIn: &store.PlannerCheckIn{
-			CreatorID: user.ID, HabitID: habit.ID, Date: todo.Date, Note: note, Source: store.PlannerCheckInAgent, Workout: workout,
+			CreatorID: user.ID, HabitID: habit.ID, Date: todo.Date, Note: note, Source: store.PlannerCheckInAgent, Workout: workout, Rating: rating,
 		},
 	})
 	if errors.Is(err, store.ErrPlannerCheckInTaken) {

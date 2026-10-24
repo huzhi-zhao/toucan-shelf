@@ -5260,6 +5260,12 @@ components:
                     description: |-
                         The workout the check-in stands for: one session of the habit that day.
                          Unset for a check-in without one.
+                rating:
+                    type: integer
+                    description: |-
+                        How the session went, 1 to 5; 0 when not rated. On write, leaving it
+                         unset keeps the rating already there, and 0 clears it.
+                    format: int32
             description: |-
                 CheckIn records that a habit was kept on a day. There is at most one per
                  habit per day, so it is addressed by the pair rather than by its own name.
