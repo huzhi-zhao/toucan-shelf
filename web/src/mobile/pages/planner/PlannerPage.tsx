@@ -85,10 +85,7 @@ export default function PlannerPage() {
   const { data: versions = [] } = useHabitVersions();
   const { data: entries } = usePlannerEntries(range.startDate, range.endDate);
   const { data: openTodos = [] } = useOpenTodos();
-  const calendar = useMemo(
-    () => buildCalendarData(habits, versions, entries, monthRange(month), today),
-    [habits, versions, entries, month, today],
-  );
+  const calendar = useMemo(() => buildCalendarData(habits, versions, entries, monthRange(month)), [habits, versions, entries, month]);
 
   const setCheckIn = useSetCheckIn();
   const createTodo = useCreateTodo();
