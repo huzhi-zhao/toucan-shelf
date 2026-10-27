@@ -327,7 +327,11 @@ export default function TodoPage() {
         {settled ? null : closed ? (
           <ListButton onClick={() => save({ status: Todo_Status.ACTIVE })}>{COPY.todo.reopen}</ListButton>
         ) : failed ? (
-          canBackfill && <ListButton onClick={() => save({ status: Todo_Status.DONE })}>{COPY.todo.backfill}</ListButton>
+          <>
+            {canBackfill && <ListButton onClick={() => save({ status: Todo_Status.DONE })}>{COPY.todo.backfill}</ListButton>}
+            {/* Missed, a habit todo can still move to today or later and be done there. */}
+            <ListButton onClick={() => setPostponeOpen(true)}>{COPY.todo.postpone}</ListButton>
+          </>
         ) : (
           <>
             {!notYet && (
@@ -335,7 +339,7 @@ export default function TodoPage() {
                 {isHabitTodo && linkedHabit ? COPY.todo.completeAndCheckIn : COPY.todo.complete}
               </ListButton>
             )}
-            {todo.date && !isHabitTodo && <ListButton onClick={() => setPostponeOpen(true)}>{COPY.todo.postpone}</ListButton>}
+            {todo.date && <ListButton onClick={() => setPostponeOpen(true)}>{COPY.todo.postpone}</ListButton>}
             <DangerListButton
               onClick={() => {
                 setReason("");

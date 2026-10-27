@@ -338,6 +338,7 @@ export const COPY = {
     complete: "完成",
     postpone: "延期",
     postponeTo: "延期到",
+    today: "今天",
     tomorrow: "明天",
     dayAfterTomorrow: "后天",
     nextMonday: "下周一",
@@ -360,9 +361,9 @@ export const COPY = {
     failed: "已失败",
     failedHint: (canBackfill: boolean) =>
       canBackfill
-        ? "那天没有完成，算作失败。如果其实做了，可以补打卡；否则只能删除，想做就在别的日子再建一条。"
-        : "那天没有完成，算作失败，只能删除。想做就在别的日子再建一条。",
-    notYet: "习惯待办只能在它那天完成",
+        ? "那天没有完成，算作失败。如果其实做了，可以补打卡；耽误了就延期到今天或以后。"
+        : "那天没有完成，算作失败。耽误了可以延期到今天或以后，不做了就删除。",
+    notYet: "习惯待办只能在它那天完成，想换一天就延期",
     notePlaceholder: "点一下添加备注",
     settled: "完成时已打卡，不能重新打开；删除待办会连同打卡一起删掉。",
     deleteTodo: "删除待办",

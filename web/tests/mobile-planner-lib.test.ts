@@ -66,9 +66,10 @@ describe("dates", () => {
     expect(isOverdue(todo("a", "2026-10-16", Todo_Status.DONE), "2026-10-17")).toBe(false);
   });
 
-  it("offers tomorrow, the day after and next Monday to postpone to", () => {
+  it("offers tomorrow, the day after and next Monday to postpone to, and today once past due", () => {
     // 2026-10-17 is a Saturday.
     expect(postponeChoices("2026-10-17", "2026-10-15")).toEqual([
+      { choice: "today", date: "2026-10-17" },
       { choice: "tomorrow", date: "2026-10-18" },
       { choice: "dayAfterTomorrow", date: "2026-10-19" },
     ]);
