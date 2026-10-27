@@ -627,10 +627,9 @@ func TestHabitTodos(t *testing.T) {
 	_, err = create("跑 5 公里", "2026-10-20", run.Name, today)
 	requireCode(t, err, codes.AlreadyExists) // one per habit per day
 
-	// A habit todo keeps its day: no moving, no postponing, no completing ahead of it, no relinking.
+	// A habit todo changes day only by postponing (TestPostponeHabitTodo): no editing the date, no completing
+	// ahead of it, no relinking.
 	_, err = update(&v1pb.Todo{Name: tenK.Name, Date: "2026-10-21"}, today, "date")
-	requireCode(t, err, codes.FailedPrecondition)
-	_, err = ts.Service.PostponeTodo(userCtx, &v1pb.PostponeTodoRequest{Name: tenK.Name, Date: "2026-10-21", LocalDate: today})
 	requireCode(t, err, codes.FailedPrecondition)
 	_, err = complete(tenK, today)
 	requireCode(t, err, codes.FailedPrecondition)

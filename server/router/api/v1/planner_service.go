@@ -772,28 +772,37 @@ func (s *APIV1Service) checkNewHabitTodo(ctx context.Context, user *store.User, 
 	if err != nil {
 		return 0, err
 	}
-	inUse, err := s.habitInUse(ctx, user, habit.ID, date)
-	if err != nil {
+	if err := s.checkHabitTodoDay(ctx, user, habit.ID, date); err != nil {
 		return 0, err
-	}
-	if !inUse {
-		return 0, status.Errorf(codes.FailedPrecondition, "the habit is not in use on %s", date)
-	}
-	existing, err := s.habitTodoOn(ctx, user, habit.ID, date)
-	if err != nil {
-		return 0, err
-	}
-	if existing != nil {
-		return 0, status.Errorf(codes.AlreadyExists, "the habit already has a todo on %s", date)
-	}
-	checkIns, err := s.Store.ListPlannerCheckIns(ctx, &store.FindPlannerCheckIn{CreatorID: user.ID, HabitID: &habit.ID, StartDate: date, EndDate: date})
-	if err != nil {
-		return 0, status.Errorf(codes.Internal, "failed to get check-in: %v", err)
-	}
-	if len(checkIns) > 0 {
-		return 0, status.Errorf(codes.FailedPrecondition, "the habit is already checked in on %s", date)
 	}
 	return habit.ID, nil
+}
+
+// checkHabitTodoDay says whether a habit todo can be on a date, made there or postponed to it: the habit is in
+// use that day, has no todo there yet and is not checked in.
+func (s *APIV1Service) checkHabitTodoDay(ctx context.Context, user *store.User, habitID int32, date string) error {
+	inUse, err := s.habitInUse(ctx, user, habitID, date)
+	if err != nil {
+		return err
+	}
+	if !inUse {
+		return status.Errorf(codes.FailedPrecondition, "the habit is not in use on %s", date)
+	}
+	existing, err := s.habitTodoOn(ctx, user, habitID, date)
+	if err != nil {
+		return err
+	}
+	if existing != nil {
+		return status.Errorf(codes.AlreadyExists, "the habit already has a todo on %s", date)
+	}
+	checkIns, err := s.Store.ListPlannerCheckIns(ctx, &store.FindPlannerCheckIn{CreatorID: user.ID, HabitID: &habitID, StartDate: date, EndDate: date})
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to get check-in: %v", err)
+	}
+	if len(checkIns) > 0 {
+		return status.Errorf(codes.FailedPrecondition, "the habit is already checked in on %s", date)
+	}
+	return nil
 }
 
 func (s *APIV1Service) UpdateTodo(ctx context.Context, request *v1pb.UpdateTodoRequest) (*v1pb.Todo, error) {
@@ -823,9 +832,9 @@ func (s *APIV1Service) UpdateTodo(ctx context.Context, request *v1pb.UpdateTodoR
 			}
 			update.Title = &title
 		case "date":
-			// A habit todo is for its day: missed, it fails, and the next try is a new todo.
+			// A habit todo changes day only by postponing, which checks the new day and keeps the original.
 			if todo.HabitID != 0 {
-				return nil, status.Errorf(codes.FailedPrecondition, "a habit todo keeps its date")
+				return nil, status.Errorf(codes.FailedPrecondition, "a habit todo keeps its date; postpone it instead")
 			}
 			if date, err = parsePlannerDate(request.Todo.Date, "date", true); err != nil {
 				return nil, err
@@ -971,11 +980,14 @@ func (s *APIV1Service) PostponeTodo(ctx context.Context, request *v1pb.PostponeT
 	if todo.Status != store.PlannerTodoActive || todo.Date == "" {
 		return nil, status.Errorf(codes.FailedPrecondition, "only an active todo with a date can be postponed")
 	}
-	if todo.HabitID != 0 {
-		return nil, status.Errorf(codes.FailedPrecondition, "a habit todo is not postponed; make a new one for the other day")
-	}
 	if date == todo.Date || date < local {
 		return nil, status.Errorf(codes.InvalidArgument, "date must differ from the current one and not be before local_date")
+	}
+	// A habit todo moves to a day that could take a new one; a missed one can still move, which saves it from failing.
+	if todo.HabitID != 0 {
+		if err := s.checkHabitTodoDay(ctx, user, todo.HabitID, date); err != nil {
+			return nil, err
+		}
 	}
 
 	originalDate := todo.OriginalDate

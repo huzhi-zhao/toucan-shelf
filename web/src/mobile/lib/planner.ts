@@ -325,16 +325,17 @@ export function isDateEditable(date: string, today: string, maxUpdateDays: numbe
   return dayjs(today).diff(dayjs(date), "day") < maxUpdateDays;
 }
 
-export type PostponeChoice = "tomorrow" | "dayAfterTomorrow" | "nextMonday";
+export type PostponeChoice = "today" | "tomorrow" | "dayAfterTomorrow" | "nextMonday";
 
 /**
- * The quick dates a todo can be postponed to (requirement §2.3): tomorrow, the day after and next Monday,
- * skipping its current date (postponing must move it) and repeats (on a Sunday, tomorrow is next Monday).
+ * The quick dates a todo can be postponed to (requirement §2.3): today for one already past its date, then
+ * tomorrow, the day after and next Monday, skipping its current date (postponing must move it) and repeats (on a Sunday, tomorrow is next Monday).
  */
 export function postponeChoices(today: string, current: string): { choice: PostponeChoice; date: string }[] {
   const day = dayjs(today);
   const untilMonday = (8 - day.day()) % 7 || 7;
   const choices: { choice: PostponeChoice; date: string }[] = [
+    ...(current < today ? [{ choice: "today" as const, date: today }] : []),
     { choice: "tomorrow", date: day.add(1, "day").format("YYYY-MM-DD") },
     { choice: "dayAfterTomorrow", date: day.add(2, "day").format("YYYY-MM-DD") },
     { choice: "nextMonday", date: day.add(untilMonday, "day").format("YYYY-MM-DD") },
