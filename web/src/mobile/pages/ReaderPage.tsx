@@ -1,6 +1,7 @@
+import { timestampDate } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { Link, List, ListItem, Navbar, NavbarBackLink, Range, Segmented, SegmentedButton, Sheet, Toast } from "konsta/react";
-import { ALargeSmallIcon, ExternalLinkIcon, ListIcon, StarIcon } from "lucide-react";
+import { ALargeSmallIcon, ExternalLinkIcon, FileIcon, FilmIcon, ListIcon, StarIcon } from "lucide-react";
 import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import MemoContent from "@/components/MemoContent";
@@ -10,13 +11,17 @@ import { DocumentLinkProvider, makeCrossWorkspaceResolver, resolveInWorkspace } 
 import { InlineAttachmentProvider } from "@/components/MemoContent/InlineAttachmentContext";
 import { SubDocReferenceProvider } from "@/components/MemoContent/SubDocReferenceContext";
 import { MemoViewContext, type MemoViewContextValue } from "@/components/MemoView/MemoViewContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useCrossWorkspaceTrees } from "@/hooks/useCrossWorkspaceTrees";
 import { useFavorites, useToggleFavorite } from "@/hooks/useFavorites";
+import { useMemoHistories, useRestoreMemoHistory } from "@/hooks/useMemoHistoryQueries";
 import { useMemoComments, useMemo as useMemoQuery } from "@/hooks/useMemoQueries";
 import { useWorkspace, useWorkspaceTree } from "@/hooks/useWorkspaceQueries";
 import { State } from "@/types/proto/api/v1/common_pb";
-import { type Memo, Memo_DocType } from "@/types/proto/api/v1/memo_service_pb";
-import { getAttachmentUrl } from "@/utils/attachment";
+import { type Memo, Memo_DocType, type MemoHistory, MemoHistory_Source } from "@/types/proto/api/v1/memo_service_pb";
+import { getAttachmentThumbnailUrl, getAttachmentUrl, isAppleLivePhotoVideo, isImage } from "@/utils/attachment";
+import { formatFileSize } from "@/utils/format";
+import { attachmentUIDsOf, hashMemoState } from "@/utils/memoState";
 import { splitChildMemos } from "@/utils/subDoc";
 import { parseUrlReferences } from "@/utils/urlReferences";
 import BackCapsule from "../components/BackCapsule";
@@ -57,6 +62,9 @@ const PREVIEW_BLOCKS: Record<string, (content: string) => React.ReactNode> = {
 };
 const REPLACED_LANGUAGES = new Set([...Object.keys(PLACEHOLDER_BLOCKS), ...Object.keys(PREVIEW_BLOCKS)]);
 const REFERENCES_ID = "mobile-references";
+
+/** The tabs of the panel behind the list button: the outline, the references, the attachments and the saved versions. */
+type PanelTab = "outline" | "references" | "attachments" | "versions";
 
 const previewContext = (memo: Memo): MemoViewContextValue => ({
   memo,
@@ -124,6 +132,7 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
   const [fontSize, setFontSize] = usePref(READER_FONT_SIZE_KEY, READER_FONT_SIZE_DEFAULT);
   const [leading, setLeading] = usePref<ReaderLeading>(READER_LEADING_KEY, "normal");
   const [outlineOpen, setOutlineOpen] = useState(false);
+  const [panelTab, setPanelTab] = useState<PanelTab>("outline");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toast, setToast] = useState("");
   const showToast = useCallback((message: string) => {
@@ -151,6 +160,50 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
   const isPdf = memo.docType === Memo_DocType.PDF;
   const isView = memo.docType === Memo_DocType.VIEW;
   const pdfAttachment = isPdf ? memo.attachments.find((a) => a.type === "application/pdf") : undefined;
+  // A Live Photo's video goes with its still, so it is not listed on its own.
+  const attachments = memo.attachments.filter((attachment) => !isAppleLivePhotoVideo(attachment));
+  const hasReferences = subDocs.length > 0 || urlReferences.length > 0;
+  // The versions the author saved on purpose; the editor's automatic ones expire and are not offered. Only the
+  // author can list or switch them.
+  const { currentUser } = useAuth();
+  const isAuthor = !!currentUser && currentUser.name === memo.creator;
+  const { data: histories = [] } = useMemoHistories(memo.name, { enabled: isAuthor });
+  const savedVersions = histories.filter((history) => history.source !== MemoHistory_Source.AUTO);
+  const restoreHistory = useRestoreMemoHistory();
+  // As on the desktop: switching is refused while the document has changes no version holds.
+  const switchVersion = async (history: MemoHistory) => {
+    if (!window.confirm(COPY.reader.confirmSwitchVersion(history.displayName || COPY.reader.unnamedVersion))) return;
+    const current = await hashMemoState(memo.content, attachmentUIDsOf(memo));
+    if (!histories.some((h) => h.contentHash === current)) {
+      showToast(COPY.reader.switchVersionBlocked);
+      return;
+    }
+    restoreHistory.mutate(
+      { historyName: history.name, memoName: memo.name },
+      {
+        onSuccess: () => {
+          setOutlineOpen(false);
+          showToast(COPY.reader.versionSwitched);
+        },
+        onError: () => showToast(COPY.reader.switchVersionBlocked),
+      },
+    );
+  };
+  // Only the tabs with something in them; the panel opens on the outline when there is one.
+  const panelTabs = (
+    [
+      ["outline", outline.length > 0],
+      ["references", hasReferences],
+      ["attachments", attachments.length > 0],
+      ["versions", savedVersions.length > 0],
+    ] as const
+  )
+    .filter(([, shown]) => shown)
+    .map(([tab]) => tab);
+  const openPanel = () => {
+    setPanelTab(panelTabs[0]);
+    setOutlineOpen(true);
+  };
   const showTitle = isPdf || isView || isHtml || !bodyOpensWithTitle(memo.content, memo.title);
   // The back button names where it goes: the page it came from, else the parent document,
   // the folder or the knowledge base (opened from a deep link).
@@ -240,6 +293,41 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  // The sub-documents and the external links, at the end of the document and in the panel's references tab.
+  const referenceLists = (
+    <>
+      {subDocs.length > 0 && (
+        <List strongIos insetIos dividersIos className="!my-0">
+          {subDocs.map((sub) => (
+            <ListItem
+              key={sub.name}
+              link
+              title={sub.title}
+              media={<DocGlyph icon={sub.icon} size={22} />}
+              onClick={() => onOpen(sub.name)}
+            />
+          ))}
+        </List>
+      )}
+      {urlReferences.length > 0 && (
+        <List strongIos insetIos dividersIos className={subDocs.length > 0 ? "!mt-4 !mb-0" : "!my-0"}>
+          {urlReferences.map((ref) => (
+            <ListItem
+              key={ref.url}
+              link
+              chevron={false}
+              title={<span className="truncate block">{ref.url.replace(/^https?:\/\//, "")}</span>}
+              text={ref.note || undefined}
+              after={<ExternalLinkIcon className="w-4 h-4" />}
+              href={ref.url}
+              target="_blank"
+            />
+          ))}
+        </List>
+      )}
+    </>
+  );
+
   const body = treePending ? (
     <div className="space-y-3 animate-pulse" aria-hidden>
       <div className="h-4 rounded bg-black/[0.06] dark:bg-white/[0.08] w-11/12" />
@@ -293,8 +381,8 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
           // Konsta's icon links are squares as tall as their container. Filling the glass capsule's height makes
           // each one a 44pt target with its icon centred, so the capsule has even room on both ends.
           <div className="flex h-full items-center">
-            {outline.length > 0 && (
-              <Link iconOnly onClick={() => setOutlineOpen(true)} aria-label={COPY.reader.outline}>
+            {panelTabs.length > 0 && (
+              <Link iconOnly onClick={openPanel} aria-label={COPY.reader.outline}>
                 <ListIcon className="w-6 h-6" />
               </Link>
             )}
@@ -345,57 +433,92 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
           {body}
         </div>
 
-        {(subDocs.length > 0 || urlReferences.length > 0) && (
+        {hasReferences && (
           <div id={REFERENCES_ID} className="mt-10 -mx-4">
             <SectionTitle>{COPY.reader.references}</SectionTitle>
-            {subDocs.length > 0 && (
-              <List strongIos insetIos dividersIos className="!my-0">
-                {subDocs.map((sub) => (
-                  <ListItem
-                    key={sub.name}
-                    link
-                    title={sub.title}
-                    media={<DocGlyph icon={sub.icon} size={22} />}
-                    onClick={() => onOpen(sub.name)}
-                  />
-                ))}
-              </List>
-            )}
-            {urlReferences.length > 0 && (
-              <List strongIos insetIos dividersIos className={subDocs.length > 0 ? "!mt-4 !mb-0" : "!my-0"}>
-                {urlReferences.map((ref) => (
-                  <ListItem
-                    key={ref.url}
-                    link
-                    chevron={false}
-                    title={<span className="truncate block">{ref.url.replace(/^https?:\/\//, "")}</span>}
-                    text={ref.note || undefined}
-                    after={<ExternalLinkIcon className="w-4 h-4" />}
-                    href={ref.url}
-                    target="_blank"
-                  />
-                ))}
-              </List>
-            )}
+            {referenceLists}
           </div>
         )}
       </article>
 
       <Sheet className="pb-safe w-full max-h-[70vh] rounded-t-2xl" opened={outlineOpen} onBackdropClick={() => setOutlineOpen(false)}>
         <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-black/15 dark:bg-white/20" />
-        <SectionTitle className="mt-3">{COPY.reader.outline}</SectionTitle>
-        <div className="overflow-y-auto max-h-[calc(70vh-64px)]">
-          <List strongIos dividersIos className="!my-0">
-            {outline.map((entry) => (
-              <ListItem
-                key={entry.id}
-                link
-                chevron={false}
-                title={<span className={entry.level === 3 ? "pl-4 text-[15px]" : ""}>{entry.text}</span>}
-                onClick={() => scrollToHeading(entry.id)}
-              />
-            ))}
-          </List>
+        {panelTabs.length > 1 ? (
+          <div className="mx-4 mt-3 mb-2">
+            <Segmented strong>
+              {panelTabs.map((tab) => (
+                <SegmentedButton key={tab} active={panelTab === tab} onClick={() => setPanelTab(tab)}>
+                  {COPY.reader.panelTabs[tab]}
+                </SegmentedButton>
+              ))}
+            </Segmented>
+          </div>
+        ) : (
+          <SectionTitle className="mt-3">{COPY.reader.panelTabs[panelTab]}</SectionTitle>
+        )}
+        <div className="overflow-y-auto max-h-[calc(70vh-64px)] pb-4">
+          {panelTab === "outline" && (
+            <List strongIos dividersIos className="!my-0">
+              {outline.map((entry) => (
+                <ListItem
+                  key={entry.id}
+                  link
+                  chevron={false}
+                  title={<span className={entry.level === 3 ? "pl-4 text-[15px]" : ""}>{entry.text}</span>}
+                  onClick={() => scrollToHeading(entry.id)}
+                />
+              ))}
+            </List>
+          )}
+          {panelTab === "references" && referenceLists}
+          {panelTab === "versions" && (
+            <List strongIos insetIos dividersIos className="!my-0">
+              {savedVersions.map((history) => (
+                <ListItem
+                  key={history.name}
+                  link
+                  chevron={false}
+                  title={<span className="truncate block">{history.displayName || COPY.reader.unnamedVersion}</span>}
+                  text={history.createTime ? timestampDate(history.createTime).toLocaleString() : undefined}
+                  onClick={() => !restoreHistory.isPending && switchVersion(history)}
+                />
+              ))}
+            </List>
+          )}
+          {panelTab === "attachments" && (
+            <List strongIos insetIos dividersIos className="!my-0">
+              {attachments.map((attachment) => {
+                const image = isImage(attachment.type);
+                return (
+                  <ListItem
+                    key={attachment.name}
+                    link
+                    chevron={false}
+                    title={<span className="truncate block">{attachment.filename}</span>}
+                    after={attachment.size ? formatFileSize(Number(attachment.size)) : undefined}
+                    media={
+                      image ? (
+                        <img src={getAttachmentThumbnailUrl(attachment)} alt="" className="h-9 w-9 rounded-md object-cover" />
+                      ) : attachment.type.startsWith("video/") ? (
+                        <FilmIcon className="h-6 w-6 text-black/45 dark:text-white/45" />
+                      ) : (
+                        <FileIcon className="h-6 w-6 text-black/45 dark:text-white/45" />
+                      )
+                    }
+                    // An image opens in the page's viewer; anything else in the browser's (Safari plays a video, shows a PDF).
+                    {...(image
+                      ? {
+                          onClick: () => {
+                            setOutlineOpen(false);
+                            setZoomedImage(getAttachmentUrl(attachment));
+                          },
+                        }
+                      : { href: getAttachmentUrl(attachment), target: "_blank" })}
+                  />
+                );
+              })}
+            </List>
+          )}
         </div>
       </Sheet>
 
