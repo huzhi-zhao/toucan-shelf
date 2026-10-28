@@ -2,10 +2,10 @@ import { Button, Link, Navbar, Page } from "konsta/react";
 import { SettingsIcon } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { meSections, useMeItems } from "@/hooks/useMeItems";
+import { isMeTile, meSections, useMeItems } from "@/hooks/useMeItems";
 import type { UserSetting_MeItem } from "@/types/proto/api/v1/user_service_pb";
 import { LinkedDocsChooser } from "../components/LinkedDocs";
-import MeItemStrip, { MeCard } from "../components/MeItemStrip";
+import MeItemStrip, { MeCard, MeGrid, MeTile } from "../components/MeItemStrip";
 import { COPY } from "../copy";
 import { useGo } from "../lib/nav";
 import { docRoute, MOBILE_ROUTES, meItemRoute, NEW_ME_ITEM } from "../routes";
@@ -13,13 +13,16 @@ import { docRoute, MOBILE_ROUTES, meItemRoute, NEW_ME_ITEM } from "../routes";
 /**
  * The user's own items (requirement phase 3 §5), set up in settings: one card per group, the items outside
  * every group first and under no heading. An item opens its linked document, or asks which one when it has
- * several. The app's settings live behind the button in the top right.
+ * several. Tile items sit in a grid above everything, in their stored order, whatever their group. The app's settings live behind the button in the top right.
  */
 export default function MePage() {
   const go = useGo(COPY.me.title);
   const { currentUser } = useAuth();
   const { data, isLoading } = useMeItems(currentUser?.name);
-  const sections = data ? meSections(data).filter((section) => section.items.length > 0) : [];
+  const tiles = data?.items.filter(isMeTile) ?? [];
+  const sections = data
+    ? meSections({ ...data, items: data.items.filter((item) => !isMeTile(item)) }).filter((section) => section.items.length > 0)
+    : [];
   // The chooser keeps showing the last item while it slides away.
   const [chooserOpen, setChooserOpen] = useState(false);
   const [chosen, setChosen] = useState<UserSetting_MeItem>();
@@ -46,8 +49,15 @@ export default function MePage() {
           </Link>
         }
       />
-      {sections.length > 0 ? (
+      {tiles.length + sections.length > 0 ? (
         <div className="pt-3">
+          {tiles.length > 0 && (
+            <MeGrid className="mb-6">
+              {tiles.map((item) => (
+                <MeTile key={item.id} item={item} onOpen={item.memos.length > 0 ? () => open(item) : undefined} />
+              ))}
+            </MeGrid>
+          )}
           {sections.map((section) => (
             <section key={section.group?.id ?? ""} className="mb-6">
               {section.group && <h2 className="px-8 pb-1.5 text-[13px] text-black/45 dark:text-white/45">{section.group.title}</h2>}

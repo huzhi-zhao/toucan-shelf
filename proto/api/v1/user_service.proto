@@ -563,6 +563,9 @@ message UserSetting {
       MULTI_LINE = 1;
       // Title and note on the same line.
       SINGLE_LINE = 2;
+      // An icon tile with the title under it, in the grid at the top of the
+      // page, outside its group; the note is not shown.
+      GRID = 3;
     }
 
     // Client-generated, stable across edits and reordering.

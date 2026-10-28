@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
-import { flattenSections, meSections } from "@/hooks/useMeItems";
-import { UserSetting_MeGroupSchema, UserSetting_MeItemSchema } from "@/types/proto/api/v1/user_service_pb";
+import { flattenSections, isMeTile, meSections } from "@/hooks/useMeItems";
+import { UserSetting_MeGroupSchema, UserSetting_MeItem_Style, UserSetting_MeItemSchema } from "@/types/proto/api/v1/user_service_pb";
 
 const item = (id: string, group = "") => create(UserSetting_MeItemSchema, { id, title: id, group });
 const group = (id: string) => create(UserSetting_MeGroupSchema, { id, title: id });
@@ -28,5 +28,12 @@ describe("meSections", () => {
   it("flattens back to the display order", () => {
     const sections = meSections({ items: [item("a", "g1"), item("b")], groups: [group("g1")] });
     expect(flattenSections(sections).map((i) => i.id)).toEqual(["b", "a"]);
+  });
+});
+
+describe("isMeTile", () => {
+  it("picks the items styled as grid tiles", () => {
+    expect(isMeTile(create(UserSetting_MeItemSchema, { id: "a", style: UserSetting_MeItem_Style.GRID }))).toBe(true);
+    expect(isMeTile(create(UserSetting_MeItemSchema, { id: "b", style: UserSetting_MeItem_Style.SINGLE_LINE }))).toBe(false);
   });
 });
