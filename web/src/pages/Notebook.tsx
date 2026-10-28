@@ -49,6 +49,7 @@ import { resolveMemoDocConfig } from "@/utils/docConfig";
 import { resolveHeadingTarget } from "@/utils/heading-anchor";
 import { useTranslate } from "@/utils/i18n";
 import { setNotebookSidebarOverride } from "@/utils/notebookSidebar";
+import { isSubDocument } from "@/utils/subDoc";
 
 function findFirstDocument(nodes: WorkspaceTreeNode[]): string | undefined {
   for (const node of nodes) {
@@ -246,6 +247,17 @@ const Notebook = () => {
       return;
     }
     (async () => {
+      // Sub-documents live outside the folder tree (under "_sub/<parent uid>"), so a link to
+      // one never matches above. Open it here anyway when it belongs to this workspace, so it
+      // gets the same preview and editor as any other document instead of the detail page.
+      if (requestedMemo) {
+        const requested = await memoServiceClient.getMemo({ name: requestedMemo }).catch(() => undefined);
+        if (requested && requested.workspace === workspaceName && isSubDocument(requested)) {
+          setSelectedMemo(requestedMemo);
+          setRestoringMemo(false);
+          return;
+        }
+      }
       const lastOpened = await getLastOpened();
       const lastMemo = lastOpened?.workspaceMemos[workspaceName];
       if (lastMemo && containsMemo(tree, lastMemo)) {

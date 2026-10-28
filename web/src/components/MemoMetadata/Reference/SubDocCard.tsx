@@ -3,12 +3,11 @@ import { FileTextIcon, LinkIcon } from "lucide-react";
 import toast from "react-hot-toast";
 import DocIcon from "@/components/DocIcon";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { extractMemoIdFromName } from "@/helpers/resource-names";
 import { cn } from "@/lib/utils";
 import type { Memo } from "@/types/proto/api/v1/memo_service_pb";
 import { parseFrontmatter } from "@/utils/frontmatter";
 import { useTranslate } from "@/utils/i18n";
-import { subDocHref } from "@/utils/subDoc";
+import { subDocHref, useSubDocPageHref } from "@/utils/subDoc";
 
 interface Props {
   memo: Memo;
@@ -19,10 +18,9 @@ interface Props {
 }
 
 /**
- * One entry in the References section. Clicking it opens the sub-document's own
- * detail page, which is an ordinary memo page — so editing and printing (via the
- * reader's browser print) come for free rather than needing their own surface
- * here.
+ * One entry in the References section. Clicking it opens the sub-document in
+ * the knowledge base's own document view (see useSubDocPageHref), so it is
+ * previewed and edited like any other document.
  *
  * It opens in a new tab rather than navigating in place. A sub-document is
  * consulted while reading the document it belongs to, not instead of it: sending
@@ -31,6 +29,7 @@ interface Props {
  */
 export const SubDocCard = ({ memo, highlighted, parentMemoName }: Props) => {
   const t = useTranslate();
+  const pageHref = useSubDocPageHref();
   // A sub-document's body is markdown like any other document's, and its
   // frontmatter is chrome rather than content — showing "---\ntags: …" as the
   // preview line would say nothing about what the document holds.
@@ -38,7 +37,7 @@ export const SubDocCard = ({ memo, highlighted, parentMemoName }: Props) => {
 
   return (
     <a
-      href={`/memos/${extractMemoIdFromName(memo.name)}`}
+      href={pageHref(memo.name)}
       target="_blank"
       rel="noreferrer"
       className={cn(
