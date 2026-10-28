@@ -2,10 +2,9 @@ import { Link as RouterLink } from "react-router-dom";
 import { classifyDocHref, useDocumentLinkContext } from "@/components/MemoContent/DocumentLinkContext";
 import { isInSiteHref, usePublicSiteRender } from "@/components/MemoContent/PublicSiteRenderContext";
 import { useSubDocReferences } from "@/components/MemoContent/SubDocReferenceContext";
-import { extractMemoIdFromName } from "@/helpers/resource-names";
 import { markdownStyles } from "@/lib/markdownStyles";
 import { cn } from "@/lib/utils";
-import { resolveSubDocHref } from "@/utils/subDoc";
+import { resolveSubDocHref, useSubDocPageHref } from "@/utils/subDoc";
 import type { ReactMarkdownProps } from "./types";
 
 interface LinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement>, ReactMarkdownProps {
@@ -45,6 +44,7 @@ export const Link = ({ children, className, href, node: _node, ...props }: LinkP
   const docLinkContext = useDocumentLinkContext();
   const publicSite = usePublicSiteRender();
   const subDocContext = useSubDocReferences();
+  const subDocPageHref = useSubDocPageHref();
 
   // A link to this document's own sub-document reads as a footnote, not as a
   // link out: the target is part of what is being read, so following it scrolls
@@ -59,7 +59,7 @@ export const Link = ({ children, className, href, node: _node, ...props }: LinkP
   if (subDoc) {
     return (
       <a
-        href={`/memos/${extractMemoIdFromName(subDoc.name)}`}
+        href={subDocPageHref(subDoc.name)}
         // Opens in a new tab on the paths that do open it (a modified click, or
         // a surface with no References section to jump to), matching how the
         // section's own entries open: an aside is consulted alongside the

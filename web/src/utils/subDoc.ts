@@ -1,4 +1,5 @@
 import { extractMemoIdFromName } from "@/helpers/resource-names";
+import { isNotebookRoute } from "@/router/notebookRoute";
 import type { Memo } from "@/types/proto/api/v1/memo_service_pb";
 
 /**
@@ -92,4 +93,19 @@ export const resolveSubDocHref = <T extends { name: string; title: string }>(
 
   const title = segments[2].replace(DOC_EXTENSION, "").toLowerCase();
   return subDocs.find((subDoc) => subDoc.title.toLowerCase() === title);
+};
+
+/**
+ * Builds the URL a sub-document opens at. Inside a knowledge base
+ * ("/:workspaceTitle/…") that is the knowledge base's own document URL, so the
+ * sub-document gets the same preview and editor as every other document; the
+ * Notebook accepts sub-documents of its workspace even though they are not in
+ * the tree. Anywhere else it falls back to the standalone detail page.
+ */
+export const useSubDocPageHref = (): ((memoName: string) => string) => {
+  // Read from window rather than useLocation: markdown also renders outside a <Router>.
+  const { pathname } = window.location;
+  const workspaceSegment = isNotebookRoute(pathname) ? pathname.split("/")[1] : undefined;
+  const uid = (memoName: string) => encodeURIComponent(extractMemoIdFromName(memoName));
+  return (memoName) => (workspaceSegment ? `/${workspaceSegment}/${uid(memoName)}` : `/memos/${uid(memoName)}`);
 };
