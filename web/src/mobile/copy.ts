@@ -63,7 +63,11 @@ export const COPY = {
   },
   reader: {
     outline: "目录",
-    panelTabs: { outline: "目录", references: "参考", attachments: "附件" },
+    panelTabs: { outline: "目录", references: "参考", attachments: "附件", versions: "版本" },
+    unnamedVersion: "未命名版本",
+    confirmSwitchVersion: (name: string) => `切换到"${name}"？文档内容和附件会变成这个版本的。`,
+    versionSwitched: "已切换到所选版本",
+    switchVersionBlocked: "当前内容还没有保存为版本，请先在电脑端保存一个版本再切换",
     settings: "阅读设置",
     fontSize: "字号",
     lineHeight: "行距",
