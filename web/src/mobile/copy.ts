@@ -63,6 +63,7 @@ export const COPY = {
   },
   reader: {
     outline: "目录",
+    panelTabs: { outline: "目录", references: "参考", attachments: "附件" },
     settings: "阅读设置",
     fontSize: "字号",
     lineHeight: "行距",
