@@ -133,9 +133,11 @@ export const COPY = {
     style: "样式",
     multiLine: "多行",
     singleLine: "单行",
+    grid: "格子",
     preview: "预览",
     previewTitle: "（还没有标题）",
-    styleHint: "多行：备注另起一行，可以写好几行。单行：备注跟在标题后面，太长会被截断。",
+    styleHint:
+      "多行：备注另起一行，可以写好几行。单行：备注跟在标题后面，太长会被截断。格子：放进页面最上方的图标网格，只显示图标和标题，不受分组影响。",
     doc: "关联文档",
     docsHint: "关联了多篇时，在“我的”页面点这一项会先问打开哪一篇。",
     group: "分组",

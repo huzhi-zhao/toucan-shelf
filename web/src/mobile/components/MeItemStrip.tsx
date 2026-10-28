@@ -11,6 +11,42 @@ export function MeCard({ children, className }: { children: ReactNode; className
   return <div className={cn("mx-4 overflow-hidden rounded-3xl bg-white dark:bg-[#1c1c1e]", className)}>{children}</div>;
 }
 
+// Soft tile backgrounds, one picked per item from its id so a tile keeps its color across edits and reorders.
+const TILE_COLORS = [
+  "bg-blue-100 dark:bg-blue-400/20",
+  "bg-red-100 dark:bg-red-400/20",
+  "bg-amber-100 dark:bg-amber-400/20",
+  "bg-green-100 dark:bg-green-400/20",
+  "bg-violet-100 dark:bg-violet-400/20",
+  "bg-cyan-100 dark:bg-cyan-400/20",
+];
+const tileColor = (id: string) => TILE_COLORS[[...id].reduce((sum, char) => sum + char.charCodeAt(0), 0) % TILE_COLORS.length];
+
+/** The grid of tile items at the top of the "Me" page: four to a row, in one card. */
+export function MeGrid({ children, className }: { children: ReactNode; className?: string }) {
+  return <MeCard className={cn("grid grid-cols-4 gap-y-3.5 px-2 pt-4 pb-3", className)}>{children}</MeCard>;
+}
+
+/** A tile item in the grid: its icon on a rounded square, its title under it. The note is not shown. */
+export function MeTile({ item, onOpen }: { item: UserSetting_MeItem; onOpen?: () => void }) {
+  const content = (
+    <>
+      <span className={cn("flex h-[54px] w-[54px] items-center justify-center rounded-[14px] text-[28px]", tileColor(item.id))}>
+        {item.icon}
+      </span>
+      <span className="w-full truncate px-1 text-center text-[12px] text-black/70 dark:text-white/70">{item.title}</span>
+    </>
+  );
+  const className = "flex min-w-0 flex-col items-center gap-1.5";
+  return onOpen ? (
+    <button type="button" onClick={onOpen} className={cn(className, "active:opacity-50")}>
+      {content}
+    </button>
+  ) : (
+    <div className={className}>{content}</div>
+  );
+}
+
 /**
  * One custom item on the "Me" page, a row in its block's card (requirement phase 3 §5). Multi-line puts the
  * note under the title and lets it wrap; single-line keeps the note on the title's row and truncates it. The

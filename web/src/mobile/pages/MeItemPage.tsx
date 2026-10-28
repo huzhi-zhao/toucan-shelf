@@ -22,7 +22,7 @@ import { type UserSetting_MeItem, UserSetting_MeItem_Style, UserSetting_MeItemSc
 import DangerListButton from "../components/DangerListButton";
 import DocPickerSheet from "../components/DocPickerSheet";
 import { LinkedDocsList } from "../components/LinkedDocs";
-import MeItemStrip, { MeCard } from "../components/MeItemStrip";
+import MeItemStrip, { MeCard, MeGrid, MeTile } from "../components/MeItemStrip";
 import SectionTitle from "../components/SectionTitle";
 import { COPY } from "../copy";
 import { useBlurOnClose } from "../lib/keyboard";
@@ -189,7 +189,7 @@ export default function MeItemPage() {
       <div className="mx-4">
         <Segmented strong>
           <SegmentedButton
-            active={draft.style !== UserSetting_MeItem_Style.SINGLE_LINE}
+            active={draft.style !== UserSetting_MeItem_Style.SINGLE_LINE && draft.style !== UserSetting_MeItem_Style.GRID}
             onClick={() => set({ style: UserSetting_MeItem_Style.MULTI_LINE })}
           >
             {COPY.me.multiLine}
@@ -200,18 +200,30 @@ export default function MeItemPage() {
           >
             {COPY.me.singleLine}
           </SegmentedButton>
+          <SegmentedButton
+            active={draft.style === UserSetting_MeItem_Style.GRID}
+            onClick={() => set({ style: UserSetting_MeItem_Style.GRID })}
+          >
+            {COPY.me.grid}
+          </SegmentedButton>
         </Segmented>
       </div>
       <Hint>{COPY.me.styleHint}</Hint>
 
       {/* How it will look on the "Me" page, with the style chosen above. */}
       <SectionTitle>{COPY.me.preview}</SectionTitle>
-      <MeCard>
-        <MeItemStrip
-          item={create(UserSetting_MeItemSchema, { ...draft, title: draft.title || COPY.me.previewTitle })}
-          chevron={draft.memos.length > 0}
-        />
-      </MeCard>
+      {draft.style === UserSetting_MeItem_Style.GRID ? (
+        <MeGrid>
+          <MeTile item={create(UserSetting_MeItemSchema, { ...draft, id, title: draft.title || COPY.me.previewTitle })} />
+        </MeGrid>
+      ) : (
+        <MeCard>
+          <MeItemStrip
+            item={create(UserSetting_MeItemSchema, { ...draft, title: draft.title || COPY.me.previewTitle })}
+            chevron={draft.memos.length > 0}
+          />
+        </MeCard>
+      )}
 
       <SectionTitle>{COPY.me.doc}</SectionTitle>
       <LinkedDocsList

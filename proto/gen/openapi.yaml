@@ -8758,6 +8758,7 @@ components:
                         - STYLE_UNSPECIFIED
                         - MULTI_LINE
                         - SINGLE_LINE
+                        - GRID
                     type: string
                     format: enum
                 memos:

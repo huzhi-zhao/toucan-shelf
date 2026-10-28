@@ -8,6 +8,7 @@ import {
   UserSetting_Key,
   type UserSetting_MeGroup,
   type UserSetting_MeItem,
+  UserSetting_MeItem_Style,
   UserSettingSchema,
 } from "@/types/proto/api/v1/user_service_pb";
 
@@ -79,6 +80,9 @@ export function meSections({ items, groups }: MeItems): MeSection[] {
     ...groups.map((group) => ({ group, items: items.filter((item) => item.group === group.id) })),
   ];
 }
+
+/** Whether an item is a tile in the grid at the top of the page, shown there instead of in its group. */
+export const isMeTile = (item: UserSetting_MeItem) => item.style === UserSetting_MeItem_Style.GRID;
 
 /** The flat item list for a page's blocks: what is saved, so the stored order is the display order. */
 export const flattenSections = (sections: MeSection[]): UserSetting_MeItem[] => sections.flatMap((section) => section.items);
