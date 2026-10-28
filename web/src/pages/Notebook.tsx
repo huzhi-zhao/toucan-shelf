@@ -275,6 +275,10 @@ const Notebook = () => {
     }
   }, [workspaceName, selectedMemo, setLastOpened]);
 
+  // A sub-document has no row of its own in the tree, so the tree marks the
+  // document it belongs to: that is where the reader is in the knowledge base.
+  const treeSelectedMemo = memo?.name === selectedMemo && memo && isSubDocument(memo) && memo.parent ? memo.parent : selectedMemo;
+
   const searchHitMemos = useMemo(() => (search ? new Set(search.hits.map((hit) => hit.memo)) : null), [search]);
 
   const handleLibrarySearch = useCallback(
@@ -648,7 +652,7 @@ const Notebook = () => {
             workspaceName={workspaceName}
             onWorkspaceChange={handleWorkspaceChange}
             tree={tree}
-            selectedMemo={selectedMemo}
+            selectedMemo={treeSelectedMemo}
             onSelectDocument={handleSelectDocument}
             onOpenDocumentInNewTab={handleOpenDocumentInNewTab}
             onMoveDocument={(memoName) => setMoveDocDialog({ memoName })}
