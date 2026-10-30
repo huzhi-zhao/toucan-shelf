@@ -319,10 +319,19 @@ export function saveCalendarView(view: CalendarView, today: string) {
   savedCalendarView = { ...view, savedOn: today };
 }
 
-/** Whether a past day can still be edited: the calendar block's `allowMaxUpdateDays` guard. Todos are exempt. */
+/** Whether a past day can still be edited: the calendar block's `allowMaxUpdateDays` guard. */
 export function isDateEditable(date: string, today: string, maxUpdateDays: number): boolean {
   if (maxUpdateDays <= 0) return true;
   return dayjs(today).diff(dayjs(date), "day") < maxUpdateDays;
+}
+
+/**
+ * Whether a todo is history, to be looked at and not changed: closed (done, cancelled, or done by checking
+ * in its habit) on a day past the editable window. An open todo stays editable however late it is, so an
+ * overdue one can still be done, postponed or cancelled; an undated one is never locked.
+ */
+export function isTodoLocked(todo: Pick<Todo, "status" | "date">, today: string, maxUpdateDays: number): boolean {
+  return todo.status !== Todo_Status.ACTIVE && todo.date !== "" && !isDateEditable(todo.date, today, maxUpdateDays);
 }
 
 export type PostponeChoice = "today" | "tomorrow" | "dayAfterTomorrow" | "nextMonday";

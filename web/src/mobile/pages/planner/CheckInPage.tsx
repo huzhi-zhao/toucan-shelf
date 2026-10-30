@@ -6,6 +6,8 @@ import { useHabits, usePlannerEntries } from "@/hooks/usePlannerQueries";
 import CheckInDetail from "../../components/planner/CheckInDetail";
 import { COPY } from "../../copy";
 import { useBack, useBackLabel, useGo } from "../../lib/nav";
+import { isDateEditable, localToday, PLANNER_MAX_UPDATE_DAYS_DEFAULT, PLANNER_MAX_UPDATE_DAYS_KEY } from "../../lib/planner";
+import { usePref } from "../../lib/storage";
 import { docRoute, habitNameFromUid, MOBILE_ROUTES, todoRoute } from "../../routes";
 
 /**
@@ -23,6 +25,8 @@ export default function CheckInPage() {
   const { data: entries, isPending } = usePlannerEntries(date, date);
   const habit = habits.find((h) => h.name === habitName);
   const checkIn = entries?.checkIns.find((c) => c.habit === habitName && c.date === date);
+  const [maxUpdateDays] = usePref(PLANNER_MAX_UPDATE_DAYS_KEY, PLANNER_MAX_UPDATE_DAYS_DEFAULT);
+  const readOnly = !isDateEditable(date, localToday(), maxUpdateDays);
 
   const [toast, setToast] = useState("");
   const fail = () => {
@@ -43,7 +47,10 @@ export default function CheckInPage() {
       ) : !checkIn ? (
         <div className="px-8 pt-16 text-center text-black/45 dark:text-white/45">{COPY.checkIn.missing}</div>
       ) : (
-        <CheckInDetail checkIn={checkIn} onOpenDoc={(memo) => go(docRoute(memo))} onRemoved={back} onFail={fail} />
+        <>
+          {readOnly && <p className="px-8 pt-3 text-[13px] text-black/45 dark:text-white/45">{COPY.planner.readonlyDay(maxUpdateDays)}</p>}
+          <CheckInDetail checkIn={checkIn} readOnly={readOnly} onOpenDoc={(memo) => go(docRoute(memo))} onRemoved={back} onFail={fail} />
+        </>
       )}
       <Toast position="center" opened={toast !== ""}>
         {toast}

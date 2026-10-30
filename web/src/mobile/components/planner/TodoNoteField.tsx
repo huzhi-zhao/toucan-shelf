@@ -12,6 +12,8 @@ interface Props {
   onChange: (value: string) => void;
   /** Called when the text field loses focus after typing: the moment to save. */
   onCommit: () => void;
+  /** Read and copy only: a second tap does not start typing. */
+  readOnly?: boolean;
 }
 
 /**
@@ -19,7 +21,7 @@ interface Props {
  * following the text. A tap turns it into the plain text in a field that does not bring up the keyboard,
  * for scrolling and copying; a second tap starts typing. Leaving the field saves and shows it rendered again.
  */
-export default function TodoNoteField({ value, onChange, onCommit }: Props) {
+export default function TodoNoteField({ value, onChange, onCommit, readOnly = false }: Props) {
   const [mode, setMode] = useState<"view" | "select" | "type">("view");
   // Set inside the second tap, before the field is refocused: its blur must not end the editing.
   const switching = useRef(false);
@@ -40,7 +42,7 @@ export default function TodoNoteField({ value, onChange, onCommit }: Props) {
   };
 
   const startTyping = (event: MouseEvent<HTMLTextAreaElement>) => {
-    if (mode !== "select") return;
+    if (mode !== "select" || readOnly) return;
     const field = event.currentTarget;
     // iOS shows the keyboard only for a focus made inside the tap, and not for a field already focused.
     switching.current = true;

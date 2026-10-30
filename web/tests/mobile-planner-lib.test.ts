@@ -13,6 +13,7 @@ import {
   isFailed,
   isOverdue,
   isSingleEmoji,
+  isTodoLocked,
   joinHabitTitle,
   localToday,
   monthRange,
@@ -83,6 +84,15 @@ describe("dates", () => {
     expect(isDateEditable("2026-10-11", "2026-10-17", 7)).toBe(true);
     expect(isDateEditable("2026-10-10", "2026-10-17", 7)).toBe(false);
     expect(isDateEditable("2020-01-01", "2026-10-17", 0)).toBe(true);
+  });
+
+  it("locks a todo closed on a day past the limit, never an open or undated one", () => {
+    expect(isTodoLocked(todo("a", "2026-10-10", Todo_Status.DONE), "2026-10-17", 7)).toBe(true);
+    expect(isTodoLocked(todo("a", "2026-10-10", Todo_Status.CANCELLED), "2026-10-17", 7)).toBe(true);
+    expect(isTodoLocked(todo("a", "2026-10-11", Todo_Status.DONE), "2026-10-17", 7)).toBe(false);
+    expect(isTodoLocked(todo("a", "2026-10-10"), "2026-10-17", 7)).toBe(false);
+    expect(isTodoLocked(todo("a", "", Todo_Status.DONE), "2026-10-17", 7)).toBe(false);
+    expect(isTodoLocked(todo("a", "2020-01-01", Todo_Status.DONE), "2026-10-17", 0)).toBe(false);
   });
 });
 
