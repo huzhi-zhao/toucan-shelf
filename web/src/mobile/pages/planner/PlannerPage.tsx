@@ -31,6 +31,7 @@ import {
   habitTodoLabel,
   isDateEditable,
   isFailed,
+  isTodoLocked,
   localToday,
   monthRange,
   orderDayTodos,
@@ -92,10 +93,11 @@ export default function PlannerPage() {
   const updateTodo = useUpdateTodo();
   const createNote = useCreatePlannerNote();
   const [toast, setToast] = useState("");
-  const fail = () => {
-    setToast(COPY.planner.failed);
+  const flash = (message: string) => {
+    setToast(message);
     setTimeout(() => setToast(""), 2000);
   };
+  const fail = () => flash(COPY.planner.failed);
 
   const editable = isDateEditable(selectedDate, today, maxUpdateDays);
   // A check-in records what has happened: none for a day still ahead (todos and notes are fine).
@@ -147,6 +149,11 @@ export default function PlannerPage() {
   const toggleTodo = (todo: Todo) => {
     // A todo that checked in its habit stays done (requirement §2.4.1).
     if (todo.checkInDate) return;
+    // Closed past the editable window, it is history: reopening it is refused like any other change.
+    if (isTodoLocked(todo, today, maxUpdateDays)) {
+      flash(COPY.todo.locked(maxUpdateDays));
+      return;
+    }
     const status = todo.status === Todo_Status.DONE ? Todo_Status.ACTIVE : Todo_Status.DONE;
     updateTodo.mutate({ name: todo.name, changes: { status }, localDate: today }, { onError: fail });
   };
@@ -189,7 +196,8 @@ export default function PlannerPage() {
       go(todoRoute(checkIn.todo));
       return;
     }
-    if (checkIn && (checkIn.workout || checkIn.source === CheckIn_Source.AGENT)) {
+    // Past the editable window a check-in is only looked at, on its page.
+    if (checkIn && (checkIn.workout || checkIn.source === CheckIn_Source.AGENT || !editable)) {
       go(checkInRoute(habit.name, selectedDate));
       return;
     }

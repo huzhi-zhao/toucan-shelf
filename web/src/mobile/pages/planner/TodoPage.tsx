@@ -28,6 +28,7 @@ import {
   isDateEditable,
   isFailed,
   isOverdue,
+  isTodoLocked,
   localToday,
   PLANNER_MAX_UPDATE_DAYS_DEFAULT,
   PLANNER_MAX_UPDATE_DAYS_KEY,
@@ -162,6 +163,8 @@ export default function TodoPage() {
   // A failed habit todo can still be done late, by a backfill, within the days check-ins stay editable.
   const canBackfill = failed && isDateEditable(todo.date, today, maxUpdateDays);
   const notYet = isHabitTodo && todo.date > today;
+  // Closed on a day past the editable window: shown in full, changed in nothing.
+  const locked = isTodoLocked(todo, today, maxUpdateDays);
   const closedOn = todo.closeTime ? dayjs(Number(todo.closeTime.seconds) * 1000).format("YYYY-MM-DD") : "";
   const statusLabel =
     todo.status === Todo_Status.DONE
@@ -186,6 +189,7 @@ export default function TodoPage() {
               value={drafts.title}
               onChange={(event) => setDrafts((d) => ({ ...d, title: event.target.value }))}
               onBlur={() => commitText("title")}
+              readOnly={locked}
               aria-label={COPY.todo.name}
               className={cn(inputClass, "font-semibold", todo.status === Todo_Status.CANCELLED && "line-through")}
             />
@@ -194,7 +198,7 @@ export default function TodoPage() {
         <ListItem
           title={COPY.todo.date}
           after={
-            isHabitTodo ? (
+            isHabitTodo || locked ? (
               <span>{todo.date ? `${dayjs(todo.date).format("M/D")} ${COPY.planner.weekdays[dayjs(todo.date).day()]}` : ""}</span>
             ) : (
               <input
@@ -208,13 +212,14 @@ export default function TodoPage() {
         />
         <ListItem
           title={COPY.todo.important}
-          after={<Toggle checked={todo.important} onChange={() => save({ important: !todo.important })} />}
+          after={<Toggle checked={todo.important} disabled={locked} onChange={() => save({ important: !todo.important })} />}
         />
         <ListItem
-          link
+          link={!locked}
           title={COPY.todo.tag}
           after={todo.tag || <span className="text-black/30 dark:text-white/30">{COPY.todo.noTag}</span>}
           onClick={() => {
+            if (locked) return;
             setTagOpen(true);
             // With nothing to pick from, go straight to typing (focus inside the tap so iOS shows the keyboard).
             if (usedTags.length === 0) tagInputRef.current?.focus({ preventScroll: true });
@@ -235,7 +240,12 @@ export default function TodoPage() {
 
       <SectionTitle>{COPY.todo.note}</SectionTitle>
       <div className="mx-4 rounded-xl bg-white dark:bg-[#1c1c1e] p-3">
-        <TodoNoteField value={drafts.note} onChange={(note) => setDrafts((d) => ({ ...d, note }))} onCommit={() => commitText("note")} />
+        <TodoNoteField
+          value={drafts.note}
+          readOnly={locked}
+          onChange={(note) => setDrafts((d) => ({ ...d, note }))}
+          onCommit={() => commitText("note")}
+        />
       </div>
 
       {isHabitTodo && settled && checkIn && (
@@ -243,6 +253,7 @@ export default function TodoPage() {
         <CheckInDetail
           checkIn={checkIn}
           todo={todo}
+          readOnly={locked}
           onOpenDoc={(memo) => go(docRoute(memo))}
           onRemoved={() => {}}
           onFail={() => flash(COPY.planner.failed)}
@@ -274,8 +285,8 @@ export default function TodoPage() {
       <LinkedDocsList
         memos={todo.memos}
         onOpen={(memo) => go(docRoute(memo))}
-        onRemove={(memo) => save({ memos: todo.memos.filter((m) => m !== memo) })}
-        onAdd={() => setPickerOpen(true)}
+        onRemove={locked ? undefined : (memo) => save({ memos: todo.memos.filter((m) => m !== memo) })}
+        onAdd={locked ? undefined : () => setPickerOpen(true)}
       />
 
       <SectionTitle>{COPY.todo.url}</SectionTitle>
@@ -289,6 +300,7 @@ export default function TodoPage() {
               value={drafts.url}
               onChange={(event) => setDrafts((d) => ({ ...d, url: event.target.value }))}
               onBlur={() => commitText("url")}
+              readOnly={locked}
               className={inputClass}
             />
           }
@@ -320,11 +332,12 @@ export default function TodoPage() {
           {COPY.todo.postponed(dayjs(todo.originalDate).format("M/D"), todo.postponeCount)}
         </div>
       )}
-      {settled && <div className="mx-4 mb-2 text-[13px] text-black/50 dark:text-white/50">{COPY.todo.settled}</div>}
+      {settled && !locked && <div className="mx-4 mb-2 text-[13px] text-black/50 dark:text-white/50">{COPY.todo.settled}</div>}
+      {locked && <div className="mx-4 mb-2 text-[13px] text-black/50 dark:text-white/50">{COPY.todo.locked(maxUpdateDays)}</div>}
       {failed && <div className="mx-4 mb-2 text-[13px] text-black/50 dark:text-white/50">{COPY.todo.failedHint(canBackfill)}</div>}
       {notYet && !closed && <div className="mx-4 mb-2 text-[13px] text-black/50 dark:text-white/50">{COPY.todo.notYet}</div>}
       <List strongIos insetIos dividersIos className="!my-0">
-        {settled ? null : closed ? (
+        {settled || locked ? null : closed ? (
           <ListButton onClick={() => save({ status: Todo_Status.ACTIVE })}>{COPY.todo.reopen}</ListButton>
         ) : failed ? (
           <>
@@ -352,9 +365,11 @@ export default function TodoPage() {
         )}
       </List>
 
-      <List strongIos insetIos className="mt-8">
-        <DangerListButton onClick={remove}>{COPY.todo.deleteTodo}</DangerListButton>
-      </List>
+      {!locked && (
+        <List strongIos insetIos className="mt-8">
+          <DangerListButton onClick={remove}>{COPY.todo.deleteTodo}</DangerListButton>
+        </List>
+      )}
 
       <Sheet className="pb-safe w-full rounded-t-2xl" opened={cancelOpen} onBackdropClick={() => setCancelOpen(false)}>
         <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-black/15 dark:bg-white/20" />

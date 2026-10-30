@@ -34,8 +34,11 @@ export default function CheckInDetail({
   onOpenDoc,
   onRemoved,
   onFail,
+  readOnly = false,
 }: {
   checkIn: CheckIn;
+  /** Past the days check-ins stay editable: everything shows, nothing changes. */
+  readOnly?: boolean;
   /** The habit todo it completed, for its plan. */
   todo?: Todo;
   onOpenDoc: (memo: string) => void;
@@ -48,7 +51,7 @@ export default function CheckInDetail({
   const inRecord = recordedPlanExercises(plannedExercises, recorded?.exercises ?? []);
   const isAgent = checkIn.source === CheckIn_Source.AGENT;
   // The note of a todo's check-in is the todo's title; one an agent made completing a todo is still the user's.
-  const noteLocked = !!checkIn.todo && !isAgent;
+  const noteLocked = (!!checkIn.todo && !isAgent) || readOnly;
   const [planOpen, setPlanOpen] = useState(false);
 
   const [note, setNote] = useState(checkIn.note);
@@ -101,7 +104,10 @@ export default function CheckInDetail({
             </span>
           }
         />
-        <ListItem title={COPY.checkIn.rating} after={<RatingStars value={checkIn.rating ?? 0} onChange={(rating) => save({ rating })} />} />
+        <ListItem
+          title={COPY.checkIn.rating}
+          after={<RatingStars value={checkIn.rating ?? 0} onChange={readOnly ? undefined : (rating) => save({ rating })} />}
+        />
         {/* A plain row, not a ListItem: its title shrinks to its content, and the note should span the row. */}
         <li className="px-4 py-3">
           <textarea
@@ -117,7 +123,7 @@ export default function CheckInDetail({
           />
         </li>
       </List>
-      {(isAgent || noteLocked) && (
+      {(isAgent || noteLocked) && !readOnly && (
         <p className="px-8 mt-2 text-[13px] leading-snug text-black/45 dark:text-white/45">
           {isAgent ? COPY.checkIn.agentHint : COPY.checkIn.noteLocked}
         </p>
@@ -128,6 +134,7 @@ export default function CheckInDetail({
         workout={recorded}
         habit={checkIn.habit}
         onChange={(workout) => save({ workout })}
+        readOnly={readOnly}
         emptyText={COPY.checkIn.noExercises}
         onOpenDoc={onOpenDoc}
       />
@@ -162,7 +169,7 @@ export default function CheckInDetail({
                   after={
                     inRecord[index] ? (
                       <RecordedMark />
-                    ) : (
+                    ) : readOnly ? undefined : (
                       <button
                         type="button"
                         disabled={setCheckIn.isPending}
@@ -176,7 +183,7 @@ export default function CheckInDetail({
                 />
               ))}
           </List>
-          {planOpen && inRecord.includes(false) && (
+          {planOpen && inRecord.includes(false) && !readOnly && (
             <p className="px-8 mt-2 text-[13px] leading-snug text-black/45 dark:text-white/45">{COPY.checkIn.planHint}</p>
           )}
         </>
