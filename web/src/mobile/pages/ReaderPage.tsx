@@ -20,6 +20,7 @@ import { useWorkspace, useWorkspaceTree } from "@/hooks/useWorkspaceQueries";
 import { State } from "@/types/proto/api/v1/common_pb";
 import { type Memo, Memo_DocType, type MemoHistory, MemoHistory_Source } from "@/types/proto/api/v1/memo_service_pb";
 import { getAttachmentThumbnailUrl, getAttachmentUrl, isAppleLivePhotoVideo, isImage } from "@/utils/attachment";
+import { resolveMemoDocConfig } from "@/utils/docConfig";
 import { formatFileSize } from "@/utils/format";
 import { attachmentUIDsOf, hashMemoState } from "@/utils/memoState";
 import { splitChildMemos } from "@/utils/subDoc";
@@ -360,7 +361,14 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
                 // A view's text blocks follow the reading settings; its card walls keep their size.
                 <ViewDocument memo={memo} onOpen={onOpen} textStyle={readingStyle} />
               ) : (
-                <MemoContent content={memo.content} memoName={memo.name} density="reading" alwaysExpanded isHtml={isHtml} />
+                <MemoContent
+                  content={memo.content}
+                  memoName={memo.name}
+                  density="reading"
+                  alwaysExpanded
+                  isHtml={isHtml}
+                  bulletListStyle={resolveMemoDocConfig(memo).bulletListStyle}
+                />
               )}
             </BlockPlaceholderProvider>
           </DocumentLinkProvider>

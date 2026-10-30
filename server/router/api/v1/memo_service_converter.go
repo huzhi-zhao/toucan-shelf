@@ -475,6 +475,8 @@ func convertDocConfigFromStore(config *storepb.MemoPayload_DocConfig) *v1pb.DocC
 		DisplayFilter:  config.DisplayFilter,
 		ShowProperties: config.ShowProperties,
 		SoftBreak:      config.SoftBreak,
+		// The two enums share their numbers.
+		BulletListStyle: (*v1pb.DocConfig_BulletListStyle)(config.BulletListStyle),
 	}
 }
 
@@ -483,11 +485,12 @@ func convertDocConfigToStore(config *v1pb.DocConfig) *storepb.MemoPayload_DocCon
 		return nil
 	}
 	return &storepb.MemoPayload_DocConfig{
-		FullWidth:      config.FullWidth,
-		DisplayOutline: config.DisplayOutline,
-		DisplayFilter:  config.DisplayFilter,
-		ShowProperties: config.ShowProperties,
-		SoftBreak:      config.SoftBreak,
+		FullWidth:       config.FullWidth,
+		DisplayOutline:  config.DisplayOutline,
+		DisplayFilter:   config.DisplayFilter,
+		ShowProperties:  config.ShowProperties,
+		SoftBreak:       config.SoftBreak,
+		BulletListStyle: (*storepb.MemoPayload_BulletListStyle)(config.BulletListStyle),
 	}
 }
 

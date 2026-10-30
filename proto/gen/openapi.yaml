@@ -5565,6 +5565,17 @@ components:
                          a single global mode. Unset falls back to the author's global default (see
                          GeneralSetting.soft_break_default), which preserves the historical hard-break
                          behaviour.
+                bulletListStyle:
+                    enum:
+                        - BULLET_LIST_STYLE_UNSPECIFIED
+                        - PLAIN
+                        - CARDS
+                    type: string
+                    description: |-
+                        How the document's bullet lists render. Unset (or UNSPECIFIED) is the plain list.
+                         More styles may be added; a client that does not know a value renders the
+                         plain list.
+                    format: enum
             description: |-
                 Per-document view configuration — how the app frames a document, as opposed to
                  what the document says. Content semantics (date, status, tags) belong in the

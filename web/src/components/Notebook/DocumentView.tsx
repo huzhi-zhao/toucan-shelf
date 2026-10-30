@@ -69,7 +69,7 @@ import {
   MemoSchema,
 } from "@/types/proto/api/v1/memo_service_pb";
 import { getAttachmentUrl, partitionInlinedAttachments } from "@/utils/attachment";
-import { type ResolvedDocConfig, resolveMemoDocConfig } from "@/utils/docConfig";
+import { bulletListStyleToProto, type ResolvedDocConfig, resolveMemoDocConfig } from "@/utils/docConfig";
 import { isLayoutDoc, viewVariantOf } from "@/utils/docType";
 import { type MemoProperty, setFrontmatterProperty } from "@/utils/frontmatter";
 import { useTranslate } from "@/utils/i18n";
@@ -340,15 +340,19 @@ const DocumentView = ({
   const updateDocConfig = useCallback(
     async (patch: Partial<ResolvedDocConfig>) => {
       try {
+        const { bulletListStyle, ...switches } = { ...docConfig, ...patch };
+        // The list style is written back as stored unless it is the one changing, so a style only a newer
+        // client knows survives this client flipping another switch.
+        const storedListStyle = patch.bulletListStyle ? bulletListStyleToProto(bulletListStyle) : memo.docConfig?.bulletListStyle;
         await updateMemoAsync({
-          update: { name: memo.name, docConfig: create(DocConfigSchema, { ...docConfig, ...patch }) },
+          update: { name: memo.name, docConfig: create(DocConfigSchema, { ...switches, bulletListStyle: storedListStyle }) },
           updateMask: ["doc_config"],
         });
       } catch {
         toast.error(t("message.update-failed"));
       }
     },
-    [docConfig, memo.name, updateMemoAsync, t],
+    [docConfig, memo.name, memo.docConfig?.bulletListStyle, updateMemoAsync, t],
   );
 
   // Editing a header property from the preview: only the one frontmatter line changes, and the
@@ -1008,6 +1012,14 @@ const DocumentView = ({
                         {t("notebook.soft-line-breaks")}
                       </DropdownMenuCheckboxItem>
                     )}
+                    {!isView && (
+                      <DropdownMenuCheckboxItem
+                        checked={docConfig.bulletListStyle === "cards"}
+                        onCheckedChange={(checked) => updateDocConfig({ bulletListStyle: checked ? "cards" : "plain" })}
+                      >
+                        {t("notebook.bullet-list-cards")}
+                      </DropdownMenuCheckboxItem>
+                    )}
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
               )}
@@ -1176,6 +1188,7 @@ const DocumentView = ({
                         density={density}
                         showProperties={docConfig.showProperties}
                         softBreak={docConfig.softBreak}
+                        bulletListStyle={docConfig.bulletListStyle}
                         onPropertyChange={propertyChangeHandler}
                       />
                     </SubDocReferenceProvider>

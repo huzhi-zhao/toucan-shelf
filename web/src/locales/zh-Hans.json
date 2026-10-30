@@ -1238,6 +1238,7 @@
     "show-document-tree": "显示文档树",
     "show-properties": "显示属性",
     "soft-line-breaks": "单换行不断行",
+    "bullet-list-cards": "列表显示为卡片按钮",
     "cover-image-url-placeholder": "图片链接",
     "open-last-document": "打开上次浏览的文档"
   },

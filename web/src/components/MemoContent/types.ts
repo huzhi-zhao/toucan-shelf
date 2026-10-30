@@ -1,6 +1,7 @@
 import type React from "react";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 import type { MemoProperty } from "@/utils/frontmatter";
+import type { BulletListStyleName } from "./markdown/CardList";
 
 type MemoPropertyValue = MemoProperty["value"];
 
@@ -57,6 +58,8 @@ export interface MemoContentProps {
    * the surrounding memo isn't at hand — it follows the reader's global default.
    */
   softBreak?: boolean;
+  /** How bullet lists render, from `docConfig.bulletListStyle`; omitted, they are plain lists. */
+  bulletListStyle?: BulletListStyleName;
   onClick?: (e: React.MouseEvent) => void;
   onDoubleClick?: (e: React.MouseEvent) => void;
 }

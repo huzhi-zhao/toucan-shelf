@@ -1,4 +1,5 @@
-import type { DocConfig, Memo } from "@/types/proto/api/v1/memo_service_pb";
+import type { BulletListStyleName } from "@/components/MemoContent/markdown/CardList";
+import { type DocConfig, DocConfig_BulletListStyle, type Memo } from "@/types/proto/api/v1/memo_service_pb";
 
 /**
  * Per-document *view* configuration — how the app frames a document, as opposed to what the
@@ -36,6 +37,11 @@ export interface ResolvedDocConfig {
    * behaviour, and the right one for a note somebody typed by hand.
    */
   softBreak: boolean;
+  /**
+   * How bullet lists render. Unset, unspecified or a style this client does not know yet (added by a newer
+   * one) all render the plain list.
+   */
+  bulletListStyle: BulletListStyleName;
 }
 
 export const DEFAULT_DOC_CONFIG: ResolvedDocConfig = {
@@ -44,7 +50,16 @@ export const DEFAULT_DOC_CONFIG: ResolvedDocConfig = {
   displayFilter: true,
   showProperties: true,
   softBreak: false,
+  bulletListStyle: "plain",
 };
+
+const BULLET_LIST_STYLES: Partial<Record<DocConfig_BulletListStyle, BulletListStyleName>> = {
+  [DocConfig_BulletListStyle.CARDS]: "cards",
+};
+
+/** The stored value for a bullet list style, for saving it back. */
+export const bulletListStyleToProto = (style: BulletListStyleName): DocConfig_BulletListStyle =>
+  style === "cards" ? DocConfig_BulletListStyle.CARDS : DocConfig_BulletListStyle.PLAIN;
 
 /**
  * The effective configuration for a document: the stored value, else the app default. Every
@@ -58,6 +73,8 @@ export function resolveDocConfig(config: DocConfig | undefined, softBreakDefault
     displayFilter: config?.displayFilter ?? DEFAULT_DOC_CONFIG.displayFilter,
     showProperties: config?.showProperties ?? DEFAULT_DOC_CONFIG.showProperties,
     softBreak: config?.softBreak ?? softBreakDefault,
+    bulletListStyle:
+      (config?.bulletListStyle !== undefined && BULLET_LIST_STYLES[config.bulletListStyle]) || DEFAULT_DOC_CONFIG.bulletListStyle,
   };
 }
 
