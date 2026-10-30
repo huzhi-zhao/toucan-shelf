@@ -1307,6 +1307,14 @@
     "show-document-tree": "Show document tree",
     "show-properties": "Show properties",
     "soft-line-breaks": "Soft line breaks",
+    "bullet-list-cards": "Bullet lists as cards",
+    "reference-sort": "Order references",
+    "reference-sort-default": "Default",
+    "reference-sort-created": "Created",
+    "reference-sort-updated": "Updated",
+    "reference-sort-title": "Title",
+    "reference-sort-type": "Type",
+    "reference-sort-descending": "Reverse order",
     "cover-image-url-placeholder": "Image URL"
   },
   "gallery": {

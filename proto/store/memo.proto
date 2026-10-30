@@ -101,6 +101,32 @@ message MemoPayload {
     // than a hard line break. Unset falls back to the author's global default, which
     // itself defaults to hard breaks — see GeneralSetting.soft_break_default.
     optional bool soft_break = 5;
+    // How bullet lists render. Unset (or UNSPECIFIED) is the plain list.
+    optional BulletListStyle bullet_list_style = 6;
+    // How the References section orders sub-documents. Unset keeps the server order.
+    optional ReferenceSort reference_sort = 7;
+    // Whether reference_sort runs in reverse.
+    optional bool reference_sort_descending = 8;
+  }
+
+  // A key to order a document's sub-documents by.
+  enum ReferenceSort {
+    REFERENCE_SORT_UNSPECIFIED = 0;
+    CREATED = 1;
+    UPDATED = 2;
+    TITLE = 3;
+    TYPE = 4;
+  }
+
+  // A rendering style for a document's bullet lists. Further styles are added as
+  // new values; other markdown elements get styles of their own as new DocConfig
+  // fields, not here.
+  enum BulletListStyle {
+    BULLET_LIST_STYLE_UNSPECIFIED = 0;
+    // A plain bulleted list.
+    PLAIN = 1;
+    // Each top-level item is a tappable row in a rounded card, iOS settings style.
+    CARDS = 2;
   }
 
   message PdfAnnotation {

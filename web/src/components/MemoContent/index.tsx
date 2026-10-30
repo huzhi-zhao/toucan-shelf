@@ -99,6 +99,7 @@ const MemoContent = (props: MemoContentProps) => {
             onPropertyChange={props.onPropertyChange}
             showProperties={props.showProperties}
             softBreak={props.softBreak}
+            bulletListStyle={props.bulletListStyle}
           />
         )}
         {showCompactMode === "ALL" && (

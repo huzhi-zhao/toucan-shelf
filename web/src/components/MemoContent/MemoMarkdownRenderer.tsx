@@ -41,6 +41,7 @@ import { Embed } from "./Embed";
 import { MarkdownRenderContext, rootMarkdownRenderContext } from "./MarkdownRenderContext";
 import { Mention } from "./Mention";
 import { Alert, AnchorLink, Blockquote, Heading, HorizontalRule, Image, InlineCode, Link, List, ListItem, Paragraph } from "./markdown";
+import { BulletListStyleContext, type BulletListStyleName } from "./markdown/CardList";
 import { PropertiesPanel } from "./PropertiesPanel";
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "./Table";
 import { TaskListItem } from "./TaskListItem";
@@ -64,6 +65,8 @@ interface MemoMarkdownRendererProps {
    * Omitted, it follows the author's global default — see `DocConfig.softBreak`.
    */
   softBreak?: boolean;
+  /** How bullet lists render — see `DocConfig.bulletListStyle`. Omitted, they are plain lists. */
+  bulletListStyle?: BulletListStyleName;
 }
 
 function getMentionUsername(node: Element, children?: React.ReactNode): string {
@@ -108,6 +111,7 @@ export const MemoMarkdownRenderer = ({
   onPropertyChange,
   showProperties,
   softBreak,
+  bulletListStyle = "plain",
 }: MemoMarkdownRendererProps) => {
   // Split off any leading Obsidian-style frontmatter: compliant properties render
   // as a read-only panel above the body, and the raw `---` block never reaches
@@ -282,22 +286,24 @@ export const MemoMarkdownRenderer = ({
   return (
     <MarkdownRenderContext.Provider value={rootMarkdownRenderContext}>
       <PropertiesPanel properties={properties} onChange={onPropertyChange} visible={showProperties} />
-      <ReactMarkdown
-        remarkPlugins={remarkPlugins}
-        rehypePlugins={[
-          rehypeRaw,
-          // Runs between raw-HTML expansion and sanitization: it reduces every authored
-          // `style` to a whitelist of CSS properties, which is what makes allowing the
-          // attribute in SANITIZE_SCHEMA safe.
-          rehypeInlineStyle,
-          [rehypeSanitize, SANITIZE_SCHEMA],
-          [rehypeHeadingId, { prefix: headingIdPrefix ?? "" }],
-          [rehypeKatex, { throwOnError: false, strict: false }],
-        ]}
-        components={markdownComponents}
-      >
-        {renderedBody}
-      </ReactMarkdown>
+      <BulletListStyleContext.Provider value={bulletListStyle}>
+        <ReactMarkdown
+          remarkPlugins={remarkPlugins}
+          rehypePlugins={[
+            rehypeRaw,
+            // Runs between raw-HTML expansion and sanitization: it reduces every authored
+            // `style` to a whitelist of CSS properties, which is what makes allowing the
+            // attribute in SANITIZE_SCHEMA safe.
+            rehypeInlineStyle,
+            [rehypeSanitize, SANITIZE_SCHEMA],
+            [rehypeHeadingId, { prefix: headingIdPrefix ?? "" }],
+            [rehypeKatex, { throwOnError: false, strict: false }],
+          ]}
+          components={markdownComponents}
+        >
+          {renderedBody}
+        </ReactMarkdown>
+      </BulletListStyleContext.Provider>
     </MarkdownRenderContext.Provider>
   );
 };

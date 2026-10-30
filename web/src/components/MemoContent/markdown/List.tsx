@@ -6,6 +6,7 @@ import { Counter } from "../Counter";
 import { TASK_LIST_CLASS, TASK_LIST_ITEM_CLASS } from "../constants";
 import { NestedMarkdownRenderContext } from "../MarkdownRenderContext";
 import { TaskStatusContext } from "../TaskStatusContext";
+import { BulletListStyleContext, CARD_LIST_CLASS, CardItemContext, CardListItem } from "./CardList";
 import type { ReactMarkdownProps } from "./types";
 
 interface TaskListChildProps {
@@ -91,7 +92,22 @@ export const List = ({ ordered, children, className, node: _node, ...domProps }:
   const Component = ordered ? "ol" : "ul";
   const isTaskList = className?.includes(TASK_LIST_CLASS);
   const bulletDepth = useContext(BulletDepthContext);
+  const bulletListStyle = useContext(BulletListStyleContext);
+  const inCardItem = useContext(CardItemContext);
   const isBulletList = !ordered && !isTaskList;
+
+  // The "cards" style turns a top-level bullet list into a card of rows; lists inside it stay plain.
+  if (isBulletList && bulletDepth === 0 && bulletListStyle === "cards") {
+    return (
+      <BulletDepthContext.Provider value={1}>
+        <CardItemContext.Provider value={true}>
+          <ul className={cn(CARD_LIST_CLASS, className)} {...domProps}>
+            {children}
+          </ul>
+        </CardItemContext.Provider>
+      </BulletDepthContext.Provider>
+    );
+  }
   // Task list indentation is handled by task item grid columns; regular lists
   // use the shared token (padding + list style).
   const listClass = isTaskList ? "my-0 mb-2 list-outside list-none" : ordered ? markdownStyles.orderedList : markdownStyles.bulletList;
@@ -102,7 +118,8 @@ export const List = ({ ordered, children, className, node: _node, ...domProps }:
     </Component>
   );
 
-  return isBulletList ? <BulletDepthContext.Provider value={bulletDepth + 1}>{list}</BulletDepthContext.Provider> : list;
+  const plain = isBulletList ? <BulletDepthContext.Provider value={bulletDepth + 1}>{list}</BulletDepthContext.Provider> : list;
+  return inCardItem ? <CardItemContext.Provider value={false}>{plain}</CardItemContext.Provider> : plain;
 };
 
 interface ListItemProps extends React.LiHTMLAttributes<HTMLLIElement>, ReactMarkdownProps {
@@ -113,8 +130,17 @@ interface ListItemProps extends React.LiHTMLAttributes<HTMLLIElement>, ReactMark
  * List item component for both regular and task list items
  * Detects task items via the "task-list-item" class added by remark-gfm
  */
-export const ListItem = ({ children, className, node: _node, ...domProps }: ListItemProps) => {
+export const ListItem = ({ children, className, node, ...domProps }: ListItemProps) => {
   const isTaskListItem = className?.includes(TASK_LIST_ITEM_CLASS);
+  const inCardList = useContext(CardItemContext);
+
+  if (inCardList && !isTaskListItem) {
+    return (
+      <CardListItem node={node} className={className}>
+        {children}
+      </CardListItem>
+    );
+  }
 
   if (isTaskListItem) {
     const { checkbox, content } = splitTaskListItemChildren(children);
