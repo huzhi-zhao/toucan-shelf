@@ -143,7 +143,7 @@ function ChatBubble({ family, customIcon, className, children }: SpecialCalloutP
       <blockquote
         className={cn(
           // Paragraphs keep the global bottom margin, which reads as lopsided padding inside a bubble — drop it on the last one.
-          "relative max-w-[78%] rounded-[18px] px-3.5 py-2 text-[15px] leading-snug not-italic break-words [&_p:last-child]:mb-0",
+          "relative max-w-[calc(100%-2.5rem)] sm:max-w-[78%] rounded-[18px] px-3.5 py-2 text-[15px] leading-snug not-italic break-words [&_p:last-child]:mb-0",
           sent ? "bg-[#248BF5] text-white" : "bg-[#E9E9EB] text-[#1c1c1e] dark:bg-[#3B3B3D] dark:text-white",
         )}
       >
