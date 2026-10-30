@@ -524,6 +524,27 @@ message DocConfig {
   // plain list.
   optional BulletListStyle bullet_list_style = 6 [(google.api.field_behavior) = OPTIONAL];
 
+  // How the sub-documents in the References section are ordered. Unset (or
+  // UNSPECIFIED) keeps the order the server lists them in. External links keep
+  // their frontmatter order.
+  optional ReferenceSort reference_sort = 7 [(google.api.field_behavior) = OPTIONAL];
+
+  // Whether reference_sort runs in reverse (newest, Z-A, last type first).
+  optional bool reference_sort_descending = 8 [(google.api.field_behavior) = OPTIONAL];
+
+  // A key to order a document's sub-documents by.
+  enum ReferenceSort {
+    REFERENCE_SORT_UNSPECIFIED = 0;
+    // By when each sub-document was created.
+    CREATED = 1;
+    // By when each sub-document was last updated.
+    UPDATED = 2;
+    // By title.
+    TITLE = 3;
+    // By document type (markdown, HTML, PDF, view), then title.
+    TYPE = 4;
+  }
+
   // A rendering style for bullet lists. Other markdown elements get styles of
   // their own as new DocConfig fields.
   enum BulletListStyle {

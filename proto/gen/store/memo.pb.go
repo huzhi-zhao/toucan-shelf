@@ -21,6 +21,62 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// A key to order a document's sub-documents by.
+type MemoPayload_ReferenceSort int32
+
+const (
+	MemoPayload_REFERENCE_SORT_UNSPECIFIED MemoPayload_ReferenceSort = 0
+	MemoPayload_CREATED                    MemoPayload_ReferenceSort = 1
+	MemoPayload_UPDATED                    MemoPayload_ReferenceSort = 2
+	MemoPayload_TITLE                      MemoPayload_ReferenceSort = 3
+	MemoPayload_TYPE                       MemoPayload_ReferenceSort = 4
+)
+
+// Enum value maps for MemoPayload_ReferenceSort.
+var (
+	MemoPayload_ReferenceSort_name = map[int32]string{
+		0: "REFERENCE_SORT_UNSPECIFIED",
+		1: "CREATED",
+		2: "UPDATED",
+		3: "TITLE",
+		4: "TYPE",
+	}
+	MemoPayload_ReferenceSort_value = map[string]int32{
+		"REFERENCE_SORT_UNSPECIFIED": 0,
+		"CREATED":                    1,
+		"UPDATED":                    2,
+		"TITLE":                      3,
+		"TYPE":                       4,
+	}
+)
+
+func (x MemoPayload_ReferenceSort) Enum() *MemoPayload_ReferenceSort {
+	p := new(MemoPayload_ReferenceSort)
+	*p = x
+	return p
+}
+
+func (x MemoPayload_ReferenceSort) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (MemoPayload_ReferenceSort) Descriptor() protoreflect.EnumDescriptor {
+	return file_store_memo_proto_enumTypes[0].Descriptor()
+}
+
+func (MemoPayload_ReferenceSort) Type() protoreflect.EnumType {
+	return &file_store_memo_proto_enumTypes[0]
+}
+
+func (x MemoPayload_ReferenceSort) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use MemoPayload_ReferenceSort.Descriptor instead.
+func (MemoPayload_ReferenceSort) EnumDescriptor() ([]byte, []int) {
+	return file_store_memo_proto_rawDescGZIP(), []int{0, 0}
+}
+
 // A rendering style for a document's bullet lists. Further styles are added as
 // new values; other markdown elements get styles of their own as new DocConfig
 // fields, not here.
@@ -59,11 +115,11 @@ func (x MemoPayload_BulletListStyle) String() string {
 }
 
 func (MemoPayload_BulletListStyle) Descriptor() protoreflect.EnumDescriptor {
-	return file_store_memo_proto_enumTypes[0].Descriptor()
+	return file_store_memo_proto_enumTypes[1].Descriptor()
 }
 
 func (MemoPayload_BulletListStyle) Type() protoreflect.EnumType {
-	return &file_store_memo_proto_enumTypes[0]
+	return &file_store_memo_proto_enumTypes[1]
 }
 
 func (x MemoPayload_BulletListStyle) Number() protoreflect.EnumNumber {
@@ -72,7 +128,7 @@ func (x MemoPayload_BulletListStyle) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use MemoPayload_BulletListStyle.Descriptor instead.
 func (MemoPayload_BulletListStyle) EnumDescriptor() ([]byte, []int) {
-	return file_store_memo_proto_rawDescGZIP(), []int{0, 0}
+	return file_store_memo_proto_rawDescGZIP(), []int{0, 1}
 }
 
 type MemoPayload struct {
@@ -398,8 +454,12 @@ type MemoPayload_DocConfig struct {
 	SoftBreak *bool `protobuf:"varint,5,opt,name=soft_break,json=softBreak,proto3,oneof" json:"soft_break,omitempty"`
 	// How bullet lists render. Unset (or UNSPECIFIED) is the plain list.
 	BulletListStyle *MemoPayload_BulletListStyle `protobuf:"varint,6,opt,name=bullet_list_style,json=bulletListStyle,proto3,enum=memos.store.MemoPayload_BulletListStyle,oneof" json:"bullet_list_style,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// How the References section orders sub-documents. Unset keeps the server order.
+	ReferenceSort *MemoPayload_ReferenceSort `protobuf:"varint,7,opt,name=reference_sort,json=referenceSort,proto3,enum=memos.store.MemoPayload_ReferenceSort,oneof" json:"reference_sort,omitempty"`
+	// Whether reference_sort runs in reverse.
+	ReferenceSortDescending *bool `protobuf:"varint,8,opt,name=reference_sort_descending,json=referenceSortDescending,proto3,oneof" json:"reference_sort_descending,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *MemoPayload_DocConfig) Reset() {
@@ -472,6 +532,20 @@ func (x *MemoPayload_DocConfig) GetBulletListStyle() MemoPayload_BulletListStyle
 		return *x.BulletListStyle
 	}
 	return MemoPayload_BULLET_LIST_STYLE_UNSPECIFIED
+}
+
+func (x *MemoPayload_DocConfig) GetReferenceSort() MemoPayload_ReferenceSort {
+	if x != nil && x.ReferenceSort != nil {
+		return *x.ReferenceSort
+	}
+	return MemoPayload_REFERENCE_SORT_UNSPECIFIED
+}
+
+func (x *MemoPayload_DocConfig) GetReferenceSortDescending() bool {
+	if x != nil && x.ReferenceSortDescending != nil {
+		return *x.ReferenceSortDescending
+	}
+	return false
 }
 
 type MemoPayload_PdfAnnotation struct {
@@ -808,7 +882,7 @@ var File_store_memo_proto protoreflect.FileDescriptor
 
 const file_store_memo_proto_rawDesc = "" +
 	"\n" +
-	"\x10store/memo.proto\x12\vmemos.store\"\xc7\x11\n" +
+	"\x10store/memo.proto\x12\vmemos.store\"\xed\x13\n" +
 	"\vMemoPayload\x12=\n" +
 	"\bproperty\x18\x01 \x01(\v2!.memos.store.MemoPayload.PropertyR\bproperty\x12=\n" +
 	"\blocation\x18\x02 \x01(\v2!.memos.store.MemoPayload.LocationR\blocation\x12\x12\n" +
@@ -836,7 +910,7 @@ const file_store_memo_proto_rawDesc = "" +
 	"\bLocation\x12 \n" +
 	"\vplaceholder\x18\x01 \x01(\tR\vplaceholder\x12\x1a\n" +
 	"\blatitude\x18\x02 \x01(\x01R\blatitude\x12\x1c\n" +
-	"\tlongitude\x18\x03 \x01(\x01R\tlongitude\x1a\xa5\x03\n" +
+	"\tlongitude\x18\x03 \x01(\x01R\tlongitude\x1a\xeb\x04\n" +
 	"\tDocConfig\x12\"\n" +
 	"\n" +
 	"full_width\x18\x01 \x01(\bH\x00R\tfullWidth\x88\x01\x01\x12,\n" +
@@ -845,13 +919,17 @@ const file_store_memo_proto_rawDesc = "" +
 	"\x0fshow_properties\x18\x04 \x01(\bH\x03R\x0eshowProperties\x88\x01\x01\x12\"\n" +
 	"\n" +
 	"soft_break\x18\x05 \x01(\bH\x04R\tsoftBreak\x88\x01\x01\x12Y\n" +
-	"\x11bullet_list_style\x18\x06 \x01(\x0e2(.memos.store.MemoPayload.BulletListStyleH\x05R\x0fbulletListStyle\x88\x01\x01B\r\n" +
+	"\x11bullet_list_style\x18\x06 \x01(\x0e2(.memos.store.MemoPayload.BulletListStyleH\x05R\x0fbulletListStyle\x88\x01\x01\x12R\n" +
+	"\x0ereference_sort\x18\a \x01(\x0e2&.memos.store.MemoPayload.ReferenceSortH\x06R\rreferenceSort\x88\x01\x01\x12?\n" +
+	"\x19reference_sort_descending\x18\b \x01(\bH\aR\x17referenceSortDescending\x88\x01\x01B\r\n" +
 	"\v_full_widthB\x12\n" +
 	"\x10_display_outlineB\x11\n" +
 	"\x0f_display_filterB\x12\n" +
 	"\x10_show_propertiesB\r\n" +
 	"\v_soft_breakB\x14\n" +
-	"\x12_bullet_list_style\x1a\xce\x02\n" +
+	"\x12_bullet_list_styleB\x11\n" +
+	"\x0f_reference_sortB\x1c\n" +
+	"\x1a_reference_sort_descending\x1a\xce\x02\n" +
 	"\rPdfAnnotation\x12'\n" +
 	"\x0fattachment_name\x18\x01 \x01(\tR\x0eattachmentName\x12\x12\n" +
 	"\x04page\x18\x02 \x01(\x05R\x04page\x12\f\n" +
@@ -885,7 +963,13 @@ const file_store_memo_proto_rawDesc = "" +
 	"\tcfi_range\x18\x02 \x01(\tR\bcfiRange\x12!\n" +
 	"\ftext_snippet\x18\x03 \x01(\tR\vtextSnippet\x12\x14\n" +
 	"\x05color\x18\x04 \x01(\tR\x05color\x12\x1c\n" +
-	"\tunderline\x18\x05 \x01(\bR\tunderline\"J\n" +
+	"\tunderline\x18\x05 \x01(\bR\tunderline\"^\n" +
+	"\rReferenceSort\x12\x1e\n" +
+	"\x1aREFERENCE_SORT_UNSPECIFIED\x10\x00\x12\v\n" +
+	"\aCREATED\x10\x01\x12\v\n" +
+	"\aUPDATED\x10\x02\x12\t\n" +
+	"\x05TITLE\x10\x03\x12\b\n" +
+	"\x04TYPE\x10\x04\"J\n" +
 	"\x0fBulletListStyle\x12!\n" +
 	"\x1dBULLET_LIST_STYLE_UNSPECIFIED\x10\x00\x12\t\n" +
 	"\x05PLAIN\x10\x01\x12\t\n" +
@@ -904,33 +988,35 @@ func file_store_memo_proto_rawDescGZIP() []byte {
 	return file_store_memo_proto_rawDescData
 }
 
-var file_store_memo_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_store_memo_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_store_memo_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_store_memo_proto_goTypes = []any{
-	(MemoPayload_BulletListStyle)(0),   // 0: memos.store.MemoPayload.BulletListStyle
-	(*MemoPayload)(nil),                // 1: memos.store.MemoPayload
-	nil,                                // 2: memos.store.MemoPayload.NodeOverlaysEntry
-	(*MemoPayload_Property)(nil),       // 3: memos.store.MemoPayload.Property
-	(*MemoPayload_Location)(nil),       // 4: memos.store.MemoPayload.Location
-	(*MemoPayload_DocConfig)(nil),      // 5: memos.store.MemoPayload.DocConfig
-	(*MemoPayload_PdfAnnotation)(nil),  // 6: memos.store.MemoPayload.PdfAnnotation
-	(*MemoPayload_DocAnchor)(nil),      // 7: memos.store.MemoPayload.DocAnchor
-	(*MemoPayload_EpubAnnotation)(nil), // 8: memos.store.MemoPayload.EpubAnnotation
+	(MemoPayload_ReferenceSort)(0),     // 0: memos.store.MemoPayload.ReferenceSort
+	(MemoPayload_BulletListStyle)(0),   // 1: memos.store.MemoPayload.BulletListStyle
+	(*MemoPayload)(nil),                // 2: memos.store.MemoPayload
+	nil,                                // 3: memos.store.MemoPayload.NodeOverlaysEntry
+	(*MemoPayload_Property)(nil),       // 4: memos.store.MemoPayload.Property
+	(*MemoPayload_Location)(nil),       // 5: memos.store.MemoPayload.Location
+	(*MemoPayload_DocConfig)(nil),      // 6: memos.store.MemoPayload.DocConfig
+	(*MemoPayload_PdfAnnotation)(nil),  // 7: memos.store.MemoPayload.PdfAnnotation
+	(*MemoPayload_DocAnchor)(nil),      // 8: memos.store.MemoPayload.DocAnchor
+	(*MemoPayload_EpubAnnotation)(nil), // 9: memos.store.MemoPayload.EpubAnnotation
 }
 var file_store_memo_proto_depIdxs = []int32{
-	3, // 0: memos.store.MemoPayload.property:type_name -> memos.store.MemoPayload.Property
-	4, // 1: memos.store.MemoPayload.location:type_name -> memos.store.MemoPayload.Location
-	6, // 2: memos.store.MemoPayload.pdf_annotation:type_name -> memos.store.MemoPayload.PdfAnnotation
-	7, // 3: memos.store.MemoPayload.doc_anchor:type_name -> memos.store.MemoPayload.DocAnchor
-	2, // 4: memos.store.MemoPayload.node_overlays:type_name -> memos.store.MemoPayload.NodeOverlaysEntry
-	8, // 5: memos.store.MemoPayload.epub_annotation:type_name -> memos.store.MemoPayload.EpubAnnotation
-	5, // 6: memos.store.MemoPayload.doc_config:type_name -> memos.store.MemoPayload.DocConfig
-	0, // 7: memos.store.MemoPayload.DocConfig.bullet_list_style:type_name -> memos.store.MemoPayload.BulletListStyle
-	8, // [8:8] is the sub-list for method output_type
-	8, // [8:8] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	4, // 0: memos.store.MemoPayload.property:type_name -> memos.store.MemoPayload.Property
+	5, // 1: memos.store.MemoPayload.location:type_name -> memos.store.MemoPayload.Location
+	7, // 2: memos.store.MemoPayload.pdf_annotation:type_name -> memos.store.MemoPayload.PdfAnnotation
+	8, // 3: memos.store.MemoPayload.doc_anchor:type_name -> memos.store.MemoPayload.DocAnchor
+	3, // 4: memos.store.MemoPayload.node_overlays:type_name -> memos.store.MemoPayload.NodeOverlaysEntry
+	9, // 5: memos.store.MemoPayload.epub_annotation:type_name -> memos.store.MemoPayload.EpubAnnotation
+	6, // 6: memos.store.MemoPayload.doc_config:type_name -> memos.store.MemoPayload.DocConfig
+	1, // 7: memos.store.MemoPayload.DocConfig.bullet_list_style:type_name -> memos.store.MemoPayload.BulletListStyle
+	0, // 8: memos.store.MemoPayload.DocConfig.reference_sort:type_name -> memos.store.MemoPayload.ReferenceSort
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_store_memo_proto_init() }
@@ -944,7 +1030,7 @@ func file_store_memo_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_store_memo_proto_rawDesc), len(file_store_memo_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      2,
 			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,

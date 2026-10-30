@@ -103,6 +103,19 @@ message MemoPayload {
     optional bool soft_break = 5;
     // How bullet lists render. Unset (or UNSPECIFIED) is the plain list.
     optional BulletListStyle bullet_list_style = 6;
+    // How the References section orders sub-documents. Unset keeps the server order.
+    optional ReferenceSort reference_sort = 7;
+    // Whether reference_sort runs in reverse.
+    optional bool reference_sort_descending = 8;
+  }
+
+  // A key to order a document's sub-documents by.
+  enum ReferenceSort {
+    REFERENCE_SORT_UNSPECIFIED = 0;
+    CREATED = 1;
+    UPDATED = 2;
+    TITLE = 3;
+    TYPE = 4;
   }
 
   // A rendering style for a document's bullet lists. Further styles are added as

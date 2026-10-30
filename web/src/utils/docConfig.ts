@@ -1,5 +1,11 @@
 import type { BulletListStyleName } from "@/components/MemoContent/markdown/CardList";
-import { type DocConfig, DocConfig_BulletListStyle, type Memo } from "@/types/proto/api/v1/memo_service_pb";
+import {
+  type DocConfig,
+  DocConfig_BulletListStyle,
+  DocConfig_ReferenceSort,
+  type Memo,
+  Memo_DocType,
+} from "@/types/proto/api/v1/memo_service_pb";
 
 /**
  * Per-document *view* configuration — how the app frames a document, as opposed to what the
@@ -42,6 +48,10 @@ export interface ResolvedDocConfig {
    * one) all render the plain list.
    */
   bulletListStyle: BulletListStyleName;
+  /** How the References section orders sub-documents; unspecified keeps the server's order. */
+  referenceSort: DocConfig_ReferenceSort;
+  /** Whether that order runs in reverse. */
+  referenceSortDescending: boolean;
 }
 
 export const DEFAULT_DOC_CONFIG: ResolvedDocConfig = {
@@ -51,6 +61,8 @@ export const DEFAULT_DOC_CONFIG: ResolvedDocConfig = {
   showProperties: true,
   softBreak: false,
   bulletListStyle: "plain",
+  referenceSort: DocConfig_ReferenceSort.REFERENCE_SORT_UNSPECIFIED,
+  referenceSortDescending: false,
 };
 
 const BULLET_LIST_STYLES: Partial<Record<DocConfig_BulletListStyle, BulletListStyleName>> = {
@@ -73,6 +85,8 @@ export function resolveDocConfig(config: DocConfig | undefined, softBreakDefault
     displayFilter: config?.displayFilter ?? DEFAULT_DOC_CONFIG.displayFilter,
     showProperties: config?.showProperties ?? DEFAULT_DOC_CONFIG.showProperties,
     softBreak: config?.softBreak ?? softBreakDefault,
+    referenceSort: config?.referenceSort ?? DEFAULT_DOC_CONFIG.referenceSort,
+    referenceSortDescending: config?.referenceSortDescending ?? DEFAULT_DOC_CONFIG.referenceSortDescending,
     bulletListStyle:
       (config?.bulletListStyle !== undefined && BULLET_LIST_STYLES[config.bulletListStyle]) || DEFAULT_DOC_CONFIG.bulletListStyle,
   };
@@ -84,4 +98,35 @@ export function resolveMemoDocConfig(
   softBreakDefault = DEFAULT_DOC_CONFIG.softBreak,
 ): ResolvedDocConfig {
   return resolveDocConfig(memo?.docConfig, softBreakDefault);
+}
+
+// The order document types are listed in when sorting by type.
+const DOC_TYPE_ORDER = [Memo_DocType.MARKDOWN, Memo_DocType.HTML, Memo_DocType.PDF, Memo_DocType.VIEW];
+
+type SortableDoc = Pick<Memo, "title" | "docType" | "createTime" | "updateTime">;
+
+const seconds = (time: SortableDoc["createTime"]) => (time ? Number(time.seconds) : 0);
+const byTitle = (a: SortableDoc, b: SortableDoc) => a.title.localeCompare(b.title, undefined, { numeric: true });
+// A type this list does not know sorts last.
+const typeRank = (doc: SortableDoc) => {
+  const index = DOC_TYPE_ORDER.indexOf(doc.docType);
+  return index === -1 ? DOC_TYPE_ORDER.length : index;
+};
+
+const COMPARATORS: Partial<Record<DocConfig_ReferenceSort, (a: SortableDoc, b: SortableDoc) => number>> = {
+  [DocConfig_ReferenceSort.CREATED]: (a, b) => seconds(a.createTime) - seconds(b.createTime) || byTitle(a, b),
+  [DocConfig_ReferenceSort.UPDATED]: (a, b) => seconds(a.updateTime) - seconds(b.updateTime) || byTitle(a, b),
+  [DocConfig_ReferenceSort.TITLE]: byTitle,
+  [DocConfig_ReferenceSort.TYPE]: (a, b) => typeRank(a) - typeRank(b) || byTitle(a, b),
+};
+
+/**
+ * A document's sub-documents in the order its configuration asks for. Unspecified, or a key this client does
+ * not know, keeps the order they came in. Ties fall back to the title.
+ */
+export function sortSubDocs<T extends SortableDoc>(subDocs: T[], sort: DocConfig_ReferenceSort, descending: boolean): T[] {
+  const compare = COMPARATORS[sort];
+  if (!compare) return subDocs;
+  const sorted = [...subDocs].sort(compare);
+  return descending ? sorted.reverse() : sorted;
 }

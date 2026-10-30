@@ -44,6 +44,9 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -62,6 +65,7 @@ import { cn } from "@/lib/utils";
 import { State } from "@/types/proto/api/v1/common_pb";
 import {
   type DocAnchor,
+  DocConfig_ReferenceSort,
   DocConfigSchema,
   type Memo,
   Memo_DocType,
@@ -69,7 +73,7 @@ import {
   MemoSchema,
 } from "@/types/proto/api/v1/memo_service_pb";
 import { getAttachmentUrl, partitionInlinedAttachments } from "@/utils/attachment";
-import { bulletListStyleToProto, type ResolvedDocConfig, resolveMemoDocConfig } from "@/utils/docConfig";
+import { bulletListStyleToProto, type ResolvedDocConfig, resolveMemoDocConfig, sortSubDocs } from "@/utils/docConfig";
 import { isLayoutDoc, viewVariantOf } from "@/utils/docType";
 import { type MemoProperty, setFrontmatterProperty } from "@/utils/frontmatter";
 import { useTranslate } from "@/utils/i18n";
@@ -86,6 +90,15 @@ import DocumentOutline, { ATTACHMENTS_ANCHOR_ID, REFERENCES_ANCHOR_ID } from "./
 // eligible to be written back. Long enough to cover the refetch and re-render, short enough
 // that a later, unrelated remeasure never writes to the database.
 const HEAL_WINDOW_MS = 15_000;
+
+/** The keys the References section can be ordered by, with their menu labels. */
+const REFERENCE_SORTS = [
+  [DocConfig_ReferenceSort.REFERENCE_SORT_UNSPECIFIED, "notebook.reference-sort-default"],
+  [DocConfig_ReferenceSort.CREATED, "notebook.reference-sort-created"],
+  [DocConfig_ReferenceSort.UPDATED, "notebook.reference-sort-updated"],
+  [DocConfig_ReferenceSort.TITLE, "notebook.reference-sort-title"],
+  [DocConfig_ReferenceSort.TYPE, "notebook.reference-sort-type"],
+] as const;
 
 interface Props {
   memo: Memo;
@@ -182,7 +195,7 @@ const DocumentView = ({
   // one list call. Splitting them here is what keeps a long sub-document from
   // being rendered as a comment card, which is the noise the feature exists to
   // remove. See utils/subDoc.ts.
-  const { comments: childComments, subDocs } = useMemo(() => splitChildMemos(comments), [comments]);
+  const { comments: childComments, subDocs: unsortedSubDocs } = useMemo(() => splitChildMemos(comments), [comments]);
   const docComments = useMemo(() => childComments.filter((c) => !c.pdfAnnotation && !c.epubAnnotation), [childComments]);
   // Every doc comment that carries a text quote also draws as an in-text mark. Comments anchored
   // only to a heading (or to nothing) contribute no mark and just live in the sidebar.
@@ -332,6 +345,10 @@ const DocumentView = ({
   // per-device in localStorage.
   const softBreakDefault = useSoftBreakDefault();
   const docConfig = useMemo(() => resolveMemoDocConfig(memo, softBreakDefault), [memo.docConfig, softBreakDefault]);
+  const subDocs = useMemo(
+    () => sortSubDocs(unsortedSubDocs, docConfig.referenceSort, docConfig.referenceSortDescending),
+    [unsortedSubDocs, docConfig.referenceSort, docConfig.referenceSortDescending],
+  );
   const { density } = useReadingDensity();
   const { mutateAsync: updateMemoAsync } = useUpdateMemo();
 
@@ -1019,6 +1036,31 @@ const DocumentView = ({
                       >
                         {t("notebook.bullet-list-cards")}
                       </DropdownMenuCheckboxItem>
+                    )}
+                    {supportsComments && (
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>{t("notebook.reference-sort")}</DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent>
+                          <DropdownMenuRadioGroup
+                            value={String(docConfig.referenceSort)}
+                            onValueChange={(value) => updateDocConfig({ referenceSort: Number(value) as DocConfig_ReferenceSort })}
+                          >
+                            {REFERENCE_SORTS.map(([sort, label]) => (
+                              <DropdownMenuRadioItem key={sort} value={String(sort)}>
+                                {t(label)}
+                              </DropdownMenuRadioItem>
+                            ))}
+                          </DropdownMenuRadioGroup>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuCheckboxItem
+                            checked={docConfig.referenceSortDescending}
+                            disabled={docConfig.referenceSort === DocConfig_ReferenceSort.REFERENCE_SORT_UNSPECIFIED}
+                            onCheckedChange={(checked) => updateDocConfig({ referenceSortDescending: checked })}
+                          >
+                            {t("notebook.reference-sort-descending")}
+                          </DropdownMenuCheckboxItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
                     )}
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>

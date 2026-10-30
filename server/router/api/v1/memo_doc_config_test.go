@@ -18,3 +18,11 @@ func TestDocConfigBulletListStyleRoundTrip(t *testing.T) {
 	unset := convertDocConfigFromStore(convertDocConfigToStore(&v1pb.DocConfig{}))
 	assert.Nil(t, unset.BulletListStyle)
 }
+
+// The References sort and its direction survive the round trip.
+func TestDocConfigReferenceSortRoundTrip(t *testing.T) {
+	sort, descending := v1pb.DocConfig_TITLE, true
+	got := convertDocConfigFromStore(convertDocConfigToStore(&v1pb.DocConfig{ReferenceSort: &sort, ReferenceSortDescending: &descending}))
+	assert.Equal(t, sort, got.GetReferenceSort())
+	assert.True(t, got.GetReferenceSortDescending())
+}

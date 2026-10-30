@@ -20,7 +20,7 @@ import { useWorkspace, useWorkspaceTree } from "@/hooks/useWorkspaceQueries";
 import { State } from "@/types/proto/api/v1/common_pb";
 import { type Memo, Memo_DocType, type MemoHistory, MemoHistory_Source } from "@/types/proto/api/v1/memo_service_pb";
 import { getAttachmentThumbnailUrl, getAttachmentUrl, isAppleLivePhotoVideo, isImage } from "@/utils/attachment";
-import { resolveMemoDocConfig } from "@/utils/docConfig";
+import { resolveMemoDocConfig, sortSubDocs } from "@/utils/docConfig";
 import { formatFileSize } from "@/utils/format";
 import { attachmentUIDsOf, hashMemoState } from "@/utils/memoState";
 import { splitChildMemos } from "@/utils/subDoc";
@@ -125,7 +125,11 @@ function ReaderDocument({ memo, onBack, onOpen }: { memo: Memo; onBack: () => vo
   const { data: tree = [], isPending: treePending } = useWorkspaceTree(memo.workspace, false);
   const { data: parent } = useMemoQuery(memo.parent ?? "", { enabled: !!memo.parent });
   const { data: children } = useMemoComments(memo.name);
-  const subDocs = useMemo(() => splitChildMemos(children?.memos ?? []).subDocs, [children]);
+  const { referenceSort, referenceSortDescending } = resolveMemoDocConfig(memo);
+  const subDocs = useMemo(
+    () => sortSubDocs(splitChildMemos(children?.memos ?? []).subDocs, referenceSort, referenceSortDescending),
+    [children, referenceSort, referenceSortDescending],
+  );
   const urlReferences = useMemo(() => parseUrlReferences(memo.content).references, [memo.content]);
   const crossWorkspaceTrees = useCrossWorkspaceTrees(useMemo(() => extractWorkspaceQualifiedTitles(memo.content), [memo.content]));
   const resolveCrossWorkspace = useMemo(() => makeCrossWorkspaceResolver(crossWorkspaceTrees), [crossWorkspaceTrees]);

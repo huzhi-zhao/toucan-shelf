@@ -1,6 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
-import { DocConfig_BulletListStyle, DocConfigSchema, MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
+import { DocConfig_BulletListStyle, DocConfig_ReferenceSort, DocConfigSchema, MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
 import { DEFAULT_DOC_CONFIG, resolveDocConfig, resolveMemoDocConfig } from "@/utils/docConfig";
 
 describe("resolveDocConfig", () => {
@@ -33,6 +33,8 @@ describe("resolveDocConfig", () => {
       showProperties: false,
       softBreak: true,
       bulletListStyle: "cards",
+      referenceSort: DocConfig_ReferenceSort.REFERENCE_SORT_UNSPECIFIED,
+      referenceSortDescending: false,
     });
   });
 

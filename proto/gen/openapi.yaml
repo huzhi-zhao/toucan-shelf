@@ -5576,6 +5576,22 @@ components:
                          More styles may be added; a client that does not know a value renders the
                          plain list.
                     format: enum
+                referenceSort:
+                    enum:
+                        - REFERENCE_SORT_UNSPECIFIED
+                        - CREATED
+                        - UPDATED
+                        - TITLE
+                        - TYPE
+                    type: string
+                    description: |-
+                        How the sub-documents in the References section are ordered. Unset (or
+                         UNSPECIFIED) keeps the order the server lists them in. External links keep
+                         their frontmatter order.
+                    format: enum
+                referenceSortDescending:
+                    type: boolean
+                    description: Whether reference_sort runs in reverse (newest, Z-A, last type first).
             description: |-
                 Per-document view configuration — how the app frames a document, as opposed to
                  what the document says. Content semantics (date, status, tags) belong in the
