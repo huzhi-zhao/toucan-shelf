@@ -265,7 +265,8 @@ export default function PlannerPage() {
     const color = habitColor(habit);
     const linked = Boolean(todoOfHabit(habit));
     const byAgent = checkIn?.source === CheckIn_Source.AGENT;
-    const enabled = canCheckIn || linked || isFuture || Boolean(checkIn?.workout) || byAgent;
+    // A check-in can always be opened, if only to look at it past the editable window.
+    const enabled = canCheckIn || linked || isFuture || Boolean(checkIn);
     const goal = weeklyGoalOn(versions, habit.name, selectedDate, resolvedDefault);
     const progress =
       !checkIn && goal > 0 ? `${weeklyCheckIns(weekEntries?.checkIns ?? [], habit.name, selectedDate, resolvedDefault)}/${goal}` : "";
