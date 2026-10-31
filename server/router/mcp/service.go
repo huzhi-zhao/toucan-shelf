@@ -127,7 +127,12 @@ Updating:
 Attachments:
 - memo_get_memo lists them but carries no bytes. attachment_get_download_url
   turns one into a short-lived URL: fetch it to a local file and read that.
-- Read-only here: no upload, no replace, no delete.`
+- Read-only here: no upload, no replace, no delete.
+
+Things only the user can do:
+- Never write them into a document as a TODO list or "- [ ]" checklist. They
+  belong in the user's plan as app todos, which this channel cannot create:
+  list the items (title, start date, note) for the user to add in the app.`
 
 // scopeHeader carries the scopes granted to an OAuth-authenticated session from
 // the endpoint handler down to the individual tool handlers. It is set on the

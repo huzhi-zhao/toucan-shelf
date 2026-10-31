@@ -25,6 +25,7 @@ type Client struct {
 	workspace  apiv1connect.WorkspaceServiceClient
 	attachment apiv1connect.AttachmentServiceClient
 	instance   apiv1connect.InstanceServiceClient
+	planner    apiv1connect.PlannerServiceClient
 
 	// baseURL and token back the raw HTTP calls (attachment download) that go
 	// through the /file/ route rather than the Connect API.
@@ -68,6 +69,7 @@ func NewClient(cfg *Config) *Client {
 		workspace:  apiv1connect.NewWorkspaceServiceClient(httpClient, baseURL, opts),
 		attachment: apiv1connect.NewAttachmentServiceClient(httpClient, baseURL, opts),
 		instance:   apiv1connect.NewInstanceServiceClient(httpClient, baseURL, opts),
+		planner:    apiv1connect.NewPlannerServiceClient(httpClient, baseURL, opts),
 		baseURL:    baseURL,
 		token:      cfg.Token,
 		http:       httpClient,
