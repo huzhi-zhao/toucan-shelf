@@ -585,6 +585,21 @@ toucan-base 的 Discord bot（Jen）当健身教练：用户一边练一边在 D
   bot 在健身房带练时据此逐项对照，练完对账"计划里还差哪组"。
 - MCP：`planner_get_week_progress` 自然带上，不加新工具。
 
+#### 待办同步给 agent（2026-10-31）
+
+各知识库不再维护根目录 TODO.md；要用户亲自做的事，agent 征得同意后用 `POST /api/v1/planner/todos`
+直接建成计划待办，并把返回的 `name`（`planner/todos/{id}`）记在来源条目上。之后要把结果同步回来源文档：
+
+- **查单条**：`GET /api/v1/planner/todos/{id}`（原有的 GetTodo）。删除的待办返回 404。
+- **按更新时间查变化**：`GET /api/v1/planner/todos?updatedSince=<RFC 3339 时间>`（ListTodoChanges），只返回调用者自己的：
+  - `todos`：`updatedSince` 之后（含）新建或改过的待办，**含已完成、已取消**，按更新时间从早到晚。
+    完成、取消、重新打开、改期、延期、改标题/备注/关联文档等都会更新 `updateTime`。
+  - `deletedTodos`：之后删除的待办，`{name, deleteTime}`。
+  - `nextUpdatedSince`：服务器读取时的时间，下次调用直接传它。时间精确到秒，边界那一秒的会重复返回，按 `name` 去重。
+- **删除是硬删**：待办和它带出的打卡一起删掉，另在 `planner_todo_deletion` 表记一条（uid、删除时间），
+  只为了让同步方知道"删了"。
+- 搜索页的"知识库待办"区块随之下线（`mobile-phase3.md` §3）。
+
 ### 2.4.6 备忘详情（2026-10-23）
 
 - 点当天列表里的备忘，进入**备忘详情页**：内容（一句话）、日期、**备注**（较长的文字，可以写 Markdown）、**关联文档**（可以多篇，同待办）。

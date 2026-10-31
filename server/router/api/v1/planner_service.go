@@ -493,6 +493,42 @@ func (s *APIV1Service) ListOpenTodos(ctx context.Context, _ *v1pb.ListOpenTodosR
 	return response, nil
 }
 
+func (s *APIV1Service) ListTodoChanges(ctx context.Context, request *v1pb.ListTodoChangesRequest) (*v1pb.ListTodoChangesResponse, error) {
+	user, err := s.plannerUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if request.UpdatedSince == nil || !request.UpdatedSince.IsValid() {
+		return nil, status.Errorf(codes.InvalidArgument, "updated_since is required")
+	}
+	// Read the clock before the changes, so one made while they are read comes again next time rather than never.
+	now := s.now()
+	// 0 would mean "no bound" to the store; the epoch itself is just as complete.
+	since := max(request.UpdatedSince.AsTime().Unix(), 1)
+	todos, err := s.Store.ListPlannerTodos(ctx, &store.FindPlannerTodo{CreatorID: &user.ID, UpdatedSince: since})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list todos: %v", err)
+	}
+	deletions, err := s.Store.ListPlannerTodoDeletions(ctx, user.ID, since)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list deleted todos: %v", err)
+	}
+	response := &v1pb.ListTodoChangesResponse{
+		Todos:            make([]*v1pb.Todo, 0, len(todos)),
+		DeletedTodos:     make([]*v1pb.DeletedTodo, 0, len(deletions)),
+		NextUpdatedSince: timestamppb.New(now),
+	}
+	for _, todo := range todos {
+		response.Todos = append(response.Todos, convertTodoFromStore(todo))
+	}
+	for _, deletion := range deletions {
+		response.DeletedTodos = append(response.DeletedTodos, &v1pb.DeletedTodo{
+			Name: todoNamePrefix + deletion.UID, DeleteTime: timestamppb.New(time.Unix(deletion.DeletedTs, 0)),
+		})
+	}
+	return response, nil
+}
+
 func (s *APIV1Service) ListTodoTags(ctx context.Context, _ *v1pb.ListTodoTagsRequest) (*v1pb.ListTodoTagsResponse, error) {
 	user, err := s.plannerUser(ctx)
 	if err != nil {

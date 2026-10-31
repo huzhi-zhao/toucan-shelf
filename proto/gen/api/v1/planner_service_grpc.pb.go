@@ -30,6 +30,7 @@ const (
 	PlannerService_ListPlannerEntries_FullMethodName    = "/memos.api.v1.PlannerService/ListPlannerEntries"
 	PlannerService_GetWeekProgress_FullMethodName       = "/memos.api.v1.PlannerService/GetWeekProgress"
 	PlannerService_ListOpenTodos_FullMethodName         = "/memos.api.v1.PlannerService/ListOpenTodos"
+	PlannerService_ListTodoChanges_FullMethodName       = "/memos.api.v1.PlannerService/ListTodoChanges"
 	PlannerService_ListTodoTags_FullMethodName          = "/memos.api.v1.PlannerService/ListTodoTags"
 	PlannerService_SetCheckIn_FullMethodName            = "/memos.api.v1.PlannerService/SetCheckIn"
 	PlannerService_DeleteCheckIn_FullMethodName         = "/memos.api.v1.PlannerService/DeleteCheckIn"
@@ -99,6 +100,12 @@ type PlannerServiceClient interface {
 	// ListOpenTodos returns every active todo, dated or not, ordered by date with
 	// undated ones last.
 	ListOpenTodos(ctx context.Context, in *ListOpenTodosRequest, opts ...grpc.CallOption) (*ListOpenTodosResponse, error)
+	// ListTodoChanges returns the caller's todos created or changed at or after
+	// updated_since, whatever their status, and the todos deleted since then, for
+	// a client that keeps its own copy (an agent syncing todos back to the
+	// documents they came from). Pass next_updated_since from the response as the
+	// next call's updated_since.
+	ListTodoChanges(ctx context.Context, in *ListTodoChangesRequest, opts ...grpc.CallOption) (*ListTodoChangesResponse, error)
 	// ListTodoTags returns the tags used on the caller's todos, most recently
 	// used first, to pick from when tagging a todo.
 	ListTodoTags(ctx context.Context, in *ListTodoTagsRequest, opts ...grpc.CallOption) (*ListTodoTagsResponse, error)
@@ -266,6 +273,16 @@ func (c *plannerServiceClient) ListOpenTodos(ctx context.Context, in *ListOpenTo
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListOpenTodosResponse)
 	err := c.cc.Invoke(ctx, PlannerService_ListOpenTodos_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plannerServiceClient) ListTodoChanges(ctx context.Context, in *ListTodoChangesRequest, opts ...grpc.CallOption) (*ListTodoChangesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListTodoChangesResponse)
+	err := c.cc.Invoke(ctx, PlannerService_ListTodoChanges_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -492,6 +509,12 @@ type PlannerServiceServer interface {
 	// ListOpenTodos returns every active todo, dated or not, ordered by date with
 	// undated ones last.
 	ListOpenTodos(context.Context, *ListOpenTodosRequest) (*ListOpenTodosResponse, error)
+	// ListTodoChanges returns the caller's todos created or changed at or after
+	// updated_since, whatever their status, and the todos deleted since then, for
+	// a client that keeps its own copy (an agent syncing todos back to the
+	// documents they came from). Pass next_updated_since from the response as the
+	// next call's updated_since.
+	ListTodoChanges(context.Context, *ListTodoChangesRequest) (*ListTodoChangesResponse, error)
 	// ListTodoTags returns the tags used on the caller's todos, most recently
 	// used first, to pick from when tagging a todo.
 	ListTodoTags(context.Context, *ListTodoTagsRequest) (*ListTodoTagsResponse, error)
@@ -594,6 +617,9 @@ func (UnimplementedPlannerServiceServer) GetWeekProgress(context.Context, *GetWe
 }
 func (UnimplementedPlannerServiceServer) ListOpenTodos(context.Context, *ListOpenTodosRequest) (*ListOpenTodosResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListOpenTodos not implemented")
+}
+func (UnimplementedPlannerServiceServer) ListTodoChanges(context.Context, *ListTodoChangesRequest) (*ListTodoChangesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListTodoChanges not implemented")
 }
 func (UnimplementedPlannerServiceServer) ListTodoTags(context.Context, *ListTodoTagsRequest) (*ListTodoTagsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListTodoTags not implemented")
@@ -843,6 +869,24 @@ func _PlannerService_ListOpenTodos_Handler(srv interface{}, ctx context.Context,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PlannerServiceServer).ListOpenTodos(ctx, req.(*ListOpenTodosRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlannerService_ListTodoChanges_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListTodoChangesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlannerServiceServer).ListTodoChanges(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlannerService_ListTodoChanges_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlannerServiceServer).ListTodoChanges(ctx, req.(*ListTodoChangesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1199,6 +1243,10 @@ var PlannerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListOpenTodos",
 			Handler:    _PlannerService_ListOpenTodos_Handler,
+		},
+		{
+			MethodName: "ListTodoChanges",
+			Handler:    _PlannerService_ListTodoChanges_Handler,
 		},
 		{
 			MethodName: "ListTodoTags",

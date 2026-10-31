@@ -1135,6 +1135,14 @@ func (s *ConnectServiceHandler) ListPlannerEntries(ctx context.Context, req *con
 	return connect.NewResponse(resp), nil
 }
 
+func (s *ConnectServiceHandler) ListTodoChanges(ctx context.Context, req *connect.Request[v1pb.ListTodoChangesRequest]) (*connect.Response[v1pb.ListTodoChangesResponse], error) {
+	resp, err := s.APIV1Service.ListTodoChanges(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (s *ConnectServiceHandler) ListOpenTodos(ctx context.Context, req *connect.Request[v1pb.ListOpenTodosRequest]) (*connect.Response[v1pb.ListOpenTodosResponse], error) {
 	resp, err := s.APIV1Service.ListOpenTodos(ctx, req.Msg)
 	if err != nil {

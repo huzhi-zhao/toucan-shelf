@@ -64,6 +64,9 @@ const (
 	// PlannerServiceListOpenTodosProcedure is the fully-qualified name of the PlannerService's
 	// ListOpenTodos RPC.
 	PlannerServiceListOpenTodosProcedure = "/memos.api.v1.PlannerService/ListOpenTodos"
+	// PlannerServiceListTodoChangesProcedure is the fully-qualified name of the PlannerService's
+	// ListTodoChanges RPC.
+	PlannerServiceListTodoChangesProcedure = "/memos.api.v1.PlannerService/ListTodoChanges"
 	// PlannerServiceListTodoTagsProcedure is the fully-qualified name of the PlannerService's
 	// ListTodoTags RPC.
 	PlannerServiceListTodoTagsProcedure = "/memos.api.v1.PlannerService/ListTodoTags"
@@ -154,6 +157,12 @@ type PlannerServiceClient interface {
 	// ListOpenTodos returns every active todo, dated or not, ordered by date with
 	// undated ones last.
 	ListOpenTodos(context.Context, *connect.Request[v1.ListOpenTodosRequest]) (*connect.Response[v1.ListOpenTodosResponse], error)
+	// ListTodoChanges returns the caller's todos created or changed at or after
+	// updated_since, whatever their status, and the todos deleted since then, for
+	// a client that keeps its own copy (an agent syncing todos back to the
+	// documents they came from). Pass next_updated_since from the response as the
+	// next call's updated_since.
+	ListTodoChanges(context.Context, *connect.Request[v1.ListTodoChangesRequest]) (*connect.Response[v1.ListTodoChangesResponse], error)
 	// ListTodoTags returns the tags used on the caller's todos, most recently
 	// used first, to pick from when tagging a todo.
 	ListTodoTags(context.Context, *connect.Request[v1.ListTodoTagsRequest]) (*connect.Response[v1.ListTodoTagsResponse], error)
@@ -290,6 +299,12 @@ func NewPlannerServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(plannerServiceMethods.ByName("ListOpenTodos")),
 			connect.WithClientOptions(opts...),
 		),
+		listTodoChanges: connect.NewClient[v1.ListTodoChangesRequest, v1.ListTodoChangesResponse](
+			httpClient,
+			baseURL+PlannerServiceListTodoChangesProcedure,
+			connect.WithSchema(plannerServiceMethods.ByName("ListTodoChanges")),
+			connect.WithClientOptions(opts...),
+		),
 		listTodoTags: connect.NewClient[v1.ListTodoTagsRequest, v1.ListTodoTagsResponse](
 			httpClient,
 			baseURL+PlannerServiceListTodoTagsProcedure,
@@ -407,6 +422,7 @@ type plannerServiceClient struct {
 	listPlannerEntries    *connect.Client[v1.ListPlannerEntriesRequest, v1.ListPlannerEntriesResponse]
 	getWeekProgress       *connect.Client[v1.GetWeekProgressRequest, v1.GetWeekProgressResponse]
 	listOpenTodos         *connect.Client[v1.ListOpenTodosRequest, v1.ListOpenTodosResponse]
+	listTodoChanges       *connect.Client[v1.ListTodoChangesRequest, v1.ListTodoChangesResponse]
 	listTodoTags          *connect.Client[v1.ListTodoTagsRequest, v1.ListTodoTagsResponse]
 	setCheckIn            *connect.Client[v1.SetCheckInRequest, v1.CheckIn]
 	deleteCheckIn         *connect.Client[v1.DeleteCheckInRequest, emptypb.Empty]
@@ -474,6 +490,11 @@ func (c *plannerServiceClient) GetWeekProgress(ctx context.Context, req *connect
 // ListOpenTodos calls memos.api.v1.PlannerService.ListOpenTodos.
 func (c *plannerServiceClient) ListOpenTodos(ctx context.Context, req *connect.Request[v1.ListOpenTodosRequest]) (*connect.Response[v1.ListOpenTodosResponse], error) {
 	return c.listOpenTodos.CallUnary(ctx, req)
+}
+
+// ListTodoChanges calls memos.api.v1.PlannerService.ListTodoChanges.
+func (c *plannerServiceClient) ListTodoChanges(ctx context.Context, req *connect.Request[v1.ListTodoChangesRequest]) (*connect.Response[v1.ListTodoChangesResponse], error) {
+	return c.listTodoChanges.CallUnary(ctx, req)
 }
 
 // ListTodoTags calls memos.api.v1.PlannerService.ListTodoTags.
@@ -599,6 +620,12 @@ type PlannerServiceHandler interface {
 	// ListOpenTodos returns every active todo, dated or not, ordered by date with
 	// undated ones last.
 	ListOpenTodos(context.Context, *connect.Request[v1.ListOpenTodosRequest]) (*connect.Response[v1.ListOpenTodosResponse], error)
+	// ListTodoChanges returns the caller's todos created or changed at or after
+	// updated_since, whatever their status, and the todos deleted since then, for
+	// a client that keeps its own copy (an agent syncing todos back to the
+	// documents they came from). Pass next_updated_since from the response as the
+	// next call's updated_since.
+	ListTodoChanges(context.Context, *connect.Request[v1.ListTodoChangesRequest]) (*connect.Response[v1.ListTodoChangesResponse], error)
 	// ListTodoTags returns the tags used on the caller's todos, most recently
 	// used first, to pick from when tagging a todo.
 	ListTodoTags(context.Context, *connect.Request[v1.ListTodoTagsRequest]) (*connect.Response[v1.ListTodoTagsResponse], error)
@@ -731,6 +758,12 @@ func NewPlannerServiceHandler(svc PlannerServiceHandler, opts ...connect.Handler
 		connect.WithSchema(plannerServiceMethods.ByName("ListOpenTodos")),
 		connect.WithHandlerOptions(opts...),
 	)
+	plannerServiceListTodoChangesHandler := connect.NewUnaryHandler(
+		PlannerServiceListTodoChangesProcedure,
+		svc.ListTodoChanges,
+		connect.WithSchema(plannerServiceMethods.ByName("ListTodoChanges")),
+		connect.WithHandlerOptions(opts...),
+	)
 	plannerServiceListTodoTagsHandler := connect.NewUnaryHandler(
 		PlannerServiceListTodoTagsProcedure,
 		svc.ListTodoTags,
@@ -855,6 +888,8 @@ func NewPlannerServiceHandler(svc PlannerServiceHandler, opts ...connect.Handler
 			plannerServiceGetWeekProgressHandler.ServeHTTP(w, r)
 		case PlannerServiceListOpenTodosProcedure:
 			plannerServiceListOpenTodosHandler.ServeHTTP(w, r)
+		case PlannerServiceListTodoChangesProcedure:
+			plannerServiceListTodoChangesHandler.ServeHTTP(w, r)
 		case PlannerServiceListTodoTagsProcedure:
 			plannerServiceListTodoTagsHandler.ServeHTTP(w, r)
 		case PlannerServiceSetCheckInProcedure:
@@ -936,6 +971,10 @@ func (UnimplementedPlannerServiceHandler) GetWeekProgress(context.Context, *conn
 
 func (UnimplementedPlannerServiceHandler) ListOpenTodos(context.Context, *connect.Request[v1.ListOpenTodosRequest]) (*connect.Response[v1.ListOpenTodosResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.ListOpenTodos is not implemented"))
+}
+
+func (UnimplementedPlannerServiceHandler) ListTodoChanges(context.Context, *connect.Request[v1.ListTodoChangesRequest]) (*connect.Response[v1.ListTodoChangesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.PlannerService.ListTodoChanges is not implemented"))
 }
 
 func (UnimplementedPlannerServiceHandler) ListTodoTags(context.Context, *connect.Request[v1.ListTodoTagsRequest]) (*connect.Response[v1.ListTodoTagsResponse], error) {

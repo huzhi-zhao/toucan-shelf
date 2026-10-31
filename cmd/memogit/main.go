@@ -65,7 +65,7 @@ the end of each document -- never delete, edit, or hand-write it.`,
 	root.PersistentPostRun = func(cmd *cobra.Command, _ []string) {
 		noteVersionMismatch(cmd, cmd.ErrOrStderr())
 	}
-	root.AddCommand(loginCmd(), cloneCmd(), workspacesCmd(), pullCmd(), pushCmd(), statusCmd(), attachCmd(), rmCmd(), agentsCmd(), selfUpdateCmd(), syncCmd(), hookCmd())
+	root.AddCommand(loginCmd(), cloneCmd(), workspacesCmd(), pullCmd(), pushCmd(), statusCmd(), attachCmd(), rmCmd(), agentsCmd(), selfUpdateCmd(), syncCmd(), hookCmd(), todoCmd())
 	return root
 }
 

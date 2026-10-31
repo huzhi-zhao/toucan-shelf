@@ -55,6 +55,9 @@ const agentBrief = `## ToucanShelf 知识库检出目录（给 AI 代理看）
    改法各不相同；` + "`_attachments/`" + ` 是只读的附件字节。
 5. 同步节奏：先 ` + "`memogit pull`" + `，改完 ` + "`memogit status`" + ` 自查，再 ` + "`memogit push`" + `
    （可先 ` + "`--dry-run`" + `）。不要用 ` + "`git push`" + `，本地 git 只是快照，没有 remote。
+6. 用户本人要做的事**不为给用户看而新写 TODO.md 或 ` + "`- [ ]`" + ` 清单**：先问用户，同意后用
+   ` + "`memogit todo add`" + ` 推到 app 计划的待办。来源文档里原有的条目照常保留，推了就在行尾记 id，
+   不删、不改样子；规则见手册 ` + "`references/user-todos.md`" + `。
 `
 
 // workspaceHeader prefixes the brief inside a workspace subfolder, where the

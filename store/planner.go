@@ -227,6 +227,15 @@ type FindPlannerTodo struct {
 	HabitID   *int32
 	StartDate string
 	EndDate   string
+	// UpdatedSince, when non-zero, keeps the todos updated at or after it (unix seconds).
+	UpdatedSince int64
+}
+
+// PlannerTodoDeletion records a deleted todo, so a client syncing todos can learn it is gone.
+type PlannerTodoDeletion struct {
+	UID       string
+	CreatorID int32
+	DeletedTs int64
 }
 
 // UpdatePlannerTodo changes the given fields of one todo. The API layer owns the
@@ -386,6 +395,11 @@ func (s *Store) ListPlannerCheckIns(ctx context.Context, find *FindPlannerCheckI
 // DeletePlannerCheckIn removes a habit's check-in on a day, if any.
 func (s *Store) DeletePlannerCheckIn(ctx context.Context, habitID int32, date string) error {
 	return s.driver.DeletePlannerCheckIn(ctx, habitID, date)
+}
+
+// ListPlannerTodoDeletions lists the creator's todos deleted at or after since (unix seconds), oldest first.
+func (s *Store) ListPlannerTodoDeletions(ctx context.Context, creatorID int32, since int64) ([]*PlannerTodoDeletion, error) {
+	return s.driver.ListPlannerTodoDeletions(ctx, creatorID, since)
 }
 
 // CreatePlannerTodo creates a todo.
