@@ -470,9 +470,13 @@ func (d *DB) ListPlannerTodos(ctx context.Context, find *store.FindPlannerTodo) 
 		where, args = append(where, "`habit_id` = ?"), append(args, *find.HabitID)
 	}
 	where, args = dateRange(where, args, find.StartDate, find.EndDate)
-	// Undated todos sort after every dated one.
+	order := "`date` = '', `date`, `id`" // Undated todos sort after every dated one.
+	if find.UpdatedSince != 0 {
+		where, args = append(where, "`updated_ts` >= ?"), append(args, find.UpdatedSince)
+		order = "`updated_ts`, `id`"
+	}
 	rows, err := d.db.QueryContext(ctx,
-		"SELECT "+plannerTodoColumns+" FROM `planner_todo` WHERE "+strings.Join(where, " AND ")+" ORDER BY `date` = '', `date`, `id`",
+		"SELECT "+plannerTodoColumns+" FROM `planner_todo` WHERE "+strings.Join(where, " AND ")+" ORDER BY "+order,
 		args...,
 	)
 	if err != nil {
@@ -600,9 +604,34 @@ func (d *DB) DeletePlannerTodo(ctx context.Context, id int32) error {
 		if _, err := tx.ExecContext(ctx, "DELETE FROM `planner_check_in` WHERE `todo_id` = ?", id); err != nil {
 			return errors.Wrap(err, "failed to delete the todo's check-in")
 		}
+		if _, err := tx.ExecContext(ctx,
+			"INSERT OR REPLACE INTO `planner_todo_deletion` (`uid`, `creator_id`) SELECT `uid`, `creator_id` FROM `planner_todo` WHERE `id` = ?", id,
+		); err != nil {
+			return errors.Wrap(err, "failed to record the todo's deletion")
+		}
 		_, err := tx.ExecContext(ctx, "DELETE FROM `planner_todo` WHERE `id` = ?", id)
 		return err
 	})
+}
+
+func (d *DB) ListPlannerTodoDeletions(ctx context.Context, creatorID int32, since int64) ([]*store.PlannerTodoDeletion, error) {
+	rows, err := d.db.QueryContext(ctx,
+		"SELECT `uid`, `creator_id`, `deleted_ts` FROM `planner_todo_deletion` WHERE `creator_id` = ? AND `deleted_ts` >= ? ORDER BY `deleted_ts`, `uid`",
+		creatorID, since,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	list := []*store.PlannerTodoDeletion{}
+	for rows.Next() {
+		deletion := &store.PlannerTodoDeletion{}
+		if err := rows.Scan(&deletion.UID, &deletion.CreatorID, &deletion.DeletedTs); err != nil {
+			return nil, err
+		}
+		list = append(list, deletion)
+	}
+	return list, rows.Err()
 }
 
 // plannerTodoTagLimit caps the tag history: enough to choose from, small enough to show at once.

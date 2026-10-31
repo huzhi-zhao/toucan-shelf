@@ -1,36 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { List, ListItem, Navbar, Page, Preloader, Searchbar } from "konsta/react";
-import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { memoServiceClient, ragServiceClient } from "@/connect";
+import { ragServiceClient } from "@/connect";
 import { useWorkspaces } from "@/hooks/useWorkspaceQueries";
 import { SearchMode } from "@/types/proto/api/v1/rag_service_pb";
 import DocGlyph from "../components/DocGlyph";
 import SectionTitle from "../components/SectionTitle";
 import { COPY } from "../copy";
 import { splitHighlights } from "../lib/highlight";
-import { groupKbTodos } from "../lib/kbTodos";
 import { useGo, usePageScroll } from "../lib/nav";
 import { usePref } from "../lib/storage";
 import { docRoute } from "../routes";
 
 const HISTORY_KEY = "search-history";
-const KB_TODOS_PAGE_SIZE = 1000;
 
-/**
- * Every readable document that still has an empty `[ ]`; `groupKbTodos` keeps the root TODO ones. The store
- * keeps that flag, so this is not a scan, and listing does not offer a title or folder filter to narrow it.
- */
-async function listDocsWithOpenTodos() {
-  const memos = [];
-  let pageToken = "";
-  do {
-    const page = await memoServiceClient.listMemos({ filter: "has_incomplete_tasks == true", pageSize: KB_TODOS_PAGE_SIZE, pageToken });
-    memos.push(...page.memos);
-    pageToken = page.nextPageToken;
-  } while (pageToken);
-  return memos;
-}
 const HISTORY_LIMIT = 8;
 
 function Highlighted({ text, terms }: { text: string; terms: readonly string[] }) {
@@ -64,17 +48,8 @@ export default function SearchPage() {
   const [history, setHistory] = usePref<string[]>(HISTORY_KEY, []);
   const formRef = useRef<HTMLFormElement>(null);
   const { data: workspaces = [] } = useWorkspaces(false);
-  // Recent searches show while typing; the rest of the time the space under the box lists the open todos in
-  // each knowledge base's root TODO document (phase 3 §3). They are read fresh on every visit, so a box ticked on the computer is
-  // gone here at once.
+  // Recent searches show while typing.
   const [focused, setFocused] = useState(false);
-  const kbTodos = useQuery({
-    queryKey: ["mobile-kb-todos"],
-    queryFn: listDocsWithOpenTodos,
-    enabled: !submitted,
-    staleTime: 0,
-  });
-  const todoGroups = useMemo(() => groupKbTodos(kbTodos.data ?? [], workspaces), [kbTodos.data, workspaces]);
 
   // Konsta's input is a plain text field; ask iOS for a "Search" key on the keyboard.
   useEffect(() => {
@@ -159,44 +134,6 @@ export default function SearchPage() {
             ))}
           </List>
         </div>
-      )}
-
-      {!submitted && !focused && (
-        <>
-          <SectionTitle>{COPY.search.kbTodos}</SectionTitle>
-          {kbTodos.isPending ? (
-            <div className="flex justify-center py-10">
-              <Preloader />
-            </div>
-          ) : kbTodos.isError ? (
-            <div className="text-center text-black/40 dark:text-white/40 py-10">{COPY.search.kbTodosFailed}</div>
-          ) : todoGroups.length === 0 ? (
-            <div className="text-center text-black/40 dark:text-white/40 py-10">{COPY.search.kbTodosEmpty}</div>
-          ) : (
-            <>
-              {/* One block per knowledge base, every todo on its own row and in full; any row opens the TODO. */}
-              {todoGroups.map((group) => (
-                <div key={group.workspace} className="mb-5">
-                  <div className="px-8 pb-1.5 text-[13px] text-black/45 dark:text-white/45">{group.title}</div>
-                  <List strongIos insetIos dividersIos className="!my-0">
-                    {group.todos.map((todo, i) => (
-                      <ListItem
-                        key={i}
-                        link
-                        chevron={false}
-                        mediaClassName="self-start !pt-[16px] !pb-0"
-                        media={<span className="h-[18px] w-[18px] rounded-full border-[1.5px] border-black/25 dark:border-white/30" />}
-                        title={<span className="block py-0.5 leading-snug">{todo}</span>}
-                        onClick={() => go(docRoute(group.memo))}
-                      />
-                    ))}
-                  </List>
-                </div>
-              ))}
-              <p className="px-8 text-[13px] leading-snug text-black/45 dark:text-white/45">{COPY.search.kbTodosHint}</p>
-            </>
-          )}
-        </>
       )}
 
       {submitted && isFetching && !data && (
