@@ -397,12 +397,12 @@ func (s *Store) DeletePlannerCheckIn(ctx context.Context, habitID int32, date st
 	return s.driver.DeletePlannerCheckIn(ctx, habitID, date)
 }
 
-// CreatePlannerTodo creates a todo.
 // ListPlannerTodoDeletions lists the creator's todos deleted at or after since (unix seconds), oldest first.
 func (s *Store) ListPlannerTodoDeletions(ctx context.Context, creatorID int32, since int64) ([]*PlannerTodoDeletion, error) {
 	return s.driver.ListPlannerTodoDeletions(ctx, creatorID, since)
 }
 
+// CreatePlannerTodo creates a todo.
 func (s *Store) CreatePlannerTodo(ctx context.Context, create *PlannerTodo) (*PlannerTodo, error) {
 	return s.driver.CreatePlannerTodo(ctx, create)
 }

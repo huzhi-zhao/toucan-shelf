@@ -96,7 +96,7 @@ d=$PWD; while [ "$d" != / ] && [ ! -d "$d/.memogit" ]; do d=$(dirname "$d"); don
 | 仅 memogit | 文件路径/文件名 | ✅ | = 移动/重命名文档，直接 `mv`；**仅限同一知识库内**，跨库走 MCP 的 `workspace` 字段 |
 | 仅 memogit | `*.pdf.md` | ❌ | 生成的引用桩，push 会忽略 |
 | 仅 memogit | `_attachments/**` | ❌ 只读 | 可以阅读内容，不能编辑/删除；push 从不上传附件 |
-| 两者 | 用户待办（app 计划） | ⚠️ 须经同意 | 只推用户本人才能做的事，先问用户；不写 TODO.md / `- [ ]` 清单给用户看；状态归用户，你只同步结果，见 `references/user-todos.md` |
+| 两者 | 用户待办（app 计划） | ⚠️ 须经同意 | 只推用户本人才能做的事，先问用户；不为给用户看新写 TODO.md / `- [ ]` 清单（来源文档原有条目照留，推了在行尾记 id）；状态归用户，你只同步结果，见 `references/user-todos.md` |
 | 仅 memogit | 给文档加附件 | ⚠️ 须经同意 | 只能 `memogit attach` 追加，用户同意预演清单后才 `--confirm`；删除/替换/改名去 app，见 `references/attachments.md` §4 |
 | 仅 memogit | 末尾 `memogit-id` 行 | ❌ | 见铁律 1 |
 | 仅 memogit | 末尾 `memogit-attachments` 块 | ❌ 只读 | 本文档附件的本地路径清单，用它找附件；本地生成物，改了不同步 |
