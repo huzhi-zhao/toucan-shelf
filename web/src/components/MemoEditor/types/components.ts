@@ -1,3 +1,4 @@
+import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 import type { DocAnchor, EpubAnnotation, Location, Memo, PdfAnnotation, Visibility } from "@/types/proto/api/v1/memo_service_pb";
 import type { AudioRecorderStatus } from "../hooks/useAudioRecorder";
 
@@ -87,6 +88,8 @@ export interface EditorMetadataProps {
   memoName?: string;
   /** See MemoEditorProps.showReferences. */
   showReferences?: boolean;
+  /** Puts a reference to a saved attachment into the body at the caret. */
+  onInsertAttachmentReference?: (attachment: Attachment) => void;
 }
 
 export interface AudioRecorderPanelProps {

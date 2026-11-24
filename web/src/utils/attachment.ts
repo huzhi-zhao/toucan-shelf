@@ -100,6 +100,12 @@ export const getMediaKindFromUrl = (url: string | undefined): "image" | "video" 
  * (rendered inline, so hidden from the attachment editor/list) vs. the rest. Prefers the
  * `origin` flag set at upload time (see mediaInsertService/uploadService); falls back to
  * content-string matching for attachments uploaded before that field existed.
+ *
+ * A MOUNTED media attachment the user later placed into the body ("insert at cursor" in
+ * the editor's attachment menu) also counts as inlined: the body already renders it, so
+ * listing it again at the bottom would show the same picture twice. Origin can't be
+ * changed after upload, hence the content check. A MOUNTED non-media file stays in the
+ * list — the body only holds a plain link to it, not a rendering.
  */
 export const partitionInlinedAttachments = <T extends Attachment>(attachments: T[], content: string): { inlined: T[]; rest: T[] } => {
   const inlined: T[] = [];
@@ -107,7 +113,10 @@ export const partitionInlinedAttachments = <T extends Attachment>(attachments: T
   for (const attachment of attachments) {
     const isInlined =
       attachment.origin === AttachmentOrigin.INLINE ||
-      (attachment.origin === AttachmentOrigin.ATTACHMENT_ORIGIN_UNSPECIFIED && content.includes(getAttachmentUrl(attachment)));
+      (attachment.origin === AttachmentOrigin.ATTACHMENT_ORIGIN_UNSPECIFIED && content.includes(getAttachmentUrl(attachment))) ||
+      (attachment.origin === AttachmentOrigin.MOUNTED &&
+        isMediaMimeType(attachment.type) &&
+        content.includes(`](${getAttachmentUrl(attachment)})`));
     (isInlined ? inlined : rest).push(attachment);
   }
   return { inlined, rest };

@@ -43,6 +43,9 @@ interface AttachmentListEditorProps {
   // The memo being edited. Used to check whether a saved attachment is referenced
   // by any saved version, so removing it can offer "unlink" instead of "delete".
   memoName?: string;
+  // Puts a reference to a saved attachment into the body at the editor's caret. Only the
+  // editor that owns a caret passes it; without it the row menu has no insert entry.
+  onInsertReference?: (attachment: Attachment) => void;
 }
 
 const AttachmentItemActions: FC<{
@@ -57,14 +60,21 @@ const AttachmentItemActions: FC<{
   // record to set access on at all.
   accessAttachment?: Attachment;
   onAccessChange?: (attachment: Attachment) => void;
-}> = ({ onRemove, onMoveUp, onMoveDown, canMoveUp = true, canMoveDown = true, accessAttachment, onAccessChange }) => {
+  onInsertReference?: (attachment: Attachment) => void;
+}> = ({ onRemove, onMoveUp, onMoveDown, canMoveUp = true, canMoveDown = true, accessAttachment, onAccessChange, onInsertReference }) => {
   const stopPropagation = (event: MouseEvent) => {
     event.stopPropagation();
   };
 
   return (
     <div className="shrink-0 flex items-center gap-0.5">
-      {accessAttachment && <AttachmentAccessMenu attachment={accessAttachment} onAccessChange={onAccessChange} />}
+      {accessAttachment && (
+        <AttachmentAccessMenu
+          attachment={accessAttachment}
+          onAccessChange={onAccessChange}
+          onInsertReference={onInsertReference ? () => onInsertReference(accessAttachment) : undefined}
+        />
+      )}
 
       {onMoveUp && (
         <Button
@@ -126,7 +136,19 @@ const AttachmentItemCard: FC<{
   canMoveDown?: boolean;
   accessAttachment?: Attachment;
   onAccessChange?: (attachment: Attachment) => void;
-}> = ({ item, onPreview, onRemove, onMoveUp, onMoveDown, canMoveUp = true, canMoveDown = true, accessAttachment, onAccessChange }) => {
+  onInsertReference?: (attachment: Attachment) => void;
+}> = ({
+  item,
+  onPreview,
+  onRemove,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp = true,
+  canMoveDown = true,
+  accessAttachment,
+  onAccessChange,
+  onInsertReference,
+}) => {
   const t = useTranslate();
   const { category, filename, thumbnailUrl, mimeType, size, sourceUrl, isVoiceNote, audioMeta } = item;
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -248,6 +270,7 @@ const AttachmentItemCard: FC<{
           canMoveDown={canMoveDown}
           accessAttachment={accessAttachment}
           onAccessChange={onAccessChange}
+          onInsertReference={onInsertReference}
         />
       </div>
     </div>
@@ -264,6 +287,7 @@ const AttachmentListEditor: FC<AttachmentListEditorProps> = ({
   showInlineAttachments = false,
   onToggleShowInlineAttachments,
   memoName,
+  onInsertReference,
 }) => {
   const t = useTranslate();
   const [previewState, setPreviewState] = useState<{ open: boolean; initialIndex: number }>({ open: false, initialIndex: 0 });
@@ -449,6 +473,7 @@ const AttachmentListEditor: FC<AttachmentListEditorProps> = ({
               item={item}
               accessAttachment={accessAttachment}
               onAccessChange={handleAccessChange}
+              onInsertReference={onInsertReference}
               onPreview={
                 item.category === "image" || item.category === "video" || item.category === "motion"
                   ? () => handlePreviewItem(item)

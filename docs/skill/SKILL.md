@@ -71,6 +71,8 @@ d=$PWD; while [ "$d" != / ] && [ ! -d "$d/.memogit" ]; do d=$(dirname "$d"); don
 5. **【仅 memogit】附件只读，只能经用户同意追加。** `_attachments/**` 下的字节可以**读**（这正是它们被下载下来的原因），
    但绝不编辑、不删除、不移动。要**给文档加附件**只能用 `memogit attach`：先预演，把清单原样给用户看，
    用户在对话里明确同意后才带 `--confirm` 上传；删除、替换、改名一律引导用户去 app 里做。
+   只在两种情况下主动提议上传：用户在聊天里给的值得留存的文件，和你自己画的图（如 SVG）；
+   不提倡自己去找图来传。账单、证件这类隐私图片**即使用户要求也不传**，请用户自己放进加密文档。
    一篇文档挂了哪些附件、落在哪，
    看文件末尾的 `memogit-attachments` 注释块（和 `memogit-id` 一样是本地标记，别动它）；
    **判断该读哪个、以及必须汇报你没读哪些**，详见 `references/attachments.md`。
@@ -97,7 +99,7 @@ d=$PWD; while [ "$d" != / ] && [ ! -d "$d/.memogit" ]; do d=$(dirname "$d"); don
 | 仅 memogit | `*.pdf.md` | ❌ | 生成的引用桩，push 会忽略 |
 | 仅 memogit | `_attachments/**` | ❌ 只读 | 可以阅读内容，不能编辑/删除；push 从不上传附件 |
 | 两者 | 用户待办（app 计划） | ⚠️ 须经同意 | 只推用户本人才能做的事，先问用户；不为给用户看新写 TODO.md / `- [ ]` 清单（来源文档原有条目照留，推了在行尾记 id）；状态归用户，你只同步结果，见 `references/user-todos.md` |
-| 仅 memogit | 给文档加附件 | ⚠️ 须经同意 | 只能 `memogit attach` 追加，用户同意预演清单后才 `--confirm`；删除/替换/改名去 app，见 `references/attachments.md` §4 |
+| 仅 memogit | 给文档加附件 | ⚠️ 须经同意 | 只能 `memogit attach` 追加，用户同意预演清单后才 `--confirm`；只提议传用户给的或你画的，隐私图片不传；删除/替换/改名去 app，见 `references/attachments.md` §4 |
 | 仅 memogit | 末尾 `memogit-id` 行 | ❌ | 见铁律 1 |
 | 仅 memogit | 末尾 `memogit-attachments` 块 | ❌ 只读 | 本文档附件的本地路径清单，用它找附件；本地生成物，改了不同步 |
 | 仅 memogit | `.memogit/**` | ❌ | 同步状态账本，不要手改 |

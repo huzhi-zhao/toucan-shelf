@@ -59,7 +59,8 @@
     "access": {
       "menu": "Access",
       "unset-private": "Remove private lock"
-    }
+    },
+    "insert-at-cursor": "Insert at cursor"
   },
   "attachment-library": {
     "actions": {
