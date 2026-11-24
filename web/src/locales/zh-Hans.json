@@ -1140,7 +1140,8 @@
     "access": {
       "menu": "访问权限",
       "unset-private": "取消设为私密"
-    }
+    },
+    "insert-at-cursor": "插入到光标处"
   },
   "attachment-library": {
     "actions": {

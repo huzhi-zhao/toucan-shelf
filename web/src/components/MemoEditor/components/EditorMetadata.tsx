@@ -4,7 +4,7 @@ import { partitionInlinedAttachments } from "@/utils/attachment";
 import { useEditorContext, useEditorSelector } from "../state";
 import type { EditorMetadataProps } from "../types";
 
-export const EditorMetadata: FC<EditorMetadataProps> = ({ memoName, showReferences }) => {
+export const EditorMetadata: FC<EditorMetadataProps> = ({ memoName, showReferences, onInsertAttachmentReference }) => {
   const { actions, dispatch } = useEditorContext();
   const attachments = useEditorSelector((s) => s.metadata.attachments);
   const content = useEditorSelector((s) => s.content);
@@ -31,6 +31,7 @@ export const EditorMetadata: FC<EditorMetadataProps> = ({ memoName, showReferenc
         showInlineAttachments={showInlineAttachments}
         onToggleShowInlineAttachments={() => setShowInlineAttachments((prev) => !prev)}
         memoName={memoName}
+        onInsertReference={onInsertAttachmentReference}
       />
 
       {showReferences && memoName && (

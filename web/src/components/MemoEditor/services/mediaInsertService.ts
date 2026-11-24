@@ -23,3 +23,15 @@ export function buildMediaMarkdown(attachment: Attachment): string {
   const alt = attachment.filename.replace(/\[/g, "\\[").replace(/\]/g, "\\]");
   return `![${alt}](${url})`;
 }
+
+/**
+ * Builds the reference the attachment menu's "insert at cursor" puts into the body for an
+ * attachment that already exists: media renders inline like a pasted file, anything else
+ * becomes a plain link to the file.
+ */
+export function buildAttachmentReferenceMarkdown(attachment: Attachment): string {
+  if (isMediaMimeType(attachment.type)) {
+    return buildMediaMarkdown(attachment);
+  }
+  return buildMediaMarkdown(attachment).slice(1);
+}

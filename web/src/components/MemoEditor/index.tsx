@@ -28,6 +28,7 @@ import {
   usePeriodicSavePreference,
 } from "./hooks";
 import { errorService, memoService, transcriptionService, validationService } from "./services";
+import { buildAttachmentReferenceMarkdown } from "./services/mediaInsertService";
 import { EditorProvider, UploadWorkspaceProvider, useEditorContext, useEditorSelector, useUploadWorkspace } from "./state";
 import { CommentToolbar, EditorToolbar, FormattingToolbar } from "./Toolbar";
 import type { MemoEditorProps } from "./types";
@@ -508,7 +509,11 @@ const MemoEditorImpl = forwardRef<EditorController, MemoEditorProps>(
               expand && !isFocusMode && "sticky bottom-0 bg-background border-t border-border py-1.5 -mx-4 px-4 z-10",
             )}
           >
-            <EditorMetadata memoName={memoName} showReferences={showReferences} />
+            <EditorMetadata
+              memoName={memoName}
+              showReferences={showReferences}
+              onInsertAttachmentReference={(attachment) => editorRef.current?.insertMarkdown(buildAttachmentReferenceMarkdown(attachment))}
+            />
             {(() => {
               const Toolbar = toolbarVariant === "comment" && !isFocusMode ? CommentToolbar : EditorToolbar;
               return (

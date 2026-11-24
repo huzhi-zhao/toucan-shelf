@@ -176,7 +176,8 @@ memos 是 REST 不是 git remote，`git fetch` 拿不出 "theirs"，所以 memog
 ## 6. 已知限制
 
 - **附件只能追加**：`memogit attach` 只把文件挂在附件区（mounted），不改正文，不支持 PDF 文档；
-  删除、替换、改名附件没有实现，也不会实现，请用户在 app 里做。
+  删除、替换、改名附件没有实现，也不会实现，请用户在 app 里做。要放进正文，请用户在 app 编辑器里
+  点附件后面的 ⋮ →"插入到光标处"（`attachments.md` §4.6）。
 - **关系写回未实现**（v1 只读导出）。
 - **只同步你自己的文档——但管理员例外**：普通用户的 clone/pull 只抓 `creator == 你`，
   别人共享的 PROTECTED / PUBLIC 文档不会进本地库，也 push 不回去。**管理员账号的 token

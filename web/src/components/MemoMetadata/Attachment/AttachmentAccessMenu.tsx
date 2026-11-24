@@ -20,13 +20,19 @@
 
 import { Code, ConnectError } from "@connectrpc/connect";
 import copy from "copy-to-clipboard";
-import { GlobeIcon, GlobeLockIcon, LinkIcon, LockIcon, LockOpenIcon, MoreVerticalIcon } from "lucide-react";
+import { GlobeIcon, GlobeLockIcon, LinkIcon, LockIcon, LockOpenIcon, MoreVerticalIcon, TextCursorInputIcon } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import UnlockMasterKeyDialog from "@/components/Secret/UnlockMasterKeyDialog";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useInstance } from "@/contexts/InstanceContext";
 import { useSetAttachmentAccess } from "@/hooks/useAttachmentAccess";
 import { useAttachmentVault, VaultLockedError } from "@/hooks/useAttachmentVault";
@@ -42,12 +48,19 @@ type PendingAccess = AttachmentAccess.ACCESS_INHERIT | AttachmentAccess.ACCESS_L
 // react-query, so the mutation's cache invalidation never reaches this row. The parent
 // hands us a callback to write the server's updated copy back into that state —
 // without it the trigger icon keeps showing the old mode until the page is reloaded.
+//
+// onInsertReference, when given, adds "insert at cursor" on top: it puts a reference to
+// this attachment into the body at the editor's caret, so a file mounted from outside the
+// editor (e.g. by `memogit attach`) can still be placed in the text. A locked attachment
+// never renders inline, so it doesn't get the entry.
 const AttachmentAccessMenu = ({
   attachment,
   onAccessChange,
+  onInsertReference,
 }: {
   attachment: Attachment;
   onAccessChange?: (attachment: Attachment) => void;
+  onInsertReference?: () => void;
 }) => {
   const t = useTranslate();
   const { profile } = useInstance();
@@ -126,6 +139,16 @@ const AttachmentAccessMenu = ({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
+          {onInsertReference && !isLocked && (
+            <>
+              <DropdownMenuItem onClick={onInsertReference}>
+                <TextCursorInputIcon className="h-4 w-4" />
+                {t("attachment.insert-at-cursor")}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
+
           {isLocked && (
             <DropdownMenuItem disabled={isPending} onClick={() => applyAccess(AttachmentAccess.ACCESS_INHERIT)}>
               <LockOpenIcon className="h-4 w-4" />
